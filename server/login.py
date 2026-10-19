@@ -11,7 +11,7 @@ Settings (environment variables, never in the app's files):
                             for the "Install Lectern on GitHub" link
   LECTERN_APP_URL           where the app lives, e.g. https://lectern.changapp.net/
                             (when unset, the address the browser used, so
-                            http://localhost:5002/ works while developing)
+                            http://localhost:5003/ works while developing)
 
 The GitHub App's callback URL is <LECTERN_APP_URL>api/github/callback.
 """

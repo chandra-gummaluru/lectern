@@ -11,7 +11,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Then open <http://localhost:5002/>. (`--port` changes the port.)
+Then open <http://localhost:5003/>. (`--port` changes the port.)
 
 - **Choose a folder** works straight away in Chrome or Edge: pick the folder that holds both repositories side by side (e.g. `courses/` and `courses-private/`, your git clones). Course pages, grades and exams all open and save there; commit and push with git as usual.
 - **Sign in with GitHub** needs the GitHub App (below). Copy `.env.example` to `.env` beside `app.py` and fill in its Client ID, client secret and slug; `python app.py` reads it. (`.env` is in `.gitignore`: the secret is never committed.)
@@ -23,7 +23,7 @@ Other settings: `LECTERN_APP_URL` (the public address, e.g. `https://lectern.cha
 1. Go to **GitHub → Settings → Developer settings → GitHub Apps → New GitHub App** (<https://github.com/settings/apps/new>).
 2. **GitHub App name:** `Lectern`. Names are unique across all of GitHub; if it's taken, use something like `Lectern UofT` (the app itself still says Lectern).
 3. **Homepage URL:** `https://lectern.changapp.net`
-4. **Callback URL:** `https://lectern.changapp.net/api/github/callback`. Click **Add Callback URL** and add `http://localhost:5002/api/github/callback` too, for running it on your computer.
+4. **Callback URL:** `https://lectern.changapp.net/api/github/callback`. Click **Add Callback URL** and add `http://localhost:5003/api/github/callback` too, for running it on your computer.
 5. Leave **Expire user authorization tokens** ticked (sign-ins last 8 hours and renew themselves). Leave **Request user authorization (OAuth) during installation** and **Enable Device Flow** unticked.
 6. **Webhook:** untick **Active**.
 7. **Permissions → Repository permissions:** **Contents**, **Administration** and **Pages**, each **Read and write**. (Metadata becomes read-only by itself.) No account or organization permissions.

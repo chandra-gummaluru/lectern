@@ -1,0 +1,1600 @@
+{
+ "format": "grade-builder/1",
+ "course": {
+  "code": "CSC108",
+  "term": "Winter 2026"
+ },
+ "fields": {
+  "idLabel": "Student number",
+  "custom": []
+ },
+ "evals": [
+  {
+   "id": "ex1",
+   "name": "Exercise 1",
+   "label": "Exercise",
+   "title": "",
+   "short": "Ex1",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-01-16",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "ex2",
+   "name": "Exercise 2",
+   "label": "Exercise",
+   "title": "",
+   "short": "Ex2",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-01-30",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "ex3",
+   "name": "Exercise 3",
+   "label": "Exercise",
+   "title": "",
+   "short": "Ex3",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-02-13",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "ex4",
+   "name": "Exercise 4",
+   "label": "Exercise",
+   "title": "",
+   "short": "Ex4",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-03-06",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "ex5",
+   "name": "Exercise 5",
+   "label": "Exercise",
+   "title": "",
+   "short": "Ex5",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-03-20",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "a1",
+   "name": "Assignment 1: Text adventure",
+   "label": "Assignment",
+   "title": "Text adventure",
+   "short": "A1",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 40,
+   "weight": 10,
+   "date": "2026-02-06",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "a2",
+   "name": "Assignment 2: Word puzzles",
+   "label": "Assignment",
+   "title": "Word puzzles",
+   "short": "A2",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 40,
+   "weight": 10,
+   "date": "2026-03-20",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "mt",
+   "name": "Midterm",
+   "label": "Midterm",
+   "title": "",
+   "short": "MT",
+   "shortAuto": true,
+   "type": "test",
+   "total": 50,
+   "weight": 20,
+   "date": "2026-02-25",
+   "time": "18:10",
+   "makeupFor": null,
+   "missed": {
+    "mode": "reweight",
+    "to": [
+     {
+      "id": "fe",
+      "share": 100
+     }
+    ],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "fe",
+   "name": "Final Exam",
+   "label": "Final Exam",
+   "title": "",
+   "short": "FE",
+   "shortAuto": true,
+   "type": "test",
+   "total": 100,
+   "weight": 50,
+   "date": "",
+   "time": "",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  }
+ ],
+ "groups": [
+  {
+   "id": "gex",
+   "name": "Exercises",
+   "short": "Ex",
+   "weight": 10,
+   "keep": 4,
+   "members": [
+    "ex1",
+    "ex2",
+    "ex3",
+    "ex4",
+    "ex5"
+   ]
+  }
+ ],
+ "students": [
+  {
+   "num": "1006971844",
+   "first": "Daniel",
+   "last": "Ahmed",
+   "f": {}
+  },
+  {
+   "num": "1006755426",
+   "first": "Ruth",
+   "last": "Ahmed",
+   "f": {}
+  },
+  {
+   "num": "1008736796",
+   "first": "Jin",
+   "last": "Bauer",
+   "f": {}
+  },
+  {
+   "num": "1007867232",
+   "first": "Omar",
+   "last": "Bauer",
+   "f": {}
+  },
+  {
+   "num": "1007325958",
+   "first": "Bea",
+   "last": "Brown",
+   "f": {}
+  },
+  {
+   "num": "1010108256",
+   "first": "Grace",
+   "last": "Brown",
+   "f": {}
+  },
+  {
+   "num": "1006901463",
+   "first": "Kai",
+   "last": "Chen",
+   "f": {}
+  },
+  {
+   "num": "1006769768",
+   "first": "Lina",
+   "last": "Costa",
+   "f": {}
+  },
+  {
+   "num": "1010370611",
+   "first": "Maya",
+   "last": "Costa",
+   "f": {}
+  },
+  {
+   "num": "1006063457",
+   "first": "Priya",
+   "last": "Costa",
+   "f": {}
+  },
+  {
+   "num": "1010495133",
+   "first": "Owen",
+   "last": "Dubois",
+   "f": {}
+  },
+  {
+   "num": "1008901972",
+   "first": "Jonah",
+   "last": "Fischer",
+   "f": {}
+  },
+  {
+   "num": "1009165879",
+   "first": "Nadia",
+   "last": "Fischer",
+   "f": {}
+  },
+  {
+   "num": "1007884525",
+   "first": "Chloe",
+   "last": "Garcia",
+   "f": {}
+  },
+  {
+   "num": "1010263409",
+   "first": "Yuki",
+   "last": "Haddad",
+   "f": {}
+  },
+  {
+   "num": "1007587957",
+   "first": "Rosa",
+   "last": "Hussain",
+   "f": {}
+  },
+  {
+   "num": "1007672987",
+   "first": "Tariq",
+   "last": "Hussain",
+   "f": {}
+  },
+  {
+   "num": "1008522019",
+   "first": "Amara",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1007374141",
+   "first": "Rafael",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1010587758",
+   "first": "Tariq",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1007300384",
+   "first": "Clara",
+   "last": "Kim",
+   "f": {}
+  },
+  {
+   "num": "1006404625",
+   "first": "Lina",
+   "last": "Laurent",
+   "f": {}
+  },
+  {
+   "num": "1008757936",
+   "first": "Hugo",
+   "last": "Mbeki",
+   "f": {}
+  },
+  {
+   "num": "1006661255",
+   "first": "Rafael",
+   "last": "Mbeki",
+   "f": {}
+  },
+  {
+   "num": "1010689373",
+   "first": "Ryan",
+   "last": "Moreau",
+   "f": {}
+  },
+  {
+   "num": "1009906070",
+   "first": "Amara",
+   "last": "Nguyen",
+   "f": {}
+  },
+  {
+   "num": "1010951027",
+   "first": "Priya",
+   "last": "Nguyen",
+   "f": {}
+  },
+  {
+   "num": "1008969025",
+   "first": "Rafael",
+   "last": "Nguyen",
+   "f": {}
+  },
+  {
+   "num": "1009054768",
+   "first": "Hana",
+   "last": "Novak",
+   "f": {}
+  },
+  {
+   "num": "1008971102",
+   "first": "Jonah",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1008408508",
+   "first": "Omar",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1008489386",
+   "first": "Sofia",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1010448573",
+   "first": "Amara",
+   "last": "Ramirez",
+   "f": {}
+  },
+  {
+   "num": "1008961397",
+   "first": "Liam",
+   "last": "Rossi",
+   "f": {}
+  },
+  {
+   "num": "1007707650",
+   "first": "Ethan",
+   "last": "Silva",
+   "f": {}
+  },
+  {
+   "num": "1007290993",
+   "first": "Liam",
+   "last": "Silva",
+   "f": {}
+  },
+  {
+   "num": "1007754738",
+   "first": "Jonah",
+   "last": "Walsh",
+   "f": {}
+  },
+  {
+   "num": "1009341197",
+   "first": "Nora",
+   "last": "Walsh",
+   "f": {}
+  },
+  {
+   "num": "1007784371",
+   "first": "Imran",
+   "last": "Yamamoto",
+   "f": {}
+  }
+ ],
+ "marks": {
+  "1006971844": {
+   "ex1": {
+    "pts": 9.0
+   },
+   "ex2": {
+    "pts": 9.5
+   },
+   "ex3": {
+    "pts": 7.0
+   },
+   "ex4": {
+    "pts": 8.5
+   },
+   "ex5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "missed": true
+   },
+   "a2": {
+    "pts": 39.0
+   },
+   "mt": {
+    "missed": true
+   },
+   "fe": {
+    "pts": 100
+   }
+  },
+  "1006755426": {
+   "ex1": {
+    "pts": 9.0
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 8.5
+   },
+   "ex4": {
+    "pts": 9.5
+   },
+   "ex5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 38.0
+   },
+   "a2": {
+    "pts": 40
+   },
+   "mt": {
+    "pts": 47.0
+   },
+   "fe": {
+    "pts": 100
+   }
+  },
+  "1008736796": {
+   "ex1": {
+    "pts": 9.0
+   },
+   "ex2": {
+    "pts": 7.5
+   },
+   "ex3": {
+    "pts": 8.5
+   },
+   "ex4": {
+    "pts": 8.5
+   },
+   "ex5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 34.5
+   },
+   "a2": {
+    "pts": 26.0
+   },
+   "mt": {
+    "pts": 44.0
+   },
+   "fe": {
+    "pts": 80.0
+   }
+  },
+  "1007867232": {
+   "ex1": {
+    "pts": 4.5
+   },
+   "ex2": {
+    "pts": 3.5
+   },
+   "ex3": {
+    "pts": 6.0
+   },
+   "ex4": {
+    "pts": 3.0
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 21.5
+   },
+   "a2": {
+    "pts": 19.0
+   },
+   "mt": {
+    "pts": 26.5
+   },
+   "fe": {
+    "pts": 77.5
+   }
+  },
+  "1007325958": {
+   "ex1": {
+    "pts": 5.5
+   },
+   "ex2": {
+    "pts": 5.5
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 8.0
+   },
+   "ex5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 37.0
+   },
+   "a2": {
+    "pts": 30.0
+   },
+   "mt": {
+    "pts": 31.5
+   },
+   "fe": {
+    "pts": 60.0
+   }
+  },
+  "1010108256": {
+   "ex1": {
+    "pts": 8.0
+   },
+   "ex2": {
+    "pts": 7.0
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 31.0
+   },
+   "a2": {
+    "pts": 38.0
+   },
+   "mt": {
+    "pts": 36.5
+   },
+   "fe": {
+    "pts": 79.0
+   }
+  },
+  "1006901463": {
+   "ex1": {
+    "pts": 7.0
+   },
+   "ex2": {
+    "pts": 6.5
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 4.0
+   },
+   "ex5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 26.0
+   },
+   "a2": {
+    "pts": 24.5
+   },
+   "mt": {
+    "pts": 25.0
+   },
+   "fe": {
+    "pts": 56.0
+   }
+  },
+  "1006769768": {
+   "ex1": {
+    "pts": 6.5
+   },
+   "ex2": {
+    "pts": 9.0
+   },
+   "ex3": {
+    "pts": 9.5
+   },
+   "ex4": {
+    "pts": 9.5
+   },
+   "ex5": {
+    "pts": 9.0
+   },
+   "a1": {
+    "pts": 28.5
+   },
+   "a2": {
+    "pts": 40
+   },
+   "mt": {
+    "pts": 46.0
+   },
+   "fe": {
+    "pts": 85.0
+   }
+  },
+  "1010370611": {
+   "ex1": {
+    "pts": 8.0
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 9.5
+   },
+   "ex4": {
+    "missed": true
+   },
+   "ex5": {
+    "missed": true
+   },
+   "a1": {
+    "pts": 40
+   },
+   "a2": {
+    "pts": 40
+   },
+   "mt": {
+    "pts": 47.5
+   },
+   "fe": {
+    "pts": 89.0
+   }
+  },
+  "1006063457": {
+   "ex1": {
+    "pts": 8.0
+   },
+   "ex2": {
+    "missed": true
+   },
+   "ex3": {
+    "pts": 10
+   },
+   "ex4": {
+    "missed": true
+   },
+   "ex5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 30.5
+   },
+   "a2": {
+    "pts": 38.5
+   },
+   "mt": {
+    "pts": 44.0
+   },
+   "fe": {
+    "pts": 95.5
+   }
+  },
+  "1010495133": {
+   "ex1": {
+    "pts": 7.0
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 9.0
+   },
+   "ex4": {
+    "pts": 7.0
+   },
+   "ex5": {
+    "pts": 9.5
+   },
+   "a1": {
+    "pts": 33.5
+   },
+   "a2": {
+    "pts": 35.5
+   },
+   "mt": {
+    "pts": 50
+   },
+   "fe": {
+    "pts": 86.5
+   }
+  },
+  "1008901972": {
+   "ex1": {
+    "pts": 6.0
+   },
+   "ex2": {
+    "pts": 7.5
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 5.0
+   },
+   "ex5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 27.5
+   },
+   "a2": {
+    "pts": 36.0
+   },
+   "mt": {
+    "pts": 32.5
+   },
+   "fe": {
+    "pts": 85.5
+   }
+  },
+  "1009165879": {
+   "ex1": {
+    "pts": 8.5
+   },
+   "ex2": {
+    "pts": 8.0
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 6.5
+   },
+   "ex5": {
+    "pts": 5.0
+   },
+   "a1": {
+    "pts": 28.0
+   },
+   "a2": {
+    "pts": 24.5
+   },
+   "mt": {
+    "pts": 42.5
+   },
+   "fe": {
+    "pts": 50.5
+   }
+  },
+  "1007884525": {
+   "ex1": {
+    "pts": 6.5
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 8.0
+   },
+   "ex4": {
+    "missed": true
+   },
+   "ex5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 38.0
+   },
+   "a2": {
+    "pts": 32.5
+   },
+   "mt": {
+    "pts": 47.0
+   },
+   "fe": {
+    "pts": 84.5
+   }
+  },
+  "1010263409": {
+   "ex1": {
+    "pts": 6.0
+   },
+   "ex2": {
+    "pts": 7.0
+   },
+   "ex3": {
+    "pts": 6.0
+   },
+   "ex4": {
+    "pts": 7.0
+   },
+   "ex5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 30.5
+   },
+   "a2": {
+    "pts": 19.5
+   },
+   "mt": {
+    "pts": 34.0
+   },
+   "fe": {
+    "pts": 69.5
+   }
+  },
+  "1007587957": {
+   "ex1": {
+    "pts": 7.5
+   },
+   "ex2": {
+    "pts": 6.0
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 6.0
+   },
+   "ex5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 27.0
+   },
+   "a2": {
+    "pts": 30.5
+   },
+   "mt": {
+    "pts": 43.0
+   },
+   "fe": {
+    "pts": 86.0
+   }
+  },
+  "1007672987": {
+   "ex1": {
+    "pts": 6.5
+   },
+   "ex2": {
+    "missed": true
+   },
+   "ex3": {
+    "pts": 6.0
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 27.5
+   },
+   "a2": {
+    "pts": 27.5
+   },
+   "mt": {
+    "pts": 33.0
+   },
+   "fe": {
+    "pts": 79.0
+   }
+  },
+  "1008522019": {
+   "ex1": {
+    "missed": true
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 9.0
+   },
+   "ex4": {
+    "pts": 10
+   },
+   "ex5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 40
+   },
+   "a2": {
+    "pts": 40
+   },
+   "mt": {
+    "pts": 50
+   },
+   "fe": {
+    "pts": 87.0
+   }
+  },
+  "1007374141": {
+   "ex1": {
+    "pts": 7.0
+   },
+   "ex2": {
+    "pts": 5.5
+   },
+   "ex3": {
+    "pts": 5.5
+   },
+   "ex4": {
+    "pts": 6.0
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 23.0
+   },
+   "a2": {
+    "pts": 23.5
+   },
+   "mt": {
+    "pts": 30.0
+   },
+   "fe": {
+    "pts": 63.0
+   }
+  },
+  "1010587758": {
+   "ex1": {
+    "pts": 8.5
+   },
+   "ex2": {
+    "pts": 8.0
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 5.5
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 27.5
+   },
+   "a2": {
+    "pts": 40
+   },
+   "mt": {
+    "pts": 38.5
+   },
+   "fe": {
+    "pts": 71.5
+   }
+  },
+  "1007300384": {
+   "ex1": {
+    "pts": 8.5
+   },
+   "ex2": {
+    "pts": 8.0
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 9.5
+   },
+   "a1": {
+    "pts": 32.0
+   },
+   "a2": {
+    "pts": 37.5
+   },
+   "mt": {
+    "pts": 41.5
+   },
+   "fe": {
+    "pts": 98.5
+   }
+  },
+  "1006404625": {
+   "ex1": {
+    "pts": 6.0
+   },
+   "ex2": {
+    "pts": 6.0
+   },
+   "ex3": {
+    "pts": 4.5
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 5.5
+   },
+   "a1": {
+    "pts": 19.0
+   },
+   "a2": {
+    "pts": 29.0
+   },
+   "mt": {
+    "pts": 36.5
+   },
+   "fe": {
+    "pts": 63.0
+   }
+  },
+  "1008757936": {
+   "ex1": {
+    "pts": 9.5
+   },
+   "ex2": {
+    "pts": 7.5
+   },
+   "ex3": {
+    "pts": 6.0
+   },
+   "ex4": {
+    "pts": 8.5
+   },
+   "ex5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 27.5
+   },
+   "a2": {
+    "pts": 31.0
+   },
+   "mt": {
+    "pts": 35.0
+   },
+   "fe": {
+    "pts": 74.0
+   }
+  },
+  "1006661255": {
+   "ex1": {
+    "pts": 9.0
+   },
+   "ex2": {
+    "pts": 9.0
+   },
+   "ex3": {
+    "pts": 9.0
+   },
+   "ex4": {
+    "pts": 10
+   },
+   "ex5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 40
+   },
+   "a2": {
+    "pts": 40
+   },
+   "mt": {
+    "pts": 50
+   },
+   "fe": {
+    "pts": 100
+   }
+  },
+  "1010689373": {
+   "ex1": {
+    "pts": 7.5
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 10
+   },
+   "ex5": {
+    "missed": true
+   },
+   "a1": {
+    "pts": 36.5
+   },
+   "a2": {
+    "pts": 35.0
+   },
+   "mt": {
+    "pts": 38.5
+   },
+   "fe": {
+    "pts": 93.0
+   }
+  },
+  "1009906070": {
+   "ex1": {
+    "pts": 8.5
+   },
+   "ex2": {
+    "pts": 8.5
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 8.5
+   },
+   "ex5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 33.5
+   },
+   "a2": {
+    "pts": 35.0
+   },
+   "mt": {
+    "pts": 39.0
+   },
+   "fe": {
+    "pts": 77.5
+   }
+  },
+  "1010951027": {
+   "ex1": {
+    "pts": 6.5
+   },
+   "ex2": {
+    "pts": 8.5
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 9.0
+   },
+   "ex5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 35.0
+   },
+   "a2": {
+    "pts": 22.0
+   },
+   "mt": {
+    "pts": 40.0
+   },
+   "fe": {
+    "pts": 95.5
+   }
+  },
+  "1008969025": {
+   "ex1": {
+    "pts": 6.5
+   },
+   "ex2": {
+    "pts": 6.5
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 7.0
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 29.0
+   },
+   "a2": {
+    "missed": true
+   },
+   "mt": {
+    "pts": 33.0
+   },
+   "fe": {
+    "pts": 52.0
+   }
+  },
+  "1009054768": {
+   "ex1": {
+    "pts": 6.5
+   },
+   "ex2": {
+    "pts": 9.0
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 6.0
+   },
+   "ex5": {
+    "pts": 6.0
+   },
+   "a1": {
+    "pts": 32.0
+   },
+   "a2": {
+    "pts": 26.5
+   },
+   "mt": {
+    "pts": 36.0
+   },
+   "fe": {
+    "pts": 58.0
+   }
+  },
+  "1008971102": {
+   "ex1": {
+    "pts": 8.0
+   },
+   "ex2": {
+    "missed": true
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 8.5
+   },
+   "ex5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 30.0
+   },
+   "a2": {
+    "pts": 38.5
+   },
+   "mt": {
+    "pts": 45.5
+   },
+   "fe": {
+    "pts": 91.0
+   }
+  },
+  "1008408508": {
+   "ex1": {
+    "pts": 6.0
+   },
+   "ex2": {
+    "pts": 7.0
+   },
+   "ex3": {
+    "pts": 7.0
+   },
+   "ex4": {
+    "pts": 8.0
+   },
+   "ex5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 29.0
+   },
+   "a2": {
+    "pts": 32.5
+   },
+   "mt": {
+    "pts": 32.0
+   },
+   "fe": {
+    "pts": 86.0
+   }
+  },
+  "1008489386": {
+   "ex1": {
+    "pts": 8.5
+   },
+   "ex2": {
+    "pts": 6.5
+   },
+   "ex3": {
+    "pts": 6.5
+   },
+   "ex4": {
+    "pts": 6.0
+   },
+   "ex5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 36.0
+   },
+   "a2": {
+    "pts": 27.0
+   },
+   "mt": {
+    "pts": 44.0
+   },
+   "fe": {
+    "pts": 64.5
+   }
+  },
+  "1010448573": {
+   "ex1": {
+    "pts": 7.0
+   },
+   "ex2": {
+    "pts": 6.0
+   },
+   "ex3": {
+    "pts": 6.0
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 5.5
+   },
+   "a1": {
+    "pts": 24.0
+   },
+   "a2": {
+    "pts": 24.0
+   },
+   "mt": {
+    "pts": 32.5
+   },
+   "fe": {
+    "pts": 62.5
+   }
+  },
+  "1008961397": {
+   "ex1": {
+    "pts": 6.0
+   },
+   "ex2": {
+    "pts": 6.0
+   },
+   "ex3": {
+    "pts": 5.5
+   },
+   "ex4": {
+    "pts": 8.0
+   },
+   "ex5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 27.5
+   },
+   "a2": {
+    "pts": 23.5
+   },
+   "mt": {
+    "missed": true
+   },
+   "fe": {
+    "pts": 72.5
+   }
+  },
+  "1007707650": {
+   "ex1": {
+    "pts": 9.5
+   },
+   "ex2": {
+    "pts": 10
+   },
+   "ex3": {
+    "pts": 10
+   },
+   "ex4": {
+    "pts": 10
+   },
+   "ex5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 39.5
+   },
+   "a2": {
+    "pts": 39.5
+   },
+   "mt": {
+    "pts": 41.5
+   },
+   "fe": {
+    "missed": true
+   }
+  },
+  "1007290993": {
+   "ex1": {
+    "pts": 7.5
+   },
+   "ex2": {
+    "pts": 7.5
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 7.0
+   },
+   "ex5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 31.0
+   },
+   "a2": {
+    "pts": 28.0
+   },
+   "mt": {
+    "pts": 37.0
+   },
+   "fe": {
+    "pts": 78.0
+   }
+  },
+  "1007754738": {
+   "ex1": {
+    "pts": 6.0
+   },
+   "ex2": {
+    "pts": 6.0
+   },
+   "ex3": {
+    "pts": 4.0
+   },
+   "ex4": {
+    "pts": 6.5
+   },
+   "ex5": {
+    "pts": 6.0
+   },
+   "a1": {
+    "pts": 26.0
+   },
+   "a2": {
+    "pts": 25.0
+   },
+   "mt": {
+    "pts": 39.5
+   },
+   "fe": {
+    "missed": true
+   }
+  },
+  "1009341197": {
+   "ex1": {
+    "pts": 9.0
+   },
+   "ex2": {
+    "pts": 7.5
+   },
+   "ex3": {
+    "pts": 10
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 38.0
+   },
+   "a2": {
+    "pts": 33.5
+   },
+   "mt": {
+    "pts": 38.0
+   },
+   "fe": {
+    "pts": 84.5
+   }
+  },
+  "1007784371": {
+   "ex1": {
+    "pts": 8.0
+   },
+   "ex2": {
+    "pts": 6.5
+   },
+   "ex3": {
+    "pts": 7.5
+   },
+   "ex4": {
+    "pts": 7.5
+   },
+   "ex5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 28.5
+   },
+   "a2": {
+    "pts": 31.5
+   },
+   "mt": {
+    "pts": 40.5
+   },
+   "fe": {
+    "pts": 85.5
+   }
+  }
+ },
+ "overrides": {},
+ "policies": {
+  "round": {
+   "step": 0,
+   "dir": "nearest"
+  },
+  "buckets": [],
+  "autofail": [
+   {
+    "id": "af1",
+    "target": "fe",
+    "below": 40,
+    "effect": "cap",
+    "value": 47
+   }
+  ]
+ }
+}

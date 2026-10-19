@@ -1,0 +1,319 @@
+/* ============================================================
+   Lectern shell — the top bar, the pinned path, Home and a course
+   offering's page. Same palette, sizes and start-screen design as the
+   three builders (their "Suite" look), so moving between Lectern's own
+   pages and a builder doesn't change the frame.
+   Every selector here is #lt-… / .lt-…: the builders' styles are scoped
+   to their own element and the two never meet.
+   ============================================================ */
+
+:root {
+  --bg: #e9e8e4; --bar: #ffffff; --ink: #1f2329; --ink-2: #4a4f57; --ink-3: #7a7f87;
+  --line: #d4d5d8; --field: #ffffff; --accent: #a67c00; --accent-bg: #fdf3d6;
+  --danger: #b42318; --danger-bg: #fdf0ee; --danger-line: #f3cdc7;
+  --warn: #9a5b06; --warn-bg: #fdf6e6; --warn-line: #efd9a7;
+  --home-bg: #fbfaf7; --home-card: #ffffff; --home-strip: #f6f5f2; --home-line: #e6e5e1; --home-line-2: #cfd0d3;
+  --home-ink: #1f2329; --home-ink-2: #4a4f57; --home-ink-3: #80848b; --home-ok: #2f8f5b;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-serif: "EB Garamond", Garamond, Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17191d; --bar: #202328; --ink: #eceef1; --ink-2: #c3c7ce; --ink-3: #8d939c;
+    --line: #353941; --field: #2a2e34; --accent: #e2b84a; --accent-bg: #3a3017; --danger: #f08a7e; --danger-bg: #3a1f1c; --danger-line: #5c2d27; --warn: #e9b65c; --warn-bg: #362b16; --warn-line: #5a4622;
+    --home-bg: #17191d; --home-card: #1f2226; --home-strip: #25282d; --home-line: #2f3339; --home-line-2: #3d424a; --home-ink: #eceef1; --home-ink-2: #c3c7ce; --home-ink-3: #8d939c; --home-ok: #5cc28a;
+  }
+  /* The splash stays on paper, as Beamer+'s does. */
+  :root:not([data-theme="light"]) body.lt-on-app { color-scheme: dark; }
+}
+
+html, body { margin: 0; font-size: 14px; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); }
+body.lt-on-splash { background: #f3f4ef; }
+[hidden] { display: none !important; }
+
+/* Until the page knows whether there's a session, show nothing rather than the wrong screen. */
+html.lt-has-session #splash { display: none; }
+
+/* ── Top bar (same as the builders' .tb) ───────────────────── */
+.lt-bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 60;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  padding: 10px 16px; background: var(--bar); border-bottom: 1px solid var(--line);
+}
+.lt-bar button {
+  font: inherit; font-size: 14px; height: 36px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--field); color: var(--ink); padding: 0 11px; cursor: pointer;
+}
+.lt-bar button:hover:not(:disabled) { border-color: var(--ink-3); }
+.lt-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lt-bar button:disabled { opacity: .4; cursor: default; }
+.lt-home { width: 36px; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; }
+.lt-home svg { width: 17px; height: 17px; }
+/* Back and Forward, beside Home (in Lectern's bar and in each builder's) */
+.lt-nav { display: inline-flex; gap: 2px; }
+.lt-nav button { all: unset !important; box-sizing: border-box; display: inline-grid; place-items: center; width: 30px; height: 36px; border-radius: 7px; color: var(--ink-2); cursor: pointer; }
+.lt-nav button { display: inline-grid !important; place-items: center !important; width: 30px !important; height: 36px !important; border-radius: 7px !important; color: var(--ink-2) !important; cursor: pointer !important; }
+.lt-nav button:hover:not(:disabled) { background: var(--bg) !important; color: var(--ink) !important; }
+.lt-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lt-nav button:disabled { opacity: .3 !important; cursor: default !important; }
+.lt-nav svg { width: 18px; height: 18px; }
+.lt-spacer { flex: 1; }
+.lt-bar > :not(#lt-path) { flex-shrink: 0; }
+.lt-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); white-space: nowrap; min-width: 0; }
+.lt-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 7px; border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--ink); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+.lt-pill svg { width: 14px; height: 14px; color: var(--warn); flex: none; }
+.lt-save { background: var(--ink) !important; color: var(--bar) !important; border-color: var(--ink) !important; font-weight: 600 !important; }
+.lt-acct-wrap { position: relative; }
+.lt-acct { display: inline-flex; align-items: center; gap: 8px; max-width: 260px; }
+.lt-acct img { width: 22px; height: 22px; border-radius: 50%; flex: none; }
+.lt-acct svg { width: 16px; height: 16px; flex: none; }
+.lt-acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-menu {
+  position: absolute; right: 0; top: 42px; min-width: 240px; padding: 6px; z-index: 40;
+  background: var(--bar); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / .18);
+  display: flex; flex-direction: column;
+}
+.lt-menu p { margin: 6px 10px 8px; font-size: 12.5px; color: var(--ink-3); line-height: 1.45; }
+.lt-menu p b { color: var(--ink); font-weight: 600; }
+.lt-menu button { border: 0 !important; background: transparent !important; text-align: left; height: 34px; border-radius: 6px; padding: 0 10px; }
+.lt-menu button:hover { background: var(--bg) !important; }
+.lt-menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 2px; }
+
+/* ── The path: in the top bar, after Back and Forward. It starts at the repository (Home). ── */
+#lt-path {
+  flex: 1 1 0; min-width: 60px;
+  display: flex; align-items: center; gap: 6px; box-sizing: border-box;
+  height: 36px; padding: 0 4px; margin: 0;
+  background: transparent; border: 0; box-shadow: none;
+  font: 500 15px/1 var(--font-ui); color: var(--ink-3);
+  white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+#lt-path::-webkit-scrollbar { display: none; }
+#lt-path .lt-step:first-child { font: 500 13px/1 var(--font-mono); }
+#lt-path .lt-step {
+  all: unset; box-sizing: border-box; flex: 0 1 auto; min-width: 0; max-width: 32ch;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 3px 5px; margin: 0 -1px; border-radius: 5px;
+  font: inherit; color: var(--ink-3); cursor: default;
+}
+#lt-path button.lt-step { cursor: pointer; }
+#lt-path button.lt-step:hover { color: var(--ink); background: var(--home-line); text-decoration: underline; text-underline-offset: 3px; }
+#lt-path button.lt-step:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+#lt-path .lt-step.cur { color: var(--ink); font-weight: 600; }
+/* A long path doesn't squash: it scrolls sideways (its end showing) */
+#lt-path .lt-step, #lt-path .lt-sep { flex-shrink: 0; max-width: none; overflow: visible; }
+#lt-path.scrolled { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
+@media (max-width: 1100px) { .lt-pill .lt-pill-x { display: none; } }
+#lt-path .lt-sep { flex: none; color: #b4b6ba; font-size: 17px; line-height: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #lt-path .lt-sep { color: var(--ink-3); } }
+/* The builders' own in-page paths: the strip shows them now. */
+.lt-tool #stage .crumbs, .lt-tool .stage .crumbs { display: none !important; }
+.lt-tool #pathbar { display: none !important; }   /* a builder's own path strip: Lectern's replaces it */
+/* Inside a builder, Lectern's bar stays on top, the same as everywhere. The builder's own bar
+   becomes the strip under it: the path, then the builder's view switch and its tools
+   (Copy HTML, Import and Export, zoom). Its Home, Save and status are Lectern's now. */
+.lt-tool .tb.lt-tb {
+  top: var(--lt-tb, 57px) !important; z-index: 19 !important;
+  box-sizing: border-box; padding: 6px 16px !important;
+  background: var(--bg) !important;
+}
+.lt-tool .tb.lt-tb > #home-btn, .lt-tool .tb.lt-tb > #save, .lt-tool .tb.lt-tb > .status,
+.lt-tool .tb.lt-tb > .spacer, .lt-tool .tb.lt-tb > .lt-nav, .lt-tool .tb.lt-tb > #copy { display: none !important; }
+[data-lt-tool="grades"] .tb.lt-tb > #tb-right { display: none !important; }   /* the gradebook's Import and Export */
+.lt-tool .tb.lt-tb > #tb-right { margin-left: auto; }
+/* Nothing of the builder's own to show here (the course page, Evaluations, Settings): no strip at all. */
+.lt-tool .tb.lt-tb:not(:has(> #tb-view:not(:empty))):not(:has(> #tb-right:not(:empty))),
+[data-lt-tool="grades"] .tb.lt-tb:not(:has(> #tb-view:not(:empty))) { display: none !important; }
+.lt-fails { margin: 0 0 4px; padding-left: 20px; line-height: 1.5; }
+
+/* ── Builders ── */
+.lt-tool { min-height: calc(100vh - 0px); }
+.lt-loading { display: grid; place-items: center; min-height: 50vh; color: var(--ink-3); font-size: 14px; }
+
+/* ── Lectern's own pages (Home, a course offering): the builders' start-screen design ── */
+.lt-page { min-height: calc(100vh - var(--lt-tb, 57px)); background: var(--home-bg); color: var(--home-ink); }
+.lt-in { max-width: 1080px; margin: 0 auto; padding: 40px 24px 72px; box-sizing: border-box; }
+.lt-kicker { font: 600 11.5px/1 var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--home-ink-3); margin: 0 0 14px; }
+.lt-page h1 { font: 500 clamp(36px, 5vw, 52px)/1.04 var(--font-serif); letter-spacing: -0.02em; margin: 0 0 12px; color: var(--home-ink); }
+.lt-lede { margin: 0; max-width: 600px; font-size: 15.5px; line-height: 1.6; color: var(--home-ink-2); }
+.lt-lede code, .lt-src code, .lt-note code { font: 12.5px var(--font-mono); color: var(--home-ink-2); }
+
+.lt-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 15px; border-radius: 9px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); font: 600 14px var(--font-ui); cursor: pointer; text-decoration: none; white-space: nowrap; box-sizing: border-box; }
+.lt-btn:hover:not(:disabled) { border-color: var(--home-ink-3); }
+.lt-btn:disabled { opacity: .5; cursor: default; }
+.lt-btn.primary { background: var(--home-ink); color: var(--home-bg); border-color: var(--home-ink); }
+.lt-btn.primary:hover:not(:disabled) { opacity: .92; }
+.lt-btn.add { border: 1.5px dashed #d9b544; background: transparent; color: #7d5c00; }
+.lt-btn.add:hover:not(:disabled) { background: #fdf3d6; border-color: #c99a06; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lt-btn.add { border-color: #6a5422; color: var(--accent); } :root:not([data-theme="light"]) .lt-btn.add:hover:not(:disabled) { background: var(--accent-bg); border-color: var(--accent); } }
+.lt-btn svg { width: 16px; height: 16px; flex: none; }
+.lt-btn:focus-visible, .lt-card:focus-visible, .lt-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lt-link { border: 0; background: none; padding: 0; font: inherit; color: var(--home-ink-2); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.lt-link:hover { color: var(--home-ink); }
+
+.lt-src { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin: 28px 0 0; padding: 16px 18px; border: 1px solid var(--home-line-2); border-radius: 14px; background: var(--home-card); }
+.lt-src > svg { width: 26px; height: 26px; flex: none; color: var(--home-ink-2); }
+.lt-src > div { flex: 1; min-width: 220px; }
+.lt-src b { display: block; font-size: 15px; font-weight: 600; color: var(--home-ink); }
+.lt-src span { display: block; margin-top: 2px; font-size: 13px; line-height: 1.5; color: var(--home-ink-3); }
+
+.lt-sec { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 40px 0 16px; }
+.lt-sec h2 { margin: 0; font: 600 11.5px/1 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--home-ink-3); }
+.lt-sec span { font-size: 12.5px; color: var(--home-ink-3); }
+.lt-sec { align-items: center; flex-wrap: wrap; }
+.lt-sec h2 { margin-right: auto; }
+.lt-filters { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.lt-filter { height: 34px; padding: 0 30px 0 11px; border-radius: 8px; border: 1px solid var(--home-line-2); background: var(--home-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a7f87' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 9px center / 14px; color: var(--home-ink); font: 13.5px var(--font-ui); appearance: none; -webkit-appearance: none; cursor: pointer; }
+.lt-filter:hover { border-color: var(--home-ink-3); }
+.lt-filter:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lt-sec .lt-btn.add svg { width: 15px; height: 15px; }
+.lt-olist { margin-top: 18px; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); overflow: hidden; }
+.lt-orow { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--home-line); cursor: pointer; font-size: 14px; color: var(--home-ink-2); }
+.lt-orow:first-child { border-top: 0; }
+.lt-orow:hover { background: var(--home-strip); }
+.lt-orow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lt-orow-t { width: 44px; font: 500 22px/1 var(--font-serif); color: var(--home-ink-2); }
+.lt-orow b { font: 500 17px var(--font-serif); color: var(--home-ink); min-width: 80px; }
+.lt-orow-n { color: var(--home-ink-3); font-size: 13px; }
+.lt-orow-r { margin-left: auto; }
+.lt-orow-r a { color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.lt-orow-r a:hover { color: var(--home-ink); text-decoration: underline; }
+.lt-orow-r a svg { width: 13px; height: 13px; }
+
+.lt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+.lt-card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); color: inherit; font: inherit; overflow: hidden; transition: transform .15s, box-shadow .15s, border-color .15s; }
+.lt-card.go { cursor: pointer; }
+.lt-card.go:hover { transform: translateY(-2px); box-shadow: 0 14px 30px -16px rgb(0 0 0 / .28); border-color: var(--home-ink-3); }
+.lt-strip { display: flex; align-items: center; gap: 8px; padding: 9px 16px; background: var(--home-strip); border-bottom: 1px solid var(--home-line); font: 12px/1.2 var(--font-mono); color: var(--home-ink-3); }
+.lt-strip .r { margin-left: auto; font: 600 12px/1.2 var(--font-ui); color: var(--home-ink-2); }
+.lt-body { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 18px; flex: 1; }
+.lt-body > div { flex: 1; min-width: 0; align-self: flex-start; padding-top: 8px; }
+.lt-term { flex: none; font: 400 96px/1 var(--font-serif); letter-spacing: -0.035em; color: var(--home-ink-2); pointer-events: none; user-select: none; }
+.lt-card.go:hover .lt-term { color: var(--home-ink); }
+.lt-card .lt-body { min-height: 118px; }
+.lt-title { font: 500 28px/1.08 var(--font-serif); letter-spacing: -0.01em; margin: 0 0 4px; color: var(--home-ink); }
+.lt-sub { margin: 0 0 14px; font-size: 13.5px; line-height: 1.45; color: var(--home-ink-2); }
+.lt-parts { display: flex; flex-wrap: wrap; gap: 6px; }
+.lt-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--home-strip); border: 1px solid var(--home-line); font: 600 12.5px var(--font-ui); color: var(--home-ink-2); cursor: pointer; text-decoration: none; }
+.lt-chip:hover { border-color: var(--home-ink-3); color: var(--home-ink); }
+.lt-chip.off { background: transparent; border-style: dashed; color: var(--home-ink-3); font-weight: 500; }
+.lt-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--home-ok); }
+.lt-chip .dot.warn { background: var(--warn); }
+.lt-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 18px; border-top: 1px solid var(--home-line); font-size: 12.5px; color: var(--home-ink-3); min-height: 18px; }
+.lt-foot a { color: var(--home-ink-2); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.lt-foot a:hover { color: var(--home-ink); text-decoration: underline; }
+.lt-foot a svg { width: 13px; height: 13px; }
+.lt-card.new { align-items: center; justify-content: center; min-height: 190px; border-style: dashed; background: transparent; color: var(--home-ink-2); font-weight: 600; gap: 8px; cursor: pointer; }
+.lt-card.new:hover { background: var(--home-card); }
+.lt-card.new svg { width: 22px; height: 22px; }
+.lt-card.new small { font-weight: 400; font-size: 12.5px; color: var(--home-ink-3); }
+.lt-card.ghost { min-height: 190px; }
+.lt-ghost-bar { height: 12px; border-radius: 6px; background: var(--home-strip); margin: 0 18px 10px; }
+@media (prefers-reduced-motion: reduce) { .lt-card { transition: none; } .lt-card.go:hover { transform: none; } }
+
+/* A course offering: its three parts side by side */
+.lt-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 30px; }
+@media (max-width: 900px) { .lt-three { grid-template-columns: 1fr; } }
+.lt-part { display: flex; flex-direction: column; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); overflow: hidden; }
+.lt-part-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 6px; }
+.lt-part-head svg { width: 26px; height: 26px; color: var(--home-ink-2); flex: none; }
+.lt-part-head h2 { margin: 0; font: 500 26px/1.1 var(--font-serif); color: var(--home-ink); }
+.lt-part-text { margin: 0; padding: 0 18px; font-size: 13.5px; line-height: 1.5; color: var(--home-ink-2); flex: 1; }
+.lt-part-text code { font: 12px var(--font-mono); }
+.lt-part-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 18px 18px; }
+.lt-off-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.lt-off-head h1 { margin: 0; }
+.lt-off-acts { display: flex; gap: 8px; }
+.lt-btn.lt-trash { width: 38px; padding: 0; color: var(--home-ink-2); }
+.lt-btn.lt-trash:hover:not(:disabled) { color: var(--danger); border-color: var(--danger-line); background: var(--danger-bg); }
+.lt-off-head .lt-btn svg { width: 16px; height: 16px; }
+.lt-term-line { margin: 8px 0 0; font: 600 13px/1 var(--font-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--home-ink-3); }
+.lt-loose-h { margin-top: 12px; font-size: 12.5px; color: var(--home-ink-3); flex: none; }
+.lt-rows { list-style: none; margin: 12px 0 0; padding: 0 10px; }
+.lt-rows li { display: flex; align-items: center; gap: 8px; }
+.lt-rows button.row { all: unset; box-sizing: border-box; flex: 1; display: flex; align-items: center; gap: 10px; padding: 9px 8px; border-radius: 8px; cursor: pointer; font: 500 14px var(--font-ui); color: var(--home-ink); }
+.lt-rows button.row:hover { background: var(--home-strip); }
+.lt-rows button.row:focus-visible { outline: 2px solid var(--accent); }
+.lt-rows button.row svg { width: 16px; height: 16px; color: var(--home-ink-3); flex: none; }
+.lt-rows button.row code { margin-left: auto; font: 12px var(--font-mono); color: var(--home-ink-3); }
+
+.lt-note { display: block; margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.5; color: var(--ink); background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.lt-note.err { background: var(--danger-bg); border-color: var(--danger-line); }
+.lt-part .lt-note { margin: 12px 18px 0; }
+.lt-note b { font-weight: 600; }
+.lt-pick { max-width: 460px; margin-top: 26px; }
+.lt-pick small a { color: var(--home-ink-2); }
+.lt-ok { margin-top: 16px; }
+.lt-twin { margin-top: 16px; padding: 16px 18px; border: 1px solid var(--warn-line); border-radius: 14px; background: var(--home-card); }
+.lt-twin-h { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 14.5px; color: var(--home-ink); }
+.lt-twin-h svg { width: 20px; height: 20px; color: var(--warn); flex: none; }
+.lt-twin-h code, .lt-twin code { font: 13px var(--font-mono); }
+.lt-twin-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .lt-twin-opts { grid-template-columns: 1fr; } }
+.lt-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 14px; border: 1px solid var(--home-line); border-radius: 10px; background: var(--home-strip); }
+.lt-opt b { font-size: 14px; color: var(--home-ink); }
+.lt-opt span { font-size: 13px; line-height: 1.45; color: var(--home-ink-3); flex: 1; }
+.lt-opt .lt-btn { margin-top: 6px; }
+.lt-seen { margin: 10px 0 0; font-size: 13px; color: var(--home-ink-3); line-height: 1.6; }
+.lt-seen code { font: 12px var(--font-mono); color: var(--home-ink-2); }
+.lt-danger { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--home-line); }
+.lt-link.lt-del { color: var(--danger); font-size: 13.5px; }
+.lt-btn.lt-btn-danger, .lt-modal .lt-btn.lt-btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.lt-btn.lt-btn-danger:disabled { opacity: .45; }
+.lt-hint { margin: 0; padding: 28px; border: 1px dashed var(--home-line-2); border-radius: 12px; text-align: center; color: var(--home-ink-3); font-size: 14px; line-height: 1.5; }
+
+/* Choosing the repositories */
+.lt-repos { display: grid; gap: 8px; margin: 18px 0 0; }
+.lt-repo { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid var(--home-line-2); border-radius: 10px; background: var(--home-card); cursor: pointer; font: 500 14px var(--font-ui); color: var(--home-ink); }
+.lt-repo:hover { border-color: var(--home-ink-3); }
+.lt-repo:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lt-repo svg { width: 16px; height: 16px; color: var(--home-ink-3); flex: none; }
+.lt-repo code { font: 13.5px var(--font-mono); }
+.lt-repo small { margin-left: auto; font-size: 12.5px; color: var(--home-ink-3); }
+.lt-repo[aria-pressed="true"] { border-color: var(--home-ink); box-shadow: 0 0 0 1px var(--home-ink); }
+
+/* ── Windows and messages ── */
+.lt-modal-bg { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgb(20 22 26 / .38); }
+.lt-modal { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 22px 22px 18px; border-radius: 12px; background: var(--bar); color: var(--ink); box-shadow: 0 20px 60px rgb(0 0 0 / .3); }
+.lt-modal h2 { margin: 0 0 8px; font: 500 26px/1.15 var(--font-serif); }
+.lt-modal p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+.lt-modal code { font: 12.5px var(--font-mono); }
+.lt-form { display: grid; gap: 12px; margin: 10px 0 4px; }
+.lt-form label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.lt-form label small { font-weight: 400; color: var(--ink-3); line-height: 1.45; }
+.lt-form input[type=text], .lt-form select { font: 14px var(--font-ui); height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; }
+.lt-form input:focus, .lt-form select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.lt-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lt-modal .lt-err { margin: 10px 0 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--ink); }
+.lt-modal .lt-err:empty { display: none; }
+.lt-modal-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.lt-modal .lt-btn { background: var(--field); border-color: var(--line); color: var(--ink); }
+.lt-modal .lt-btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bar); }
+
+.lt-toasts { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 130; display: grid; gap: 8px; justify-items: center; pointer-events: none; }
+.lt-toast { padding: 10px 16px; border-radius: 9px; background: var(--ink); color: var(--bar); font-size: 13.5px; box-shadow: 0 8px 24px rgb(0 0 0 / .2); max-width: min(560px, calc(100vw - 32px)); animation: lt-toast-in .2s ease-out; }
+@keyframes lt-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 640px) {
+  .lt-in { padding: 28px 16px 56px; }
+  #lt-path { order: 10; flex-basis: 100%; padding: 0 4px; font-size: 14px; overflow-x: auto; scrollbar-width: none; }
+  #lt-path::-webkit-scrollbar { display: none; }
+  #lt-path .lt-step, #lt-path .lt-sep { flex-shrink: 0; }
+  .lt-acct span { display: none; }
+  .lt-form .two { grid-template-columns: 1fr; }
+}
+
+/* ── Buttons: three kinds (as in the builders) ── Primary: black. Secondary: white, light yellow on hover. Add: dashed yellow. */
+.lt-btn:not(.primary):not(.add), .lt-bar > button:not(.lt-save), .lt-acct-wrap > button, .lt-filter { background: var(--home-card) !important; border: 1px solid var(--home-line-2) !important; color: var(--home-ink) !important; transition: background .12s, border-color .12s, color .12s; }
+.lt-btn:not(.primary):not(.add):hover:not(:disabled), .lt-bar > button:not(.lt-save):hover:not(:disabled), .lt-acct-wrap > button:hover, .lt-filter:hover { background: var(--accent-bg) !important; border-color: var(--accent) !important; color: var(--home-ink) !important; }
+.lt-btn.primary, .lt-save, .lt-modal .lt-btn.primary { background: var(--home-ink) !important; border-color: var(--home-ink) !important; color: var(--home-card) !important; }
+.lt-btn.primary:hover:not(:disabled), .lt-save:hover:not(:disabled) { opacity: .88; }
+.lt-btn.add { background: transparent !important; border: 1.5px dashed var(--accent) !important; color: var(--accent) !important; }
+.lt-btn.add:hover:not(:disabled) { background: var(--accent-bg) !important; border-style: solid !important; }
+.lt-btn.lt-trash:hover:not(:disabled) { background: var(--danger-bg) !important; border-color: var(--danger-line) !important; color: var(--danger) !important; }
+
+/* A delete button after its first click: red, asking to be clicked again. */
+html body button.lt-armed.lt-armed.lt-armed.lt-armed[data-armed], html body button.lt-armed.lt-armed.lt-armed.lt-armed[data-armed]:hover { background: #b42318 !important; border-color: #b42318 !important; color: #fff !important; }   /* armed: a second click deletes */
+html body button.lt-armed[data-armed] svg { color: #fff !important; }

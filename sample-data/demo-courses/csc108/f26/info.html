@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introduction to Computer Programming</title>
+<style>
+/* Phones: a week's lectures stack, full width. (Canvas drops this block; there the row scrolls instead.) */
+@media (max-width: 640px) {
+  .cpb-ltrack { width: auto !important; white-space: normal !important; }
+  .cpb-slot { display: block !important; width: auto !important; padding-right: 0 !important; }
+  .cpb-free, .cpb-lfade { display: none !important; }
+}
+</style>
+</head>
+<body style="margin: 0;">
+<div class="cpb-page" style="font-family: Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2329; background-color: #fdfcfa; padding: 44px 10% 32px 10%; border-radius: 10px;">
+  <div class="cpb-head" style="padding: 0 10px;">
+    <h2 class="cpb-title" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 48px; line-height: 1.05; letter-spacing: -0.02em; color: #1f2329; margin: 0 0 6px -1px;">Introduction to Computer Programming</h2>
+    <p class="cpb-subtitle" style="font-size: 15px; font-weight: 500; color: #4a4f57; margin: 0 0 28px 0;"><span class="cpb-code">CSC108</span> &middot; <span class="cpb-term">Fall 2026</span> &middot; <span class="cpb-school">University of Toronto</span></p>
+    <p class="cpb-desc" style="font-size: 15px; line-height: 1.6; color: #4a4f57; margin: -14px 0 26px 0;">Programming in Python: values, functions, conditionals, loops, lists, files and testing. No experience needed.</p>
+  </div>
+  <details class="cpb-sec cpb-type-schedule" open style="background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 12px; margin: 0 0 14px 0;">
+    <summary style="display: block; cursor: pointer; padding: 18px 22px;">
+      <span style="float: right; width: 32px; height: 32px; margin-top: 8px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 17px; line-height: 31px; text-align: center;">&#9662;</span>
+      <span class="cpb-sname" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.1; color: #1f2329;">Schedule &amp; Materials</span>
+      <span class="cpb-scap" style="display: block; font-size: 14px; color: #4a4f57; margin: 4px 0 0 0;">Week-by-week topics, deadlines and lecture slides</span>
+    </summary>
+    <div style="border-top: 1px solid #dfe0e2; padding: 22px 22px 10px 22px;">
+      <details class="cpb-week" data-start="2026-09-07" data-end="2026-09-11" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 1</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Sep 7 – 11</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Welcome; Python as a calculator</span>
+        </div></summary>
+        <div class="cpb-ann" style="margin: 0 0 14px 0; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div class="cpb-ann-item">
+            <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-ann-date" style="float: right; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #7a7f87;">Sep 7, 2026, 09:00</span>Announcement</div>
+            <div style="padding: 16px 18px 4px 18px;">
+              <h4 class="cpb-ann-title" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 8px 0;">Welcome to CSC108!</h4>
+              <div class="cpb-ann-body">
+              <p class="cpb-mp" style="font-size: 15px; line-height: 1.65; color: #4a4f57; margin: 0 0 12px 0;">Tutorials start in week 2. See you in lecture.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 01</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Welcome; Python as a calculator</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec01.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 02</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Welcome; Python as a calculator (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec02.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 01</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Welcome</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+      </details>
+      <details class="cpb-week" data-start="2026-09-14" data-end="2026-09-18" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Exercise 1</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 2</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Sep 14 – 18</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Variables and functions</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 03</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Variables and functions</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec03.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 04</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Variables and functions (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec04.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 02</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Variables and functions</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="ex1" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Exercise 1</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Sep 18, 23:59</p></div></div>
+      </details>
+      <details class="cpb-week" data-start="2026-09-21" data-end="2026-09-25" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 3</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Sep 21 – 25</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Strings and conditionals</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 05</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Strings and conditionals</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec05.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 06</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Strings and conditionals (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec06.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 03</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Strings and conditionals</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+      </details>
+      <details class="cpb-week" data-start="2026-09-28" data-end="2026-10-02" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Exercise 2</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 4</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Sep 28 – Oct 2</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Loops</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 07</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Loops</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec07.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 08</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Loops (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec08.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 04</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Loops</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="ex2" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Exercise 2</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Oct 2, 23:59</p></div></div>
+      </details>
+      <details class="cpb-week" data-start="2026-10-05" data-end="2026-10-09" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Assignment 1</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 5</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Oct 5 – 9</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Lists</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 09</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Lists</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec09.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 10</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Lists (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec10.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 05</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Lists</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="a1" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Assignment 1: Text adventure</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Oct 9, 23:59</p></div></div>
+      </details>
+      <details class="cpb-week" data-start="2026-10-12" data-end="2026-10-16" style="margin: 0 0 18px 0;" open>
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Exercise 3</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 6</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Oct 12 – 16</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Files and dictionaries</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 11</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Files and dictionaries</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec11.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 12</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Files and dictionaries (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><a class="cpb-btn" href="https://example.edu/csc108/f26/lec12.pdf" target="_blank" rel="noopener" style="display: inline-block; padding: 7px 18px; background-color: #5f6166; color: #ffffff; border: 1px solid #3f4146; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;">Slides</a></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 06</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Files and dictionaries</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="ex3" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Exercise 3</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Oct 16, 23:59</p></div></div>
+      </details>
+      <div class="cpb-break" style="margin: 0 0 18px 0; padding: 10px 14px; border: 1px dashed #b4b6ba; border-radius: 8px; text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #7a7f87;">Reading Week</div>
+      <details class="cpb-week" data-start="2026-10-26" data-end="2026-10-30" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #3f4146; border-radius: 999px; background-color: #5f6166; font-size: 12px; font-weight: 600; line-height: 18px; color: #ffffff;">Midterm</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 7</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Oct 26 – 30</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Testing and debugging</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 13</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Testing and debugging</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 14</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Testing and debugging (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 07</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Testing and debugging</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="mt" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #3f4146; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Midterm</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Test, Wed, Oct 28, 18:10</p></div></div>
+      </details>
+      <details class="cpb-week" data-start="2026-11-02" data-end="2026-11-06" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Exercise 4</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 8</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Nov 2 – 6</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Objects and classes</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 15</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Objects and classes</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 16</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Objects and classes (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 08</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Objects and classes</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="ex4" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Exercise 4</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Nov 6, 23:59</p></div></div>
+      </details>
+      <details class="cpb-week" data-start="2026-11-09" data-end="2026-11-13" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 9</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Nov 9 – 13</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Searching</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 17</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Searching</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 18</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Searching (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 09</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Searching</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+      </details>
+      <details class="cpb-week" data-start="2026-11-16" data-end="2026-11-20" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Assignment 2</span><span class="cpb-gpill" style="float: right; display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;">Exercise 5</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 10</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Nov 16 – 20</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Sorting</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 19</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Sorting</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 20</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Sorting (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 10</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Sorting</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+        <div class="cpb-erow" style="margin: 0 0 14px 0; padding: 10px 0 0 0; border-top: 1px solid #ecedef;"><div class="cpb-gev" data-ev="ex5" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Exercise 5</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Nov 20, 23:59</p></div><div class="cpb-gev" data-ev="a2" style="display: inline-block; vertical-align: top; box-sizing: border-box; min-width: 230px; max-width: 100%; margin: 0 10px 10px 0; padding: 10px 14px 6px 14px; border: 1px solid #b4b6ba; border-left: 4px solid #b4b6ba; border-radius: 8px; background-color: #ffffff; white-space: normal;"><p style="font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;">Assignment 2: Word puzzles</p><p style="font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;">Due Fri, Nov 20, 23:59</p></div></div>
+      </details>
+      <details class="cpb-week" data-start="2026-11-23" data-end="2026-11-27" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 11</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Nov 23 – 27</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Efficiency</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 21</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Efficiency</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 22</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Efficiency (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 11</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Efficiency</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+      </details>
+      <details class="cpb-week" data-start="2026-11-30" data-end="2026-12-04" style="margin: 0 0 18px 0;">
+        <summary style="display: block; list-style: none; cursor: pointer;"><div style="margin: 0 0 12px 0; padding: 0 0 8px 0; border-bottom: 1px solid #ecedef;"><span style="float: right; width: 26px; height: 26px; margin: 1px 0 0 10px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 13px; line-height: 25px; text-align: center;">&#9662;</span><span class="cpb-wlabel" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; color: #1f2329;">Week 12</span><span class="cpb-wdates" style="font-size: 13px; font-weight: 600; color: #7a7f87; margin-left: 10px;">Nov 30 – Dec 4</span>
+          <span class="cpb-wtopic" style="display: block; font-size: 14px; color: #4a4f57; margin: 2px 0 0 0;">Review</span>
+        </div></summary>
+        <div class="cpb-lrow" data-hours="3" style="position: relative; margin: 0 0 4px 0;">
+          <div class="cpb-lscroll" style="overflow-x: auto; overflow-y: hidden;"><div class="cpb-ltrack" style="white-space: nowrap; font-size: 0; line-height: 0; width: 100%;"><div class="cpb-slot" data-at="0" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 23</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Review</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="1" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Lecture 24</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Review (continued)</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div><div class="cpb-slot" data-at="2" data-hours="1" style="display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal; width: 33.3333%;">
+        <div class="cpb-card" style="display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;">
+          <div style="background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;"><span class="cpb-clabel" style="">Tutorial 12</span></div>
+          <div style="padding: 16px 18px 10px 18px;">
+            <h3 class="cpb-ctitle" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;">Practice: Review</h3>
+            <p class="cpb-cdesc" style="font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;"></p>
+            <div class="cpb-files"><span class="cpb-soon" style="display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;">Coming soon</span></div>
+          </div>
+        </div></div></div></div>
+        </div>
+      </details>
+    </div>
+  </details>
+  <details class="cpb-sec cpb-type-scheme" style="background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 12px; margin: 0 0 14px 0;">
+    <summary style="display: block; cursor: pointer; padding: 18px 22px;">
+      <span style="float: right; width: 32px; height: 32px; margin-top: 8px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 17px; line-height: 31px; text-align: center;">&#9662;</span>
+      <span class="cpb-sname" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.1; color: #1f2329;">Marking Scheme</span>
+      <span class="cpb-scap" style="display: block; font-size: 14px; color: #4a4f57; margin: 4px 0 0 0;">Each evaluation, its weight and when it is</span>
+    </summary>
+    <div style="border-top: 1px solid #dfe0e2; padding: 22px 22px 10px 22px;">
+      <div style="background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden; margin: 0 0 18px 0;">
+        <div style="overflow-x: auto;">
+          <table class="cpb-scheme" style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.5; min-width: 520px;">
+            <thead><tr><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap; padding-left: 20px;">Evaluation</th><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;">Weight</th><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;">When</th><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;">Notes</th></tr></thead>
+            <tbody><tr class="cpb-srow"><td style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Exercises</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">10%</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"></td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">The best 4 of 5 count, 2.5% each.</td></tr><tr class="cpb-srow"><td style="padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;">Exercise 1</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;">Due Fri, Sep 18, 23:59</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td></tr><tr class="cpb-srow"><td style="padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;">Exercise 2</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;">Due Fri, Oct 2, 23:59</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td></tr><tr class="cpb-srow"><td style="padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;">Exercise 3</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;">Due Fri, Oct 16, 23:59</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td></tr><tr class="cpb-srow"><td style="padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;">Exercise 4</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;">Due Fri, Nov 6, 23:59</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td></tr><tr class="cpb-srow"><td style="padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;">Exercise 5</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;">Due Fri, Nov 20, 23:59</td><td style="padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;"></td></tr><tr class="cpb-srow"><td style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Assignment 1: Text adventure</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">10%</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">Due Fri, Oct 9, 23:59</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"></td></tr><tr class="cpb-srow"><td style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Assignment 2: Word puzzles</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">10%</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">Due Fri, Nov 20, 23:59</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"></td></tr><tr class="cpb-srow"><td style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Midterm</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">20%</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">Wed, Oct 28, 18:10</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">If it isn't submitted, 20% moves to Final Exam.</td></tr><tr class="cpb-srow"><td style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Final Exam</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">50%</td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"></td><td style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"></td></tr>
+            <tr><td style="padding: 13px 16px 13px 20px; font-weight: 700; color: #1f2329; border-top: 1px solid #b4b6ba; background-color: #fbfaf8;">Total</td><td style="padding: 13px 16px; font-weight: 700; color: #1f2329; border-top: 1px solid #b4b6ba; background-color: #fbfaf8;">100%</td><td style="padding: 13px 16px; font-weight: 700; color: #1f2329; border-top: 1px solid #b4b6ba; background-color: #fbfaf8;"></td><td style="padding: 13px 16px; font-weight: 700; color: #1f2329; border-top: 1px solid #b4b6ba; background-color: #fbfaf8;"></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="cpb-scheme-data" data-json="{&quot;from&quot;:&quot;csc108/f26/grades.json&quot;,&quot;units&quot;:[{&quot;kind&quot;:&quot;group&quot;,&quot;id&quot;:&quot;gex&quot;,&quot;name&quot;:&quot;Exercises&quot;,&quot;weight&quot;:10,&quot;keep&quot;:4,&quot;count&quot;:5,&quot;members&quot;:[{&quot;id&quot;:&quot;ex1&quot;,&quot;name&quot;:&quot;Exercise 1&quot;,&quot;short&quot;:&quot;Ex1&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-09-18&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;notes&quot;:[]},{&quot;id&quot;:&quot;ex2&quot;,&quot;name&quot;:&quot;Exercise 2&quot;,&quot;short&quot;:&quot;Ex2&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-10-02&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;notes&quot;:[]},{&quot;id&quot;:&quot;ex3&quot;,&quot;name&quot;:&quot;Exercise 3&quot;,&quot;short&quot;:&quot;Ex3&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-10-16&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;notes&quot;:[]},{&quot;id&quot;:&quot;ex4&quot;,&quot;name&quot;:&quot;Exercise 4&quot;,&quot;short&quot;:&quot;Ex4&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-11-06&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;notes&quot;:[]},{&quot;id&quot;:&quot;ex5&quot;,&quot;name&quot;:&quot;Exercise 5&quot;,&quot;short&quot;:&quot;Ex5&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-11-20&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;notes&quot;:[]}]},{&quot;kind&quot;:&quot;eval&quot;,&quot;id&quot;:&quot;a1&quot;,&quot;name&quot;:&quot;Assignment 1: Text adventure&quot;,&quot;short&quot;:&quot;A1&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-10-09&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;weight&quot;:10,&quot;notes&quot;:[]},{&quot;kind&quot;:&quot;eval&quot;,&quot;id&quot;:&quot;a2&quot;,&quot;name&quot;:&quot;Assignment 2: Word puzzles&quot;,&quot;short&quot;:&quot;A2&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-11-20&quot;,&quot;time&quot;:&quot;23:59&quot;,&quot;weight&quot;:10,&quot;notes&quot;:[]},{&quot;kind&quot;:&quot;eval&quot;,&quot;id&quot;:&quot;mt&quot;,&quot;name&quot;:&quot;Midterm&quot;,&quot;short&quot;:&quot;MT&quot;,&quot;type&quot;:&quot;test&quot;,&quot;date&quot;:&quot;2026-10-28&quot;,&quot;time&quot;:&quot;18:10&quot;,&quot;weight&quot;:20,&quot;notes&quot;:[&quot;If it isn't submitted, 20% moves to Final Exam.&quot;]},{&quot;kind&quot;:&quot;eval&quot;,&quot;id&quot;:&quot;fe&quot;,&quot;name&quot;:&quot;Final Exam&quot;,&quot;short&quot;:&quot;FE&quot;,&quot;type&quot;:&quot;test&quot;,&quot;date&quot;:&quot;&quot;,&quot;time&quot;:&quot;&quot;,&quot;weight&quot;:50,&quot;notes&quot;:[]}],&quot;evals&quot;:[{&quot;id&quot;:&quot;ex1&quot;,&quot;name&quot;:&quot;Exercise 1&quot;,&quot;short&quot;:&quot;Ex1&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-09-18&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;ex2&quot;,&quot;name&quot;:&quot;Exercise 2&quot;,&quot;short&quot;:&quot;Ex2&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-10-02&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;ex3&quot;,&quot;name&quot;:&quot;Exercise 3&quot;,&quot;short&quot;:&quot;Ex3&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-10-16&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;ex4&quot;,&quot;name&quot;:&quot;Exercise 4&quot;,&quot;short&quot;:&quot;Ex4&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-11-06&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;ex5&quot;,&quot;name&quot;:&quot;Exercise 5&quot;,&quot;short&quot;:&quot;Ex5&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-11-20&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;a1&quot;,&quot;name&quot;:&quot;Assignment 1: Text adventure&quot;,&quot;short&quot;:&quot;A1&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-10-09&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;a2&quot;,&quot;name&quot;:&quot;Assignment 2: Word puzzles&quot;,&quot;short&quot;:&quot;A2&quot;,&quot;type&quot;:&quot;assignment&quot;,&quot;date&quot;:&quot;2026-11-20&quot;,&quot;time&quot;:&quot;23:59&quot;},{&quot;id&quot;:&quot;mt&quot;,&quot;name&quot;:&quot;Midterm&quot;,&quot;short&quot;:&quot;MT&quot;,&quot;type&quot;:&quot;test&quot;,&quot;date&quot;:&quot;2026-10-28&quot;,&quot;time&quot;:&quot;18:10&quot;},{&quot;id&quot;:&quot;fe&quot;,&quot;name&quot;:&quot;Final Exam&quot;,&quot;short&quot;:&quot;FE&quot;,&quot;type&quot;:&quot;test&quot;,&quot;date&quot;:&quot;&quot;,&quot;time&quot;:&quot;&quot;}],&quot;policies&quot;:[{&quot;id&quot;:&quot;fail:af1&quot;,&quot;kind&quot;:&quot;autofail&quot;,&quot;title&quot;:&quot;Automatic fail&quot;,&quot;show&quot;:true,&quot;text&quot;:&quot;If your mark on Final Exam is below 40%, your course grade is at most 47%.&quot;}]}" style="display: none;"></div>
+    </div>
+  </details>
+  <details class="cpb-sec cpb-type-policies" style="background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 12px; margin: 0 0 14px 0;">
+    <summary style="display: block; cursor: pointer; padding: 18px 22px;">
+      <span style="float: right; width: 32px; height: 32px; margin-top: 8px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 17px; line-height: 31px; text-align: center;">&#9662;</span>
+      <span class="cpb-sname" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.1; color: #1f2329;">Policies</span>
+      <span class="cpb-scap" style="display: block; font-size: 14px; color: #4a4f57; margin: 4px 0 0 0;">Course rules, and what to do if you miss work</span>
+    </summary>
+    <div style="border-top: 1px solid #dfe0e2; padding: 22px 22px 10px 22px;">
+      <div class="cpb-gpol" style="margin: 0 0 18px 0; padding: 0 0 4px 0; border-bottom: 1px solid #ecedef;">
+        <h3 style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 20px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0;">Automatic fail</h3>
+        <div class="cpb-md"><p class="cpb-mp" style="font-size: 15px; line-height: 1.65; color: #4a4f57; margin: 0 0 12px 0;">If your mark on Final Exam is below 40%, your course grade is at most 47%.</p></div>
+      </div>
+      <div class="cpb-pol-data" data-json="{&quot;show&quot;:{},&quot;blocks&quot;:[]}" style="display: none;"></div>
+    </div>
+  </details>
+  <details class="cpb-sec cpb-type-table" style="background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 12px; margin: 0 0 14px 0;">
+    <summary style="display: block; cursor: pointer; padding: 18px 22px;">
+      <span style="float: right; width: 32px; height: 32px; margin-top: 8px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #f6f5f2; color: #5f6166; font-size: 17px; line-height: 31px; text-align: center;">&#9662;</span>
+      <span class="cpb-sname" style="font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 30px; line-height: 1.1; color: #1f2329;">Instructors &amp; Contact</span>
+      <span class="cpb-scap" style="display: block; font-size: 14px; color: #4a4f57; margin: 4px 0 0 0;">Office hours and email</span>
+    </summary>
+    <div style="border-top: 1px solid #dfe0e2; padding: 22px 22px 10px 22px;">
+      <div style="background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden; margin: 0 0 18px 0;">
+        <div style="overflow-x: auto;">
+          <table class="cpb-tbl" style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.5; min-width: 520px;">
+            <thead><tr><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap; padding-left: 20px;">Name</th><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;">Office</th><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;">Email</th><th style="padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;">Office Hours</th></tr></thead>
+            <tbody>
+            <tr class="cpb-row"><td class="" style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Dr. Ada Lovelace</td><td class="" style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">BA 4010</td><td class="" style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"><a href="mailto:ada.lovelace@example.edu" style="color: #1f2329; text-decoration: underline;">ada.lovelace@example.edu</a></td><td class="" style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">Mon 14:00–16:00</td></tr>
+            <tr class="cpb-row"><td class="" style="padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;">Alan Turing (TA)</td><td class="" style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">BA 3201</td><td class="" style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;"><a href="mailto:alan.turing@example.edu" style="color: #1f2329; text-decoration: underline;">alan.turing@example.edu</a></td><td class="" style="padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;">Thu 11:00–12:00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+<script>
+/* Opens this week (the latest one that has started) and folds the others. */
+(function () {
+  var pickWeek = function pickWeek(dates, year, now) {
+  var M = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  var first = -1, best = -1, prevMonth = -1, y = year;
+  for (var i = 0; i < dates.length; i++) {
+    var iso = /^(\d{4})-(\d\d)-(\d\d)/.exec(dates[i] || "");
+    if (iso) {
+      if (first < 0) first = i;
+      if (now >= new Date(+iso[1], iso[2] - 1, +iso[3])) best = i;
+      continue;
+    }
+    var m = /([a-z]{3})[a-z]*\.?\s*(\d{1,2})/i.exec(dates[i] || "");
+    if (!m || !(m[1].toLowerCase() in M)) continue;
+    var mon = M[m[1].toLowerCase()];
+    if (prevMonth > mon) y++;   // a term that runs from December into January
+    prevMonth = mon;
+    if (first < 0) first = i;
+    if (now >= new Date(y, mon, Number(m[2]))) best = i;
+  }
+  return best >= 0 ? best : first;
+};
+  document.querySelectorAll(".cpb-sec").forEach(function (sec) {
+    var weeks = sec.querySelectorAll("details.cpb-week");
+    var dates = Array.prototype.map.call(weeks, function (w) { var d = w.querySelector(".cpb-wdates"); return w.getAttribute("data-start") || (d ? d.textContent : ""); });
+    var open = pickWeek(dates, 2026, new Date());
+    if (open >= 0) weeks.forEach(function (w, k) { w.open = k === open; });
+  });
+  document.querySelectorAll(".cpb-lrow").forEach(function (row) {
+    var sc = row.querySelector(".cpb-lscroll"), fade = row.querySelector(".cpb-lfade");
+    if (!sc || !fade) return;
+    var upd = function () { fade.style.display = sc.scrollLeft + sc.clientWidth >= sc.scrollWidth - 4 ? "none" : ""; };
+    sc.addEventListener("scroll", upd); window.addEventListener("resize", upd); upd();
+  });
+})();
+</script>
+</body>
+</html>

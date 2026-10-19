@@ -1,0 +1,116 @@
+
+/* ═══ Suite: one look for the Course Page Builder, the Exam Builder and the Grade Builder ═══
+   This block is identical in all three tools and comes last, so it has the final say.
+   Sizes: controls 36px (compact controls inside a page 30px; dropdowns in windows 42px),
+   corners 7px on controls, 10px on cards, 12px on menus and windows; text 14px, small 13px. */
+:root {
+  --ctl-h: 36px; --ctl-h-sm: 30px; --ctl-r: 7px;
+  --card-r: 10px; --pop-r: 12px;
+  --font-serif: "EB Garamond", Garamond, Georgia, serif;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237a7f87' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+/* Layers: the bars < windows < menus < messages */
+.modal-bg { z-index: 100 !important; }
+.fpop { z-index: 120 !important; }
+.toast { z-index: 130 !important; }
+
+/* Buttons in the top bar with an icon (Import, Export, Copy HTML) */
+.tb #copy { display: inline-flex; align-items: center; gap: 6px; }
+.tb #copy svg { width: 16px; height: 16px; }
+
+/* Anything scrolled into view (by Tab, or the tool) stays clear of the bottom bar */
+html { scroll-padding-bottom: 64px; }
+
+/* The status beside Home: the file or path in grey mono, then the amber pill when it isn't saved */
+.tb .status { gap: 8px; }
+.tb .st-path { font: 12.5px var(--font-mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; max-width: 32vw; }
+
+/* Buttons on a page: outlined, or dark for the main action */
+button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: var(--ctl-h); padding: 0 12px; border-radius: var(--ctl-r); border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 600 14px var(--font-ui); cursor: pointer; white-space: nowrap; }
+button.btn svg { width: 16px; height: 16px; flex: none; }
+button.btn:hover:not(:disabled) { border-color: var(--ink-3); }
+button.btn:disabled { opacity: .45; cursor: default; }
+button.btn.main, button.btn.primary { background: var(--ink); border-color: var(--ink); color: var(--bar); }
+button.btn.main:hover:not(:disabled), button.btn.primary:hover:not(:disabled) { background: #000; border-color: #000; }
+button.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Compact buttons inside a page (the Course Page Builder's .c): 30px, semibold 13px, gold on hover */
+button.c, button.ec-btn2, button.s-drop { height: var(--ctl-h-sm); border-radius: var(--ctl-r); font: 600 13px/1 var(--font-ui); }
+button.ec-btn2, button.s-drop { display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; border: 1px solid var(--st-line); background: var(--st-ctl-bg); color: var(--st-ctl-ink); cursor: pointer; white-space: nowrap; }
+button.ec-btn2 svg { width: 15px; height: 15px; }
+button.ec-btn2:hover:not(:disabled) { border-color: #c99a06; color: #7d5c00; }
+
+/* Delete: always a trash can; red on hover */
+button.ic.trash { display: inline-grid; place-items: center; width: var(--ctl-h); height: var(--ctl-h); padding: 0; border: 1px solid var(--line); border-radius: var(--ctl-r); background: var(--field); color: var(--ink-3); cursor: pointer; }
+button.ic.trash.sm { width: var(--ctl-h-sm); height: var(--ctl-h-sm); }
+button.ic.trash svg { width: 16px; height: 16px; }
+button.ic.trash:hover, button.c.icon[data-act="del"]:hover { border-color: var(--danger) !important; background: var(--danger-bg) !important; color: var(--danger) !important; }
+
+/* Add something: dashed gold, as the Course Page Builder's "+ Add week" */
+button.c.add, button.add-mk { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 1.5px dashed #d9b544; border-radius: var(--ctl-r); background: transparent; color: #7d5c00; font: 600 13.5px var(--font-ui); cursor: pointer; }
+button.c.add:hover, button.add-mk:hover { background: #fdf3d6; border-color: #c99a06; }
+button.add-mk svg { width: 15px; height: 15px; }
+
+/* Text and number fields on a page */
+.pf input[type=text], .pf input[type=number], .pf input:not([type]), .set-row input.num, .fld-row input[type=text], .editor.on-page input[type=text], .editor.on-page input[type=number] {
+  height: var(--ctl-h); padding: 0 10px; border-radius: var(--ctl-r); border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 14px var(--font-ui); box-sizing: border-box; }
+.pf input:focus, .set-row input:focus, .fld-row input:focus, .editor.on-page input:focus, .st-notes:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.st-notes { border-radius: var(--ctl-r); border-color: var(--line); }
+
+/* Dropdowns on a page: the same chevron everywhere (windows keep their larger 42px .nsel) */
+.set-row select, select.sel, select.cx-status, .rw-row select, .fp-up select {
+  appearance: none; -webkit-appearance: none; height: var(--ctl-h); padding: 0 32px 0 10px; border-radius: var(--ctl-r); border: 1px solid var(--line);
+  background: var(--field) var(--chevron) no-repeat right 10px center / 14px; color: var(--ink); font: 14px var(--font-ui); cursor: pointer; }
+select.sel.sm, select.cx-status { height: var(--ctl-h-sm); font-size: 13px; padding-right: 28px; background-position: right 8px center; }
+.set-row select:focus, select.sel:focus, select.cx-status:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+button.dd-btn { height: 40px; border-radius: 9px; border-color: var(--line); }
+
+/* Checkboxes: the Course Page Builder's rounded box, filled with ink when ticked (as the primary buttons) */
+input[type=checkbox]:not(.raw) {
+  appearance: none; -webkit-appearance: none; flex: none; width: 18px; height: 18px; margin: 0; cursor: pointer;
+  border: 1.5px solid var(--ink-3); border-radius: 5px; background: var(--field) !important; display: inline-grid; place-content: center; transition: background-color .12s, border-color .12s; }
+input[type=checkbox]:not(.raw)::after { content: ""; width: 10px; height: 10px; transform: scale(0); transition: transform .12s; background: var(--bar) !important;
+  -webkit-mask: none !important; mask: none !important; clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 72%); }
+input[type=checkbox]:not(.raw):checked { background: var(--ink) !important; border-color: var(--ink) !important; }
+input[type=checkbox]:not(.raw):checked::after { transform: scale(1); }
+input[type=checkbox]:not(.raw):hover:not(:checked) { border-color: var(--ink-2); }
+input[type=checkbox]:not(.raw):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Menus: one pop-up; items size to their text */
+.fpop { border-radius: var(--pop-r); }
+.fpop .menu-list button, .fpop .dd-list button { height: auto; min-height: 0; }
+
+/* Page headings and section titles: the start screen's serif */
+.pg-head h1, .home h1 { font-family: var(--font-serif); font-weight: 500; }
+.scard h3, .set-card h2, .set-sub, .st-sel { font-family: var(--font-serif); font-weight: 500; }
+
+/* Cards on a page */
+.erow, .set-card, .scard, .editor.on-page, .slist, .gscroll, .acc-list, .pcard { border-radius: var(--card-r); }
+
+/* The arrow from one value to another */
+span.arrow { color: var(--ink-3); }
+/* The path at the top of a page you've clicked into, e.g. Schedule & Materials › Week 4 › Lecture 03:
+   earlier steps are links, the last is where you are */
+.crumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 2px 0 14px; font: 500 15px var(--font-ui); color: #7a7f87; }
+.crumbs button { padding: 2px 4px; margin: 0 -4px; height: auto; border: 0; border-radius: 5px; background: none; color: #7a7f87; font: inherit; font-weight: 500; cursor: pointer; }
+.crumbs button:hover { color: #1f2329; background: #f0eee8; text-decoration: underline; }
+.crumbs .sep { color: #b4b6ba; font-size: 17px; line-height: 1; }
+.crumbs .cur { color: #1f2329; font-weight: 600; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .crumbs button:hover { background: var(--bg); color: var(--ink); } :root:not([data-theme="light"]) .crumbs .cur { color: var(--ink); } }
+/* The path, in its own strip under the top bar and outside the page's box, pinned while the page scrolls.
+   Always there (just "Home" on the start screen); it never wraps, so clicking it never moves it.
+   It replaces the in-page paths (.crumbs), which stay in the page only for the path to read. */
+.pathbar { position: sticky; top: var(--tb0, 57px); z-index: 19; display: flex; align-items: center; gap: 6px; box-sizing: border-box; height: 42px; padding: 0 20px;
+  background: var(--bg); font: 500 15px/1 var(--font-ui); color: #7a7f87; white-space: nowrap; overflow: hidden; }
+.pathbar.on-home { background: var(--home-bg, var(--bg)); }
+.pathbar .pb-s { flex: 0 1 auto; min-width: 0; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; padding: 3px 5px; margin: 0 -1px; border: 0; border-radius: 5px; background: none; color: #7a7f87; font: inherit; height: auto; cursor: default; }
+.pathbar button.pb-s { cursor: pointer; }
+.pathbar button.pb-s:hover { color: #1f2329; background: #f0eee8; text-decoration: underline; text-underline-offset: 3px; }
+.pathbar button.pb-s:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+.pathbar .pb-s.cur { color: #1f2329; font-weight: 600; }
+.pathbar .pb-sep { flex: none; color: #b4b6ba; font-size: 17px; line-height: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pathbar .pb-s.cur, :root:not([data-theme="light"]) .pathbar button.pb-s:hover { color: var(--ink); } :root:not([data-theme="light"]) .pathbar button.pb-s:hover { background: var(--bar); } }
+#stage .crumbs { display: none; }
+@media (max-width: 640px) { .pathbar { padding: 0 12px; font-size: 14px; overflow-x: auto; scrollbar-width: none; } .pathbar::-webkit-scrollbar { display: none; } .pathbar .pb-s, .pathbar .pb-sep { flex-shrink: 0; } }
+/* ═══ end of Suite ═══ */

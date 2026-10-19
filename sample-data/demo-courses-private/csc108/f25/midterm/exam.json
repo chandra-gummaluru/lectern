@@ -1,0 +1,64 @@
+{
+  "format": "exam-builder/2",
+  "settings": {
+    "title": "Midterm",
+    "courseCode": "CSC108",
+    "courseName": "",
+    "term": "Fall 2025",
+    "instructors": "",
+    "date": "Wednesday, October 29, 2025, 18:10",
+    "duration": "",
+    "university": "University of Toronto",
+    "department": "Faculty of Arts and Science",
+    "target": 0,
+    "versions": 1,
+    "topSpace": 0,
+    "pageNumbers": true,
+    "macros": "",
+    "preamble": "",
+    "layout": "exam",
+    "instructions": "",
+    "link": "mt"
+  },
+  "cover": {
+    "on": true,
+    "pointsTable": true,
+    "scoreRow": true,
+    "instructionsOn": true,
+    "goodLuck": false,
+    "aids": "None",
+    "instructions": "Do not begin until instructed to do so.\nRead each question carefully.\nShow your work where instructed; partial credit requires visible reasoning.",
+    "fields": [
+      {
+        "id": "ay1b9htx",
+        "label": "Last Name",
+        "type": "boxes",
+        "count": 16,
+        "beside": false
+      },
+      {
+        "id": "i0qs3s2d",
+        "label": "First Name",
+        "type": "boxes",
+        "count": 16,
+        "beside": false
+      },
+      {
+        "id": "ydob6ucn",
+        "label": "UTORId (e.g. gummalur)",
+        "type": "boxes",
+        "count": 8,
+        "beside": false
+      },
+      {
+        "id": "xcco3wae",
+        "label": "Student #",
+        "type": "boxes",
+        "count": 10,
+        "beside": true
+      }
+    ]
+  },
+  "items": [],
+  "total": 0
+}

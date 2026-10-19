@@ -1,0 +1,541 @@
+{
+ "format": "grade-builder/1",
+ "course": {
+  "code": "CSC258",
+  "term": "Winter 2027"
+ },
+ "fields": {
+  "idLabel": "Student number",
+  "custom": []
+ },
+ "evals": [
+  {
+   "id": "l1",
+   "name": "Lab 1",
+   "label": "Lab",
+   "title": "",
+   "short": "L1",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-01-22",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l2",
+   "name": "Lab 2",
+   "label": "Lab",
+   "title": "",
+   "short": "L2",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-01-29",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l3",
+   "name": "Lab 3",
+   "label": "Lab",
+   "title": "",
+   "short": "L3",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-02-05",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l4",
+   "name": "Lab 4",
+   "label": "Lab",
+   "title": "",
+   "short": "L4",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-02-12",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l5",
+   "name": "Lab 5",
+   "label": "Lab",
+   "title": "",
+   "short": "L5",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-02-19",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l6",
+   "name": "Lab 6",
+   "label": "Lab",
+   "title": "",
+   "short": "L6",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-03-05",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l7",
+   "name": "Lab 7",
+   "label": "Lab",
+   "title": "",
+   "short": "L7",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-03-12",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l8",
+   "name": "Lab 8",
+   "label": "Lab",
+   "title": "",
+   "short": "L8",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2027-03-19",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "a1",
+   "name": "Assignment: Logic design",
+   "label": "Assignment",
+   "title": "Logic design",
+   "short": "A",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 25,
+   "weight": 15,
+   "date": "2027-02-05",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "mt",
+   "name": "Midterm",
+   "label": "Midterm",
+   "title": "",
+   "short": "MT",
+   "shortAuto": true,
+   "type": "test",
+   "total": 50,
+   "weight": 25,
+   "date": "2027-03-03",
+   "time": "18:10",
+   "makeupFor": null,
+   "missed": {
+    "mode": "reweight",
+    "to": [
+     {
+      "id": "fe",
+      "share": 50
+     }
+    ],
+    "makeups": [
+     {
+      "id": "mm",
+      "share": 50
+     }
+    ],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "mm",
+   "name": "Midterm makeup",
+   "label": "Midterm makeup",
+   "title": "",
+   "short": "MM",
+   "shortAuto": true,
+   "type": "test",
+   "total": 50,
+   "weight": 0,
+   "date": "2027-03-10",
+   "time": "18:10",
+   "makeupFor": "mt",
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "fe",
+   "name": "Final Exam",
+   "label": "Final Exam",
+   "title": "",
+   "short": "FE",
+   "shortAuto": true,
+   "type": "test",
+   "total": 100,
+   "weight": 50,
+   "date": "",
+   "time": "",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  }
+ ],
+ "groups": [
+  {
+   "id": "glab",
+   "name": "Labs",
+   "short": "Labs",
+   "weight": 10,
+   "keep": 7,
+   "members": [
+    "l1",
+    "l2",
+    "l3",
+    "l4",
+    "l5",
+    "l6",
+    "l7",
+    "l8"
+   ]
+  }
+ ],
+ "students": [
+  {
+   "num": "1007844691",
+   "first": "Samuel",
+   "last": "Ahmed",
+   "f": {}
+  },
+  {
+   "num": "1008249941",
+   "first": "Mateo",
+   "last": "Bauer",
+   "f": {}
+  },
+  {
+   "num": "1006412496",
+   "first": "Sana",
+   "last": "Castillo",
+   "f": {}
+  },
+  {
+   "num": "1008356603",
+   "first": "Ruth",
+   "last": "Hussain",
+   "f": {}
+  },
+  {
+   "num": "1006519604",
+   "first": "Bea",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1007446794",
+   "first": "Jonah",
+   "last": "Karimi",
+   "f": {}
+  },
+  {
+   "num": "1007822819",
+   "first": "Clara",
+   "last": "Kim",
+   "f": {}
+  },
+  {
+   "num": "1008033763",
+   "first": "Rosa",
+   "last": "Kim",
+   "f": {}
+  },
+  {
+   "num": "1010533112",
+   "first": "Isaac",
+   "last": "Levy",
+   "f": {}
+  },
+  {
+   "num": "1008243713",
+   "first": "Hugo",
+   "last": "Moreau",
+   "f": {}
+  },
+  {
+   "num": "1007256107",
+   "first": "Owen",
+   "last": "Moreau",
+   "f": {}
+  },
+  {
+   "num": "1006297004",
+   "first": "Lina",
+   "last": "Murphy",
+   "f": {}
+  },
+  {
+   "num": "1010374372",
+   "first": "Ava",
+   "last": "Nguyen",
+   "f": {}
+  },
+  {
+   "num": "1010128720",
+   "first": "Priya",
+   "last": "Nguyen",
+   "f": {}
+  },
+  {
+   "num": "1009326117",
+   "first": "Imran",
+   "last": "Okafor",
+   "f": {}
+  },
+  {
+   "num": "1009772362",
+   "first": "Ruth",
+   "last": "Okafor",
+   "f": {}
+  },
+  {
+   "num": "1008964797",
+   "first": "Zoe",
+   "last": "Okafor",
+   "f": {}
+  },
+  {
+   "num": "1007308432",
+   "first": "Chloe",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1009106397",
+   "first": "Jin",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1010844600",
+   "first": "Lina",
+   "last": "Petrova",
+   "f": {}
+  },
+  {
+   "num": "1007123203",
+   "first": "Nadia",
+   "last": "Petrova",
+   "f": {}
+  },
+  {
+   "num": "1010611747",
+   "first": "Yuki",
+   "last": "Petrova",
+   "f": {}
+  },
+  {
+   "num": "1009054381",
+   "first": "Chloe",
+   "last": "Popescu",
+   "f": {}
+  },
+  {
+   "num": "1006618795",
+   "first": "Hana",
+   "last": "Rahman",
+   "f": {}
+  },
+  {
+   "num": "1006458859",
+   "first": "Nora",
+   "last": "Rossi",
+   "f": {}
+  },
+  {
+   "num": "1010595234",
+   "first": "Zoe",
+   "last": "Rossi",
+   "f": {}
+  },
+  {
+   "num": "1009086309",
+   "first": "Ken",
+   "last": "Sato",
+   "f": {}
+  },
+  {
+   "num": "1009831284",
+   "first": "Nadia",
+   "last": "Sato",
+   "f": {}
+  },
+  {
+   "num": "1006942585",
+   "first": "Omar",
+   "last": "Sato",
+   "f": {}
+  },
+  {
+   "num": "1006302979",
+   "first": "Tariq",
+   "last": "Silva",
+   "f": {}
+  },
+  {
+   "num": "1007952423",
+   "first": "Ryan",
+   "last": "Svensson",
+   "f": {}
+  },
+  {
+   "num": "1008070811",
+   "first": "Owen",
+   "last": "Tanaka",
+   "f": {}
+  },
+  {
+   "num": "1010018090",
+   "first": "Tariq",
+   "last": "Walsh",
+   "f": {}
+  }
+ ],
+ "marks": {
+  "1007844691": {},
+  "1008249941": {},
+  "1006412496": {},
+  "1008356603": {},
+  "1006519604": {},
+  "1007446794": {},
+  "1007822819": {},
+  "1008033763": {},
+  "1010533112": {},
+  "1008243713": {},
+  "1007256107": {},
+  "1006297004": {},
+  "1010374372": {},
+  "1010128720": {},
+  "1009326117": {},
+  "1009772362": {},
+  "1008964797": {},
+  "1007308432": {},
+  "1009106397": {},
+  "1010844600": {},
+  "1007123203": {},
+  "1010611747": {},
+  "1009054381": {},
+  "1006618795": {},
+  "1006458859": {},
+  "1010595234": {},
+  "1009086309": {},
+  "1009831284": {},
+  "1006942585": {},
+  "1006302979": {},
+  "1007952423": {},
+  "1008070811": {},
+  "1010018090": {}
+ },
+ "overrides": {},
+ "policies": {
+  "round": {
+   "step": 0,
+   "dir": "nearest"
+  },
+  "buckets": [
+   {
+    "id": "b1",
+    "from": 48,
+    "to": 49.99,
+    "value": 50
+   }
+  ],
+  "autofail": [
+   {
+    "id": "af1",
+    "target": "fe",
+    "below": 40,
+    "effect": "cap",
+    "value": 47
+   }
+  ]
+ }
+}

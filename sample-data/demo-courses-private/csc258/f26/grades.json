@@ -1,0 +1,1142 @@
+{
+ "format": "grade-builder/1",
+ "course": {
+  "code": "CSC258",
+  "term": "Fall 2026"
+ },
+ "fields": {
+  "idLabel": "Student number",
+  "custom": []
+ },
+ "evals": [
+  {
+   "id": "l1",
+   "name": "Lab 1",
+   "label": "Lab",
+   "title": "",
+   "short": "L1",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-09-18",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l2",
+   "name": "Lab 2",
+   "label": "Lab",
+   "title": "",
+   "short": "L2",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-09-25",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l3",
+   "name": "Lab 3",
+   "label": "Lab",
+   "title": "",
+   "short": "L3",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-10-02",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l4",
+   "name": "Lab 4",
+   "label": "Lab",
+   "title": "",
+   "short": "L4",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-10-09",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l5",
+   "name": "Lab 5",
+   "label": "Lab",
+   "title": "",
+   "short": "L5",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-10-16",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l6",
+   "name": "Lab 6",
+   "label": "Lab",
+   "title": "",
+   "short": "L6",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-10-30",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l7",
+   "name": "Lab 7",
+   "label": "Lab",
+   "title": "",
+   "short": "L7",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-11-06",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l8",
+   "name": "Lab 8",
+   "label": "Lab",
+   "title": "",
+   "short": "L8",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 10,
+   "weight": 0,
+   "date": "2026-11-13",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "a1",
+   "name": "Assignment: Logic design",
+   "label": "Assignment",
+   "title": "Logic design",
+   "short": "A",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 25,
+   "weight": 15,
+   "date": "2026-10-02",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "mt",
+   "name": "Midterm",
+   "label": "Midterm",
+   "title": "",
+   "short": "MT",
+   "shortAuto": true,
+   "type": "test",
+   "total": 50,
+   "weight": 25,
+   "date": "2026-10-28",
+   "time": "18:10",
+   "makeupFor": null,
+   "missed": {
+    "mode": "reweight",
+    "to": [
+     {
+      "id": "fe",
+      "share": 50
+     }
+    ],
+    "makeups": [
+     {
+      "id": "mm",
+      "share": 50
+     }
+    ],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "mm",
+   "name": "Midterm makeup",
+   "label": "Midterm makeup",
+   "title": "",
+   "short": "MM",
+   "shortAuto": true,
+   "type": "test",
+   "total": 50,
+   "weight": 0,
+   "date": "2026-11-04",
+   "time": "18:10",
+   "makeupFor": "mt",
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "fe",
+   "name": "Final Exam",
+   "label": "Final Exam",
+   "title": "",
+   "short": "FE",
+   "shortAuto": true,
+   "type": "test",
+   "total": 100,
+   "weight": 50,
+   "date": "",
+   "time": "",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  }
+ ],
+ "groups": [
+  {
+   "id": "glab",
+   "name": "Labs",
+   "short": "Labs",
+   "weight": 10,
+   "keep": 7,
+   "members": [
+    "l1",
+    "l2",
+    "l3",
+    "l4",
+    "l5",
+    "l6",
+    "l7",
+    "l8"
+   ]
+  }
+ ],
+ "students": [
+  {
+   "num": "1008789130",
+   "first": "Iris",
+   "last": "Bauer",
+   "f": {}
+  },
+  {
+   "num": "1008155252",
+   "first": "Arjun",
+   "last": "Castillo",
+   "f": {}
+  },
+  {
+   "num": "1006725647",
+   "first": "Ines",
+   "last": "Costa",
+   "f": {}
+  },
+  {
+   "num": "1007556381",
+   "first": "Rafael",
+   "last": "Dubois",
+   "f": {}
+  },
+  {
+   "num": "1007179917",
+   "first": "Grace",
+   "last": "Fischer",
+   "f": {}
+  },
+  {
+   "num": "1008360539",
+   "first": "Mei",
+   "last": "Garcia",
+   "f": {}
+  },
+  {
+   "num": "1008229307",
+   "first": "Iris",
+   "last": "Haddad",
+   "f": {}
+  },
+  {
+   "num": "1006400858",
+   "first": "Tariq",
+   "last": "Haddad",
+   "f": {}
+  },
+  {
+   "num": "1007427941",
+   "first": "Nora",
+   "last": "Hussain",
+   "f": {}
+  },
+  {
+   "num": "1007354940",
+   "first": "Felix",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1010409869",
+   "first": "Ken",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1006870298",
+   "first": "Leila",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1006912181",
+   "first": "Maya",
+   "last": "Ito",
+   "f": {}
+  },
+  {
+   "num": "1008429389",
+   "first": "Arjun",
+   "last": "Karimi",
+   "f": {}
+  },
+  {
+   "num": "1009031415",
+   "first": "Kai",
+   "last": "Kim",
+   "f": {}
+  },
+  {
+   "num": "1010764880",
+   "first": "Omar",
+   "last": "Kim",
+   "f": {}
+  },
+  {
+   "num": "1010466001",
+   "first": "Ethan",
+   "last": "Kowalski",
+   "f": {}
+  },
+  {
+   "num": "1010903495",
+   "first": "Ava",
+   "last": "Levy",
+   "f": {}
+  },
+  {
+   "num": "1007048661",
+   "first": "Kai",
+   "last": "Moreau",
+   "f": {}
+  },
+  {
+   "num": "1010762280",
+   "first": "Kai",
+   "last": "Nguyen",
+   "f": {}
+  },
+  {
+   "num": "1008697570",
+   "first": "Felix",
+   "last": "Novak",
+   "f": {}
+  },
+  {
+   "num": "1006288317",
+   "first": "Yuki",
+   "last": "Novak",
+   "f": {}
+  },
+  {
+   "num": "1006658604",
+   "first": "Hana",
+   "last": "O'Brien",
+   "f": {}
+  },
+  {
+   "num": "1009133301",
+   "first": "Noah",
+   "last": "Okafor",
+   "f": {}
+  },
+  {
+   "num": "1010931979",
+   "first": "Nadia",
+   "last": "Park",
+   "f": {}
+  },
+  {
+   "num": "1008386457",
+   "first": "Marcus",
+   "last": "Rahman",
+   "f": {}
+  },
+  {
+   "num": "1006033552",
+   "first": "Noah",
+   "last": "Rahman",
+   "f": {}
+  },
+  {
+   "num": "1009402658",
+   "first": "Diego",
+   "last": "Ramirez",
+   "f": {}
+  },
+  {
+   "num": "1009234169",
+   "first": "Ethan",
+   "last": "Sato",
+   "f": {}
+  },
+  {
+   "num": "1008831883",
+   "first": "Ken",
+   "last": "Silva",
+   "f": {}
+  },
+  {
+   "num": "1010289756",
+   "first": "Malik",
+   "last": "Silva",
+   "f": {}
+  },
+  {
+   "num": "1006134359",
+   "first": "Amara",
+   "last": "Walsh",
+   "f": {}
+  }
+ ],
+ "marks": {
+  "1008789130": {
+   "l1": {
+    "pts": 10
+   },
+   "l2": {
+    "missed": true
+   },
+   "l3": {
+    "pts": 10
+   },
+   "l4": {
+    "pts": 9.5
+   },
+   "l5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 25
+   }
+  },
+  "1008155252": {
+   "l1": {
+    "pts": 8.0
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 6.0
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 18.0
+   }
+  },
+  "1006725647": {
+   "l1": {
+    "pts": 6.5
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 6.0
+   },
+   "l4": {
+    "pts": 8.5
+   },
+   "l5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 21.5
+   }
+  },
+  "1007556381": {
+   "l1": {
+    "pts": 9.0
+   },
+   "l2": {
+    "pts": 8.5
+   },
+   "l3": {
+    "pts": 8.0
+   },
+   "l4": {
+    "pts": 8.0
+   },
+   "l5": {
+    "pts": 9.0
+   },
+   "a1": {
+    "pts": 21.5
+   }
+  },
+  "1007179917": {
+   "l1": {
+    "pts": 6.0
+   },
+   "l2": {
+    "pts": 7.5
+   },
+   "l3": {
+    "pts": 6.0
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 6.0
+   },
+   "a1": {
+    "pts": 14.5
+   }
+  },
+  "1008360539": {
+   "l1": {
+    "pts": 7.0
+   },
+   "l2": {
+    "pts": 7.5
+   },
+   "l3": {
+    "pts": 9.0
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 19.0
+   }
+  },
+  "1008229307": {
+   "l1": {
+    "pts": 7.0
+   },
+   "l2": {
+    "pts": 6.5
+   },
+   "l3": {
+    "pts": 5.5
+   },
+   "l4": {
+    "pts": 5.0
+   },
+   "l5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 22.5
+   }
+  },
+  "1006400858": {
+   "l1": {
+    "pts": 10
+   },
+   "l2": {
+    "pts": 9.0
+   },
+   "l3": {
+    "pts": 7.5
+   },
+   "l4": {
+    "pts": 9.5
+   },
+   "l5": {
+    "pts": 9.0
+   },
+   "a1": {
+    "missed": true
+   }
+  },
+  "1007427941": {
+   "l1": {
+    "pts": 8.5
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 8.0
+   },
+   "l4": {
+    "pts": 7.5
+   },
+   "l5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 19.5
+   }
+  },
+  "1007354940": {
+   "l1": {
+    "pts": 7.5
+   },
+   "l2": {
+    "pts": 8.5
+   },
+   "l3": {
+    "pts": 7.5
+   },
+   "l4": {
+    "pts": 5.5
+   },
+   "l5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 25
+   }
+  },
+  "1010409869": {
+   "l1": {
+    "pts": 7.5
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 7.5
+   },
+   "l4": {
+    "pts": 8.5
+   },
+   "l5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 21.5
+   }
+  },
+  "1006870298": {
+   "l1": {
+    "missed": true
+   },
+   "l2": {
+    "pts": 9.5
+   },
+   "l3": {
+    "pts": 9.5
+   },
+   "l4": {
+    "pts": 10
+   },
+   "l5": {
+    "pts": 9.5
+   },
+   "a1": {
+    "pts": 18.5
+   }
+  },
+  "1006912181": {
+   "l1": {
+    "pts": 4.0
+   },
+   "l2": {
+    "pts": 5.5
+   },
+   "l3": {
+    "pts": 6.5
+   },
+   "l4": {
+    "pts": 8.0
+   },
+   "l5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 21.0
+   }
+  },
+  "1008429389": {
+   "l1": {
+    "pts": 7.0
+   },
+   "l2": {
+    "pts": 7.5
+   },
+   "l3": {
+    "pts": 9.0
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 8.0
+   },
+   "a1": {
+    "pts": 22.0
+   }
+  },
+  "1009031415": {
+   "l1": {
+    "pts": 7.5
+   },
+   "l2": {
+    "pts": 5.5
+   },
+   "l3": {
+    "pts": 6.5
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 15.5
+   }
+  },
+  "1010764880": {
+   "l1": {
+    "pts": 8.0
+   },
+   "l2": {
+    "pts": 6.5
+   },
+   "l3": {
+    "pts": 8.0
+   },
+   "l4": {
+    "pts": 6.0
+   },
+   "l5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 21.5
+   }
+  },
+  "1010466001": {
+   "l1": {
+    "pts": 5.5
+   },
+   "l2": {
+    "pts": 8.0
+   },
+   "l3": {
+    "pts": 7.5
+   },
+   "l4": {
+    "pts": 5.5
+   },
+   "l5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 16.5
+   }
+  },
+  "1010903495": {
+   "l1": {
+    "pts": 5.0
+   },
+   "l2": {
+    "pts": 5.5
+   },
+   "l3": {
+    "pts": 7.0
+   },
+   "l4": {
+    "pts": 6.5
+   },
+   "l5": {
+    "pts": 6.0
+   },
+   "a1": {
+    "pts": 21.0
+   }
+  },
+  "1007048661": {
+   "l1": {
+    "pts": 7.0
+   },
+   "l2": {
+    "pts": 6.0
+   },
+   "l3": {
+    "pts": 8.5
+   },
+   "l4": {
+    "pts": 8.0
+   },
+   "l5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 15.5
+   }
+  },
+  "1010762280": {
+   "l1": {
+    "pts": 9.0
+   },
+   "l2": {
+    "pts": 6.0
+   },
+   "l3": {
+    "pts": 10
+   },
+   "l4": {
+    "pts": 9.0
+   },
+   "l5": {
+    "pts": 10
+   },
+   "a1": {
+    "pts": 22.5
+   }
+  },
+  "1008697570": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 5.0
+   },
+   "l3": {
+    "pts": 6.0
+   },
+   "l4": {
+    "pts": 3.5
+   },
+   "l5": {
+    "pts": 4.5
+   },
+   "a1": {
+    "pts": 17.0
+   }
+  },
+  "1006288317": {
+   "l1": {
+    "pts": 7.0
+   },
+   "l2": {
+    "pts": 10
+   },
+   "l3": {
+    "pts": 8.5
+   },
+   "l4": {
+    "pts": 8.0
+   },
+   "l5": {
+    "pts": 9.5
+   },
+   "a1": {
+    "pts": 22.0
+   }
+  },
+  "1006658604": {
+   "l1": {
+    "missed": true
+   },
+   "l2": {
+    "pts": 5.5
+   },
+   "l3": {
+    "pts": 6.0
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "pts": 15.0
+   }
+  },
+  "1009133301": {
+   "l1": {
+    "pts": 4.5
+   },
+   "l2": {
+    "pts": 5.5
+   },
+   "l3": {
+    "pts": 8.0
+   },
+   "l4": {
+    "pts": 4.0
+   },
+   "l5": {
+    "pts": 4.0
+   },
+   "a1": {
+    "pts": 12.5
+   }
+  },
+  "1010931979": {
+   "l1": {
+    "pts": 6.0
+   },
+   "l2": {
+    "pts": 6.0
+   },
+   "l3": {
+    "pts": 6.0
+   },
+   "l4": {
+    "pts": 7.5
+   },
+   "l5": {
+    "pts": 5.5
+   },
+   "a1": {
+    "pts": 17.5
+   }
+  },
+  "1008386457": {
+   "l1": {
+    "pts": 7.5
+   },
+   "l2": {
+    "pts": 7.5
+   },
+   "l3": {
+    "pts": 7.0
+   },
+   "l4": {
+    "pts": 7.0
+   },
+   "l5": {
+    "pts": 6.5
+   },
+   "a1": {
+    "pts": 18.5
+   }
+  },
+  "1006033552": {
+   "l1": {
+    "pts": 7.5
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 9.0
+   },
+   "l4": {
+    "missed": true
+   },
+   "l5": {
+    "pts": 9.5
+   },
+   "a1": {
+    "pts": 17.0
+   }
+  },
+  "1009402658": {
+   "l1": {
+    "pts": 7.5
+   },
+   "l2": {
+    "pts": 5.5
+   },
+   "l3": {
+    "pts": 8.0
+   },
+   "l4": {
+    "pts": 6.0
+   },
+   "l5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 22.0
+   }
+  },
+  "1009234169": {
+   "l1": {
+    "pts": 6.5
+   },
+   "l2": {
+    "pts": 4.5
+   },
+   "l3": {
+    "pts": 7.0
+   },
+   "l4": {
+    "pts": 6.0
+   },
+   "l5": {
+    "pts": 7.5
+   },
+   "a1": {
+    "pts": 16.0
+   }
+  },
+  "1008831883": {
+   "l1": {
+    "pts": 6.5
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 8.5
+   },
+   "l4": {
+    "pts": 7.5
+   },
+   "l5": {
+    "pts": 8.5
+   },
+   "a1": {
+    "pts": 23.0
+   }
+  },
+  "1010289756": {
+   "l1": {
+    "pts": 5.0
+   },
+   "l2": {
+    "pts": 5.0
+   },
+   "l3": {
+    "pts": 6.5
+   },
+   "l4": {
+    "pts": 5.5
+   },
+   "l5": {
+    "pts": 7.0
+   },
+   "a1": {
+    "missed": true
+   }
+  },
+  "1006134359": {
+   "l1": {
+    "pts": 6.5
+   },
+   "l2": {
+    "pts": 7.0
+   },
+   "l3": {
+    "pts": 7.5
+   },
+   "l4": {
+    "pts": 5.5
+   },
+   "l5": {
+    "pts": 6.0
+   },
+   "a1": {
+    "pts": 13.0
+   }
+  }
+ },
+ "overrides": {},
+ "policies": {
+  "round": {
+   "step": 0,
+   "dir": "nearest"
+  },
+  "buckets": [
+   {
+    "id": "b1",
+    "from": 48,
+    "to": 49.99,
+    "value": 50
+   }
+  ],
+  "autofail": [
+   {
+    "id": "af1",
+    "target": "fe",
+    "below": 40,
+    "effect": "cap",
+    "value": 47
+   }
+  ]
+ }
+}

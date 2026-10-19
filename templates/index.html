@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lectern — {{ institution }}</title>
+    <meta name="theme-color" content="#333333">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/static/css/splash.css">
+    <link rel="stylesheet" href="/static/css/shell.css">
+    <script>
+        // Before anything draws: show the app straight away when a sign-in or folder is
+        // remembered (or a sign-in is just coming back), so the splash doesn't flash.
+        try {
+            if (/[#&]gh_/.test(location.hash) || localStorage.getItem('lectern.github') || sessionStorage.getItem('lectern.github')
+                || /local/.test(localStorage.getItem('lectern.mode') || '')) document.documentElement.classList.add('lt-has-session');
+        } catch (_) {}
+    </script>
+</head>
+<body>
+    <!-- ── Splash: one family with Beamer+ and Test Mail (serif wordmark, institution, a live preview,
+         an outline watermark), with its own look: a centred title over a wide preview of a week. ── -->
+    <div class="splash" id="splash">
+        <div class="sp-watermark" aria-hidden="true">
+            <svg viewBox="0 0 120 120">
+                <g transform="translate(60, 64) rotate(-8) scale(1.05)">
+                    <polygon points="-38,-30 38,-42 40,-32 -36,-20"/>
+                    <polygon points="-5,-25 5,-27 5,34 -5,34"/>
+                    <polygon points="-24,34 24,34 28,42 -28,42"/>
+                </g>
+            </svg>
+        </div>
+
+        <main class="sp-screen">
+            <header class="sp-copy">
+                <h1 class="sp-title">Lectern</h1>
+                <p class="sp-inst">{{ institution }}</p>
+                <p class="sp-tag">Every course, from the first lecture to the final mark.</p>
+
+                <div class="sp-actions">
+                    <button type="button" class="sp-btn sp-btn--primary" id="splash-signin">
+                        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+                        Sign in with GitHub
+                    </button>
+                    <button type="button" class="sp-btn sp-btn--quiet" id="splash-folder" title="Work from a folder on this computer that holds your two course repositories">Choose a folder</button>
+                </div>
+                <div class="sp-under">
+                    <label class="sp-remember"><input type="checkbox" id="splash-remember"> Stay signed in on this computer</label>{% if learn_more %}
+                    <a class="sp-more" href="{{ learn_more }}" target="_blank" rel="noopener">Learn more</a>{% endif %}
+                </div>
+                <p class="sp-hint" id="splash-status" role="status" aria-live="polite"></p>
+            </header>
+
+            <!-- The three parts of a course, in miniature, each lifting in turn. -->
+            <figure class="sp-preview" aria-hidden="true">
+                <div class="mk3">
+                    <div class="mkc c1">
+                        <div class="mkc-h">Course Page</div>
+                        <div class="mkc-b">
+                            <div class="m-wk"><span><b>Week 3</b><i class="ln" style="width:70%"></i></span><em class="m-pill">Lab 2</em><span class="m-hrs"><i></i><i></i></span></div>
+                            <div class="m-wk"><span><b>Week 4</b><i class="ln" style="width:55%"></i></span><em class="m-pill dk">Quiz</em><span class="m-hrs"><i class="h2"></i></span></div>
+                            <div class="m-wk"><span><b>Week 5</b><i class="ln" style="width:80%"></i></span><span class="m-hrs"><i></i><i></i></span></div>
+                        </div>
+                    </div>
+                    <div class="mkc c2">
+                        <div class="mkc-h">Gradebook</div>
+                        <div class="mkc-b m-gb">
+                            <div class="m-avg"><b>78%</b><span>/ 80%</span></div>
+                            <div class="m-hist"><i style="height:18%"></i><i class="lo" style="height:30%"></i><i class="md" style="height:55%"></i><i style="height:80%"></i><i style="height:100%"></i><i style="height:62%"></i><i style="height:34%"></i></div>
+                            <div class="m-rows"><span><i class="ln" style="width:60%"></i><b>27</b></span><span><i class="ln" style="width:45%"></i><b>24</b></span></div>
+                        </div>
+                    </div>
+                    <div class="mkc c3">
+                        <div class="mkc-h">Exam</div>
+                        <div class="mkc-b m-ex">
+                            <div class="m-sheet">
+                                <div class="m-sh"><b>Midterm</b></div>
+                                <div class="m-q"><b>1</b><i class="ln" style="width:72%"></i><em>/4</em></div>
+                                <div class="m-sol"><i class="ln" style="width:60%"></i></div>
+                                <div class="m-q"><b>2</b><i class="ln" style="width:58%"></i><em>/6</em></div>
+                                <div class="m-box"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </figure>
+        </main>
+    </div>
+
+    <!-- ── The app: one top bar (with the path in it), then a page or a builder ── -->
+    <div class="lt-app" id="app" hidden>
+        <header class="lt-bar" id="lt-bar" role="toolbar" aria-label="Lectern">
+            <button type="button" class="lt-home" id="lt-home" title="Home: all courses" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7"/><path d="M6 9.5V20h12V9.5"/></svg></button>
+            <nav class="lt-path" id="lt-path" aria-label="Where you are"></nav>
+            <span class="lt-status" id="lt-status"></span>
+            <span class="lt-acct-wrap"><button type="button" class="lt-acct" id="lt-acct" aria-haspopup="menu" aria-expanded="false"></button></span>
+            <button type="button" class="lt-save" id="lt-save" disabled title="Open a course page, gradebook or exam to save it">Save</button>
+        </header>
+        <main class="lt-page" id="lt-page"></main>
+        <div class="lt-tools" id="lt-tools"></div>
+    </div>
+    <div id="lt-modal-root"></div>
+    <div id="lt-toast-root"></div>
+
+    <script src="/static/js/scope.js"></script>
+    <script type="module" src="/static/js/lectern.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "Lectern",
+  "short_name": "Lectern",
+  "description": "Course pages, grades and exams for every course you teach",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fcfcfc",
+  "theme_color": "#333333",
+  "icons": [{ "src": "/static/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }],
+  "categories": ["education", "productivity"]
+}

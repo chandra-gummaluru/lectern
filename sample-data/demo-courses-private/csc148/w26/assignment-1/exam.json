@@ -1,0 +1,64 @@
+{
+  "format": "exam-builder/2",
+  "settings": {
+    "title": "Assignment 1",
+    "courseCode": "CSC148",
+    "courseName": "",
+    "term": "Winter 2026",
+    "instructors": "",
+    "date": "Friday, February 6, 2026, 23:59",
+    "duration": "",
+    "university": "University of Toronto",
+    "department": "Faculty of Arts and Science",
+    "target": 0,
+    "versions": 1,
+    "topSpace": 0,
+    "pageNumbers": true,
+    "macros": "",
+    "preamble": "",
+    "layout": "handout",
+    "instructions": "",
+    "link": "a1"
+  },
+  "cover": {
+    "on": false,
+    "pointsTable": true,
+    "scoreRow": true,
+    "instructionsOn": true,
+    "goodLuck": false,
+    "aids": "None",
+    "instructions": "Do not begin until instructed to do so.\nRead each question carefully.\nShow your work where instructed; partial credit requires visible reasoning.",
+    "fields": [
+      {
+        "id": "whr57nda",
+        "label": "Last Name",
+        "type": "boxes",
+        "count": 16,
+        "beside": false
+      },
+      {
+        "id": "msqyh3tz",
+        "label": "First Name",
+        "type": "boxes",
+        "count": 16,
+        "beside": false
+      },
+      {
+        "id": "3h4m51gk",
+        "label": "UTORId (e.g. gummalur)",
+        "type": "boxes",
+        "count": 8,
+        "beside": false
+      },
+      {
+        "id": "v706t54t",
+        "label": "Student #",
+        "type": "boxes",
+        "count": 10,
+        "beside": true
+      }
+    ]
+  },
+  "items": [],
+  "total": 0
+}

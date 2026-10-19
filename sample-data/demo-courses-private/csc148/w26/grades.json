@@ -1,0 +1,1727 @@
+{
+ "format": "grade-builder/1",
+ "course": {
+  "code": "CSC148",
+  "term": "Winter 2026"
+ },
+ "fields": {
+  "idLabel": "Student number",
+  "custom": []
+ },
+ "evals": [
+  {
+   "id": "l1",
+   "name": "Lab 1",
+   "label": "Lab",
+   "title": "",
+   "short": "L1",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-01-15",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l2",
+   "name": "Lab 2",
+   "label": "Lab",
+   "title": "",
+   "short": "L2",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-01-22",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l3",
+   "name": "Lab 3",
+   "label": "Lab",
+   "title": "",
+   "short": "L3",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-01-29",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l4",
+   "name": "Lab 4",
+   "label": "Lab",
+   "title": "",
+   "short": "L4",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-02-05",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l5",
+   "name": "Lab 5",
+   "label": "Lab",
+   "title": "",
+   "short": "L5",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-02-12",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l6",
+   "name": "Lab 6",
+   "label": "Lab",
+   "title": "",
+   "short": "L6",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-02-26",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l7",
+   "name": "Lab 7",
+   "label": "Lab",
+   "title": "",
+   "short": "L7",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-03-05",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l8",
+   "name": "Lab 8",
+   "label": "Lab",
+   "title": "",
+   "short": "L8",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-03-12",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l9",
+   "name": "Lab 9",
+   "label": "Lab",
+   "title": "",
+   "short": "L9",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-03-19",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "l10",
+   "name": "Lab 10",
+   "label": "Lab",
+   "title": "",
+   "short": "L10",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 4,
+   "weight": 0,
+   "date": "2026-03-26",
+   "time": "17:00",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "a1",
+   "name": "Assignment 1",
+   "label": "Assignment",
+   "title": "",
+   "short": "A1",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 60,
+   "weight": 15,
+   "date": "2026-02-06",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "a2",
+   "name": "Assignment 2",
+   "label": "Assignment",
+   "title": "",
+   "short": "A2",
+   "shortAuto": true,
+   "type": "assignment",
+   "total": 60,
+   "weight": 15,
+   "date": "2026-03-27",
+   "time": "23:59",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "mt",
+   "name": "Midterm",
+   "label": "Midterm",
+   "title": "",
+   "short": "MT",
+   "shortAuto": true,
+   "type": "test",
+   "total": 40,
+   "weight": 20,
+   "date": "2026-02-24",
+   "time": "18:10",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  },
+  {
+   "id": "fe",
+   "name": "Final Exam",
+   "label": "Final Exam",
+   "title": "",
+   "short": "FE",
+   "shortAuto": true,
+   "type": "test",
+   "total": 90,
+   "weight": 40,
+   "date": "",
+   "time": "",
+   "makeupFor": null,
+   "missed": {
+    "mode": "zero",
+    "to": [],
+    "makeups": [],
+    "split": "custom"
+   }
+  }
+ ],
+ "groups": [
+  {
+   "id": "glab",
+   "name": "Labs",
+   "short": "Labs",
+   "weight": 10,
+   "keep": 8,
+   "members": [
+    "l1",
+    "l2",
+    "l3",
+    "l4",
+    "l5",
+    "l6",
+    "l7",
+    "l8",
+    "l9",
+    "l10"
+   ]
+  }
+ ],
+ "students": [
+  {
+   "num": "1010279147",
+   "first": "Bea",
+   "last": "Adeyemi",
+   "f": {}
+  },
+  {
+   "num": "1009938857",
+   "first": "Ruth",
+   "last": "Ahmed",
+   "f": {}
+  },
+  {
+   "num": "1007518577",
+   "first": "Omar",
+   "last": "Brown",
+   "f": {}
+  },
+  {
+   "num": "1006593245",
+   "first": "Yuki",
+   "last": "Castillo",
+   "f": {}
+  },
+  {
+   "num": "1009624750",
+   "first": "Aisha",
+   "last": "Chen",
+   "f": {}
+  },
+  {
+   "num": "1009137482",
+   "first": "Imran",
+   "last": "Chen",
+   "f": {}
+  },
+  {
+   "num": "1006752045",
+   "first": "Chloe",
+   "last": "Fischer",
+   "f": {}
+  },
+  {
+   "num": "1008170215",
+   "first": "Bea",
+   "last": "Hussain",
+   "f": {}
+  },
+  {
+   "num": "1006290005",
+   "first": "Omar",
+   "last": "Hussain",
+   "f": {}
+  },
+  {
+   "num": "1009608260",
+   "first": "Priya",
+   "last": "Iqbal",
+   "f": {}
+  },
+  {
+   "num": "1009144077",
+   "first": "Aisha",
+   "last": "Karimi",
+   "f": {}
+  },
+  {
+   "num": "1008736788",
+   "first": "Daniel",
+   "last": "Karimi",
+   "f": {}
+  },
+  {
+   "num": "1009446067",
+   "first": "Marcus",
+   "last": "Karimi",
+   "f": {}
+  },
+  {
+   "num": "1006006322",
+   "first": "Amara",
+   "last": "Kowalski",
+   "f": {}
+  },
+  {
+   "num": "1007441906",
+   "first": "Iris",
+   "last": "Kowalski",
+   "f": {}
+  },
+  {
+   "num": "1008384810",
+   "first": "Yuki",
+   "last": "Kowalski",
+   "f": {}
+  },
+  {
+   "num": "1007318127",
+   "first": "Grace",
+   "last": "Laurent",
+   "f": {}
+  },
+  {
+   "num": "1009231956",
+   "first": "Chloe",
+   "last": "Levy",
+   "f": {}
+  },
+  {
+   "num": "1008385026",
+   "first": "Owen",
+   "last": "Okafor",
+   "f": {}
+  },
+  {
+   "num": "1007411866",
+   "first": "Daniel",
+   "last": "Park",
+   "f": {}
+  },
+  {
+   "num": "1010374423",
+   "first": "Jonah",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1010100672",
+   "first": "Sana",
+   "last": "Patel",
+   "f": {}
+  },
+  {
+   "num": "1007581561",
+   "first": "Hana",
+   "last": "Ramirez",
+   "f": {}
+  },
+  {
+   "num": "1006234555",
+   "first": "Isaac",
+   "last": "Sharma",
+   "f": {}
+  },
+  {
+   "num": "1006230642",
+   "first": "Noah",
+   "last": "Walsh",
+   "f": {}
+  },
+  {
+   "num": "1008467150",
+   "first": "Liam",
+   "last": "Yamamoto",
+   "f": {}
+  },
+  {
+   "num": "1009390657",
+   "first": "Sofia",
+   "last": "Yamamoto",
+   "f": {}
+  },
+  {
+   "num": "1010773399",
+   "first": "Yuki",
+   "last": "Yamamoto",
+   "f": {}
+  }
+ ],
+ "marks": {
+  "1010279147": {
+   "l1": {
+    "pts": 4
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 4
+   },
+   "l4": {
+    "pts": 4
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "missed": true
+   },
+   "l10": {
+    "pts": 4
+   },
+   "a1": {
+    "pts": 60
+   },
+   "a2": {
+    "pts": 51.5
+   },
+   "mt": {
+    "pts": 39.5
+   },
+   "fe": {
+    "pts": 78.5
+   }
+  },
+  "1009938857": {
+   "l1": {
+    "pts": 3.5
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 4
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 3.5
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 3.0
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 45.0
+   },
+   "a2": {
+    "pts": 54.5
+   },
+   "mt": {
+    "pts": 34.5
+   },
+   "fe": {
+    "pts": 76.5
+   }
+  },
+  "1007518577": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 3.0
+   },
+   "l4": {
+    "pts": 4
+   },
+   "l5": {
+    "pts": 3.5
+   },
+   "l6": {
+    "missed": true
+   },
+   "l7": {
+    "pts": 4
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 3.0
+   },
+   "a1": {
+    "pts": 56.5
+   },
+   "a2": {
+    "pts": 48.0
+   },
+   "mt": {
+    "pts": 38.5
+   },
+   "fe": {
+    "pts": 86.5
+   }
+  },
+  "1006593245": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 3.5
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 48.5
+   },
+   "a2": {
+    "pts": 50.0
+   },
+   "mt": {
+    "pts": 28.0
+   },
+   "fe": {
+    "pts": 81.5
+   }
+  },
+  "1009624750": {
+   "l1": {
+    "pts": 2.5
+   },
+   "l2": {
+    "pts": 2.0
+   },
+   "l3": {
+    "pts": 3.0
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 2.5
+   },
+   "l6": {
+    "pts": 2.5
+   },
+   "l7": {
+    "pts": 2.5
+   },
+   "l8": {
+    "pts": 2.0
+   },
+   "l9": {
+    "pts": 2.0
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 44.5
+   },
+   "a2": {
+    "pts": 36.0
+   },
+   "mt": {
+    "pts": 29.0
+   },
+   "fe": {
+    "pts": 53.0
+   }
+  },
+  "1009137482": {
+   "l1": {
+    "pts": 1.5
+   },
+   "l2": {
+    "pts": 2.0
+   },
+   "l3": {
+    "pts": 2.0
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 2.5
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 2.0
+   },
+   "l8": {
+    "pts": 1.5
+   },
+   "l9": {
+    "pts": 2.0
+   },
+   "l10": {
+    "pts": 2.0
+   },
+   "a1": {
+    "pts": 21.0
+   },
+   "a2": {
+    "pts": 21.0
+   },
+   "mt": {
+    "pts": 23.0
+   },
+   "fe": {
+    "pts": 46.5
+   }
+  },
+  "1006752045": {
+   "l1": {
+    "pts": 2.5
+   },
+   "l2": {
+    "pts": 2.5
+   },
+   "l3": {
+    "pts": 2.5
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 2.5
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 2.5
+   },
+   "l8": {
+    "pts": 1.5
+   },
+   "l9": {
+    "pts": 2.5
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 30.5
+   },
+   "a2": {
+    "pts": 46.0
+   },
+   "mt": {
+    "pts": 27.5
+   },
+   "fe": {
+    "pts": 75.5
+   }
+  },
+  "1008170215": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 4
+   },
+   "l3": {
+    "pts": 2.5
+   },
+   "l4": {
+    "pts": 3.5
+   },
+   "l5": {
+    "pts": 3.5
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 3.5
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 43.5
+   },
+   "a2": {
+    "pts": 51.0
+   },
+   "mt": {
+    "pts": 32.5
+   },
+   "fe": {
+    "pts": 86.0
+   }
+  },
+  "1006290005": {
+   "l1": {
+    "pts": 4
+   },
+   "l2": {
+    "pts": 4
+   },
+   "l3": {
+    "pts": 4
+   },
+   "l4": {
+    "pts": 4
+   },
+   "l5": {
+    "pts": 4
+   },
+   "l6": {
+    "pts": 3.5
+   },
+   "l7": {
+    "pts": 4
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 4
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 52.5
+   },
+   "a2": {
+    "pts": 60
+   },
+   "mt": {
+    "pts": 32.5
+   },
+   "fe": {
+    "pts": 90
+   }
+  },
+  "1009608260": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 3.0
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 54.0
+   },
+   "a2": {
+    "pts": 39.0
+   },
+   "mt": {
+    "pts": 30.5
+   },
+   "fe": {
+    "pts": 60.0
+   }
+  },
+  "1009144077": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 3.5
+   },
+   "l6": {
+    "pts": 3.5
+   },
+   "l7": {
+    "pts": 2.5
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 4
+   },
+   "a1": {
+    "pts": 59.5
+   },
+   "a2": {
+    "pts": 41.0
+   },
+   "mt": {
+    "pts": 39.0
+   },
+   "fe": {
+    "pts": 79.5
+   }
+  },
+  "1008736788": {
+   "l1": {
+    "pts": 2.5
+   },
+   "l2": {
+    "pts": 2.0
+   },
+   "l3": {
+    "pts": 1.5
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 2.0
+   },
+   "l6": {
+    "pts": 2.5
+   },
+   "l7": {
+    "pts": 1.5
+   },
+   "l8": {
+    "pts": 2.0
+   },
+   "l9": {
+    "pts": 2.0
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 31.5
+   },
+   "a2": {
+    "pts": 33.0
+   },
+   "mt": {
+    "pts": 19.0
+   },
+   "fe": {
+    "pts": 52.5
+   }
+  },
+  "1009446067": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 4
+   },
+   "l3": {
+    "pts": 4
+   },
+   "l4": {
+    "pts": 4
+   },
+   "l5": {
+    "pts": 4
+   },
+   "l6": {
+    "pts": 3.5
+   },
+   "l7": {
+    "pts": 4
+   },
+   "l8": {
+    "pts": 4
+   },
+   "l9": {
+    "pts": 4
+   },
+   "l10": {
+    "pts": 4
+   },
+   "a1": {
+    "pts": 51.5
+   },
+   "a2": {
+    "pts": 60
+   },
+   "mt": {
+    "pts": 38.0
+   },
+   "fe": {
+    "pts": 88.5
+   }
+  },
+  "1006006322": {
+   "l1": {
+    "pts": 2.5
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "pts": 2.0
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 2.5
+   },
+   "l7": {
+    "pts": 2.0
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 1.5
+   },
+   "l10": {
+    "pts": 2.0
+   },
+   "a1": {
+    "pts": 38.0
+   },
+   "a2": {
+    "pts": 34.0
+   },
+   "mt": {
+    "pts": 23.5
+   },
+   "fe": {
+    "missed": true
+   }
+  },
+  "1007441906": {
+   "l1": {
+    "pts": 2.0
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "missed": true
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 2.5
+   },
+   "l6": {
+    "pts": 2.0
+   },
+   "l7": {
+    "pts": 2.0
+   },
+   "l8": {
+    "pts": 2.5
+   },
+   "l9": {
+    "pts": 2.0
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 27.0
+   },
+   "a2": {
+    "pts": 28.0
+   },
+   "mt": {
+    "pts": 26.0
+   },
+   "fe": {
+    "pts": 53.5
+   }
+  },
+  "1008384810": {
+   "l1": {
+    "missed": true
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "pts": 3.0
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 3.5
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 3.5
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 3.0
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 47.5
+   },
+   "a2": {
+    "pts": 47.5
+   },
+   "mt": {
+    "pts": 29.0
+   },
+   "fe": {
+    "pts": 57.0
+   }
+  },
+  "1007318127": {
+   "l1": {
+    "pts": 2.5
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 3.5
+   },
+   "l5": {
+    "pts": 4
+   },
+   "l6": {
+    "pts": 4
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 47.5
+   },
+   "a2": {
+    "pts": 48.0
+   },
+   "mt": {
+    "pts": 40
+   },
+   "fe": {
+    "pts": 80.5
+   }
+  },
+  "1009231956": {
+   "l1": {
+    "pts": 4
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 3.5
+   },
+   "l6": {
+    "pts": 4
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 4
+   },
+   "l9": {
+    "pts": 4
+   },
+   "l10": {
+    "pts": 3.0
+   },
+   "a1": {
+    "pts": 60
+   },
+   "a2": {
+    "pts": 57.5
+   },
+   "mt": {
+    "pts": 35.5
+   },
+   "fe": {
+    "pts": 69.5
+   }
+  },
+  "1008385026": {
+   "l1": {
+    "pts": 3.5
+   },
+   "l2": {
+    "pts": 4
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 3.5
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 4
+   },
+   "l7": {
+    "pts": 4
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 4
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 56.5
+   },
+   "a2": {
+    "pts": 60
+   },
+   "mt": {
+    "pts": 34.0
+   },
+   "fe": {
+    "pts": 90
+   }
+  },
+  "1007411866": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 2.5
+   },
+   "l3": {
+    "pts": 2.5
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 3.5
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 2.5
+   },
+   "l8": {
+    "pts": 2.5
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 2.5
+   },
+   "a1": {
+    "pts": 38.0
+   },
+   "a2": {
+    "pts": 41.0
+   },
+   "mt": {
+    "pts": 25.5
+   },
+   "fe": {
+    "pts": 71.0
+   }
+  },
+  "1010374423": {
+   "l1": {
+    "pts": 3.5
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "pts": 3.0
+   },
+   "l4": {
+    "pts": 3.5
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 3.5
+   },
+   "l7": {
+    "pts": 3.5
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 45.0
+   },
+   "a2": {
+    "pts": 49.5
+   },
+   "mt": {
+    "pts": 27.0
+   },
+   "fe": {
+    "pts": 65.5
+   }
+  },
+  "1010100672": {
+   "l1": {
+    "pts": 2.5
+   },
+   "l2": {
+    "pts": 1.5
+   },
+   "l3": {
+    "pts": 1.5
+   },
+   "l4": {
+    "pts": 2.0
+   },
+   "l5": {
+    "pts": 2.0
+   },
+   "l6": {
+    "pts": 2.5
+   },
+   "l7": {
+    "pts": 2.0
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 2.5
+   },
+   "l10": {
+    "pts": 1.5
+   },
+   "a1": {
+    "pts": 24.5
+   },
+   "a2": {
+    "pts": 23.5
+   },
+   "mt": {
+    "pts": 17.5
+   },
+   "fe": {
+    "pts": 43.5
+   }
+  },
+  "1007581561": {
+   "l1": {
+    "pts": 4
+   },
+   "l2": {
+    "pts": 4
+   },
+   "l3": {
+    "pts": 3.5
+   },
+   "l4": {
+    "pts": 4
+   },
+   "l5": {
+    "pts": 4
+   },
+   "l6": {
+    "pts": 4
+   },
+   "l7": {
+    "pts": 4
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 4
+   },
+   "l10": {
+    "pts": 4
+   },
+   "a1": {
+    "pts": 53.5
+   },
+   "a2": {
+    "pts": 57.5
+   },
+   "mt": {
+    "pts": 40
+   },
+   "fe": {
+    "pts": 90
+   }
+  },
+  "1006234555": {
+   "l1": {
+    "pts": 3.5
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "pts": 3.0
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 4
+   },
+   "l6": {
+    "pts": 2.5
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 3.0
+   },
+   "l9": {
+    "pts": 3.5
+   },
+   "l10": {
+    "pts": 3.0
+   },
+   "a1": {
+    "pts": 49.5
+   },
+   "a2": {
+    "pts": 42.0
+   },
+   "mt": {
+    "pts": 40
+   },
+   "fe": {
+    "pts": 78.0
+   }
+  },
+  "1006230642": {
+   "l1": {
+    "pts": 3.5
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 2.5
+   },
+   "l4": {
+    "pts": 3.0
+   },
+   "l5": {
+    "pts": 3.0
+   },
+   "l6": {
+    "pts": 3.0
+   },
+   "l7": {
+    "pts": 3.5
+   },
+   "l8": {
+    "pts": 4
+   },
+   "l9": {
+    "pts": 3.0
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 42.0
+   },
+   "a2": {
+    "pts": 47.0
+   },
+   "mt": {
+    "pts": 34.0
+   },
+   "fe": {
+    "pts": 59.5
+   }
+  },
+  "1008467150": {
+   "l1": {
+    "pts": 3.5
+   },
+   "l2": {
+    "pts": 3.5
+   },
+   "l3": {
+    "pts": 4
+   },
+   "l4": {
+    "pts": 4
+   },
+   "l5": {
+    "pts": 4
+   },
+   "l6": {
+    "pts": 4
+   },
+   "l7": {
+    "pts": 4
+   },
+   "l8": {
+    "pts": 3.5
+   },
+   "l9": {
+    "pts": 4
+   },
+   "l10": {
+    "pts": 3.5
+   },
+   "a1": {
+    "pts": 56.0
+   },
+   "a2": {
+    "pts": 60
+   },
+   "mt": {
+    "pts": 40
+   },
+   "fe": {
+    "pts": 74.5
+   }
+  },
+  "1009390657": {
+   "l1": {
+    "pts": 2.0
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "pts": 2.5
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 2.5
+   },
+   "l6": {
+    "pts": 1.5
+   },
+   "l7": {
+    "pts": 2.5
+   },
+   "l8": {
+    "pts": 2.0
+   },
+   "l9": {
+    "pts": 2.5
+   },
+   "l10": {
+    "pts": 3.0
+   },
+   "a1": {
+    "pts": 31.5
+   },
+   "a2": {
+    "missed": true
+   },
+   "mt": {
+    "pts": 24.0
+   },
+   "fe": {
+    "pts": 37.5
+   }
+  },
+  "1010773399": {
+   "l1": {
+    "pts": 3.0
+   },
+   "l2": {
+    "pts": 3.0
+   },
+   "l3": {
+    "missed": true
+   },
+   "l4": {
+    "pts": 2.5
+   },
+   "l5": {
+    "pts": 2.5
+   },
+   "l6": {
+    "pts": 3.5
+   },
+   "l7": {
+    "pts": 3.0
+   },
+   "l8": {
+    "pts": 2.5
+   },
+   "l9": {
+    "pts": 3.0
+   },
+   "l10": {
+    "pts": 3.0
+   },
+   "a1": {
+    "pts": 46.0
+   },
+   "a2": {
+    "pts": 41.5
+   },
+   "mt": {
+    "pts": 24.5
+   },
+   "fe": {
+    "pts": 52.5
+   }
+  }
+ },
+ "overrides": {},
+ "policies": {
+  "round": {
+   "step": 1,
+   "dir": "nearest"
+  },
+  "buckets": [],
+  "autofail": []
+ }
+}

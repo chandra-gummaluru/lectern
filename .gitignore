@@ -1,0 +1,12 @@
+# Python build artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets — never commit these
+.env
+*.pem
+
+# Per-machine Claude Code settings
+.claude/settings.local.json
+tests/browser/shots/

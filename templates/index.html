@@ -16,7 +16,7 @@
         // Before anything draws: show the app straight away when a sign-in or folder is
         // remembered (or a sign-in is just coming back), so the splash doesn't flash.
         try {
-            if (/[#&]gh_/.test(location.hash) || localStorage.getItem('lectern.github') || sessionStorage.getItem('lectern.github')
+            if (/[#&]gh_/.test(location.hash) || sessionStorage.getItem('lectern.github')
                 || /local/.test(localStorage.getItem('lectern.mode') || '')) document.documentElement.classList.add('lt-has-session');
         } catch (_) {}
     </script>
@@ -49,7 +49,7 @@
                     <button type="button" class="sp-btn sp-btn--quiet" id="splash-folder" title="Work from a folder on this computer that holds your two course repositories">Choose a folder</button>
                 </div>
                 <div class="sp-under">
-                    <label class="sp-remember"><input type="checkbox" id="splash-remember"> Stay signed in on this computer</label>{% if learn_more %}
+                    {% if learn_more %}
                     <a class="sp-more" href="{{ learn_more }}" target="_blank" rel="noopener">Learn more</a>{% endif %}
                 </div>
                 <p class="sp-hint" id="splash-status" role="status" aria-live="polite"></p>
@@ -98,7 +98,6 @@
             <nav class="lt-path" id="lt-path" aria-label="Where you are"></nav>
             <span class="lt-status" id="lt-status"></span>
             <span class="lt-acct-wrap"><button type="button" class="lt-acct" id="lt-acct" aria-haspopup="menu" aria-expanded="false"></button></span>
-            <button type="button" class="lt-save" id="lt-save" disabled title="Open a course page, gradebook or exam to save it">Save</button>
         </header>
         <main class="lt-page" id="lt-page"></main>
         <div class="lt-tools" id="lt-tools"></div>

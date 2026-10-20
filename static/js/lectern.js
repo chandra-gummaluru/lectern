@@ -115,15 +115,13 @@ function showSplash(msg = "", isError = false, reopen = null) {
     st.innerHTML = `Last time: the <b>${esc(reopen.name)}</b> folder. <button type="button" id="splash-reopen">Open it again</button>`;
     $("#splash-reopen").onclick = async () => { if (await FS.reconnect(reopen)) startLocal(reopen); else splashSay("The browser didn't allow access to that folder.", true); };
   }
-  try { $("#splash-remember").checked = GH.remembered() || localStorage.getItem("lectern.keep") === "1"; } catch (_) {}
 }
 const splashSay = (msg, isError) => { const st = $("#splash-status"); st.className = `sp-hint${isError ? " is-error" : ""}`; st.textContent = msg; };
 
 $("#splash-signin").onclick = async () => {
   const b = $("#splash-signin"); b.disabled = true;
-  const keep = $("#splash-remember").checked;
-  try { localStorage.setItem("lectern.keep", keep ? "1" : "0"); } catch (_) {}
-  try { await GH.startSignIn(keep); }
+  try { localStorage.removeItem("lectern.keep"); } catch (_) {}
+  try { await GH.startSignIn(); }
   catch (e) { splashSay(e.message, true); b.disabled = false; }
 };
 $("#splash-folder").onclick = async () => {
@@ -351,15 +349,14 @@ function renderBar() {
   const u = $("#lt-unsaved");
   if (u) u.onclick = () => go(routeForPath(un[0].name, un[0].path));
   const a = $("#lt-acct");
-  a.innerHTML = S.mode === "github" && S.user ? `${S.user.avatar_url ? `<img src="${esc(S.user.avatar_url)}&s=44" alt="">` : ICON.gh}<span>${esc(S.user.login)}</span>`
+  const who = S.mode === "github" && S.user ? `${S.user.avatar_url ? `<img src="${esc(S.user.avatar_url)}&s=44" alt="">` : ICON.gh}<span>${esc(S.user.login)}</span>`
     : S.mode === "local" && S.folder ? `${ICON.folder}<span>${esc(S.folder.name)}</span>` : "";
-  a.hidden = !a.innerHTML;
-  const sv = $("#lt-save");
-  if (!saving) {
-    sv.disabled = !un.length;
-    sv.title = un.length ? `Save ${un.map(saveLabel).join(", ")}` : "Everything is saved";
-  }
+  a.innerHTML = who ? who + CHEV : "";
+  a.hidden = !who;
+  if (saving) st.innerHTML = `<span class="lt-saving">${esc(savingText)}</span>`;
+  if (menuEl) drawMenuSave();
 }
+const CHEV = '<svg class="lt-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 $("#lt-home").onclick = () => go({ page: "home" });
 
 // ── Save: one button saves every course page, gradebook and exam with changes ──
@@ -368,18 +365,19 @@ function saveLabel(u) {
   const p = u.path.split("/");
   return u.name === "exams" ? `${p[0]}/${p[1]} ${p[2]}` : `${p[0]}/${p[1]} ${SAVE_WHAT[u.name]}`;
 }
-let saving = false;
+let saving = false, savingText = "";
+// Save lives in the account menu; while saving, the progress shows in the bar's status.
+function setSaving(t) { savingText = t; renderBar(); }
 async function saveAll() {
   const un = unsavedTools().filter(u => Lectern.tools[u.name].api.save);
   if (saving || !un.length) return;
   saving = true;
-  const sv = $("#lt-save"); sv.disabled = true;
   const where = S.mode === "github" ? "on GitHub" : "in your folder";
   const done = [], failed = [];
   try {
     for (let k = 0; k < un.length; k++) {
       const u = un[k], api = Lectern.tools[u.name].api;
-      sv.textContent = un.length > 1 ? `Saving ${k + 1} of ${un.length}…` : "Saving…";
+      setSaving(un.length > 1 ? `Saving ${k + 1} of ${un.length}…` : "Saving…");
       const p = u.path.split("/"), what = u.name === "exams" ? `${p[2]} exam` : SAVE_WHAT[u.name];
       const msg = `Update ${p[0]} ${p[1]} ${what}`;
       let r;
@@ -392,7 +390,7 @@ async function saveAll() {
       if (r.ok) done.push(u); else failed.push({ u, error: r.error || "Couldn't save." });
     }
   } finally {
-    saving = false; sv.textContent = "Save"; renderBar();
+    saving = false; savingText = ""; renderBar();
   }
   if (failed.length) modal(`<h2>${done.length ? "Some changes weren't saved" : "Not saved"}</h2>
     ${done.length ? `<p>Saved ${esc(done.map(saveLabel).join(", "))}.</p>` : ""}
@@ -404,7 +402,6 @@ async function saveAll() {
     const r = S.route; if (r.page === "tool" && Lectern.tools[r.tool]) toolPath(Lectern.tools[r.tool]);
   }
 }
-$("#lt-save").onclick = saveAll;
 Lectern.saveAll = saveAll;
 
 // ── Deleting takes two clicks: the first turns the button red ("Delete?"), the second deletes. ──
@@ -439,22 +436,32 @@ $("#lt-acct").onclick = e => {
   menuEl.className = "lt-menu"; menuEl.setAttribute("role", "menu");
   menuEl.innerHTML = S.mode === "github"
     ? `<p>Signed in to GitHub as <b>${esc(S.user && S.user.login)}</b>.</p><hr>
-       <button type="button" role="menuitem" data-m="repos">Change repository…</button>
+       <button type="button" role="menuitem" data-m="save" class="lt-menu-save"></button><hr>
        <button type="button" role="menuitem" data-m="out">Sign out</button>`
     : `<p>Working from the folder <b>${esc(S.folder.name)}</b>: <b>${esc(S.folder.pair.pub)}</b>.</p><hr>
+       <button type="button" role="menuitem" data-m="save" class="lt-menu-save"></button><hr>
        <button type="button" role="menuitem" data-m="folder">Choose another folder…</button>
        <button type="button" role="menuitem" data-m="close">Close the folder</button>`;
   $("#lt-acct").after(menuEl);
+  drawMenuSave();
   $("#lt-acct").setAttribute("aria-expanded", "true");
   menuEl.onclick = async ev => {
-    const m = ev.target.closest("[data-m]"); if (!m) return;
+    const m = ev.target.closest("[data-m]"); if (!m || m.disabled) return;
     closeMenu();
-    if (m.dataset.m === "repos") setupPage(true);
+    if (m.dataset.m === "save") saveAll();
     if (m.dataset.m === "out") { GH.signOut(); store.set(MODE_KEY, null); location.replace("/"); }
     if (m.dataset.m === "folder") { const h = await FS.choose().catch(() => null); if (h) { store.set("lectern.folder.pair", null); location.hash = "#/"; startLocal(h); } }
     if (m.dataset.m === "close") { await FS.forget(); store.set(MODE_KEY, null); location.replace("/"); }
   };
 };
+// The menu's Save: what it would save, or that everything is saved.
+function drawMenuSave() {
+  const b = menuEl && menuEl.querySelector('[data-m="save"]'); if (!b) return;
+  const un = unsavedTools();
+  b.disabled = saving || !un.length;
+  b.innerHTML = `<span>${saving ? esc(savingText || "Saving…") : un.length ? "Save" : "Everything is saved"}</span><kbd>${/Mac|iP/.test(navigator.platform) ? "⌘S" : "Ctrl+S"}</kbd>`;
+  b.title = un.length ? `Save ${un.map(saveLabel).join(", ")}` : "";
+}
 document.addEventListener("click", e => { if (menuEl && !menuEl.contains(e.target)) closeMenu(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
 

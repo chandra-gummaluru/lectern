@@ -5,25 +5,24 @@
    code and refreshes pass through Lectern's server. */
 
 const KEY = "lectern.github";          // { access_token, refresh_token, expires_at, refresh_expires_at }
-const STATE = "lectern.state", REMEMBER = "lectern.remember";
+const STATE = "lectern.state";
+// Sign-ins last only as long as this tab (sessionStorage); "stay signed in" is off for now.
 
 let tok = null;
-let remember = false;
 const listeners = new Set();
 
 export class GhError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
 function read() {
   try {
-    const l = localStorage.getItem(KEY), s = sessionStorage.getItem(KEY);
-    remember = !!l;
-    tok = JSON.parse(l || s || "null");
+    localStorage.removeItem(KEY);          // drop a sign-in kept by an older version
+    tok = JSON.parse(sessionStorage.getItem(KEY) || "null");
   } catch (_) { tok = null; }
 }
 function write() {
   try {
     localStorage.removeItem(KEY); sessionStorage.removeItem(KEY);
-    if (tok) (remember ? localStorage : sessionStorage).setItem(KEY, JSON.stringify(tok));
+    if (tok) sessionStorage.setItem(KEY, JSON.stringify(tok));
   } catch (_) {}
 }
 function fromResponse(d) {
@@ -38,7 +37,6 @@ function fromResponse(d) {
 
 export const token = () => (tok ? tok.access_token : "");
 export const hasToken = () => { if (!tok) read(); return !!(tok && tok.access_token); };
-export const remembered = () => remember;
 export const onToken = fn => { listeners.add(fn); return () => listeners.delete(fn); };
 
 /** The sign-in coming back from GitHub: tokens (or an error) in the URL's #fragment. */
@@ -48,7 +46,7 @@ export function consumeRedirect() {
   const p = new URLSearchParams(h);
   history.replaceState(null, "", location.pathname + location.search + "#/");
   let expected = "";
-  try { expected = sessionStorage.getItem(STATE) || ""; remember = sessionStorage.getItem(REMEMBER) === "1"; sessionStorage.removeItem(STATE); } catch (_) {}
+  try { expected = sessionStorage.getItem(STATE) || ""; sessionStorage.removeItem(STATE); } catch (_) {}
   if (!expected || p.get("state") !== expected) return { error: "That sign-in didn't start here. Please try again." };
   if (p.get("gh_error")) return { error: p.get("gh_error") };
   tok = fromResponse({
@@ -60,14 +58,16 @@ export function consumeRedirect() {
 }
 
 /** Off to GitHub to sign in; it comes back to /api/github/callback, then here. */
-export async function startSignIn(keep) {
+export async function startSignIn() {
   let cfg;
   try { cfg = await (await fetch("/api/github/config")).json(); }
   catch (_) { throw new GhError(0, "Couldn't reach Lectern's server."); }
   if (!cfg.configured) throw new GhError(0, "Sign-in with GitHub isn't set up on this server yet (see the README: LECTERN_GH_CLIENT_ID and LECTERN_GH_CLIENT_SECRET).");
   const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("");
-  try { sessionStorage.setItem(STATE, state); sessionStorage.setItem(REMEMBER, keep ? "1" : "0"); } catch (_) {}
-  const q = new URLSearchParams({ client_id: cfg.client_id, redirect_uri: cfg.redirect_uri, state });
+  try { sessionStorage.setItem(STATE, state); } catch (_) {}
+  // prompt=select_account: GitHub always shows its account picker (with "Use a different account"),
+  // instead of quietly reusing whoever is signed in to github.com in this browser.
+  const q = new URLSearchParams({ client_id: cfg.client_id, redirect_uri: cfg.redirect_uri, state, prompt: "select_account" });
   location.assign(`${cfg.authorize_url}?${q}`);
 }
 

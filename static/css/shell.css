@@ -70,6 +70,13 @@ html.lt-has-session #splash { display: none; }
 .lt-acct img { width: 22px; height: 22px; border-radius: 50%; flex: none; }
 .lt-acct svg { width: 16px; height: 16px; flex: none; }
 .lt-acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-acct svg.lt-chev { width: 14px; height: 14px; margin-left: -2px; opacity: .6; transition: transform .15s; }
+.lt-acct[aria-expanded="true"] svg.lt-chev { transform: rotate(180deg); }
+.lt-saving { font-weight: 600; color: var(--ink); }
+.lt-menu button.lt-menu-save { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-weight: 600; }
+.lt-menu button.lt-menu-save:disabled { font-weight: 400; color: var(--ink-3) !important; cursor: default; }
+.lt-menu button.lt-menu-save:disabled:hover { background: transparent !important; }
+.lt-menu kbd { font: 500 11.5px var(--font-ui); color: var(--ink-3); }
 .lt-menu {
   position: absolute; right: 0; top: 42px; min-width: 240px; padding: 6px; z-index: 40;
   background: var(--bar); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / .18);

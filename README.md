@@ -45,7 +45,7 @@ Requests go in the private repository, `csc258/f26/accommodations.json`. The off
 
 Setting it up on the server (once):
 
-1. On the GitHub App's page, **Generate a private key**. Put the `.pem` beside `app.py` and set `LECTERN_GH_PRIVATE_KEY_FILE` to its path. Students never sign in: the server reads the class list and records requests as the app, in repositories it's installed on.
+1. On the GitHub App's settings page, open **Credentials → Key pairs → New key** (older GitHub pages: **General**, at the bottom, **Generate a private key**). A `.pem` file downloads. Put the `.pem` beside `app.py` and set `LECTERN_GH_PRIVATE_KEY_FILE` to its path. Students never sign in: the server reads the class list and records requests as the app, in repositories it's installed on.
 2. Fill in the `LECTERN_SMTP_…` settings in `.env` (any SMTP login; for Gmail, an app password). Without them, decisions are still saved, but nothing is emailed (the server prints the messages instead).
 3. `pip install -r requirements.txt` (adds PyJWT).
 

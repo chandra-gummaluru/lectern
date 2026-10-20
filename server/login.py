@@ -22,6 +22,8 @@ import urllib.request
 
 from flask import Blueprint, jsonify, redirect, request
 
+from . import ghapp, mailer
+
 login_bp = Blueprint('login', __name__)
 TOKEN_URL = "https://github.com/login/oauth/access_token"
 AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
@@ -64,6 +66,10 @@ def config():
         client_id=cid,
         redirect_uri=_app_url() + "api/github/callback",
         app_slug=os.environ.get("LECTERN_GH_APP_SLUG", ""),
+        app_url=_app_url(),
+        # Accommodation requests need the app's private key (ghapp.py) and, to email students, SMTP (mailer.py).
+        requests=ghapp.configured(),
+        email=mailer.configured(),
     )
 
 

@@ -90,3 +90,13 @@ One web app at **lectern.changapp.net** that merges the Course Page Builder, Gra
   3. A screenshot of beamer.changapp.net's start page (or connect Claude in Chrome so Claude can open it).
   4. The current tools: `course-page-builder.html`, `grade-builder.html`, `exam-builder.html`, `suite.css`, `course.cls`, `courses_login.py` (rename references from courses → Lectern), and `grade-builder-plan.md`, `exam-builder-plan.md`.
 - First step: the Lectern shell (server, splash, Home, pinned navigation path), then the build order in section 11.
+
+## 14. Accommodation requests (Oct 20 2026)
+- Grades → each evaluation: standard accommodation (free text), "students must request it", "students can request an alternate accommodation", request-by date and time (deadline in `LECTERN_TIMEZONE`, default America/Toronto).
+- Course page: Request Accommodation button (week card and marking scheme) when either request is on; after the deadline, "The deadline for accommodation requests has passed" (the page's script, and the form itself).
+- The button opens Lectern's own form (`/request`), so it works in Canvas too. Endpoints: `GET /api/accommodations/evaluation`, `POST …/verify`, `POST …/submit` (CORS open), `POST …/decide` (instructor's GitHub token).
+- Students are matched on email + identifier + first + last name, all against the gradebook (Email field required; dropped students excluded). Rate-limited per address.
+- Requests: `<course>/<term>/accommodations.json` in the private repo, written by the GitHub App (private key on the server). Decisions are committed with the instructor's own token.
+- Email over SMTP: a receipt on submit; the decision (with an optional note) on approve/reject.
+- Lectern: Accommodations part on the offering page (waiting count) and its own page `#/<course>/<term>/accommodations`: Waiting / Decided / All, filter by evaluation, Approve / Reject, change a decision.
+- Folder mode: the page shows the folder's copy; deciding needs GitHub sign-in.

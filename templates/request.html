@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Request an Accommodation</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/static/css/request.css">
+</head>
+<body>
+    <!-- Students reach this from a course page's Request Accommodation button:
+         /request?r=<the course page's repository>&o=<course>/<term>&e=<evaluation id> -->
+    <main class="rq" id="rq">
+        <header class="rq-head">
+            <p class="rq-course" id="rq-course">&nbsp;</p>
+            <h1>Request an Accommodation</h1>
+            <p class="rq-eval" id="rq-eval">&nbsp;</p>
+        </header>
+        <div class="rq-card" id="rq-card" aria-live="polite">
+            <p class="rq-loading">Loading…</p>
+        </div>
+        <p class="rq-foot">{{ institution }} · Lectern</p>
+    </main>
+    <script src="/static/js/request.js"></script>
+</body>
+</html>

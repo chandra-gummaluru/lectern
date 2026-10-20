@@ -38,6 +38,7 @@ const ICON = {
   evals: svgI('<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/>', 1.8),
   gear: svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', 1.6),
   warn: svgI('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
+  accom: svgI('<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>', 1.8),
   gh: '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
 };
 const TOOLS = {
@@ -237,13 +238,14 @@ function parseHash() {
     const part = { evaluations: "evals", gradebook: "book", grades: "book", settings: "settings" }[tool];
     if (part) return { page: "tool", tool: "grades", part, c, t };
     if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e };
+    if (tool === "accommodations") return { page: "accom", c, t };
     return { page: "offering", c, t };
   }
   return { page: "home" };
 }
 const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Settings" } };
 const partOf = view => view === "evals" ? "evals" : view === "settings" ? "settings" : "book";
-const hashFor = r => r.page === "home" ? "#/" : r.page === "offering" ? `#/${r.c}/${r.t}` : r.tool === "exams" ? `#/${r.c}/${r.t}/exams/${r.e}`
+const hashFor = r => r.page === "home" ? "#/" : r.page === "offering" ? `#/${r.c}/${r.t}` : r.page === "accom" ? `#/${r.c}/${r.t}/accommodations` : r.tool === "exams" ? `#/${r.c}/${r.t}/exams/${r.e}`
   : r.tool === "grades" ? `#/${r.c}/${r.t}/${PARTS[r.part || "book"].slug}` : `#/${r.c}/${r.t}/${r.tool}`;
 const routeKey = r => hashFor(r);
 let pendingOpen = null;      // options for the next open (copy from, title), set by a button just before it navigates
@@ -492,6 +494,7 @@ function renderPage() {
   const r = S.route;
   if (r.page === "home") { renderPath([{ label: HOME_STEP.label }]); return homePage(); }
   if (r.page === "offering") { renderPath([HOME_STEP, { label: `${r.c} / ${r.t}` }]); return offeringPage(r.c, r.t); }
+  if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
 }
 
 function sourceBar() {
@@ -622,8 +625,20 @@ function offeringPage(c, t) {
         <p class="lt-part-text">${o.grades ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation).` : "No gradebook for this term yet: it starts with the evaluations."}</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button></div>
       </section>
+      <section class="lt-part lt-wide">
+        <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>
+        <p class="lt-part-text" id="lt-accom-sum">Requests students make with the course page's Request Accommodation buttons. Approve or reject each one; the student gets an email.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-accom"${!o.grades && loading ? " disabled" : ""}>Open Accommodations</button></div>
+      </section>
     </div>
   </div>`);
+  $("#lt-accom").onclick = () => go({ page: "accom", c, t });
+  if (o.grades) readAccom(c, t).then(d => {
+    const el = $("#lt-accom-sum"), n = d ? d.requests.filter(x => x.status === "pending").length : 0;
+    if (!el || !n || S.route.page !== "offering" || S.route.c !== c || S.route.t !== t) return;
+    el.innerHTML = `<b>${n} request${n === 1 ? "" : "s"} waiting</b> for a decision. Approve or reject each one; the student gets an email.`;
+    $("#lt-accom").classList.add("primary");
+  }).catch(() => {});
   $("#lt-page").querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go({ page: "tool", tool: b.dataset.go, c, t }, b.dataset.copy ? { copyFrom: b.dataset.copy } : null); });
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
   $("#lt-del-off").onclick = () => deleteOfferingDialog(c, t);
@@ -693,6 +708,99 @@ function newExamDialog(c, t) {
     m.querySelector("[data-ok]").onclick = ok;
     m.querySelectorAll("input").forEach(i => i.addEventListener("keydown", ev => { if (ev.key === "Enter") ok(); }));
   });
+}
+
+// ── Accommodations: requests from the course page, approved or rejected here ──
+// Students' requests are in the private repository, <course>/<term>/accommodations.json (the server writes
+// them as the GitHub App). A decision goes through the server too, which saves it with your own GitHub
+// sign-in and emails the student.
+async function readAccom(c, t) {
+  const text = await readPriv(`${c}/${t}/accommodations.json`);
+  if (!text) return { requests: [] };
+  try { const d = JSON.parse(text); return { requests: Array.isArray(d.requests) ? d.requests : [] }; } catch (_) { return { requests: [], bad: true }; }
+}
+let serverCfg = null;
+const getCfg = () => serverCfg || (serverCfg = fetch("/api/github/config").then(r => r.json()).catch(() => ({})));
+const accomUI = { show: "pending", ev: "" };
+const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
+const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
+
+async function accomPage(c, t) {
+  pageHTML(`<div class="lt-in lt-accom">
+    <h1>Accommodations</h1>
+    <p class="lt-lede">Requests from the <b>Request Accommodation</b> buttons on <code>${esc(c)}/${esc(t)}</code>'s course page. Approving or rejecting one emails the student.</p>
+    <div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading requests…</div></div>
+  </div>`);
+  const mine = () => S.route.page === "accom" && S.route.c === c && S.route.t === t;
+  let data, book, cfg;
+  try { [data, book, cfg] = await Promise.all([readAccom(c, t), getBook(c, t).catch(() => null), getCfg()]); }
+  catch (e) { if (mine()) $("#lt-acc").innerHTML = `<p class="lt-note err">Couldn't read the requests. ${esc(e.message)}</p>`; return; }
+  if (!mine()) return;
+  const evals = (book && book.evals) || [];
+  const asks = evals.filter(e => e.accom && ((e.accom.approval && String(e.accom.standard || "").trim()) || e.accom.alternate));
+  const canDecide = S.mode === "github";
+  const draw = () => {
+    const all = data.requests.slice().sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
+    const byEv = all.filter(r => !accomUI.ev || r.eval === accomUI.ev);
+    const pending = byEv.filter(r => r.status === "pending"), decided = byEv.filter(r => r.status !== "pending");
+    const list = accomUI.show === "pending" ? pending : accomUI.show === "decided" ? decided : byEv;
+    const evNames = [...new Map(all.map(r => [r.eval, r.evalName])).entries()];
+    const notes = [
+      !cfg.requests ? `<p class="lt-note"><b>Students can't send requests yet:</b> this server needs the GitHub App's private key (<code>LECTERN_GH_PRIVATE_KEY_FILE</code>; see the README).</p>` : "",
+      cfg.requests && !cfg.email ? `<p class="lt-note"><b>Emails aren't being sent:</b> the server has no SMTP settings, so students won't hear about decisions (see the README).</p>` : "",
+      !canDecide ? `<p class="lt-note">You're working from a folder: this is its copy of <code>accommodations.json</code> (pull to see new requests). To approve or reject, sign in with GitHub.</p>` : "",
+      book && !asks.length ? `<p class="lt-note">No evaluation takes requests yet. In <button type="button" class="lt-link" data-evals>Evaluations</button>, open one and set its <b>Accommodations</b>; then save the course page so its buttons appear.</p>` : "",
+      data.bad ? `<p class="lt-note err"><code>accommodations.json</code> couldn't be read.</p>` : "",
+    ].join("");
+    const seg = (k, label, n) => `<button type="button" data-show="${k}" aria-pressed="${accomUI.show === k}">${label}${n != null ? ` <span>${n}</span>` : ""}</button>`;
+    $("#lt-acc").innerHTML = `${notes}
+      <div class="lt-sec"><div class="lt-seg" role="group" aria-label="Show">${seg("pending", "Waiting", pending.length)}${seg("decided", "Decided", decided.length)}${seg("all", "All")}</div>
+        <div class="lt-filters">${evNames.length > 1 ? `<select class="lt-filter" id="acc-ev" aria-label="Evaluation"><option value="">All Evaluations</option>${evNames.map(([id, n]) => `<option value="${esc(id)}"${accomUI.ev === id ? " selected" : ""}>${esc(n || id)}</option>`).join("")}</select>` : ""}
+        <button type="button" class="lt-btn" id="acc-refresh">Refresh</button></div></div>
+      ${list.length ? `<div class="lt-reqs">${list.map(reqCard).join("")}</div>`
+        : `<p class="lt-hint">${accomUI.show === "pending" ? (all.length ? "Nothing waiting: every request has a decision." : "No requests yet.") : "None."}</p>`}`;
+    $("#lt-acc").querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { accomUI.show = b.dataset.show; draw(); }; });
+    const f = $("#acc-ev"); if (f) f.onchange = () => { accomUI.ev = f.value; draw(); };
+    $("#acc-refresh").onclick = () => accomPage(c, t);
+    const ev = $("#lt-acc [data-evals]"); if (ev) ev.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t });
+    $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(data.requests.find(r => r.id === b.dataset.id), b.dataset.decide); });
+  };
+  const reqCard = r => `<article class="lt-req st-${esc(r.status)}">
+      <div class="lt-req-top"><div class="lt-req-who"><b>${esc(r.first)} ${esc(r.last)}</b><span>${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></span></div>
+        <span class="lt-req-st">${esc(STATUS[r.status] || r.status)}</span></div>
+      <p class="lt-req-what"><b>${esc(r.evalName)}</b> · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · <span title="${esc(r.submitted)}">${esc(fmtStamp(r.submitted))}</span></p>
+      ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
+      ${r.status !== "pending" ? `<p class="lt-req-dec">${esc(STATUS[r.status])}${r.decidedBy ? ` by ${esc(r.decidedBy)}` : ""}${r.decided ? `, ${esc(fmtStamp(r.decided))}` : ""}.${r.note ? ` Note: “${esc(r.note)}”` : ""}</p>` : ""}
+      <div class="lt-req-acts">${r.status === "pending"
+        ? `<button type="button" class="lt-btn" data-decide="rejected" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Reject</button><button type="button" class="lt-btn primary" data-decide="approved" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Approve</button>`
+        : `<button type="button" class="lt-link" data-decide="${r.status === "approved" ? "rejected" : "approved"}" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>${r.status === "approved" ? "Reject it instead" : "Approve it instead"}</button>`}<span class="lt-req-ref">${esc(r.id)}</span></div>
+    </article>`;
+  function decideDialog(r, decision) {
+    if (!r) return;
+    const yes = decision === "approved";
+    modal(`<h2>${yes ? "Approve" : "Reject"} this request?</h2>
+      <p>${esc(r.first)} ${esc(r.last)}, ${esc(r.evalName)}: ${r.kind === "standard" ? `the standard accommodation (${esc(r.standard)})` : "an alternate accommodation"}. ${cfg.email ? `They're emailed at <b>${esc(r.email)}</b>.` : "The server has no SMTP settings, so no email is sent."}</p>
+      <div class="lt-form"><label>Note to the student<textarea id="dc-note" rows="4" placeholder="${yes ? "e.g. Write it Thursday at 6 in BA 2135." : "e.g. Please come to office hours to talk about it."}">${esc(r.status === "pending" ? "" : r.note || "")}</textarea><small>Optional. It goes in the email.</small></label></div>
+      <p class="lt-err" id="dc-err"></p>
+      <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn ${yes ? "primary" : "lt-btn-danger"}" data-ok>${yes ? "Approve" : "Reject"}</button></div>`, (m, close) => {
+      m.querySelector("[data-no]").onclick = close;
+      const ok = m.querySelector("[data-ok]");
+      ok.onclick = async () => {
+        ok.disabled = true; ok.textContent = yes ? "Approving…" : "Rejecting…";
+        try {
+          const res = await fetch("/api/accommodations/decide", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${GH.token()}` },
+            body: JSON.stringify({ repo: S.priv.full_name, offering: `${c}/${t}`, id: r.id, decision, note: m.querySelector("#dc-note").value }) });
+          const d = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(d.error || "Couldn't save the decision.");
+          Object.assign(r, d.request);
+          close();
+          toast(`${yes ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);
+          if (mine()) draw();
+        } catch (e) { ok.disabled = false; ok.textContent = yes ? "Approve" : "Reject"; m.querySelector("#dc-err").textContent = e.message; }
+      };
+    });
+  }
+  draw();
 }
 
 // ── Choosing the repositories (GitHub) ───────────────────────────────
@@ -806,7 +914,7 @@ async function getBook(c, t) {
 
 // What the course page shows from a gradebook: each evaluation and group with its weight, date and rules.
 // Never students or marks: only this goes to the public page.
-function schemeOf(b, from) {
+function schemeOf(b, from, requests = null) {
   const evals = (b.evals || []).filter(e => !e.makeupFor), groups = b.groups || [];
   const byId = id => evals.find(e => e.id === id);
   const makeups = e => (b.evals || []).filter(x => x.makeupFor === e.id);
@@ -820,7 +928,13 @@ function schemeOf(b, from) {
     const rest = Math.max(0, 100 - T * k);
     return [`If it isn't submitted, ${bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0]}${rest > 1e-9 ? `; ${fmtW(w * rest / 100)}% counts as zero` : ""}.`];
   };
-  const brief = e => ({ id: e.id, name: e.name, short: e.short || "", type: e.type === "test" ? "test" : "assignment", date: e.date || "", time: e.time || "" });
+  // Accommodations (Grades → an evaluation): the standard one, and whether students can ask, until when.
+  const accom = e => {
+    const a = e.accom || {}, standard = String(a.standard || "").trim(), approval = !!a.approval && !!standard, alternate = !!a.alternate;
+    if (!standard && !alternate) return {};
+    return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
+  };
+  const brief = e => ({ id: e.id, name: e.name, short: e.short || "", type: e.type === "test" ? "test" : "assignment", date: e.date || "", time: e.time || "", ...accom(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -848,7 +962,20 @@ function schemeOf(b, from) {
   if (num(R.step) > 0) policies.push({ id: "round", kind: "round", title: "Rounding", show: false, text: R.dir === "up" ? `Course grades are rounded up to ${num(R.step) === 1 ? "a whole percent" : `a multiple of ${pc(R.step)}`}.` : R.dir === "down" ? `Course grades are rounded down to ${num(R.step) === 1 ? "a whole percent" : `a multiple of ${pc(R.step)}`}.` : `Course grades are rounded to the nearest ${num(R.step) === 1 ? "whole percent" : pc(R.step)}.` });
   (P.buckets || []).forEach(x => policies.push({ id: `range:${x.id}`, kind: "range", title: "Grade Adjustments", show: false, text: `A course grade from ${pc(x.from)} to ${pc(x.to)} becomes ${pc(x.value)}.` }));
   // Every evaluation by its date for the course page, makeups too (each says what it's a makeup for).
-  return { from, units, evals: (b.evals || []).map(e => ({ ...brief(e), ...(e.makeupFor ? { makeupFor: e.makeupFor } : {}) })), policies };
+  return { from, units, evals: (b.evals || []).map(e => ({ ...brief(e), ...(e.makeupFor ? { makeupFor: e.makeupFor } : {}) })), policies, ...(requests ? { requests } : {}) };
+}
+
+// Where the course page's Request Accommodation buttons go: Lectern's request form, for this course
+// offering, in the repository the course page publishes from (the server finds its -private twin).
+const lecternURL = () => getCfg().then(c => c.app_url || `${location.origin}/`);
+function publicRepo() {
+  if (S.mode === "github") return S.pub ? S.pub.full_name : "";
+  const m = /^https:\/\/([^.]+)\.github\.io\/([^/]*)\/?$/i.exec((S.folder && S.folder.site) || "");   // folder mode: from the clone's GitHub Pages address
+  return m ? `${m[1]}/${m[2] || `${m[1]}.github.io`}` : "";
+}
+async function requestsFor(c, t) {
+  const repo = publicRepo();
+  return repo ? { url: `${await lecternURL()}request`, repo, offering: `${c}/${t}` } : null;
 }
 
 // Each evaluation's exam or handout in an offering: the Exam Builder's open one, and every exam.json
@@ -887,7 +1014,7 @@ async function crossLink(tool, r, t, opts) {
   try {
     if (tool === "course") {
       const b = await getBook(r.c, r.t).catch(() => null);
-      t.api.setScheme(b ? schemeOf(b, `${r.c}/${r.t}/grades.json`) : null, { edit: v => go({ page: "tool", tool: "grades", part: v === "settings" ? "settings" : "evals", c: r.c, t: r.t }) });
+      t.api.setScheme(b ? schemeOf(b, `${r.c}/${r.t}/grades.json`, await requestsFor(r.c, r.t)) : null, { edit: v => go({ page: "tool", tool: "grades", part: v === "settings" ? "settings" : "evals", c: r.c, t: r.t }) });
     }
     if (tool === "grades") t.api.setLinks(await docLinks(r.c, r.t));
   } catch (e) { console.warn("[Lectern] cross-link:", e); }

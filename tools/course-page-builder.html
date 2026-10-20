@@ -820,6 +820,10 @@ const S = {
   gevname: "font-size: 15px; font-weight: 600; color: #1f2329; margin: 0;",
   gevwhen: "font-size: 12.5px; font-weight: 500; color: #7a7f87; margin: 2px 0 8px 0;",
   gevnone: "font-size: 12.5px; color: #a3a7ae; margin: 0 0 6px 0;",
+  // Request Accommodation (Grades says which evaluations take requests): opens Lectern's request form.
+  req: "display: inline-block; padding: 5px 12px; background-color: #ffffff; color: #1f2329; border: 1px dashed #a67c00; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",
+  reqby: "display: block; font-size: 12px; color: #7a7f87; margin: 0 0 6px 0;",
+  reqoff: "display: block; font-size: 12.5px; color: #7a7f87; margin: 0 0 6px 0;",
   // The marking scheme, from the gradebook
   tmem: "padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;",
   tmemd: "padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;",
@@ -928,6 +932,27 @@ function evalsByWeek(sec) {
   out.forEach(l => l.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)));
   return out;
 }
+// An evaluation's accommodation, for students: the standard one, and a Request Accommodation button when
+// they can ask (until the deadline, if there is one; the page's script swaps the button for a note once it
+// has passed, and the form itself says so too).
+const reqDeadline = a => (a && a.by ? `${a.by}T${a.byTime || "23:59"}` : "");
+function reqByText(a) {
+  const d = new Date(reqDeadline(a)); if (isNaN(d)) return "";
+  return `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" })}, ${a.byTime || "23:59"}`;
+}
+function requestHTML(e, inTable) {
+  const a = e.accom, rq = model.scheme && model.scheme.requests;
+  if (!a || !(a.approval || a.alternate) || !rq || !rq.url) return "";
+  const q = new URLSearchParams({ r: rq.repo, o: rq.offering, e: e.id });
+  const by = reqDeadline(a), passed = by && new Date(by) < new Date();
+  if (passed) return `<span class="cpb-req-off" style="${S.reqoff}">The deadline for accommodation requests has passed.</span>`;
+  return `${inTable ? "<br>" : ""}<a class="cpb-req" data-by="${esc(by)}" href="${esc(`${rq.url}?${q}`)}" target="_blank" rel="noopener" style="${S.req}${inTable ? " margin-top: 6px;" : ""}">Request Accommodation</a>${by ? `<span class="cpb-req-by" style="${S.reqby}">Request by ${esc(reqByText(a))}</span>` : ""}`;
+}
+// For the marking scheme's Notes: what the standard accommodation is.
+function accomNote(e) {
+  const a = e.accom; if (!a || !a.standard) return "";
+  return `Standard accommodation: ${a.standard}${a.approval ? " (request it)." : "."}`;
+}
 const pillName = e => String(e.name || "").split(":")[0].trim() || e.short;
 const sameName = (d, evs) => evs.some(e => pillName(e).toLowerCase() === String(d).trim().toLowerCase());
 const weekEvals = p => { const m = /^(sections\.\d+)\.weeks\.(\d+)$/.exec(p); return m ? evalsByWeek(getP(model, m[1])).get(Number(m[2])) || [] : []; };
@@ -942,8 +967,8 @@ function schemeBody(s, p) {
   sc.units.forEach(u => {
     if (u.kind === "group") {
       rows.push(`<tr class="cpb-srow"><td style="${S.tdb}">${esc(u.name)}</td><td style="${S.ttd}">${fmtNum2(u.weight)}%</td><td style="${S.ttd}"></td><td style="${S.ttd}">${esc(`The best ${u.keep} of ${u.count} count, ${fmtNum2(u.weight / Math.max(1, u.keep))}% each.`)}</td></tr>`);
-      u.members.forEach(m => rows.push(`<tr class="cpb-srow"><td style="${S.tmem}">${esc(m.name)}</td><td style="${S.tmemd}"></td><td style="${S.tmemd}">${esc(whenText(m))}</td><td style="${S.tmemd}">${esc((m.notes || []).join(" "))}</td></tr>`));
-    } else rows.push(`<tr class="cpb-srow"><td style="${S.tdb}">${esc(u.name)}</td><td style="${S.ttd}">${fmtNum2(u.weight)}%</td><td style="${S.ttd}">${esc(whenText(u))}</td><td style="${S.ttd}">${esc((u.notes || []).join(" "))}</td></tr>`);
+      u.members.forEach(m => rows.push(`<tr class="cpb-srow"><td style="${S.tmem}">${esc(m.name)}</td><td style="${S.tmemd}"></td><td style="${S.tmemd}">${esc(whenText(m))}</td><td style="${S.tmemd}">${esc([...(m.notes || []), accomNote(m)].filter(Boolean).join(" "))}${requestHTML(m, true)}</td></tr>`));
+    } else rows.push(`<tr class="cpb-srow"><td style="${S.tdb}">${esc(u.name)}</td><td style="${S.ttd}">${fmtNum2(u.weight)}%</td><td style="${S.ttd}">${esc(whenText(u))}</td><td style="${S.ttd}">${esc([...(u.notes || []), accomNote(u)].filter(Boolean).join(" "))}${requestHTML(u, true)}</td></tr>`);
   });
   return `${note}
       <div style="${S.wide}">
@@ -1132,7 +1157,7 @@ function weekPageHTML(p) {
     <section class="e-subcard"><div class="e-lhead"><h2>Lectures</h2><span class="e-hours">${w.hours} hour${w.hours === 1 ? "" : "s"} this week</span></div>
             ${editRow(w, p)}</section>
     <section class="e-subcard"><div class="e-lhead"><h2>Evaluations</h2>${editGrades ? `<button type="button" class="c" data-act="edit-grades" title="Change the evaluations and their dates in the gradebook">${ICON_EDIT}Edit</button>` : ""}</div>
-      ${weekEvals(p).map(e => `<div class="e-gev${e.type === "test" ? " dk" : ""}"><div class="e-gev-h"><b>${esc(e.name)}</b><span>${esc(whenText(e, true))}</span></div>
+      ${weekEvals(p).map(e => `<div class="e-gev${e.type === "test" ? " dk" : ""}"><div class="e-gev-h"><b>${esc(e.name)}</b><span>${esc(whenText(e, true))}</span></div>${e.accom && (e.accom.approval || e.accom.alternate) ? `<p class="e-help">Students can request an accommodation${e.accom.by ? ` until ${esc(reqByText(e.accom))}` : ""}: the button shows on the page. Change it in the gradebook.</p>` : ""}
         ${(model.evalFiles[e.id] || []).map((f, j) => fileRow(`evalFiles.${e.id}`, j, f)).join("")}
         ${B("add", `evalFiles.${e.id}`, "+ Add File or Link", `Add a file or link for ${e.name}`, 'data-kind="file"', "add")}</div>`).join("")}
       ${w.deadlines.map((d, j) => `<div class="e-row2"><input type="text" data-bindv="${p}.deadlines.${j}" value="${esc(d)}" placeholder="e.g. Lab 3" aria-label="Deadline" autocomplete="off">${B("del", `${p}.deadlines`, svg("trash"), "Remove this deadline", `data-i="${j}" data-noun="deadline"`, "icon x")}</div>`).join("")}
@@ -1405,7 +1430,7 @@ function evalRow(w, underRow, gevs = []) {
   if (!ds.length && !gevs.length) return "";
   const cards = gevs.map(e => {
     const live = (model.evalFiles[e.id] || []).filter(f => f.url);
-    return `<div class="cpb-gev" data-ev="${esc(e.id)}" style="${e.type === "test" ? S.gevdk : S.gev}"><p style="${S.gevname}">${esc(e.name)}</p><p style="${S.gevwhen}">${esc(whenText(e, true))}</p>${live.map((f, k) => `<a class="cpb-btn" href="${esc(downloadLink(f.url))}" target="_blank" rel="noopener" style="${k ? S.btn2 : S.btn}">${esc(f.label || "Handout")}</a>`).join(" ")}</div>`;
+    return `<div class="cpb-gev" data-ev="${esc(e.id)}" style="${e.type === "test" ? S.gevdk : S.gev}"><p style="${S.gevname}">${esc(e.name)}</p><p style="${S.gevwhen}">${esc(whenText(e, true))}</p>${live.map((f, k) => `<a class="cpb-btn" href="${esc(downloadLink(f.url))}" target="_blank" rel="noopener" style="${k ? S.btn2 : S.btn}">${esc(f.label || "Handout")}</a>`).join(" ")}${requestHTML(e)}</div>`;
   }).join("");
   return `
         <div class="cpb-erow" style="${underRow ? S.erow : S.erow0}">${gevs.length ? "" : `<span style="${S.ecap}">Evaluations</span>`}${cards}${ds.map(d => `<span class="cpb-ev" style="${isMajor(d) ? S.evdk : S.ev}">${esc(d)}</span>`).join("")}</div>`;
@@ -2410,6 +2435,7 @@ const exportDoc = () => `<!doctype html>
 }
 
 a.cpb-btn:hover { background-color: var(--accent-bg, #fdf8e8) !important; border-color: var(--accent, #c99a06) !important; }
+a.cpb-req:hover { background-color: #fdf8e8 !important; border-style: solid !important; }
 /* ── Buttons: three kinds, the same in every part of Lectern ──────────
    Primary (black): the one main action where you are, e.g. Save, Done.
    Secondary (white with a grey outline, light yellow on hover): every other button, e.g. Edit, Duplicate, Build, Upload marks.
@@ -2445,6 +2471,17 @@ ${exportHTML()}<script>
     if (!sc || !fade) return;
     var upd = function () { fade.style.display = sc.scrollLeft + sc.clientWidth >= sc.scrollWidth - 4 ? "none" : ""; };
     sc.addEventListener("scroll", upd); window.addEventListener("resize", upd); upd();
+  });
+  /* Request Accommodation: once its deadline has passed, say so instead. */
+  document.querySelectorAll("a.cpb-req[data-by]").forEach(function (a) {
+    var by = a.getAttribute("data-by"), d = by ? new Date(by) : null;
+    if (!d || isNaN(d) || d > new Date()) return;
+    var note = document.createElement("span");
+    note.className = "cpb-req-off"; note.setAttribute("style", "${S.reqoff}");
+    note.textContent = "The deadline for accommodation requests has passed.";
+    var hint = a.nextElementSibling;
+    if (hint && hint.classList.contains("cpb-req-by")) hint.remove();
+    a.replaceWith(note);
   });
 })();
 <\/script>

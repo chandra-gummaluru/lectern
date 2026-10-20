@@ -2,7 +2,7 @@
 
 One web app for teaching a course: the **course page**, the **grades** and the **exams** of every course offering (a course in one term, like `csc258/f26`), in one place. It joins the Course Page Builder, the Grade Builder and the Exam Builder, and will live at **lectern.changapp.net**, served by a small Flask server laid out like Beamer+'s.
 
-Nothing but sign-in passes through the server. Course pages, grades and exams go straight from the browser to GitHub (or to a folder on your computer).
+Course pages, grades and exams go straight from the browser to GitHub (or to a folder on your computer). Only sign-in and accommodation requests pass through the server.
 
 ## Run it
 
@@ -35,6 +35,22 @@ Anyone else does the same from their side: they sign in with GitHub, and Lectern
 
 Then **Sign in with GitHub**, pick your private repository, and Lectern pairs it by name: `<name>-private` (private) goes with `<name>` (public), e.g. `courses-utor-private` and `courses-utor`. It offers to create the public one (public, with GitHub Pages on) if it doesn't exist.
 
+## Accommodation requests
+
+In **Evaluations**, each evaluation has an **Accommodations** section: the standard accommodation (free text), **Students must request it**, **Students can request an alternate accommodation**, and a **Request By** date and time. With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). Open the course page in Lectern and save it after changing these.
+
+The button opens a form on Lectern's server (`/request?r=<public repo>&o=<course>/<term>&e=<evaluation>`). The student gives their email, identifier, first and last name; all four must match the gradebook (so the class list needs an **Email** field: Settings → fields). Then they ask for the standard accommodation or describe an alternate one, and get a receipt by email. After the request-by time, the form and the course page say the deadline has passed.
+
+Requests go in the private repository, `csc258/f26/accommodations.json`. The offering's **Accommodations** page lists them; **Approve** or **Reject** (with an optional note) saves the decision under your GitHub sign-in and emails the student. A student who needs something else makes another request.
+
+Setting it up on the server (once):
+
+1. On the GitHub App's page, **Generate a private key**. Put the `.pem` beside `app.py` and set `LECTERN_GH_PRIVATE_KEY_FILE` to its path. Students never sign in: the server reads the class list and records requests as the app, in repositories it's installed on.
+2. Fill in the `LECTERN_SMTP_…` settings in `.env` (any SMTP login; for Gmail, an app password). Without them, decisions are still saved, but nothing is emailed (the server prints the messages instead).
+3. `pip install -r requirements.txt` (adds PyJWT).
+
+Optional: `LECTERN_TIMEZONE` (request deadlines; default `America/Toronto`), `LECTERN_BEHIND_PROXY=1` behind nginx (so the request limits count each student, not the proxy).
+
 ## Repositories
 
 | | Private (`<name>-private`, e.g. `courses-utor-private`) | Public (`<name>`, e.g. `courses-utor`, GitHub Pages) |
@@ -42,6 +58,7 @@ Then **Sign in with GitHub**, pick your private repository, and Lectern pairs it
 | Course page | | `csc258/f26/info.html` and its linked files |
 | Grades | `csc258/f26/grades.json` | |
 | Exams | `csc258/f26/<exam>/exam.json` and its `.tex` files | |
+| Accommodation requests | `csc258/f26/accommodations.json` | |
 
 A course offering is the same folder in both. Only the course page and its files are public; grades and exams never are.
 
@@ -54,9 +71,13 @@ server/
   paths.py              where things are
   pages.py              /: the splash and the app (one page)
   login.py              Sign in with GitHub: /api/github/config, /callback, /refresh
+  accommodations.py     accommodation requests: /request (the students' form), /api/accommodations/…
+  ghapp.py              the GitHub App acting as itself (students don't sign in)
+  mailer.py             email to students (SMTP)
   tools.py              the builders, split for sharing one page: /tools/<name>.css|.json|.js|.html
   scope_css.py          scopes a builder's CSS to its own element
 templates/index.html    the splash (modelled on beamer.changapp.net) and the app's frame
+templates/request.html  the students' accommodation request form (static/js/request.js, static/css/request.css)
 static/css/             splash.css (Beamer+'s tokens and layout), shell.css (top bar, path, Home)
 static/js/
   scope.js              runs each builder in its own scope (see below)

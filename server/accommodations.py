@@ -2,7 +2,8 @@
 
 An evaluation takes requests when its gradebook entry (grades.json) says so:
 
-  "accom": { "standard": "48-hour extension",   the standard accommodation (free text)
+  "accom": { "standard": "The makeup … counts for 12.5% …",   the standard accommodation: the evaluation's
+                                                              missed-work policy in words (Grades writes it on save)
              "approval": true,                   students must ask for it (an instructor approves)
              "alternate": true }                 students may ask for something else instead
 

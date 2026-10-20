@@ -31,7 +31,7 @@ def book():
         s["f"] = {"email": f"{s['first'].lower()}.{s['last'].lower()}@mail.utoronto.ca"}
     # Lab 5's requests closed yesterday
     lab5 = next(e for e in b["evals"] if e["id"] == "l5")
-    lab5["accom"] = {"standard": "A 24-hour extension", "approval": True, "alternate": False, "by": "2026-01-02", "byTime": "17:00"}
+    lab5["accom"] = {"approval": False, "alternate": True, "by": "2026-01-02", "byTime": "17:00"}
     return b
 
 
@@ -81,18 +81,29 @@ def main():
         G = "[data-lt-tool='grades'] "
         page.goto(BASE + "#/csc258/f26/evaluations"); page.reload(); page.wait_for_timeout(2500)
         page.click(G + ".erow:has(h3:text-is('Midterm'))"); page.wait_for_timeout(700)
-        assert page.is_disabled(G + "input[data-acm='approval']"), "must-request needs the text first"
-        page.fill(G + "input[data-acm='standard']", "Write it the next day, 6 pm"); page.wait_for_timeout(300)
-        assert not page.is_disabled(G + "input[data-acm='approval']")
+        # Its standard accommodation is its missed-work policy (a makeup, and weight moved to the final)
+        print("standard:", page.inner_text(G + ".ed-sec:text('Accommodations') + .ed-help"))
         page.check(G + "input[data-acm='approval']"); page.wait_for_timeout(300)
         page.check(G + "input[data-acm='alternate']"); page.wait_for_timeout(300)
-        page.fill(G + "input[data-acm='by']", "2026-10-26"); page.fill(G + "input[data-acm='byTime']", "17:00"); page.wait_for_timeout(300)
+        # The deadline, with the same calendar as the evaluation's date
+        page.click(G + "[data-ed='acm-when']"); page.wait_for_timeout(300)
+        page.click("[data-day='2026-10-26']"); page.wait_for_timeout(200)
+        page.fill("#wp-t", "5pm"); page.wait_for_timeout(200); page.screenshot(path=f"{OUT}/acc-01b-calendar.png"); page.press("#wp-t", "Enter"); page.wait_for_timeout(400)
+        print("deadline button:", page.inner_text(G + "[data-ed='acm-when']"))
+        # Lab 1 (in a group): nothing to request as standard
+        page.click("#lt-path button:has-text('Evaluations')"); page.wait_for_timeout(500)
+        page.click(G + ".erow:has(h3:text-is('Lab 1'))"); page.wait_for_timeout(500)
+        assert page.is_disabled(G + "input[data-acm='approval']")
+        print("lab 1:", page.inner_text(G + ".ed-sec:text('Accommodations') + .ed-help"))
+        page.click("#lt-path button:has-text('Evaluations')"); page.wait_for_timeout(500)
+        page.click(G + ".erow:has(h3:text-is('Midterm'))"); page.wait_for_timeout(600)
         page.locator(G + ".ed-sec:text('Accommodations')").scroll_into_view_if_needed(); shot(page, "acc-01-grades")
         page.keyboard.press("Control+s"); page.wait_for_timeout(2000)
         saved = json.loads(gh.repos[PRIV].commits[gh.repos[PRIV].head]["files"]["csc258/f26/grades.json"])
         mt = next(e for e in saved["evals"] if e["id"] == "mt")
         print("saved accom:", mt.get("accom"))
-        assert mt["accom"] == {"standard": "Write it the next day, 6 pm", "approval": True, "alternate": True, "by": "2026-10-26", "byTime": "17:00"}
+        assert mt["accom"] == {"approval": True, "alternate": True, "by": "2026-10-26", "byTime": "17:00",
+                               "standard": "The makeup Midterm makeup counts for 12.5% and 12.5% moves to Final Exam."}
 
         # 2. The course page: a Request Accommodation button (for the Midterm), and Lab 5's deadline passed
         page.evaluate("location.hash = '#/csc258/f26/course'"); page.wait_for_timeout(3500)

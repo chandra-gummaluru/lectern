@@ -37,7 +37,7 @@ Then **Sign in with GitHub**, pick your private repository, and Lectern pairs it
 
 ## Accommodation requests
 
-In **Evaluations**, each evaluation has an **Accommodations** section: the standard accommodation (free text), **Students must request it**, **Students can request an alternate accommodation**, and a **Request By** date and time. With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). Open the course page in Lectern and save it after changing these.
+In **Evaluations**, each evaluation has an **Accommodations** section. Its standard accommodation is its own policy for missed work (its makeups, and where its weight moves), so there's nothing to type. Choose **Students must request the standard accommodation** (it then applies only once you approve), **Students can request an alternate accommodation**, and a **Request By** date and time (the same calendar as the evaluation's date). With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). Open the course page in Lectern and save it after changing these.
 
 The button opens a form on Lectern's server (`/request?r=<public repo>&o=<course>/<term>&e=<evaluation>`). The student gives their email, identifier, first and last name; all four must match the gradebook (so the class list needs an **Email** field: Settings → fields). Then they ask for the standard accommodation or describe an alternate one, and get a receipt by email. After the request-by time, the form and the course page say the deadline has passed.
 

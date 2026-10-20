@@ -948,10 +948,10 @@ function requestHTML(e, inTable) {
   if (passed) return `<span class="cpb-req-off" style="${S.reqoff}">The deadline for accommodation requests has passed.</span>`;
   return `${inTable ? "<br>" : ""}<a class="cpb-req" data-by="${esc(by)}" href="${esc(`${rq.url}?${q}`)}" target="_blank" rel="noopener" style="${S.req}${inTable ? " margin-top: 6px;" : ""}">Request Accommodation</a>${by ? `<span class="cpb-req-by" style="${S.reqby}">Request by ${esc(reqByText(a))}</span>` : ""}`;
 }
-// For the marking scheme's Notes: what the standard accommodation is.
+// For the marking scheme's Notes: when the policy for missing it (the standard accommodation) only applies on request.
 function accomNote(e) {
-  const a = e.accom; if (!a || !a.standard) return "";
-  return `Standard accommodation: ${a.standard}${a.approval ? " (request it)." : "."}`;
+  const a = e.accom; if (!a || !a.standard || !a.approval) return "";
+  return "This applies only if you request it and it's approved.";
 }
 const pillName = e => String(e.name || "").split(":")[0].trim() || e.short;
 const sameName = (d, evs) => evs.some(e => pillName(e).toLowerCase() === String(d).trim().toLowerCase());

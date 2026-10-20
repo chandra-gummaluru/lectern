@@ -92,7 +92,7 @@ One web app at **lectern.changapp.net** that merges the Course Page Builder, Gra
 - First step: the Lectern shell (server, splash, Home, pinned navigation path), then the build order in section 11.
 
 ## 14. Accommodation requests (Oct 20 2026)
-- Grades → each evaluation: standard accommodation (free text), "students must request it", "students can request an alternate accommodation", request-by date and time (deadline in `LECTERN_TIMEZONE`, default America/Toronto).
+- Grades → each evaluation: the standard accommodation is its missed-work policy (makeups / weight moved; written out as `accom.standard` on save, for the form and emails; none when it counts as zero or is in a group), "students must request it", "students can request an alternate accommodation", request-by date and time with the evaluations' calendar (deadline in `LECTERN_TIMEZONE`, default America/Toronto).
 - Course page: Request Accommodation button (week card and marking scheme) when either request is on; after the deadline, "The deadline for accommodation requests has passed" (the page's script, and the form itself).
 - The button opens Lectern's own form (`/request`), so it works in Canvas too. Endpoints: `GET /api/accommodations/evaluation`, `POST …/verify`, `POST …/submit` (CORS open), `POST …/decide` (instructor's GitHub token).
 - Students are matched on email + identifier + first + last name, all against the gradebook (Email field required; dropped students excluded). Rate-limited per address.

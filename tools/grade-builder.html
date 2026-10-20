@@ -781,14 +781,13 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ed-sec { margin: 22px 0 4px; padding-top: 16px; border-top: 1px solid var(--line); font: 600 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
 .ed-help { margin: 0 0 10px; font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
 /* an evaluation's accommodations */
-.ed-grid.acm { grid-template-columns: 1fr; margin: 4px 0 10px; }
-.ed-grid.acm-by { grid-template-columns: 190px 160px; margin: 12px 0 8px; }
+.ed-grid.acm-by { grid-template-columns: minmax(0, 320px); margin: 12px 0 8px; }
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
 .acm-tick input { grid-row: span 2; align-self: start; margin-top: 2px; }
 .acm-tick b { font-weight: 600; }
 .acm-tick span { grid-column: 2; font-size: 13px; color: var(--ink-3); }
 .acm-tick.off { cursor: default; } .acm-tick.off b { color: var(--ink-3); }
-@media (max-width: 640px) { .ed-grid.acm-by { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 640px) { .ed-grid.acm-by { grid-template-columns: 1fr; } }
 .ed-mk { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
 .ed-mk > svg { flex: none; width: 16px; height: 16px; color: var(--ink-3); }
 .ed-mk input[type=text] { flex: 1; } .ed-mk input.sm { flex: 0 0 90px; }
@@ -2892,29 +2891,48 @@ function drawEvalEditor() {
     ${accomHTML(e)}
 `;
 }
-// Accommodations: the standard one (free text), whether students must ask for it, whether they can ask
-// for something else, and until when. With either kind of request, the course page shows a Request
-// Accommodation button; requests come to the course's Accommodations page in Lectern.
-const accomOf = e => Object.assign({ standard: "", approval: false, alternate: false, by: "", byTime: "" }, e.accom || {});
+// Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
+// where its weight moves. It can apply only to students who ask (and you approve); students can also ask for
+// something else (an alternate accommodation); and requests can close at a date and time. With either kind of
+// request, the course page shows a Request Accommodation button; requests come to the course's
+// Accommodations page in Lectern. accom.standard is the policy in words, kept up to date (syncAccom) for the
+// request form and its emails.
+const accomOf = e => Object.assign({ approval: false, alternate: false, by: "", byTime: "" }, e.accom || {});
+function standardText(e) {
+  if (!e || e.makeupFor || groupOf(e) || !e.missed || e.missed.mode !== "reweight") return "";
+  const w = num(e.weight), parts = shareParts(e.missed, e), pc = f => `${fmtNum(Math.round(w * f * 100) / 100)}%`;
+  const bits = [...parts.mk.map(x => `the makeup ${evalById(x.id).name} counts for ${pc(x.f)}`), ...parts.to.map(x => `${pc(x.f)} moves to ${evalById(x.id).name}`)];
+  if (!bits.length) return "";
+  const rest = 1 - Math.min(1, parts.total), t = (bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0]) + (rest > 1e-9 ? `; ${pc(rest)} counts as zero` : "") + ".";
+  return t[0].toUpperCase() + t.slice(1);
+}
+function syncAccom(m = model) {   // before saving, and before Lectern reads the gradebook
+  (m.evals || []).forEach(e => {
+    if (!e.accom) return;
+    const std = standardText(e);
+    e.accom.standard = std;
+    if (!std) e.accom.approval = false;
+    if (!e.accom.approval && !e.accom.alternate && !e.accom.by && !e.accom.byTime) delete e.accom;
+  });
+}
 function accomHTML(e) {
-  const a = accomOf(e), asks = (a.approval && a.standard.trim()) || a.alternate;
+  const a = accomOf(e), std = standardText(e), asks = (a.approval && std) || a.alternate;
   return `<h3 class="ed-sec">Accommodations</h3>
-    <p class="ed-help">What a student can have if they need it. ${asks ? "Students ask with the <b>Request Accommodation</b> button on the course page; their requests come to this course's Accommodations page in Lectern." : "Let students ask, and the course page shows a <b>Request Accommodation</b> button for it."}</p>
-    <div class="ed-grid acm"><label class="pf"><span>Standard Accommodation</span><input type="text" data-acm="standard" value="${esc(a.standard)}" placeholder="e.g. A 48-hour extension, or writing it the next day" autocomplete="off"></label></div>
-    ${approvalTick(e)}
+    <p class="ed-help">${std ? `The standard accommodation is the policy above: ${esc(std)}` : e.makeupFor ? "A makeup has no standard accommodation of its own." : groupOf(e) ? `No standard accommodation: missing it counts as zero, and ${esc(groupOf(e).name)} doesn't count the lowest.` : "No standard accommodation yet: missing it counts as zero. Choose a makeup, or shift its weight, above."}</p>
+    <label class="acm-tick${std ? "" : " off"}"><input type="checkbox" data-acm="approval"${a.approval && std ? " checked" : ""}${std ? "" : " disabled"}><b>Students must request the standard accommodation</b><span>${std ? "It applies once you approve their request. Unticked, it applies to anyone who misses it, without asking." : "There's no standard accommodation to request."}</span></label>
     <label class="acm-tick"><input type="checkbox" data-acm="alternate"${a.alternate ? " checked" : ""}><b>Students can request an alternate accommodation</b><span>They say what they need; you approve or reject it.</span></label>
-    ${asks ? `<div class="ed-grid acm-by"><label class="pf"><span>Request By</span><input type="date" data-acm="by" value="${esc(a.by)}"></label><label class="pf"><span>Time <small>(blank: end of day)</small></span><input type="time" data-acm="byTime" value="${esc(a.byTime)}"></label></div>
-    <p class="ed-help" id="acm-by-help">${byHelp(a)}</p>` : ""}`;
+    ${asks ? `<div class="ed-grid acm-by"><div class="pf"><span>Request By</span><button type="button" class="when-btn${a.by ? "" : " empty"}" data-ed="acm-when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(acmWhen(e)))}</span></button></div></div>
+    <p class="ed-help">${a.by ? "After this, the course page and the request form say the deadline has passed." : "No deadline: requests stay open."} Students ask with the <b>Request Accommodation</b> button on the course page; requests come to this course's Accommodations page in Lectern.</p>` : ""}`;
 }
-const byHelp = a => (a.by ? "After this, the course page says the deadline for requests has passed." : "No deadline: requests stay open. Set one, and after it the course page says the deadline has passed.");
-function approvalTick(e) {
-  const a = accomOf(e), has = !!a.standard.trim();
-  return `<label class="acm-tick${has ? "" : " off"}" data-k="approval"><input type="checkbox" data-acm="approval"${a.approval && has ? " checked" : ""}${has ? "" : " disabled"}><b>Students must request it</b><span>${has ? "You approve each request. Unticked, it applies to anyone who needs it, without asking." : "Describe the standard accommodation first."}</span></label>`;
-}
+// The request deadline, shaped like an evaluation's date and time, for the same calendar (openWhen).
+const acmWhen = e => ({
+  type: "deadline",
+  get date() { return accomOf(e).by; }, set date(v) { setAccom(e, "by", v); },
+  get time() { return accomOf(e).byTime; }, set time(v) { setAccom(e, "byTime", v); },
+});
 function setAccom(e, k, v) {
   const a = accomOf(e); a[k] = v;
-  if (!a.standard.trim()) a.approval = false;
-  if (!a.standard.trim() && !a.alternate && !a.by && !a.byTime) delete e.accom; else e.accom = a;
+  if (!a.approval && !a.alternate && !a.by && !a.byTime) delete e.accom; else e.accom = a;
 }
 // How the name comes about, under the label and title.
 function nameHelp(e) {
@@ -2976,15 +2994,6 @@ document.addEventListener("input", ev => {
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.type === "checkbox") return;   // ticks are handled on "change"
   if (t.dataset.ed === "nt-text") return;   // a note being written: added with Add note
-  if (t.dataset.acm) {   // an accommodation's text, or its deadline
-    const e = evalById(m.dataset.eval); if (!e) return; noteTyping();
-    setAccom(e, t.dataset.acm, t.value);
-    unsaved = true; refreshSoon();
-    const tick = $(".acm-tick[data-k='approval']", m);   // "must request it" needs the text: it follows as you type
-    if (t.dataset.acm === "standard" && tick && tick.classList.contains("off") === !!t.value.trim()) tick.outerHTML = approvalTick(e);
-    const h = $("#acm-by-help", m); if (h) h.textContent = byHelp(accomOf(e));
-    return;
-  }
   if (t.dataset.ed === "gacc-weight") { const g = model.groups.find(x => x.id === m.dataset.acc.slice(2)); noteTyping(); setGroupOverride(m.dataset.student, g, { weight: t.value === "" ? null : num(t.value) }); unsaved = true; refreshSoon(); return; }
   if (t.dataset.ed === "share" || t.dataset.ed === "acc-share") {   // a makeup's or a shift's part, typed in % of the course
     const acc = t.dataset.ed === "acc-share", e = evalById(acc ? m.dataset.acc : m.dataset.eval); noteTyping();
@@ -3070,6 +3079,7 @@ document.addEventListener("click", ev => {
     if (e.type === "test" && e.time === "23:59") e.time = "";
   });
   if (a === "when") return openWhen(b, e);
+  if (a === "acm-when") return openWhen(b, acmWhen(e));
   if (a === "nt-add" || a === "nt-del") {   // the student's notes: add one (dated now), or delete one
     const s = model.students.find(x => x.num === m.dataset.student), ns = noteList(s.notes);
     if (a === "nt-add") { const ta = $('[data-ed="nt-text"]', m), v = ta.value.trim(); if (!v) return ta.focus(); ns.push({ at: noteStamp(), text: v }); }
@@ -3133,6 +3143,8 @@ function uniqueShort(base) { let s = base, k = 2; while (model.evals.some(x => S
 // ── Date and time: one button; a calendar, and a time (or none) ─────────
 const fmtTime = t => t || "";   // 24-hour, as stored: 18:10
 function whenLabel(e) {
+  if (e.type === "deadline" && !e.date) return "No deadline";
+  if (e.type === "deadline") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "end of day"}`; }
   if (!e.date) return e.type === "test" ? "Choose a date" : "Choose a due date";
   const d = new Date(`${e.date}T12:00`); if (isNaN(d)) return e.date;
   return `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time ? fmtTime(e.time) : "no time"}`;
@@ -3158,7 +3170,7 @@ function openWhen(btn, e) {
     for (let k = 0; k < 42; k++) { const d = new Date(start); d.setDate(start.getDate() + k); days.push(d); }
     pop.innerHTML = `<div class="wp-head"><button type="button" data-w="prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><b>${first.toLocaleDateString("en-CA", { month: "long", year: "numeric" })}</b><button type="button" data-w="next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div>
       <div class="wp-days">${["S", "M", "T", "W", "T", "F", "S"].map(x => `<i>${x}</i>`).join("")}${days.map(d => `<button type="button" data-day="${iso(d)}" class="${d.getMonth() !== first.getMonth() ? "out" : ""}${iso(d) === today ? " today" : ""}${iso(d) === e.date ? " on" : ""}">${d.getDate()}</button>`).join("")}</div>
-      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" ? "Starts At" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="No time" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="No date and no time">Clear</button></div></div>`;
+      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" ? "Starts At" : e.type === "deadline" ? "By" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
   };
   popover(btn, "", pop => {
     pop._onClose = () => render();   // the list, the name and the course page follow
@@ -3837,7 +3849,7 @@ async function openBook(path, has, m, c, t) {
 const termName = t => { const m = /^([wsf])(\d{2})$/i.exec(t); return m ? `${{ w: "Winter", s: "Summer", f: "Fall" }[m[1].toLowerCase()]} 20${m[2]}` : t; };
 
 // ── Save to GitHub: one commit with grades.json ──────────────────────
-const bookJSON = () => JSON.stringify(model, null, 2) + "\n";
+const bookJSON = () => { syncAccom(); return JSON.stringify(model, null, 2) + "\n"; };
 async function doSave(m, path, message, overwrite) {
   const ok = $("#pl-ok", m), err = $("#pl-err", m);
   ok.disabled = true; ok.textContent = "Saving…"; err.className = "err"; err.textContent = "";
@@ -4153,7 +4165,7 @@ if (lectern) {
       }
       render();
     },
-    book: () => JSON.parse(JSON.stringify(model)),
+    book: () => { const b = JSON.parse(JSON.stringify(model)); syncAccom(b); return b; },
     // Open on one of its pages (e.g. "evals", from the course page's Edit in Grades).
     view(v) { if (["evals", "students", "stats", "grades", "settings"].includes(v)) { ui.view = v; ui.evalEd = ui.groupEd = ui.student = ""; ui.cell = null; render(); } },
   });

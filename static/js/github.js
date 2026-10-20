@@ -112,6 +112,7 @@ export async function api(path, opts = {}, retried = false) {
   let res;
   try {
     res = await fetch(`https://api.github.com${path}`, {
+      cache: "no-store",   // always the latest: GitHub lets browsers reuse answers for 60s, which made a save right after another one see the old branch
       ...opts,
       headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${tok.access_token}`, "X-GitHub-Api-Version": "2022-11-28", ...(opts.body ? { "Content-Type": "application/json" } : {}) },
     });

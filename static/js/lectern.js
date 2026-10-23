@@ -1,6 +1,6 @@
 /* ============================================================
-   Lectern — the shell: splash, sign-in / folder, Home, a course
-   offering's page, the pinned path, and opening the builders.
+   Lectern — the shell: splash and sign-in, Home, a course
+   offering's page, your account, the pinned path, and opening the builders.
 
    Routes (in the address, so Back and reload work):
      #/                    Home: every course offering
@@ -8,10 +8,14 @@
      #/csc258/f26/course   the Course Page Builder on csc258/f26/info.html (public repo)
      #/csc258/f26/grades   the Grade Builder on csc258/f26/grades.json (private repo)
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
+     #/account             your account: password, two-factor sign-in, sessions
+     #/admin               (admins) invitations and accounts
+   Everything is kept on Lectern's server, in your account's two areas: "pub" (course pages, published
+   at /p/<handle>/…) and "priv" (grades, exams). See store.js and server/store.py.
    ============================================================ */
-import * as GH from "./github.js";
-import * as FS from "./folder.js";
-import { makeLocalGitHub } from "./localgh.js";
+import * as Auth from "./auth.js";
+import * as Store from "./store.js";
+import { accountPage, adminPage } from "./account.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -39,7 +43,7 @@ const ICON = {
   gear: svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', 1.6),
   warn: svgI('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
   accom: svgI('<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>', 1.8),
-  gh: '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>',
+  user: svgI('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', 1.8),
 };
 const TOOLS = {
   course: { title: "Course Page", file: "info.html", repo: "pub" },
@@ -49,25 +53,18 @@ const TOOLS = {
 
 // ── State ────────────────────────────────────────────────────────────
 const S = {
-  mode: null,          // "github" | "local"
-  user: null,          // GitHub: { login, avatar_url }
-  priv: null, pub: null,   // GitHub: the two repositories ({ full_name, default_branch, private })
-  folder: null,        // folder mode: { parent, priv, pub, site, name }
+  user: null,          // { id, email, name, handle, admin, twoFactor, recoveryLeft, site }
   offerings: null,     // "c/t" → { c, t, page, grades, exams: [] }
   listing: null, listError: null,
   route: { page: "home" },
   ready: false,
 };
-const REPOS_KEY = "lectern.repos", MODE_KEY = "lectern.mode";
-// The two repositories pair up by name: <name> is public (course pages), <name>-private is private
-// (grades and exams). e.g. courses-utor and courses-utor-private.
-const pubFor = priv => (/-private$/i.test(priv) ? priv.replace(/-private$/i, "") : "");
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (_) { return null; } },
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
 };
 
-const siteURL = () => (S.mode === "github" ? (S.pub ? GH.siteFor(S.pub.full_name) : "") : (S.folder && S.folder.site) || "");
+const siteURL = () => (S.user ? S.user.site : "");
 const liveURL = (c, t) => { const s = siteURL(); return s ? `${s}${encPath(`${c}/${t}/info.html`)}` : ""; };
 const offering = (c, t) => (S.offerings && S.offerings.get(`${c}/${t}`)) || { c, t, page: false, grades: false, exams: [] };
 
@@ -80,16 +77,16 @@ function toast(msg) {
   root.append(el);
   setTimeout(() => el.remove(), 4200);
 }
-function modal(html, onReady) {
+function modal(html, onReady, { sticky = false } = {}) {   // sticky: Escape and the backdrop don't close it
   const bg = document.createElement("div");
   bg.className = "lt-modal-bg";
   bg.innerHTML = `<div class="lt-modal" role="dialog" aria-modal="true">${html}</div>`;
   $("#lt-modal-root").append(bg);
   const m = bg.firstElementChild;
   const close = () => { bg.remove(); document.removeEventListener("keydown", onKey, true); };
-  const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); if (!sticky) close(); } };
   document.addEventListener("keydown", onKey, true);
-  bg.addEventListener("mousedown", e => { if (e.target === bg) close(); });
+  bg.addEventListener("mousedown", e => { if (e.target === bg && !sticky) close(); });
   onReady(m, close);
   const first = m.querySelector("input, select, .primary");
   if (first) first.focus();
@@ -103,34 +100,15 @@ function confirmBox(title, text, yes, no = "Cancel") {
 }
 
 // ── Splash ───────────────────────────────────────────────────────────
-function showSplash(msg = "", isError = false, reopen = null) {
+function showSplash(msg = "", isError = false) {
   document.documentElement.classList.remove("lt-has-session");
   document.body.className = "lt-on-splash";
   $("#app").hidden = true; $("#splash").hidden = false;
   document.title = $("title").dataset.splash || document.title;
   const st = $("#splash-status");
   st.className = `sp-hint${isError ? " is-error" : ""}`;
-  st.innerHTML = msg ? esc(msg) : "";
-  if (reopen) {
-    st.className = "sp-hint";
-    st.innerHTML = `Last time: the <b>${esc(reopen.name)}</b> folder. <button type="button" id="splash-reopen">Open it again</button>`;
-    $("#splash-reopen").onclick = async () => { if (await FS.reconnect(reopen)) startLocal(reopen); else splashSay("The browser didn't allow access to that folder.", true); };
-  }
+  st.textContent = msg || "";
 }
-const splashSay = (msg, isError) => { const st = $("#splash-status"); st.className = `sp-hint${isError ? " is-error" : ""}`; st.textContent = msg; };
-
-$("#splash-signin").onclick = async () => {
-  const b = $("#splash-signin"); b.disabled = true;
-  try { localStorage.removeItem("lectern.keep"); } catch (_) {}
-  try { await GH.startSignIn(); }
-  catch (e) { splashSay(e.message, true); b.disabled = false; }
-};
-$("#splash-folder").onclick = async () => {
-  if (!FS.supported) return splashSay("This browser can't open folders. Use Chrome or Edge, or sign in with GitHub.", true);
-  let h;
-  try { h = await FS.choose(); } catch (e) { return splashSay(e.message, true); }
-  if (h) startLocal(h);
-};
 
 // ── Starting a session ───────────────────────────────────────────────
 function showApp() {
@@ -138,56 +116,24 @@ function showApp() {
   $("#splash").hidden = true; $("#app").hidden = false;
 }
 
-async function startGitHub() {
-  S.mode = "github";
-  store.set(MODE_KEY, "github");
-  showApp();
-  pageHTML(`<div class="lt-loading">Connecting to GitHub…</div>`);
-  try { S.user = await GH.user(); }
-  catch (e) {
-    if (e.status === 401) { GH.signOut(); return showSplash(e.message || "Please sign in again.", true); }
-    return pageHTML(`<div class="lt-in"><p class="lt-note err">${esc(e.message)}</p><p style="margin-top:16px"><button type="button" class="lt-btn" onclick="location.reload()">Try again</button></p></div>`);
-  }
-  GH.schedule();
-  GH.onToken(() => connectAll());
-  const saved = store.get(REPOS_KEY);
-  if (saved && saved.priv) {
-    try {
-      S.priv = await GH.repo(saved.priv);
-      S.pub = saved.pub || pubFor(saved.priv) ? await GH.repo(saved.pub || pubFor(saved.priv)).catch(e => { if (e.status === 404) return null; throw e; }) : null;
-    } catch (e) { S.priv = null; S.pub = null; }
-  }
-  S.ready = true;
-  renderBar();
-  if (!S.priv || !S.pub) return setupPage();
-  listAll();
-  route();
-}
-
-async function startLocal(parent) {
-  let ps;
-  try { ps = await FS.pairs(parent); }
-  catch (_) { return showSplash("Couldn't read that folder. Try choosing it again.", true); }
-  if (!ps.length) return showSplash(`No course repository in “${parent.name}”. Choose the folder that holds your clone of it and its -private twin side by side, e.g. courses-utor and courses-utor-private.`, true);
-  let pair = ps[0];
-  const want = store.get("lectern.folder.pair");
-  if (ps.length > 1) {
-    pair = ps.find(p => want && p.priv === want) || await new Promise(res => modal(`<h2>Which repository?</h2><p>This folder holds more than one course repository.</p>
-      <div class="lt-form"><label>Repository<select id="lt-pair">${ps.map((p, k) => `<option value="${k}">${esc(p.pub)}</option>`).join("")}</select></label></div>
-      <div class="lt-modal-acts"><button type="button" class="lt-btn primary" data-ok>Open</button></div>`, (m, close) => { m.querySelector("[data-ok]").onclick = () => { close(); res(ps[Number(m.querySelector("#lt-pair").value)]); }; }));
-  }
-  store.set("lectern.folder.pair", pair.priv);
-  S.mode = "local";
-  store.set(MODE_KEY, "local");
-  S.folder = await FS.open(parent, pair);
-  Lectern.local = { [`local/${pair.priv}`]: makeLocalGitHub(S.folder.priv, `local/${pair.priv}`) };
+async function start(user, how) {
+  S.user = user;
   S.ready = true;
   showApp();
   renderBar();
   connectAll();
   listAll();
+  // A new account: straight to its page, to turn on two-factor sign-in.
+  if (how === "invite") { toast(`Welcome to Lectern, ${user.name.split(" ")[0]}. Next: turn on two-factor sign-in.`); return go({ page: "account" }); }
   route();
 }
+function signOut() {
+  Auth.signOut().finally(() => { try { sessionStorage.clear(); } catch (_) {} location.replace("/"); });
+}
+// Your session ended mid-work (too long idle, or signed out elsewhere): sign in again, in a window,
+// so nothing unsaved is lost; the call that noticed is then made again (auth.js, scope.js).
+Auth.setReauth(() => Auth.reauthWindow(modal, S.user ? S.user.email : "", signOut)());
+Lectern.reauth = Auth.reauth;
 
 // ── Listing every course offering ────────────────────────────────────
 function listAll() {
@@ -202,9 +148,8 @@ function listAll() {
     map.set(k, o);
   };
   S.listing = (async () => {
-    if (S.mode === "local") await FS.list(S.folder, add);
-    else {
-      const [pv, pb] = await Promise.all([GH.tree(S.priv.full_name, S.priv.default_branch), GH.tree(S.pub.full_name, S.pub.default_branch)]);
+    {
+      const [pv, pb] = await Promise.all([Store.tree(Store.PRIV), Store.tree(Store.PUB)]);
       pb.forEach(x => {
         const p = x.path.split("/");
         if (x.type === "tree" && p.length === 2) add(p[0], p[1], { folder: true });
@@ -241,11 +186,12 @@ function parseHash() {
     if (tool === "accommodations") return { page: "accom", c, t };
     return { page: "offering", c, t };
   }
+  if (p.length === 1 && (p[0] === "account" || (p[0] === "admin" && S.user && S.user.admin))) return { page: p[0] };
   return { page: "home" };
 }
 const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Settings" } };
 const partOf = view => view === "evals" ? "evals" : view === "settings" ? "settings" : "book";
-const hashFor = r => r.page === "home" ? "#/" : r.page === "offering" ? `#/${r.c}/${r.t}` : r.page === "accom" ? `#/${r.c}/${r.t}/accommodations` : r.tool === "exams" ? `#/${r.c}/${r.t}/exams/${r.e}`
+const hashFor = r => r.page === "home" ? "#/" : r.page === "account" || r.page === "admin" ? `#/${r.page}` : r.page === "offering" ? `#/${r.c}/${r.t}` : r.page === "accom" ? `#/${r.c}/${r.t}/accommodations` : r.tool === "exams" ? `#/${r.c}/${r.t}/exams/${r.e}`
   : r.tool === "grades" ? `#/${r.c}/${r.t}/${PARTS[r.part || "book"].slug}` : `#/${r.c}/${r.t}/${r.tool}`;
 const routeKey = r => hashFor(r);
 let pendingOpen = null;      // options for the next open (copy from, title), set by a button just before it navigates
@@ -262,7 +208,6 @@ async function route() {
   const r = parseHash(), my = ++seq, prevTool = S.route.page === "tool";
   S.route = r;
   closeMenu();
-  if (S.mode === "github" && (!S.priv || !S.pub)) return setupPage();
   if (r.page === "tool") return openTool(r, my);
   // Coming back from a builder: what's in the repositories may have changed (a save made a new file).
   if (prevTool) listAll();
@@ -270,7 +215,10 @@ async function route() {
   renderPage();
   window.scrollTo(0, scrolls[routeKey(r)] || 0);
 }
-window.addEventListener("hashchange", () => { stamp(); route(); });
+window.addEventListener("hashchange", () => {
+  if (/^#(invite|reset)=/.test(location.hash)) return location.reload();   // an invitation or reset link, pasted into this tab
+  stamp(); route();
+});
 
 // ── Back and Forward ─────────────────────────────────────────────────
 // Every page is a step in the browser's history: Lectern's own pages (by their address) and the pages
@@ -351,8 +299,7 @@ function renderBar() {
   const u = $("#lt-unsaved");
   if (u) u.onclick = () => go(routeForPath(un[0].name, un[0].path));
   const a = $("#lt-acct");
-  const who = S.mode === "github" && S.user ? `${S.user.avatar_url ? `<img src="${esc(S.user.avatar_url)}&s=44" alt="">` : ICON.gh}<span>${esc(S.user.login)}</span>`
-    : S.mode === "local" && S.folder ? `${ICON.folder}<span>${esc(S.folder.name)}</span>` : "";
+  const who = S.user ? `${ICON.user}<span>${esc(S.user.name || S.user.email)}</span>` : "";
   a.innerHTML = who ? who + CHEV : "";
   a.hidden = !who;
   if (saving) st.innerHTML = `<span class="lt-saving">${esc(savingText)}</span>`;
@@ -374,7 +321,7 @@ async function saveAll() {
   const un = unsavedTools().filter(u => Lectern.tools[u.name].api.save);
   if (saving || !un.length) return;
   saving = true;
-  const where = S.mode === "github" ? "on GitHub" : "in your folder";
+  const where = "elsewhere (another tab, or another computer)";
   const done = [], failed = [];
   try {
     for (let k = 0; k < un.length; k++) {
@@ -387,7 +334,7 @@ async function saveAll() {
       if (r.conflict) {
         const yes = await confirmBox("Changed elsewhere", `<code>${esc(u.path)}</code> changed ${where} since you opened it. Replace that version with yours? (Or skip it, and open it again to see the other changes.)`, "Replace it with mine", "Skip it");
         if (yes) { try { r = await api.save(msg, true); } catch (e) { r = { error: e.message }; } }
-        else { failed.push({ u, error: "Skipped: it changed " + where + "." }); continue; }
+        else { failed.push({ u, error: "Skipped: it changed elsewhere." }); continue; }
       }
       if (r.ok) done.push(u); else failed.push({ u, error: r.error || "Couldn't save." });
     }
@@ -398,7 +345,7 @@ async function saveAll() {
     ${done.length ? `<p>Saved ${esc(done.map(saveLabel).join(", "))}.</p>` : ""}
     <ul class="lt-fails">${failed.map(f => `<li><b>${esc(saveLabel(f.u))}</b>: ${esc(f.error)}</li>`).join("")}</ul>
     <div class="lt-modal-acts"><button type="button" class="lt-btn primary" data-ok>OK</button></div>`, (m, close) => { m.querySelector("[data-ok]").onclick = close; });
-  else if (done.length) toast(`Saved ${done.map(saveLabel).join(", ")}${S.mode === "github" ? " to GitHub" : ""}.`);
+  else if (done.length) toast(`Saved ${done.map(saveLabel).join(", ")}.`);
   if (done.length) {   // new files: Home and the course offering's page show them
     await listAll().catch(() => null);
     const r = S.route; if (r.page === "tool" && Lectern.tools[r.tool]) toolPath(Lectern.tools[r.tool]);
@@ -428,7 +375,7 @@ window.addEventListener("keydown", e => {
   saveAll();
 }, true);
 
-// The account menu: who's signed in, the repositories, sign out (or the folder).
+// The account menu: who's signed in, Save, your account, accounts (admins), sign out.
 let menuEl = null;
 function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; $("#lt-acct").setAttribute("aria-expanded", "false"); } }
 $("#lt-acct").onclick = e => {
@@ -436,14 +383,11 @@ $("#lt-acct").onclick = e => {
   if (menuEl) return closeMenu();
   menuEl = document.createElement("div");
   menuEl.className = "lt-menu"; menuEl.setAttribute("role", "menu");
-  menuEl.innerHTML = S.mode === "github"
-    ? `<p>Signed in to GitHub as <b>${esc(S.user && S.user.login)}</b>.</p><hr>
+  menuEl.innerHTML = `<p>Signed in as <b>${esc(S.user && (S.user.name || S.user.email))}</b><br><span class="lt-menu-sub">${esc(S.user && S.user.email)}</span></p><hr>
        <button type="button" role="menuitem" data-m="save" class="lt-menu-save"></button><hr>
-       <button type="button" role="menuitem" data-m="out">Sign out</button>`
-    : `<p>Working from the folder <b>${esc(S.folder.name)}</b>: <b>${esc(S.folder.pair.pub)}</b>.</p><hr>
-       <button type="button" role="menuitem" data-m="save" class="lt-menu-save"></button><hr>
-       <button type="button" role="menuitem" data-m="folder">Choose another folder…</button>
-       <button type="button" role="menuitem" data-m="close">Close the folder</button>`;
+       <button type="button" role="menuitem" data-m="account">Your account</button>
+       ${S.user && S.user.admin ? `<button type="button" role="menuitem" data-m="admin">Accounts and invitations</button>` : ""}
+       <button type="button" role="menuitem" data-m="out">Sign out</button>`;
   $("#lt-acct").after(menuEl);
   drawMenuSave();
   $("#lt-acct").setAttribute("aria-expanded", "true");
@@ -451,9 +395,14 @@ $("#lt-acct").onclick = e => {
     const m = ev.target.closest("[data-m]"); if (!m || m.disabled) return;
     closeMenu();
     if (m.dataset.m === "save") saveAll();
-    if (m.dataset.m === "out") { GH.signOut(); store.set(MODE_KEY, null); location.replace("/"); }
-    if (m.dataset.m === "folder") { const h = await FS.choose().catch(() => null); if (h) { store.set("lectern.folder.pair", null); location.hash = "#/"; startLocal(h); } }
-    if (m.dataset.m === "close") { await FS.forget(); store.set(MODE_KEY, null); location.replace("/"); }
+    if (m.dataset.m === "account") go({ page: "account" });
+    if (m.dataset.m === "admin") go({ page: "admin" });
+    if (m.dataset.m === "out") {
+      const un = unsavedTools();
+      if (un.length && !await confirmBox("Not saved", `${esc(un.map(saveLabel).join(", "))} ${un.length === 1 ? "has" : "have"} changes that aren't saved. Sign out and lose them?`, "Sign out", "Cancel")) return;
+      Lectern.leaving = true;
+      signOut();
+    }
   };
 };
 // The menu's Save: what it would save, or that everything is saved.
@@ -484,7 +433,7 @@ function renderPath(steps) {
   document.title = tail.length ? `${tail.slice(-2).join(" · ")} · Lectern` : "Lectern";
 }
 // The path starts at the repository (Home: all its courses).
-const HOME_STEP = { get label() { return S.mode === "github" ? (S.pub ? S.pub.full_name : "Home") : S.folder ? `${S.folder.name}/${S.folder.pair.pub}` : "Home"; }, go: () => go({ page: "home" }) };
+const HOME_STEP = { label: "Home", go: () => go({ page: "home" }) };
 const offeringStep = (c, t) => ({ label: `${c} / ${t}`, go: () => go({ page: "offering", c, t }) });
 
 // ── Lectern's own pages ──────────────────────────────────────────────
@@ -495,23 +444,14 @@ function renderPage() {
   if (r.page === "home") { renderPath([{ label: HOME_STEP.label }]); return homePage(); }
   if (r.page === "offering") { renderPath([HOME_STEP, { label: `${r.c} / ${r.t}` }]); return offeringPage(r.c, r.t); }
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
+  const ctx = { S, pageHTML, modal, toast, setUser: u => { S.user = u; renderBar(); } };
+  if (r.page === "account") { renderPath([HOME_STEP, { label: "Your Account" }]); return accountPage(ctx); }
+  if (r.page === "admin") { renderPath([HOME_STEP, { label: "Accounts" }]); return adminPage(ctx); }
 }
 
 function sourceBar() {
-  if (S.mode === "github") return `<div class="lt-src">${ICON.gh}<div><b><code>${esc(S.pub.full_name)}</code></b>
-      <span>Course pages publish to <code>${esc(siteURL())}</code>.</span></div>
-      <button type="button" class="lt-btn" id="lt-change">Change</button></div>`;
-  return `<div class="lt-src">${ICON.folder}<div><b><code>${esc(S.folder.name)}/${esc(S.folder.pair.pub)}</code></b>
-    <span>On this computer. ${S.folder.site ? `Course pages link to <code>${esc(S.folder.site)}</code>.` : "No GitHub remote, so course pages use relative links."} Commit and push with git as usual.</span></div>
-    <button type="button" class="lt-btn" id="lt-change">Change</button></div>`;
-}
-function wireSource() {
-  const b = $("#lt-change"); if (!b) return;
-  b.onclick = async () => {
-    if (S.mode === "github") return setupPage(true);
-    const h = await FS.choose().catch(() => null);
-    if (h) { store.set("lectern.folder.pair", null); startLocal(h); }
-  };
+  return `<div class="lt-src">${ICON.globe}<div><b>Your course pages are public at <a href="${esc(siteURL())}" target="_blank" rel="noopener"><code>${esc(siteURL())}</code></a></b>
+      <span>Grades, exams and accommodation requests are private: only you see them.</span></div></div>`;
 }
 
 let homeFilter = (() => { try { return JSON.parse(localStorage.getItem("lectern.home.filter")) || {}; } catch (_) { return {}; } })();
@@ -531,7 +471,6 @@ function homePage() {
       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
     <div id="lt-list"></div>
   </div>`);
-  wireSource();
   $("#lt-new").onclick = newOfferingDialog;
   $("#lt-page").querySelectorAll(".lt-filter").forEach(x => { x.onchange = () => { homeFilter[x.dataset.f] = x.value; try { localStorage.setItem("lectern.home.filter", JSON.stringify(homeFilter)); } catch (_) {} homePage(); }; });
   const list = $("#lt-list");
@@ -551,7 +490,7 @@ function homePage() {
         <p class="lt-sub">${esc(termName(o.t))}</p></div>
         <span class="lt-term" aria-hidden="true">${esc(o.t)}</span>
       </div>
-      <div class="lt-foot">${live(o) ? `<span>${S.mode === "github" ? "On GitHub Pages" : ""}</span><a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : `<span>No course page yet</span>`}</div>
+      <div class="lt-foot">${live(o) ? `<span>Published</span><a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : `<span>No course page yet</span>`}</div>
     </div>`).join("")}</div>${rest.length ? `
     <div class="lt-olist">${rest.map((o, j) => `<div class="lt-orow go" role="link" tabindex="0" data-k="${j + 3}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
       <span class="lt-orow-t">${esc(o.t)}</span><b>${esc(o.c.toUpperCase())}</b><span class="lt-orow-n">${esc(termName(o.t))}</span>
@@ -605,7 +544,7 @@ function offeringPage(c, t) {
       <div class="lt-off-acts"><button type="button" class="lt-btn" data-part="settings"${!o.grades && loading ? " disabled" : ""} title="The course's settings: student fields, and the rules for course grades (ranges, rounding, automatic fail)">${ICON.gear}Settings</button><button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button></div>
     </div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
-    ${S.listError ? `<p class="lt-note err">Couldn't read your repository. ${esc(S.listError.message)}</p>` : ""}
+    ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
     <div class="lt-three">
       <section class="lt-part">
         <div class="lt-part-head">${ICON.page}<h2>Course Page</h2></div>
@@ -656,7 +595,7 @@ function deleteOfferingDialog(c, t) {
   if (open.length) return confirmBox("Not saved", `<code>${esc(open[0].path)}</code> has changes that aren't saved. Save or discard them before deleting <code>${esc(name)}</code>.`, "OK", "Cancel");
   const what = [o.page && "its course page and files", o.grades && "its gradebook", o.exams.length && `${o.exams.length} exam${o.exams.length === 1 ? "" : "s"}`].filter(Boolean);
   modal(`<h2>Delete ${esc(name)}?</h2>
-    <p>This deletes the folder <code>${esc(name)}</code>${what.length ? `: ${esc(what.join(", ").replace(/, ([^,]*)$/, " and $1"))}` : ""}. ${S.mode === "github" ? "It's one commit, so it can still be got back from the repository's history on GitHub." : "It's deleted from the folder on this computer; if you've committed it, git still has it."}</p>
+    <p>This deletes <code>${esc(name)}</code>${what.length ? `: ${esc(what.join(", ").replace(/, ([^,]*)$/, " and $1"))}` : ""}, and takes its course page off the web. The server keeps a copy of every version, so your Lectern admin can still get it back.</p>
     <div class="lt-form"><label><span>Type <code>${esc(name)}</code> to confirm</span><input type="text" id="del-name" autocomplete="off" spellcheck="false"></label></div>
     <p class="lt-err" id="del-err"></p>
     <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn lt-btn-danger" data-ok disabled>Delete</button></div>`, (m, close) => {
@@ -666,11 +605,9 @@ function deleteOfferingDialog(c, t) {
     ok.onclick = async () => {
       ok.disabled = true; ok.textContent = "Deleting…";
       try {
-        if (S.mode === "github") {
-          const msg = `Delete ${name}`;
-          await GH.deleteFolder(S.pub.full_name, S.pub.default_branch, name, msg);
-          await GH.deleteFolder(S.priv.full_name, S.priv.default_branch, name, msg);
-        } else await FS.removeOffering(S.folder, c, t);
+        const msg = `Delete ${name}`;
+        await Store.deleteFolder(Store.PUB, name, msg);
+        await Store.deleteFolder(Store.PRIV, name, msg);
         close();
         toast(`Deleted ${name}.`);
         S.offerings && S.offerings.delete(name);
@@ -711,16 +648,15 @@ function newExamDialog(c, t) {
 }
 
 // ── Accommodations: requests from the course page, approved or rejected here ──
-// Students' requests are in the private repository, <course>/<term>/accommodations.json (the server writes
-// them as the GitHub App). A decision goes through the server too, which saves it with your own GitHub
-// sign-in and emails the student.
+// Students' requests are in your private files, <course>/<term>/accommodations.json (the server writes
+// them: students don't sign in). A decision goes through the server too, which saves it and emails the student.
 async function readAccom(c, t) {
   const text = await readPriv(`${c}/${t}/accommodations.json`);
   if (!text) return { requests: [] };
   try { const d = JSON.parse(text); return { requests: Array.isArray(d.requests) ? d.requests : [] }; } catch (_) { return { requests: [], bad: true }; }
 }
 let serverCfg = null;
-const getCfg = () => serverCfg || (serverCfg = fetch("/api/github/config").then(r => r.json()).catch(() => ({})));
+const getCfg = () => serverCfg || (serverCfg = fetch("/api/config").then(r => r.json()).catch(() => ({})));
 const accomUI = { show: "pending", ev: "" };
 const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
 const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
@@ -738,7 +674,7 @@ async function accomPage(c, t) {
   if (!mine()) return;
   const evals = (book && book.evals) || [];
   const asks = evals.filter(e => e.accom && ((e.accom.approval && String(e.accom.standard || "").trim()) || e.accom.alternate));
-  const canDecide = S.mode === "github";
+  const canDecide = true;
   const draw = () => {
     const all = data.requests.slice().sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
     const byEv = all.filter(r => !accomUI.ev || r.eval === accomUI.ev);
@@ -746,9 +682,7 @@ async function accomPage(c, t) {
     const list = accomUI.show === "pending" ? pending : accomUI.show === "decided" ? decided : byEv;
     const evNames = [...new Map(all.map(r => [r.eval, r.evalName])).entries()];
     const notes = [
-      !cfg.requests ? `<p class="lt-note"><b>Students can't send requests yet:</b> this server needs the GitHub App's private key (<code>LECTERN_GH_PRIVATE_KEY_FILE</code>; see the README).</p>` : "",
-      cfg.requests && !cfg.email ? `<p class="lt-note"><b>Emails aren't being sent:</b> the server has no SMTP settings, so students won't hear about decisions (see the README).</p>` : "",
-      !canDecide ? `<p class="lt-note">You're working from a folder: this is its copy of <code>accommodations.json</code> (pull to see new requests). To approve or reject, sign in with GitHub.</p>` : "",
+      !cfg.email ? `<p class="lt-note"><b>Emails aren't being sent:</b> the server has no SMTP settings, so students won't hear about decisions (see the README).</p>` : "",
       book && !asks.length ? `<p class="lt-note">No evaluation takes requests yet. In <button type="button" class="lt-link" data-evals>Evaluations</button>, open one and set its <b>Accommodations</b>; then save the course page so its buttons appear.</p>` : "",
       data.bad ? `<p class="lt-note err"><code>accommodations.json</code> couldn't be read.</p>` : "",
     ].join("");
@@ -788,10 +722,7 @@ async function accomPage(c, t) {
       ok.onclick = async () => {
         ok.disabled = true; ok.textContent = yes ? "Approving…" : "Rejecting…";
         try {
-          const res = await fetch("/api/accommodations/decide", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${GH.token()}` },
-            body: JSON.stringify({ repo: S.priv.full_name, offering: `${c}/${t}`, id: r.id, decision, note: m.querySelector("#dc-note").value }) });
-          const d = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(d.error || "Couldn't save the decision.");
+          const d = await Auth.api("/api/accommodations/decide", { offering: `${c}/${t}`, id: r.id, decision, note: m.querySelector("#dc-note").value });
           Object.assign(r, d.request);
           close();
           toast(`${yes ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);
@@ -803,104 +734,12 @@ async function accomPage(c, t) {
   draw();
 }
 
-// ── Choosing the repositories (GitHub) ───────────────────────────────
-async function setupPage(changing = false) {
-  Lectern.show(null);
-  document.body.className = "lt-on-app lt-on-page";
-  $("#lt-bar").hidden = false; $("#lt-page").hidden = false;
-  renderBar();
-  renderPath(changing && S.priv && S.pub ? [HOME_STEP, { label: "Change repository" }] : [{ label: "Choose a repository" }]);
-  pageHTML(`<div class="lt-in"><h1>Choose your course repository</h1>
-    <p class="lt-lede">The repository your course pages publish from with GitHub Pages, e.g. <code>courses-utor</code>. Grades and exams go in its private twin, <code>courses-utor-private</code>.</p>
-    <div id="lt-setup"><div class="lt-loading" style="min-height:160px">Finding your repositories…</div></div></div>`);
-  let got, cfg = {};
-  const load = () => Promise.all([GH.repos(), fetch("/api/github/config").then(r => r.json()).catch(() => ({}))]);
-  try { [got, cfg] = await load(); }
-  catch (e) { $("#lt-setup").innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
-  const install = cfg.app_slug ? `https://github.com/apps/${encodeURIComponent(cfg.app_slug)}/installations/new` : "https://github.com/settings/installations";
-  const box = $("#lt-setup");
-  let repos = got.repos.slice().sort((a, b) => a.full_name.localeCompare(b.full_name));
-  const pubs = () => repos.filter(r => !r.private);
-  const twinOf = name => `${name}-private`;
-  const seen = name => repos.find(r => r.full_name.toLowerCase() === String(name).toLowerCase());
-  let pick = S.pub ? S.pub.full_name : (pubs().find(r => seen(twinOf(r.full_name))) || {}).full_name || "";
-  let note = "";   // after trying to create the twin: "exists" (it's there, Lectern just can't see it) or an error
-
-  const draw = () => {
-    const chosen = seen(pick), twin = chosen ? twinOf(chosen.full_name) : "", twinRepo = twin && seen(twin);
-    const short = n => esc(String(n).split("/")[1]);
-    box.innerHTML = !repos.length || !pubs().length
-      ? `<div class="lt-note" style="margin-top:28px"><b>Lectern can't see your course repository yet.</b> On GitHub, give Lectern access to it (and to its <code>-private</code> twin), then come back here.</div>
-         <p style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><a class="lt-btn primary" href="${esc(install)}" target="_blank" rel="noopener">${ICON.gh}Give Lectern access on GitHub</a><button type="button" class="lt-btn" data-recheck>Check again</button></p>`
-      : `<div class="lt-form lt-pick"><label>Repository
-          <select id="lt-repo"><option value="">Choose…</option>${pubs().map(r => `<option value="${esc(r.full_name)}"${r.full_name === pick ? " selected" : ""}>${esc(r.full_name)}</option>`).join("")}</select>
-          <small>Not in the list? <a href="${esc(install)}" target="_blank" rel="noopener">Give Lectern access to it on GitHub</a>.</small></label></div>
-        ${!chosen || twinRepo ? ""
-          : `<div class="lt-twin">
-              <p class="lt-twin-h">${ICON.lock}<span>Lectern can't see <code>${short(twin)}</code>, where grades and exams go.</span></p>
-              <div class="lt-twin-opts">
-                <div class="lt-opt"><b>It already exists</b><span>Give Lectern access to it on GitHub. This page checks again when you come back.</span><a class="lt-btn primary" href="${esc(install)}" target="_blank" rel="noopener">${ICON.gh}Give access</a></div>
-                <div class="lt-opt"><b>It doesn't exist yet</b><span>Lectern makes it for you, private.</span><button type="button" class="lt-btn" id="lt-create">Create ${short(twin)}</button></div>
-              </div>
-              ${note === "exists" ? `<p class="lt-note">${short(twin)} is already on GitHub: Lectern just can't see it. Use <b>Give access</b>, then <button type="button" class="lt-link" data-recheck>check again</button>.</p>` : note ? `<p class="lt-note err">${esc(note)}</p>` : ""}
-            </div>`}
-        <p class="lt-err" id="lt-setup-err" style="margin-top:12px"></p>
-        <p style="margin-top:22px"><button type="button" class="lt-btn primary" id="lt-done"${twinRepo ? "" : " disabled"}>${chosen ? `Use ${short(chosen.full_name)}` : "Continue"}</button></p>`;
-    const sel = $("#lt-repo"); if (sel) sel.onchange = () => { pick = sel.value; note = ""; draw(); };
-    box.querySelectorAll("[data-recheck]").forEach(b => { b.onclick = () => recheck(true); });
-    const create = $("#lt-create");
-    if (create) create.onclick = async () => {
-      create.disabled = true; create.textContent = "Creating…";
-      try {
-        const [owner, name] = twin.split("/");
-        const repo = await GH.createPrivate(owner, name, S.user.login);
-        repos.push(repo); note = "";
-        toast(`Made ${repo.full_name}.`);
-      } catch (e) {
-        note = e.status === 422 ? "exists" : `${e.message}${e.status === 403 || e.status === 404 ? " Lectern needs Administration (read and write) on all your repositories to make one; you can also make it on GitHub (private) and give Lectern access." : ""}`;
-      }
-      draw();
-    };
-    const done = $("#lt-done");
-    if (done) done.onclick = async () => {
-      done.disabled = true;
-      try {
-        S.pub = await GH.repo(chosen.full_name);
-        S.priv = await GH.repo(twin);
-        store.set(REPOS_KEY, { priv: S.priv.full_name, pub: S.pub.full_name });
-        S.offerings = null; S.listError = null;
-        window.removeEventListener("focus", onFocus);
-        connectAll(); listAll();
-        go({ page: "home" });
-      } catch (e) { done.disabled = false; $("#lt-setup-err").innerHTML = `<span class="lt-note err">${esc(e.message)}</span>`; }
-    };
-  };
-  // Back from GitHub (after giving access): look again, without a reload.
-  async function recheck(showing) {
-    if (showing) box.style.opacity = ".5";
-    try { const [g] = await load(); repos = g.repos.slice().sort((a, b) => a.full_name.localeCompare(b.full_name)); note = ""; } catch (_) {}
-    box.style.opacity = "";
-    if (!pick) pick = (pubs().find(r => seen(twinOf(r.full_name))) || {}).full_name || "";
-    draw();
-  }
-  const onFocus = () => { if (document.body.contains(box)) recheck(false); else window.removeEventListener("focus", onFocus); };
-  window.addEventListener("focus", onFocus);
-  draw();
-}
-
 // ── Cross-links: Grades → the course page, and evaluations ↔ their exams and handouts ──
 const num = x => (Number.isFinite(+x) ? +x : 0);
 const fmtW = n => String(Math.round(num(n) * 100) / 100);
 
-// A file in the private repository (grades, exams), from GitHub or from the folder.
-async function readPriv(path) {
-  if (S.mode === "github") return GH.readText(S.priv.full_name, S.priv.default_branch, path);
-  try {
-    let d = S.folder.priv; const parts = path.split("/"), name = parts.pop();
-    for (const p of parts) d = await d.getDirectoryHandle(p);
-    return await (await (await d.getFileHandle(name)).getFile()).text();
-  } catch (_) { return null; }
-}
+// A file in your private files (grades, exams).
+const readPriv = path => Store.readText(Store.PRIV, path);
 
 // The gradebook for an offering: the Grade Builder's copy when it has that one open (so changes not yet
 // saved count too), else the file in the private repository.
@@ -966,16 +805,10 @@ function schemeOf(b, from, requests = null) {
 }
 
 // Where the course page's Request Accommodation buttons go: Lectern's request form, for this course
-// offering, in the repository the course page publishes from (the server finds its -private twin).
+// offering, by your handle (the server finds your gradebook from it).
 const lecternURL = () => getCfg().then(c => c.app_url || `${location.origin}/`);
-function publicRepo() {
-  if (S.mode === "github") return S.pub ? S.pub.full_name : "";
-  const m = /^https:\/\/([^.]+)\.github\.io\/([^/]*)\/?$/i.exec((S.folder && S.folder.site) || "");   // folder mode: from the clone's GitHub Pages address
-  return m ? `${m[1]}/${m[2] || `${m[1]}.github.io`}` : "";
-}
 async function requestsFor(c, t) {
-  const repo = publicRepo();
-  return repo ? { url: `${await lecternURL()}request`, repo, offering: `${c}/${t}` } : null;
+  return S.user ? { url: `${await lecternURL()}request`, repo: S.user.handle, offering: `${c}/${t}` } : null;
 }
 
 // Each evaluation's exam or handout in an offering: the Exam Builder's open one, and every exam.json
@@ -1021,12 +854,10 @@ async function crossLink(tool, r, t, opts) {
 }
 
 // ── The builders ─────────────────────────────────────────────────────
-const localRepo = () => `local/${S.folder.pair.priv}`;
+// Each builder talks GitHub's REST API to "lectern/pub" or "lectern/priv"; scope.js sends those calls to
+// your files on Lectern's server, with your session (the token here is only a placeholder).
 function connection(tool) {
-  if (S.mode === "local" && tool === "course") return { mode: "local", dir: S.folder.pub, site: S.folder.site };
-  if (S.mode === "local") return { mode: "github", repo: localRepo(), branch: "main", token: "folder" };
-  const r = TOOLS[tool].repo === "pub" ? S.pub : S.priv;
-  return { mode: "github", repo: r.full_name, branch: r.default_branch, token: GH.token() };
+  return { mode: "github", repo: Store.repoName(TOOLS[tool].repo === "pub" ? Store.PUB : Store.PRIV), branch: "main", token: "session", site: siteURL() };
 }
 function connectAll() {
   Object.entries(Lectern.tools).forEach(([name, t]) => {
@@ -1126,7 +957,7 @@ async function openTool(r, my) {
       const o = offering(r.c, r.t);
       const has = tool === "course" ? o.page : tool === "grades" ? o.grades : o.exams.includes(r.e);
       await t.api.open(folder, has, opts && opts.copyFrom, opts && opts.title, opts || {});
-      const where = S.mode === "github" ? "on GitHub" : "in your folder";
+      const where = "in Lectern";
       if (!has) toast(tool === "course" ? `Started ${target}. Save to create it.` : tool === "grades" ? `New gradebook for ${r.c}/${r.t}. Save to put it ${where}.`
         : opts && opts.created ? `New ${opts.layout === "handout" ? "handout" : "exam"} for ${opts.title}, in ${folder}. Its total marks become the evaluation's out of. Save to put it ${where}.` : `New exam ${folder}. Save to put it ${where}.`);
     } catch (e) {
@@ -1158,13 +989,12 @@ async function openTool(r, my) {
 // ── Start ────────────────────────────────────────────────────────────
 $("title").dataset.splash = document.title;
 (async () => {
-  const back = GH.consumeRedirect();
-  if (back && back.error) return showSplash(back.error, true);
-  if (GH.hasToken()) return startGitHub();
-  if (store.get(MODE_KEY) === "local" && FS.supported) {
-    const f = await FS.remembered();
-    if (f && f.granted) return startLocal(f.handle);
-    if (f) return showSplash("", false, f.handle);
-  }
+  const onSignedIn = (user, how) => start(user, how);
+  // An invitation or reset link always shows its step, even when signed in already (as someone else, maybe).
+  if (/^#(invite|reset)=/.test(location.hash)) { await Auth.signOut(); showSplash(); return Auth.initSplash(onSignedIn); }
+  let d = null;
+  try { d = await Auth.me(); } catch (e) { showSplash(e.message, true); Auth.initSplash(onSignedIn); return; }
+  if (d.signedIn) return start(d.user);
   showSplash();
+  Auth.initSplash(onSignedIn);
 })();

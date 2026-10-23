@@ -1,5 +1,9 @@
 Flask==3.1.3
-# Accommodation requests: the GitHub App signs in as itself (a JWT signed with its private key)
-PyJWT[crypto]>=2.8,<3
+# Passwords: argon2id
+argon2-cffi>=23.1,<26
+# Two-factor secrets are encrypted at rest (AES-GCM); keys derived with HKDF
+cryptography>=42
+# The QR code for setting up two-factor sign-in (pure Python)
+segno>=1.6,<2
 # Time zones for request deadlines (Windows has no system time zone data)
 tzdata

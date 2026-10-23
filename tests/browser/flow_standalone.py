@@ -3,8 +3,9 @@ Run with the server going (python app.py), then: python tests/browser/flow_stand
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE, EXAM
+from fakegithub import FakeGitHub, Repo
+from flow_github import OUT, EXAM
+from fakegh import BASE
 
 BOOK = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"},
         "fields": {"idLabel": "Student number", "custom": []},

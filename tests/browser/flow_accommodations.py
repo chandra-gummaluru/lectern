@@ -1,21 +1,18 @@
 """Accommodations, end to end: set them on an evaluation in Grades, see the course page's button, a student
 asks through the form, the instructor approves it in Lectern.
 
-Runs its own server (port 5004) with the GitHub App and email faked, sharing one fake GitHub with the browser:
+Runs against the real server (harness.Server, in this process), with email printed instead of sent:
     python tests/browser/flow_accommodations.py
 """
-import json, os, sys, threading, time
+import json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE); sys.path.insert(0, ROOT)
 from playwright.sync_api import sync_playwright
-from werkzeug.serving import make_server
-from fakegh import FakeGitHub, Repo
-from server import app, ghapp, mailer, accommodations
+from fakegh import FakeGitHub, Repo, BASE
+from harness import OUT
+from server import mailer, accommodations
 
-OUT = os.path.join(HERE, "shots"); os.makedirs(OUT, exist_ok=True)
-PORT = 5004
-BASE = f"http://localhost:{PORT}/"
 PRIV, PUB = "chandra-gummaluru/courses-private", "chandra-gummaluru/courses"
 
 
@@ -35,51 +32,25 @@ def book():
     return b
 
 
-def serve_github(gh):
-    """The server's GitHub (as the app, or as the instructor) is the same fake the browser talks to."""
-    def read(full, path, token):
-        r = gh.repos[full]; files = r.commits[r.head]["files"]
-        if path not in files: return None, None
-        return files[path], f"{r.head}:{path}"
-    def write(full, path, text, sha, message, token):
-        r = gh.repos[full]; files = dict(r.commits[r.head]["files"])
-        cur = f"{r.head}:{path}" if path in files else None
-        if cur != sha: return False
-        files[path] = text; r.head = r._commit(files, message); r.log.append(message)
-        return True
-    ghapp.installation_token = lambda full: "ghs_app"
-    ghapp.read_file, ghapp.write_file = read, write
-    ghapp.can_push = lambda full, tok: tok == "tok"
-    ghapp.request = lambda m, p, tok, body=None, auth="token": (200, {"login": "chandra-gummaluru"}) if p == "/user" else (404, None)
-    ghapp.configured = lambda: True
-    accommodations.BOOK_TTL = 0
-
-
 def main():
     gh = FakeGitHub()
     gh.add(Repo(PRIV, True, {"csc258/f26/grades.json": json.dumps(book())}))
     gh.add(Repo(PUB, False, {"README.md": "x", "csc258/f26/info.html": sample("demo-courses/csc258/f26/info.html")}))
-    serve_github(gh)
-    srv = make_server("127.0.0.1", PORT, app, threaded=True)
-    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    accommodations.BOOK_TTL = 0
 
     errors = []
     with sync_playwright() as p:
         b = p.chromium.launch()
         ctx = b.new_context(viewport={"width": 1360, "height": 900})
-        ctx.route("https://api.github.com/**", gh.handle)
-        ctx.route("https://fonts.googleapis.com/**", lambda r: r.abort())
+        gh.attach(ctx)
         page = ctx.new_page()
         page.on("console", lambda m: errors.append(f"{m.type}: {m.text}") if m.type == "error" else None)
         page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
         shot = lambda pg, n: pg.screenshot(path=f"{OUT}/{n}.png", full_page=True)
-        page.goto(BASE)
-        page.evaluate("""() => { sessionStorage.setItem('lectern.github', JSON.stringify({access_token:'tok', refresh_token:'r', expires_at: Date.now()+8*3600e3}));
-                                 localStorage.setItem('lectern.repos', JSON.stringify({priv:'%s', pub:'%s'})); }""" % (PRIV, PUB))
 
         # 1. Grades: the Midterm takes requests (standard needs approval; alternate too), until a date
         G = "[data-lt-tool='grades'] "
-        page.goto(BASE + "#/csc258/f26/evaluations"); page.reload(); page.wait_for_timeout(2500)
+        page.goto(BASE + "#/csc258/f26/evaluations"); page.wait_for_timeout(2500)
         page.click(G + ".erow:has(h3:text-is('Midterm'))"); page.wait_for_timeout(700)
         # Its standard accommodation is its missed-work policy (a makeup, and weight moved to the final)
         print("standard:", page.inner_text(G + ".ed-sec:text('Accommodations') + .ed-help"))
@@ -113,7 +84,7 @@ def main():
         import re
         link = re.search(r'class="cpb-req" data-by="([^"]*)" href="([^"]+)"', info)
         print("button:", link.group(1), link.group(2))
-        assert link.group(2).replace("&amp;", "&") == "http://localhost:5004/request?r=chandra-gummaluru%2Fcourses&o=csc258%2Ff26&e=mt"
+        assert link.group(2).replace("&amp;", "&") == BASE + "request?r=chandra&o=csc258%2Ff26&e=mt"
         assert "The deadline for accommodation requests has passed." in info   # Lab 5
         pub = ctx.new_page(); pub.set_content(info); pub.wait_for_timeout(500)
         pub.evaluate("document.querySelectorAll('details').forEach(d => d.open = true)"); pub.wait_for_timeout(200)
@@ -125,7 +96,7 @@ def main():
         # 3. A student asks
         st = ctx.new_page()
         st.on("pageerror", lambda e: errors.append(f"student pageerror: {e}"))
-        url = link.group(2).replace("&amp;", "&").replace("http://localhost:5004/", BASE)
+        url = link.group(2).replace("&amp;", "&")
         st.goto(url); st.wait_for_timeout(800); shot(st, "acc-03-who")
         print("form:", st.inner_text("#rq-course"), "|", st.inner_text("#rq-eval"))
         mia = next(s for s in book()["students"])
@@ -165,8 +136,8 @@ def main():
         final = json.loads(gh.repos[PRIV].commits[gh.repos[PRIV].head]["files"]["csc258/f26/accommodations.json"])["requests"]
         print("file:", [(r["kind"], r["status"], r["decidedBy"]) for r in final])
         print("commits:", gh.repos[PRIV].log[-4:])
+        assert [r["status"] for r in final if r["kind"] == "standard"] == ["approved"] and all(r["decidedBy"] == "Chandra Gummaluru" for r in final if r["status"] != "pending")
         b.close()
-    srv.shutdown()
     print("\n".join(errors[:30]) or "no console errors")
 
 

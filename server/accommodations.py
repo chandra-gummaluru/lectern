@@ -7,7 +7,7 @@ An evaluation takes requests when its gradebook entry (grades.json) says so:
              "approval": true,                   students must ask for it (an instructor approves)
              "alternate": true }                 students may ask for something else instead
 
-The course page's Request Accommodation button opens /request?r=<public repo>&o=<course/term>&e=<eval id>,
+The course page's Request Accommodation button opens /request?r=<the instructor's handle>&o=<course/term>&e=<eval id>,
 a small form served from here. It calls, in turn:
 
   GET  /api/accommodations/evaluation   what can be asked for (no student details needed)
@@ -15,15 +15,14 @@ a small form served from here. It calls, in turn:
                                         last name must all match the gradebook, email included)
   POST /api/accommodations/submit       record the request and email the student a receipt
 
-Requests are kept in the private repository beside the gradebook, <course>/<term>/accommodations.json,
-written with the GitHub App's own access (ghapp.py): students never sign in. Lectern's Accommodations
-page reads that file, and the instructor's decision goes through
+Requests are kept in the instructor's private files beside the gradebook, <course>/<term>/accommodations.json
+(store.py): students never sign in, so the server reads the gradebook and records the request itself.
+Lectern's Accommodations page reads that file, and the instructor's decision goes through
 
-  POST /api/accommodations/decide       (the instructor's GitHub token) approve or reject, save, email
+  POST /api/accommodations/decide       (signed in) approve or reject, save, email
 
-which saves the change with the instructor's own sign-in (so the commit is theirs) and emails the student.
+which saves the change in the signed-in instructor's own files and emails the student.
 """
-import collections
 import json
 import os
 import re
@@ -33,18 +32,21 @@ import time
 import unicodedata
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, g, jsonify, render_template, request
 
-from . import ghapp, mailer
+from . import db, mailer
+from .auth import signed_in
+from .security import Limiter
+from .store import Repo, StoreError
 
 accom_bp = Blueprint('accommodations', __name__)
 
 FILE = "accommodations.json"
 FORMAT = "lectern-accommodations/1"
 MAX_DETAILS = 4000
+MAX_PER_STUDENT = 10       # requests per student per evaluation
 
-_OWNER = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
-_NAME = re.compile(r"^[\w.-]{1,100}$")
+_HANDLE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
 _SLUG = re.compile(r"^[\w.-]{1,64}$")
 
 
@@ -60,20 +62,17 @@ def _err(e):
 
 
 # ── Where things are ─────────────────────────────────────────────────
-def _repo(full, private=False):
-    full = str(full or "").strip().strip("/")
-    parts = full.split("/")
-    if len(parts) != 2 or not _OWNER.match(parts[0]) or not _NAME.match(parts[1]) or parts[1].startswith("."):
+def _owner(r):
+    """The link's r= (the instructor's handle, as in their course pages' address) → their account id."""
+    r = str(r or "").strip().strip("/").lower()
+    if "/" in r:   # a course page saved before Lectern had its own accounts (r=owner/repo)
+        raise Refusal(400, "This link is from an older course page. Ask your instructor to open the course page in Lectern and save it again.")
+    if not _HANDLE.match(r):
         raise Refusal(400, "This link is missing its course.")
-    if private:
-        return full if parts[1].lower().endswith("-private") else None
-    return full
-
-
-def _private_of(public):
-    """The course page's repository → its private twin, where the gradebook is (courses-utor → courses-utor-private)."""
-    pub = _repo(public)
-    return pub if pub.lower().endswith("-private") else pub + "-private"
+    u = db.one("SELECT id, disabled FROM users WHERE handle = ?", (r,))
+    if not u or u["disabled"]:
+        raise Refusal(404, "This course isn't taking accommodation requests.")
+    return u["id"]
 
 
 def _offering(o):
@@ -96,16 +95,16 @@ _books_lock = threading.Lock()
 BOOK_TTL = 20
 
 
-def _book(priv, o):
-    key = (priv.lower(), o)
+def _book(uid, o):
+    key = (uid, o)
     with _books_lock:
         hit = _books.get(key)
         if hit and hit[0] > time.time():
             return hit[1]
     try:
-        text, _ = ghapp.read_file(priv, f"{o}/grades.json", ghapp.installation_token(priv))
-    except ghapp.GitHubError as e:
-        raise Refusal(e.status if e.status in (503,) else 404 if e.status == 404 else 502, str(e))
+        text, _ = Repo(uid, "priv").read_text(f"{o}/grades.json")
+    except StoreError as e:
+        raise Refusal(e.status, str(e))
     if text is None:
         raise Refusal(404, "This course isn't taking accommodation requests.")
     try:
@@ -215,35 +214,12 @@ def find_student(book, email, sid, first, last):
 
 
 # ── Too many tries from one place ────────────────────────────────────
-class _Limiter:
-    def __init__(self):
-        self.hits = collections.defaultdict(collections.deque)
-        self.lock = threading.Lock()
-
-    def ok(self, key, n, window):
-        now = time.time()
-        with self.lock:
-            q = self.hits[key]
-            while q and q[0] < now - window:
-                q.popleft()
-            if len(q) >= n:
-                return False
-            q.append(now)
-            return True
-
-    def reset(self):
-        with self.lock:
-            self.hits.clear()
-
-
-limiter = _Limiter()
+limiter = Limiter()
 LIMITS = {"verify": (20, 600), "submit": (10, 600)}
 
 
 def _client_ip():
-    if os.environ.get("LECTERN_BEHIND_PROXY") and request.headers.get("X-Forwarded-For"):
-        return request.headers["X-Forwarded-For"].split(",")[0].strip()
-    return request.remote_addr or "?"
+    return request.remote_addr or "?"   # behind a proxy, core.py's ProxyFix makes this the student's address
 
 
 def _limit(kind):
@@ -269,10 +245,10 @@ def request_page():
 
 
 def _where(args):
-    priv = _private_of(args.get("r"))
+    uid = _owner(args.get("r"))
     o = _offering(args.get("o"))
     e = _eval_id(args.get("e"))
-    return priv, o, e
+    return uid, o, e
 
 
 def _public_info(book, ev, a):
@@ -291,8 +267,8 @@ def _public_info(book, ev, a):
 @accom_bp.get("/api/accommodations/evaluation")
 def evaluation():
     try:
-        priv, o, e = _where(request.args)
-        book = _book(priv, o)
+        uid, o, e = _where(request.args)
+        book = _book(uid, o)
         ev, a = _evaluation(book, e)
         return jsonify(_public_info(book, ev, a))
     except Refusal as x:
@@ -311,8 +287,8 @@ def verify():
     try:
         d = _body()
         _limit("verify")
-        priv, o, e = _where(d)
-        book = _book(priv, o)
+        uid, o, e = _where(d)
+        book = _book(uid, o)
         ev, a = _evaluation(book, e, open_only=True)
         s, _ = find_student(book, d.get("email"), d.get("id"), d.get("first"), d.get("last"))
         return jsonify(ok=True, first=s.get("first") or "", **_public_info(book, ev, a))
@@ -341,18 +317,19 @@ def _dump(d):
     return json.dumps(d, indent=1, ensure_ascii=False) + "\n"
 
 
-def _update(priv, o, token, change, message):
+def _update(uid, o, change, message, author=""):
     """Read the requests file, change it, write it back; again if someone else wrote in between."""
     path = f"{o}/{FILE}"
+    repo = Repo(uid, "priv")
     for _ in range(4):
         try:
-            text, sha = ghapp.read_file(priv, path, token)
+            text, sha = repo.read_text(path)
             d = _parse(text)
             out = change(d)
-            if ghapp.write_file(priv, path, _dump(d), sha, message(out) if callable(message) else message, token):
+            if repo.write_text(path, _dump(d), sha, message(out) if callable(message) else message, author):
                 return out
-        except ghapp.GitHubError as e:
-            raise Refusal(e.status if e.status in (401, 403, 404, 503) else 502, str(e))
+        except StoreError as e:
+            raise Refusal(e.status, str(e))
     raise Refusal(503, "Lectern is busy with other requests. Try again in a moment.")
 
 
@@ -407,8 +384,8 @@ def submit():
     try:
         d = _body()
         _limit("submit")
-        priv, o, e = _where(d)
-        book = _book(priv, o)
+        uid, o, e = _where(d)
+        book = _book(uid, o)
         ev, a = _evaluation(book, e, open_only=True)
         s, email = find_student(book, d.get("email"), d.get("id"), d.get("first"), d.get("last"))
         kind = d.get("kind")
@@ -433,6 +410,9 @@ def submit():
         }
 
         def add(f):
+            mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e]
+            if len(mine) >= MAX_PER_STUDENT:
+                raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
             if kind == "standard":
                 dup = next((x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e
                             and x.get("kind") == "standard" and x.get("status") in ("pending", "approved")), None)
@@ -443,40 +423,28 @@ def submit():
             f["format"] = FORMAT
             return rec
 
-        _update(priv, o, ghapp.installation_token(priv), add,
-                f"Accommodation request from {rec['student']} for {rec['evalName']}")
+        _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
         subject, body = receipt_email(rec)
         emailed = mailer.send(email, subject, body)
         return jsonify(ok=True, id=rec["id"], email=email, emailed=emailed), 201
     except Refusal as x:
         return _err(x)
-    except ghapp.GitHubError as x:
-        return jsonify(error=str(x)), x.status
 
 
 # ── Instructors ──────────────────────────────────────────────────────
 @accom_bp.post("/api/accommodations/decide")
+@signed_in
 def decide():
-    """Approve or reject one request: saved with the instructor's own GitHub sign-in, then emailed."""
+    """Approve or reject one request in your own course: saved in your files, then emailed."""
     try:
-        auth = request.headers.get("Authorization", "")
-        token = auth.split(" ", 1)[1].strip() if auth.lower().startswith(("bearer ", "token ")) else ""
-        if not token:
-            raise Refusal(401, "Sign in with GitHub to decide requests.")
         d = _body()
-        priv = _repo(d.get("repo"), private=True)
-        if not priv:
-            raise Refusal(400, "Requests are in the private repository.")
         o = _offering(d.get("offering"))
         rid = str(d.get("id") or "")
         decision = d.get("decision")
         note = str(d.get("note") or "").strip()[:MAX_DETAILS]
         if decision not in ("approved", "rejected"):
             raise Refusal(400, "Approve or reject.")
-        if not ghapp.can_push(priv, token):
-            raise Refusal(403, "You can't change this course's repository.")
-        st, me = ghapp.request("GET", "/user", token)
-        who = (me or {}).get("login", "") if st == 200 else ""
+        who = g.user["name"] or g.user["email"]
 
         def apply(f):
             r = next((x for x in f["requests"] if x.get("id") == rid), None)
@@ -485,8 +453,9 @@ def decide():
             r.update(status=decision, decided=_now(), decidedBy=who, note=note)
             return dict(r)
 
-        r = _update(priv, o, token, apply,
-                    lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} accommodation request from {r['student']} for {r['evalName']}")
+        r = _update(g.user["id"], o, apply,
+                    lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} accommodation request from {r['student']} for {r['evalName']}",
+                    g.user["email"])
         subject, body = decision_email(r)
         emailed = bool(r.get("email")) and mailer.send(r["email"], subject, body)
         return jsonify(ok=True, request=r, emailed=emailed)

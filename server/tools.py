@@ -13,6 +13,8 @@ scope:
 
 The split is cached and redone whenever the file changes.
 """
+import base64
+import hashlib
 import json
 import os
 import re
@@ -117,7 +119,18 @@ def tool_js(name):
     return Response(src, mimetype='application/javascript')
 
 
+_INLINE = re.compile(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', re.S)
+
+
 @tools_bp.get('/tools/<name>.html')
 def tool_html(name):
+    """A builder on its own. It's one file with its script inline, so its policy allows exactly that script
+    (by its hash) and nothing else inline."""
+    from .core import csp
     _, path = _tool(name)
-    return send_file(path, mimetype='text/html')
+    with open(path, encoding='utf-8') as f:
+        html = f.read()
+    hashes = ["'sha256-%s'" % base64.b64encode(hashlib.sha256(m.group(1).encode('utf-8')).digest()).decode() for m in _INLINE.finditer(html)]
+    resp = send_file(path, mimetype='text/html')
+    resp.headers['Content-Security-Policy'] = csp(" ".join(hashes))
+    return resp

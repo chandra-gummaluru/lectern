@@ -1762,7 +1762,7 @@ function richToTex(el) {
 // sel: the selected block: an item's id, "cover", or null. path: the
 // sub-question within a question ("parts.0"), "" for the question itself.
 const ui = { version: 0, output: "student", sel: null, path: "" };
-let GH_W = "GitHub", GH_ON = "on GitHub", GH_TO = "to GitHub";   // in Lectern's folder mode: your folder
+let GH_W = "GitHub", GH_ON = "on GitHub", GH_TO = "to GitHub";   // hosted by Lectern: "Lectern" (its server), or your folder
 const gh = { repo: "", branch: "main", token: "", path: "", sha: null, last: "", copyFrom: "" };
 let model = BLANK_EXAM();
 let fileName = "";
@@ -3394,7 +3394,7 @@ if (lectern) {
   const termName = t => { const m = /^([wsf])(\d{2})$/i.exec(t); return m ? `${{ w: "Winter", s: "Summer", f: "Fall" }[m[1].toLowerCase()]} 20${m[2]}` : t; };
   lectern.register("exams", {
     connect(c) {
-      const fold = c.token === "folder"; GH_W = fold ? "your folder" : "GitHub"; GH_ON = fold ? "in your folder" : "on GitHub"; GH_TO = fold ? "to your folder" : "to GitHub"; if (c.mode === "github") Object.assign(gh, { repo: c.repo, branch: c.branch || "main", token: c.token }); },
+      const fold = c.token === "folder", srv = c.token === "session"; GH_W = fold ? "your folder" : srv ? "Lectern" : "GitHub"; GH_ON = fold ? "in your folder" : srv ? "in Lectern" : "on GitHub"; GH_TO = fold ? "to your folder" : srv ? "to Lectern" : "to GitHub"; if (c.mode === "github") Object.assign(gh, { repo: c.repo, branch: c.branch || "main", token: c.token }); },
     // Open <course>/<term>/<exam>/exam.json; a new one starts blank (named and dated) or from a copy of another exam.
     async open(folder, has, copyFrom, title, extra = {}) {
       const path = `${folder}/${EXAM_FILE}`, [c, t] = folder.split("/");

@@ -69,6 +69,29 @@
 .sp-btn:disabled { opacity: .6; cursor: wait; }
 .sp-btn:focus-visible, .sp-remember input:focus-visible, .sp-more:focus-visible, .sp-hint button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
+/* Sign in (and its other steps: a two-factor code, a new password, an invitation) */
+.sp-form { display: grid; gap: 12px; width: min(340px, 100%); text-align: left; }
+.sp-form h2 { margin: 0; font: 500 26px/1.15 var(--serif); text-align: center; color: var(--ink); }
+.sp-form p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); text-align: center; }
+.sp-field { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.sp-field small { font-weight: 400; color: var(--ink-3); line-height: 1.45; }
+.sp-field input { box-sizing: border-box; width: 100%; height: 42px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); font: 15px var(--sans); }
+.sp-field input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgb(166 124 0 / .16); }
+.sp-field input[readonly] { background: transparent; color: var(--ink-2); }
+.sp-field input.sp-code { font: 600 22px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .3em; text-align: center; }
+.sp-pw { position: relative; display: block; }
+.sp-pw input { padding-right: 62px; }
+.sp-show { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 30px; padding: 0 9px; border: 0; border-radius: 6px; background: none; font: 600 12px var(--sans); color: var(--ink-2); cursor: pointer; }
+.sp-show:hover { background: var(--paper); color: var(--ink); }
+.sp-form .sp-btn--primary { width: 100%; margin-top: 4px; }
+.sp-link { justify-self: center; border: 0; padding: 2px; background: none; font: 500 13px var(--sans); color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.sp-link:hover { color: var(--ink); }
+.sp-show:focus-visible, .sp-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.sp-addr { font: 12.5px ui-monospace, Menlo, Consolas, monospace; color: var(--ink-3); word-break: break-all; }
+.sp-err { margin: 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45; background: #fdf0ee; border: 1px solid #f3cdc7; color: var(--ink); }
+.sp-err:empty { display: none; }
+.sp-ok { margin: 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45; background: #eef7f0; border: 1px solid #c7e3cf; color: var(--ink); }
+
 .sp-under { display: flex; align-items: center; gap: 18px; margin-top: 14px; font-size: 13px; color: var(--ink-3); }
 .sp-remember { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
 .sp-remember input { width: 15px; height: 15px; margin: 0; accent-color: var(--dark); cursor: pointer; }
@@ -137,6 +160,7 @@
     .sp-screen { gap: 32px; padding: 40px 16px; justify-content: flex-start; }
     .sp-actions { flex-direction: column; width: 100%; max-width: 340px; }
     .sp-btn { width: 100%; }
+    .sp-form { width: 100%; max-width: 340px; }
     .sp-under { flex-direction: column; gap: 8px; }
     .mk3 { gap: 8px; } .mkc-h { padding: 7px 8px; font-size: 8.5px; letter-spacing: .04em; } .mkc-b { padding: 7px; height: 104px; }
     .m-pill, .m-hrs { display: none; } .c1 .mkc-b { gap: 4px; } .m-wk { padding: 4px 6px; } .m-wk b { font-size: 11px; } .m-wk > span:first-child { gap: 3px; } .m-avg b { font-size: 19px; } .m-avg span { font-size: 12px; } .m-sheet { width: 94%; }

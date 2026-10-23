@@ -17,8 +17,8 @@
    - listeners on document and window only hear events while that builder is
      the one showing (except beforeunload, so unsaved work is always guarded).
    - document.title is kept per builder instead of renaming the tab.
-   - fetch goes to the network, except calls to GitHub for a repository Lectern serves from a folder
-     on this computer (Lectern.local; see localgh.js), which never leave the browser.
+   - fetch goes to the network, except the builders' GitHub calls for "lectern/pub" and
+     "lectern/priv", which go to your files on Lectern's server (see storeFetch below).
 
    Everything else (createElement, activeElement, scrollTo, fetch…) is the
    real thing. The builder's own variables already live in its IIFE.
@@ -120,16 +120,30 @@ function addScript(src) {
   return scriptOnce.get(src);
 }
 
-// GitHub calls for a repository kept in a folder are answered from the folder (folder mode).
+// The builders save with GitHub's REST calls. For "lectern/pub" and "lectern/priv" (your files on
+// Lectern's server) those go to the server instead, at /api/store/<pub|priv>/…, with the session cookie
+// (not a token) and Lectern's X-Lectern header. A session that ended mid-save gets the sign-in-again
+// window, and then the same call is made again, so the save carries on.
+const STORE = /^https:\/\/api\.github\.com\/repos\/lectern\/(pub|priv)(\/[^#]*)?$/;
+async function storeFetch(repo, rest, opts = {}, again = false) {
+  const headers = {};
+  new Headers(opts.headers || {}).forEach((v, k) => { if (!/^(authorization|x-github-api-version)$/i.test(k)) headers[k] = v; });
+  headers["X-Lectern"] = "1";
+  const res = await realWin.fetch(`/api/store/${repo}${rest || ""}`, { ...opts, headers, credentials: "same-origin", cache: "no-store" });
+  if (res.status === 401 && !again && realWin.Lectern.reauth) {
+    try { await realWin.Lectern.reauth(); } catch (_) { return res; }
+    return storeFetch(repo, rest, opts, true);
+  }
+  return res;
+}
 function scopedFetch(url, opts) {
-  const m = /^https:\/\/api\.github\.com\/repos\/([^/]+\/[^/?#]+)/.exec(String(url));
-  const local = m && realWin.Lectern.local && realWin.Lectern.local[decodeURIComponent(m[1])];
-  return local ? local(String(url), opts) : realWin.fetch(url, opts);
+  const m = STORE.exec(String(url));
+  return m ? storeFetch(m[1], m[2], opts) : realWin.fetch(url, opts);
 }
 
 const Lectern = realWin.Lectern = {
-  local: {},   // "local/<repo>" → a fetch that answers GitHub's API from a folder
   hosting: true,
+  reauth: null,   // set by lectern.js: sign in again (a window), resolving once signed in
   tools,
   get active() { return active; },
 

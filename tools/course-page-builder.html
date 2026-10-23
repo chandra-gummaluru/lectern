@@ -2567,6 +2567,7 @@ async function ghApi(path, opts = {}) {
 
 // The live address of a file on the repo's GitHub Pages site.
 function pagesURL(path) {
+  if (gh.site) return gh.site + encPath(path);   // hosted by Lectern: its own address for published pages
   const [owner, repo] = gh.repo.split("/");
   const host = `${owner.toLowerCase()}.github.io`;
   return repo.toLowerCase() === host ? `https://${host}/${encPath(path)}` : `https://${host}/${repo}/${encPath(path)}`;
@@ -2585,7 +2586,8 @@ const canFolder = typeof window.showDirectoryPicker === "function";   // Chrome 
 const src = { mode: "github", dir: null, waiting: null, name: "", site: "" };
 const srcReady = () => src.mode === "local" ? !!src.dir : ghReady();
 const srcLabel = () => src.mode === "local" ? src.name : gh.repo;
-const notSaved = () => src.mode === "local" || !gh.path ? "Unsaved" : "Not saved to GitHub";
+let GH_NAME = "GitHub";   // hosted by Lectern (its server): "Lectern"
+const notSaved = () => src.mode === "local" || !gh.path ? "Unsaved" : `Not saved to ${GH_NAME}`;
 
 // The folder survives a restart in the browser's IndexedDB (a handle, not the files).
 function idb(op, val) {
@@ -3021,21 +3023,21 @@ async function doSave(m, path, message, overwrite) {
     const tree = await ghApi(`${R}/git/trees`, { method: "POST", body: JSON.stringify({ base_tree: baseTree, tree: entries }) });
     const commit = await ghApi(`${R}/git/commits`, { method: "POST", body: JSON.stringify({ message, tree: tree.sha, parents: [head] }) });
     try { await ghApi(`${R}/git/refs/heads/${encodeURIComponent(gh.branch)}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }); }
-    catch (e) { if (e.status === 422) throw new GhError(0, "Something else was saved to GitHub at the same moment. Press Save again."); throw e; }
+    catch (e) { if (e.status === 422) throw new GhError(0, `Something else was saved to ${GH_NAME} at the same moment. Press Save again.`); throw e; }
 
     gh.path = path; gh.sha = page.sha; fileName = ""; unsaved = false;
     pending.clear();   // sent, or no longer linked from the page
     render();
     const url = pagesURL(path);
     m.innerHTML = `<h2>Saved</h2>
-      <p><code>${esc(path)}</code> is saved on GitHub. The live page updates in a minute or two:</p>
+      <p><code>${esc(path)}</code> is saved on ${GH_NAME}. ${GH_NAME === "GitHub" ? "The live page updates in a minute or two" : "The live page is up to date"}:</p>
       <p><a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a></p>
       <div class="row"><button type="button" class="primary" id="ps-done">Done</button></div>`;
     $("#ps-done", m).onclick = closeModal; $("#ps-done", m).focus();
   } catch (e) {
     ok.disabled = false; ok.textContent = "Save to GitHub";
     if (e.status === 409) {   // the page changed on GitHub since it was opened
-      err.className = ""; err.innerHTML = notice(`<b>This page changed on GitHub since you opened it.</b> <a href="#" id="ps-over">Replace GitHub's version with yours</a>, or cancel and open it again to see the other changes. Undo brings yours back.`);
+      err.className = ""; err.innerHTML = notice(`<b>This page changed on ${GH_NAME} since you opened it.</b> <a href="#" id="ps-over">Replace ${GH_NAME}'s version with yours</a>, or cancel and open it again to see the other changes. Undo brings yours back.`);
       $("#ps-over", m).onclick = ev => { ev.preventDefault(); doSave(m, path, message, true); };
     } else err.textContent = e.message;
   }
@@ -3337,7 +3339,7 @@ if (lectern) {
     // c: { mode: "github", repo, branch, token } or { mode: "local", dir (the public repo's folder), site }
     connect(c) {
       if (c.mode === "local") Object.assign(src, { mode: "local", dir: c.dir, waiting: null, name: c.dir.name, site: c.site || "" });
-      else { src.mode = "github"; Object.assign(gh, { repo: c.repo, branch: c.branch || "main", token: c.token }); }
+      else { src.mode = "github"; Object.assign(gh, { repo: c.repo, branch: c.branch || "main", token: c.token, site: c.site || "" }); GH_NAME = c.token === "session" ? "Lectern" : "GitHub"; }
     },
     // Open <course>/<term>/info.html; a new one starts blank or from another term's page (minus announcements).
     async open(folder, has, copyFrom) {

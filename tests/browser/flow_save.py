@@ -9,7 +9,7 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch()
         ctx = b.new_context(viewport={"width": 1360, "height": 860})
-        ctx.route("https://api.github.com/**", gh.handle)
+        gh.attach(ctx)
         ctx.route("https://cdnjs.cloudflare.com/**", lambda r: r.abort())
         ctx.route("https://fonts.googleapis.com/**", lambda r: r.abort())
         page = ctx.new_page()

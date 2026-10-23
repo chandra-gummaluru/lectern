@@ -2438,7 +2438,7 @@ function exportMenu(anchor) {
 const ui = { view: "grades", cell: null, find: "", sort: "name", sortDir: 1, showDropped: false, section: "", onlyAcc: false, student: "", stAcc: "", stFrom: "students", evalEd: "", groupEd: "",
   stats: { who: "all", picked: [], one: "", what: "grade", q: "" },
   focus: "grade", fxPct: false, fxOff: {} };   // fxPct stays off: marks are shown as points   // fxPct: show percentages instead of points   // in Lectern's Gradebook: the one evaluation shown (or "grade": the course grade)
-let GH_W = "GitHub", GH_ON = "on GitHub", GH_TO = "to GitHub";   // in Lectern's folder mode: your folder
+let GH_W = "GitHub", GH_ON = "on GitHub", GH_TO = "to GitHub";   // hosted by Lectern: "Lectern" (its server), or your folder
 const gh = { repo: "", branch: "main", token: "", path: "", sha: null, last: "" };
 let model = BLANK_BOOK();
 let fileName = "";
@@ -4121,7 +4121,7 @@ if (lectern) {
   setTb();
   lectern.register("grades", {
     connect(c) {
-      const fold = c.token === "folder"; GH_W = fold ? "your folder" : "GitHub"; GH_ON = fold ? "in your folder" : "on GitHub"; GH_TO = fold ? "to your folder" : "to GitHub"; if (c.mode === "github") Object.assign(gh, { repo: c.repo, branch: c.branch || "main", token: c.token }); },
+      const fold = c.token === "folder", srv = c.token === "session"; GH_W = fold ? "your folder" : srv ? "Lectern" : "GitHub"; GH_ON = fold ? "in your folder" : srv ? "in Lectern" : "on GitHub"; GH_TO = fold ? "to your folder" : srv ? "to Lectern" : "to GitHub"; if (c.mode === "github") Object.assign(gh, { repo: c.repo, branch: c.branch || "main", token: c.token }); },
     // Open <course>/<term>/grades.json, or start a new gradebook there.
     async open(folder, has) {
       const path = `${folder}/${BOOK_FILE}`, [c, t] = folder.split("/");

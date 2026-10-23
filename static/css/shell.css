@@ -321,6 +321,47 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 .lt-repo small { margin-left: auto; font-size: 12.5px; color: var(--home-ink-3); }
 .lt-repo[aria-pressed="true"] { border-color: var(--home-ink); box-shadow: 0 0 0 1px var(--home-ink); }
 
+/* Your account, and (admins) everyone's */
+.lt-account .lt-sec:first-of-type { margin-top: 32px; }
+.lt-panel { padding: 18px 20px; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); }
+.lt-panel.lt-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.lt-row-text { flex: 1 1 320px; margin: 0; font-size: 14px; line-height: 1.55; color: var(--home-ink-2); }
+.lt-panel .lt-row-text + .lt-form, .lt-panel .lt-form + .lt-row-text { margin-top: 16px; }
+.lt-row-text code { font: 12.5px var(--font-mono); }
+.lt-row-text a { color: var(--home-ink); }
+.lt-row-acts { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.lt-narrow { max-width: 420px; margin: 0; }
+.lt-form input[readonly] { background: transparent; color: var(--ink-2); }
+.lt-on, .lt-off, .lt-tag { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 99px; font: 600 11.5px/18px var(--font-ui); letter-spacing: .02em; vertical-align: 1px; }
+.lt-on, .lt-tag.ok { background: #e6f4ec; color: #1f6b43; }
+.lt-off, .lt-tag.dim { background: var(--home-strip); color: var(--home-ink-3); border: 1px solid var(--home-line); }
+.lt-tag { background: var(--accent-bg); color: #7d5c00; }
+.lt-tag.bad { background: var(--danger-bg); color: var(--danger); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lt-on, :root:not([data-theme="light"]) .lt-tag.ok { background: #183526; color: #7fd3a4; } :root:not([data-theme="light"]) .lt-tag { color: var(--accent); } }
+.lt-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.lt-user { flex-wrap: wrap; cursor: default; }
+.lt-user:hover, .lt-sess:hover { background: transparent; }
+.lt-sess { cursor: default; flex-wrap: wrap; }
+.lt-sess b { font: 600 14px var(--font-ui); min-width: 0; }
+.lt-user-who { display: grid; gap: 2px; min-width: 220px; flex: 1; }
+.lt-user-who b { font: 600 14px var(--font-ui); color: var(--home-ink); }
+.lt-user-who span { font-size: 12.5px; color: var(--home-ink-3); }
+.lt-user-who a { color: var(--home-ink-2); }
+.lt-check { display: flex !important; grid-template-columns: none; align-items: center; gap: 8px !important; font-weight: 500 !important; cursor: pointer; margin: 14px 0 0; font-size: 13.5px; }
+.lt-form .lt-check { margin: 0; }
+.lt-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--home-ink); }
+.lt-codes { columns: 2; margin: 6px 0 12px; padding: 12px 12px 12px 34px; border: 1px dashed var(--line); border-radius: 9px; background: var(--home-strip); }
+.lt-codes li { padding: 2px 0; color: var(--ink-3); font-size: 12px; }
+.lt-codes code { font: 600 14px var(--font-mono) !important; color: var(--ink); letter-spacing: .03em; }
+.lt-qr { display: grid; place-items: center; margin: 4px 0 10px; }
+.lt-qr svg { width: 200px; height: 200px; border-radius: 8px; background: #fff; }
+.lt-key { text-align: center; font-size: 12.5px !important; }
+.lt-key code { font: 600 13px var(--font-mono) !important; letter-spacing: .04em; user-select: all; }
+.lt-linkbox { display: flex; gap: 8px; margin-top: 8px; }
+.lt-linkbox input { flex: 1; min-width: 0; height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 12.5px var(--font-mono); }
+.lt-menu-sub { font-size: 12px; color: var(--ink-3); }
+.lt-src a { color: inherit; }
+
 /* ── Windows and messages ── */
 .lt-modal-bg { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgb(20 22 26 / .38); }
 .lt-modal { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 22px 22px 18px; border-radius: 12px; background: var(--bar); color: var(--ink); box-shadow: 0 20px 60px rgb(0 0 0 / .3); }
@@ -330,7 +371,7 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 .lt-form { display: grid; gap: 12px; margin: 10px 0 4px; }
 .lt-form label { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink); }
 .lt-form label small { font-weight: 400; color: var(--ink-3); line-height: 1.45; }
-.lt-form input[type=text], .lt-form select { font: 14px var(--font-ui); height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; }
+.lt-form input[type=text], .lt-form input[type=email], .lt-form input[type=password], .lt-form select { font: 14px var(--font-ui); height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; }
 .lt-form input:focus, .lt-form select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .lt-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .lt-modal .lt-err { margin: 10px 0 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--ink); }

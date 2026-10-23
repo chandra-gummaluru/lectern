@@ -12,14 +12,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="/static/css/splash.css">
     <link rel="stylesheet" href="/static/css/shell.css">
-    <script>
-        // Before anything draws: show the app straight away when a sign-in or folder is
-        // remembered (or a sign-in is just coming back), so the splash doesn't flash.
-        try {
-            if (/[#&]gh_/.test(location.hash) || sessionStorage.getItem('lectern.github')
-                || /local/.test(localStorage.getItem('lectern.mode') || '')) document.documentElement.classList.add('lt-has-session');
-        } catch (_) {}
-    </script>
+    <script src="/static/js/boot.js"></script>
 </head>
 <body>
     <!-- ── Splash: one family with Beamer+ and Test Mail (serif wordmark, institution, a live preview,
@@ -41,13 +34,17 @@
                 <p class="sp-inst">{{ institution }}</p>
                 <p class="sp-tag">Every course, from the first lecture to the final mark.</p>
 
-                <div class="sp-actions">
-                    <button type="button" class="sp-btn sp-btn--primary" id="splash-signin">
-                        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-                        Sign in with GitHub
-                    </button>
-                    <button type="button" class="sp-btn sp-btn--quiet" id="splash-folder" title="Work from a folder on this computer that holds your two course repositories">Choose a folder</button>
-                </div>
+                <!-- Sign in. The other steps (a two-factor code, a forgotten password, an invitation) are drawn
+                     in #sp-panel by auth.js. The password goes only to this server, over HTTPS. -->
+                <form class="sp-form" id="sp-form" action="#" method="post" novalidate>
+                    <label class="sp-field"><span>Email</span>
+                        <input type="email" id="sp-email" name="email" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+                    <label class="sp-field"><span>Password</span>
+                        <span class="sp-pw"><input type="password" id="sp-pw" name="password" autocomplete="current-password" required><button type="button" class="sp-show" data-show="sp-pw" aria-label="Show password">Show</button></span></label>
+                    <button type="submit" class="sp-btn sp-btn--primary" id="sp-go">Sign in</button>
+                    <button type="button" class="sp-link" id="sp-forgot">Forgot your password?</button>
+                </form>
+                <div class="sp-form" id="sp-panel" hidden></div>
                 <div class="sp-under">
                     {% if learn_more %}
                     <a class="sp-more" href="{{ learn_more }}" target="_blank" rel="noopener">Learn more</a>{% endif %}

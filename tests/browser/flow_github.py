@@ -1,11 +1,11 @@
+"""The shell, signed in: Home, a course offering, its gradebook, course page and an exam, on a phone too.
+(Named for when sign-in was GitHub's; the other walkthroughs import make_gh, OUT, BASE from here.)
+Run:  python tests/browser/flow_github.py"""
 import json, os, sys, time
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-
-OUT = os.path.join(os.path.dirname(__file__), "shots")
-os.makedirs(OUT, exist_ok=True)
-BASE = "http://localhost:5002/"
+from fakegh import FakeGitHub, Repo, BASE
+from harness import OUT
 
 GRADES = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"},
           "evals": [], "groups": [], "students": [], "marks": {}, "overrides": {}}
@@ -28,21 +28,13 @@ def run(steps_filter=None):
     with sync_playwright() as p:
         b = p.chromium.launch()
         ctx = b.new_context(viewport={"width": 1360, "height": 860})
-        ctx.route("https://api.github.com/**", gh.handle)
+        gh.attach(ctx)
         page = ctx.new_page()
         page.on("console", lambda m: errors.append(f"{m.type}: {m.text}") if m.type in ("error", "warning") else None)
         page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
         shot = lambda n: page.screenshot(path=f"{OUT}/{n}.png")
 
-        page.goto(BASE); page.wait_for_timeout(900); shot("01-splash")
-        page.click("#splash-signin"); page.wait_for_timeout(300)
-        print("splash status:", page.inner_text("#splash-status"))
-
-        # Pretend the sign-in came back.
-        page.evaluate("""() => { sessionStorage.setItem('lectern.github', JSON.stringify({access_token:'tok', refresh_token:'r', expires_at: Date.now()+8*3600e3})); localStorage.removeItem('lectern.repos'); }""")
-        page.goto(BASE + "#/"); page.reload(); page.wait_for_timeout(1500); shot("02-setup")
-        page.select_option("#lt-repo", "chandra-gummaluru/courses"); page.wait_for_timeout(200)
-        page.click("#lt-done"); page.wait_for_timeout(1200); shot("03-home")
+        page.goto(BASE + "#/"); page.wait_for_timeout(1500); shot("03-home")
         print("path:", page.inner_text("#lt-path"))
         page.click(".lt-card[data-k='0']"); page.wait_for_timeout(500); shot("04-offering")
         print("path:", page.inner_text("#lt-path"))
@@ -64,10 +56,10 @@ def run(steps_filter=None):
 
         # Phone
         m = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2)
-        mp = m.new_page(); mp.goto(BASE); mp.wait_for_timeout(900); mp.screenshot(path=f"{OUT}/11-splash-phone.png")
+        gh.attach(m)
+        mp = m.new_page(); mp.goto(BASE + "#/"); mp.wait_for_timeout(1200); mp.screenshot(path=f"{OUT}/11-home-phone.png")
         b.close()
     print("\n".join(errors[:40]) or "no console errors")
-    print("calls:", len(gh.calls))
 
 if __name__ == "__main__":
     run()

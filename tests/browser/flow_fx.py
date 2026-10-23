@@ -20,7 +20,7 @@ def main():
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []
     with sync_playwright() as p:
-        b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1360, "height": 900}); ctx.route("https://api.github.com/**", gh.handle)
+        b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1360, "height": 900}); gh.attach(ctx)
         ctx.route("https://cdnjs.cloudflare.com/**", lambda r: r.abort()); ctx.route("https://fonts.googleapis.com/**", lambda r: r.abort())
         page = ctx.new_page(); page.on("pageerror", lambda e: errors.append(str(e))); page.goto(BASE)
         page.evaluate("""() => { sessionStorage.setItem('lectern.github', JSON.stringify({access_token:'tok', refresh_token:'r', expires_at: Date.now()+8*3600e3})); localStorage.setItem('lectern.repos', JSON.stringify({priv:'chandra-gummaluru/courses-private', pub:'chandra-gummaluru/courses'})); }""")

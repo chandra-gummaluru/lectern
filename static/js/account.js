@@ -48,6 +48,10 @@ function wireCodes(ctx, m, codes, close) {
 }
 
 // ── #/account ────────────────────────────────────────────────────────
+// Two-factor on or off, as a switch. It flips only once the step it opens (password, code) is done.
+const tfSwitch = on => `<button type="button" class="lt-switch" role="switch" aria-checked="${on}" id="${on ? "ac-off" : "ac-on"}"
+  aria-label="Two-factor sign-in" title="${on ? "Turn off two-factor sign-in" : "Turn on two-factor sign-in"}"><span class="lt-switch-k"></span><span class="lt-switch-t">${on ? "On" : "Off"}</span></button>`;
+
 export async function accountPage(ctx) {
   const { S, pageHTML, modal, toast } = ctx;
   const u = S.user;
@@ -62,7 +66,7 @@ export async function accountPage(ctx) {
         <label>Email<input type="email" value="${esc(u.email)}" readonly><small>To change it, ask your Lectern admin.</small></label>
         <div><button type="submit" class="lt-btn">Save name</button></div>
       </form>
-      <p class="lt-row-text">Your course pages are published at <a href="${esc(u.site)}" target="_blank" rel="noopener"><code>${esc(u.site)}</code></a>, e.g. <code>${esc(u.site)}csc258/f26/info.html</code>.</p>
+      <p class="lt-row-text">Your course pages are published at <a href="${esc(u.site)}" target="_blank" rel="noopener"><code>${esc(u.site)}</code></a>.</p>
     </section>
 
     <div class="lt-sec"><h2>Password</h2></div>
@@ -74,10 +78,10 @@ export async function accountPage(ctx) {
     <div class="lt-sec"><h2>Two-Factor Sign-In</h2></div>
     <section class="lt-panel lt-row">
       ${u.twoFactor
-        ? `<p class="lt-row-text"><span class="lt-on">On</span> Signing in needs your password and a code from your authenticator app. <b>${u.recoveryLeft}</b> recovery code${u.recoveryLeft === 1 ? "" : "s"} left${u.recoveryLeft <= 3 ? ": make new ones soon" : ""}.</p>
-           <span class="lt-row-acts"><button type="button" class="lt-btn" id="ac-rec">New recovery codes</button><button type="button" class="lt-btn" id="ac-off">Turn off</button></span>`
-        : `<p class="lt-row-text"><span class="lt-off">Off</span> Add a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) to signing in, so a stolen password isn't enough. Recommended: Lectern holds students' grades.</p>
-           <button type="button" class="lt-btn primary" id="ac-on">Turn on</button>`}
+        ? `<p class="lt-row-text">Signing in needs your password and a code from your authenticator app. <b>${u.recoveryLeft}</b> recovery code${u.recoveryLeft === 1 ? "" : "s"} left${u.recoveryLeft <= 3 ? ": make new ones soon" : ""}.</p>
+           <span class="lt-row-acts"><button type="button" class="lt-btn" id="ac-rec">New recovery codes</button>${tfSwitch(true)}</span>`
+        : `<p class="lt-row-text">Add a code from an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) to signing in, so a stolen password isn't enough.</p>
+           ${tfSwitch(false)}`}
     </section>
 
     <div class="lt-sec"><h2>Where You're Signed In</h2><button type="button" class="lt-btn" id="ac-others" hidden>Sign out everywhere else</button></div>

@@ -55,6 +55,7 @@ def main():
         assert page.evaluate("document.cookie") == "", "the session cookie must not be readable by scripts"
 
         # 3. Two-factor on: password → QR → code → recovery codes.
+        page.wait_for_selector("#ac-on[role=switch][aria-checked=false]"); shot("a03b-2fa-off")
         page.click("#ac-on"); page.fill("#tf-pw", PASSWORD); page.click(".lt-modal [type=submit]")
         page.wait_for_selector(".lt-qr svg"); shot("a04-2fa-qr")
         secret = page.inner_text(".lt-key code").replace(" ", "")
@@ -65,6 +66,7 @@ def main():
         assert page.is_disabled("[data-done]")
         page.check("[data-saved]"); page.click("[data-done]")
         expect(page.locator(".lt-account")).to_contain_text("10 recovery codes left")
+        assert page.get_attribute("#ac-off", "aria-checked") == "true"; shot("a05b-2fa-on")
 
         srv.user = db.one("SELECT * FROM users WHERE email = 'chandra@utoronto.ca'")
         srv.put("priv", {"csc258/f26/grades.json": json.dumps(BOOK)})
@@ -135,21 +137,21 @@ def main():
         ASECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
         adminmod.save_admin("root@utoronto.ca", "Root Admin", PASSWORD, ASECRET)
         ap = ctx.new_page()
-        ap.goto(srv.base + "admin"); ap.wait_for_selector("#ad-email", state="visible"); ap.screenshot(path=f"{OUT}/a11a-admin-signin.png")
-        assert not ap.is_visible("#ad-code"), "the code is asked for after the password"
-        ap.fill("#ad-email", "chandra@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.click("#ad-go")
-        ap.wait_for_selector("#ad-code", state="visible"); ap.screenshot(path=f"{OUT}/a11b-admin-code.png")
-        ap.fill("#ad-code", "123456"); ap.click("#ad-go2")
-        expect(ap.locator("#ad-status")).to_contain_text("don't match an admin")      # an account isn't an admin
-        ap.wait_for_selector("#ad-pw", state="visible")                                # back to the password
-        ap.fill("#ad-email", "root@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.click("#ad-go")
-        ap.fill("#ad-code", security.totp_now(ASECRET)); ap.click("#ad-go2")
-        ap.wait_for_selector("#ad-inv-email")
-        ap.fill("#ad-inv-email", "ta@utoronto.ca"); ap.click("#ad-inv [type=submit]")
-        ap.wait_for_selector("#ad-inv-msg .lt-linkbox input"); ap.screenshot(path=f"{OUT}/a11-admin.png", full_page=True)
-        link = ap.input_value("#ad-inv-msg .lt-linkbox input")
+        ap.goto(srv.base + "admin"); ap.wait_for_selector("#lxa-email", state="visible"); ap.screenshot(path=f"{OUT}/a11a-admin-signin.png")
+        assert not ap.is_visible("#lxa-code"), "the code is asked for after the password"
+        ap.fill("#lxa-email", "chandra@utoronto.ca"); ap.fill("#lxa-pw", PASSWORD); ap.click("#lxa-go")
+        ap.wait_for_selector("#lxa-code", state="visible"); ap.screenshot(path=f"{OUT}/a11b-admin-code.png")
+        ap.fill("#lxa-code", "123456"); ap.click("#lxa-go2")
+        expect(ap.locator("#lxa-status")).to_contain_text("don't match an admin")      # an account isn't an admin
+        ap.wait_for_selector("#lxa-pw", state="visible")                                # back to the password
+        ap.fill("#lxa-email", "root@utoronto.ca"); ap.fill("#lxa-pw", PASSWORD); ap.click("#lxa-go")
+        ap.fill("#lxa-code", security.totp_now(ASECRET)); ap.click("#lxa-go2")
+        ap.wait_for_selector("#lxa-inv-email")
+        ap.fill("#lxa-inv-email", "ta@utoronto.ca"); ap.click("#lxa-inv [type=submit]")
+        ap.wait_for_selector("#lxa-inv-msg .lt-linkbox input"); ap.screenshot(path=f"{OUT}/a11-admin.png", full_page=True)
+        link = ap.input_value("#lxa-inv-msg .lt-linkbox input")
         assert re.search(r"#invite=[\w-]{40,}", link), link
-        expect(ap.locator("#ad-page")).to_contain_text("ta@utoronto.ca")
+        expect(ap.locator("#lxa-page")).to_contain_text("ta@utoronto.ca")
         ap.close()
 
         # 9. Forgotten password (email printed, no SMTP): the reset link, with the 2FA code it needs.

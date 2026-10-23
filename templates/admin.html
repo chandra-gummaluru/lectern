@@ -15,42 +15,42 @@
 </head>
 <body class="lt-on-splash">
     <!-- Signing in: email and password, then a two-factor code, every time (the server checks all three together). -->
-    <div class="splash" id="ad-signin" hidden>
+    <div class="splash" id="lxa-signin" hidden>
         <main class="sp-screen">
             <header class="sp-copy">
                 <h1 class="sp-title">Lectern</h1>
                 <p class="sp-inst">Admin · {{ institution }}</p>
-                <form class="sp-form" id="ad-form" action="#" method="post" novalidate>
-                    <div id="ad-step1">
+                <form class="sp-form" id="lxa-form" action="#" method="post" novalidate>
+                    <div id="lxa-step1">
                         <label class="sp-field"><span>Email</span>
-                            <input type="email" id="ad-email" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+                            <input type="email" id="lxa-email" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
                         <label class="sp-field"><span>Password</span>
-                            <span class="sp-pw"><input type="password" id="ad-pw" autocomplete="current-password" required><button type="button" class="sp-show" data-show="ad-pw" aria-label="Show password">Show</button></span></label>
-                        <button type="submit" class="sp-btn sp-btn--primary" id="ad-go">Sign in</button>
+                            <span class="sp-pw"><input type="password" id="lxa-pw" autocomplete="current-password" required><button type="button" class="sp-show" data-show="lxa-pw" aria-label="Show password">Show</button></span></label>
+                        <button type="submit" class="sp-btn sp-btn--primary" id="lxa-go">Sign in</button>
                     </div>
-                    <div id="ad-step2" hidden>
+                    <div id="lxa-step2" hidden>
                         <h2>Two-factor sign-in</h2>
                         <p>Open your authenticator app and enter the 6-digit code for Lectern Admin.</p>
                         <label class="sp-field"><span>Code</span>
-                            <input type="text" id="ad-code" class="sp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6-digit code"></label>
-                        <button type="submit" class="sp-btn sp-btn--primary" id="ad-go2">Continue</button>
-                        <button type="button" class="sp-link" id="ad-back">Back</button>
+                            <input type="text" id="lxa-code" class="sp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6-digit code"></label>
+                        <button type="submit" class="sp-btn sp-btn--primary" id="lxa-go2">Continue</button>
+                        <button type="button" class="sp-link" id="lxa-back">Back</button>
                     </div>
                 </form>
-                <p class="sp-hint" id="ad-status" role="status" aria-live="polite"></p>
+                <p class="sp-hint" id="lxa-status" role="status" aria-live="polite"></p>
             </header>
         </main>
     </div>
 
     <!-- The panel -->
-    <div class="lt-app" id="ad-app" hidden>
-        <header class="lt-bar ad-bar">
-            <span class="ad-mark">Lectern <b>Admin</b></span>
+    <div class="lt-app" id="lxa-app" hidden>
+        <header class="lt-bar lxa-bar">
+            <span class="lxa-mark">Lectern <b>Admin</b></span>
             <span class="lt-status"></span>
-            <span class="ad-who" id="ad-who"></span>
-            <button type="button" id="ad-out">Sign out</button>
+            <span class="lxa-who" id="lxa-who"></span>
+            <button type="button" id="lxa-out">Sign out</button>
         </header>
-        <main class="lt-page" id="ad-page"></main>
+        <main class="lt-page" id="lxa-page"></main>
     </div>
     <div id="lt-modal-root"></div>
     <div id="lt-toast-root"></div>

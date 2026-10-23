@@ -1,13 +1,13 @@
 /* The admin panel: Lectern's look (splash.css for signing in, shell.css for the panel), a few extras. */
-#ad-step1, #ad-step2 { display: grid; gap: 12px; }
-#ad-step1[hidden], #ad-step2[hidden] { display: none; }
-.ad-bar { gap: 14px; }
-.ad-mark { font: 500 22px/1 var(--font-serif); color: var(--ink); }
-.ad-mark b { font: 600 11px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); vertical-align: 3px; margin-left: 4px; }
-.ad-who { margin-left: auto; font-size: 13.5px; color: var(--ink-2); }
-.ad-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
-.ad-acts .lt-link { font-size: 13px; }
-.ad-import { display: grid; gap: 12px; max-width: 560px; }
-.ad-file { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--home-ink-3); }
-.ad-file label { cursor: pointer; }
-.ad-import select { height: 36px; }
+#lxa-step1, #lxa-step2 { display: grid; gap: 12px; }
+#lxa-step1[hidden], #lxa-step2[hidden] { display: none; }
+.lxa-bar { gap: 14px; }
+.lxa-mark { font: 500 22px/1 var(--font-serif); color: var(--ink); }
+.lxa-mark b { font: 600 11px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); vertical-align: 3px; margin-left: 4px; }
+.lxa-who { margin-left: auto; font-size: 13.5px; color: var(--ink-2); }
+.lxa-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
+.lxa-acts .lt-link { font-size: 13px; }
+.lxa-import { display: grid; gap: 12px; max-width: 560px; }
+.lxa-file { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--home-ink-3); }
+.lxa-file label { cursor: pointer; }
+.lxa-import select { height: 36px; }

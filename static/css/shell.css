@@ -422,3 +422,15 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 /* A delete button after its first click: red, asking to be clicked again. */
 html body button.lt-armed.lt-armed.lt-armed.lt-armed[data-armed], html body button.lt-armed.lt-armed.lt-armed.lt-armed[data-armed]:hover { background: #b42318 !important; border-color: #b42318 !important; color: #fff !important; }   /* armed: a second click deletes */
 html body button.lt-armed[data-armed] svg { color: #fff !important; }
+
+/* A switch (two-factor sign-in on the account page): a track with a knob, and the word for where it is. */
+.lt-switch { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; padding: 4px 2px; border: 0; background: none; cursor: pointer; font: 600 13px var(--font-ui); color: var(--ink-2); }
+.lt-switch-k { position: relative; width: 40px; height: 24px; border-radius: 99px; background: var(--home-line-2); transition: background .15s; flex: none; }
+.lt-switch-k::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / .25); transition: transform .15s; }
+.lt-switch[aria-checked="true"] .lt-switch-k { background: var(--home-ok); }
+.lt-switch[aria-checked="true"] .lt-switch-k::after { transform: translateX(16px); }
+.lt-switch[aria-checked="true"] { color: var(--home-ok); }
+.lt-switch:hover .lt-switch-k { filter: brightness(.95); }
+.lt-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.lt-row-acts .lt-switch { margin-left: 8px; }
+@media (prefers-reduced-motion: reduce) { .lt-switch-k, .lt-switch-k::after { transition: none; } }

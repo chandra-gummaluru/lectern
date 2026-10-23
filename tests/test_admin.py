@@ -33,7 +33,7 @@ def adm():
 
 def test_the_panel_page(client):
     r = client.get("/admin")
-    assert r.status_code == 200 and b'id="ad-form"' in r.data and r.headers["X-Frame-Options"] == "DENY"
+    assert r.status_code == 200 and b'id="lxa-form"' in r.data and r.headers["X-Frame-Options"] == "DENY"
 
 
 def test_sign_in_needs_password_and_code(client):

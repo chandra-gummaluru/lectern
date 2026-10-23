@@ -57,55 +57,55 @@ function withPassword(title, text, label, run) {
 
 // ── Signing in ───────────────────────────────────────────────────────
 function step(n) {
-  $("#ad-step1").hidden = n !== 1; $("#ad-step2").hidden = n !== 2;
-  setTimeout(() => (n === 1 ? ($("#ad-email").value ? $("#ad-pw") : $("#ad-email")) : $("#ad-code")).focus(), 0);
+  $("#lxa-step1").hidden = n !== 1; $("#lxa-step2").hidden = n !== 2;
+  setTimeout(() => (n === 1 ? ($("#lxa-email").value ? $("#lxa-pw") : $("#lxa-email")) : $("#lxa-code")).focus(), 0);
 }
-function say(msg) { const st = $("#ad-status"); st.className = `sp-hint${msg ? " is-error" : ""}`; st.textContent = msg; }
+function say(msg) { const st = $("#lxa-status"); st.className = `sp-hint${msg ? " is-error" : ""}`; st.textContent = msg; }
 function showSignIn(msg = "") {
-  $("#ad-app").hidden = true; $("#ad-signin").hidden = false;
+  $("#lxa-app").hidden = true; $("#lxa-signin").hidden = false;
   document.body.className = "lt-on-splash";
   say(msg); step(1);
 }
-wireShow($("#ad-form"));
-$("#ad-back").onclick = () => { $("#ad-code").value = ""; say(""); step(1); };
+wireShow($("#lxa-form"));
+$("#lxa-back").onclick = () => { $("#lxa-code").value = ""; say(""); step(1); };
 // Step 1 only asks; nothing is sent until there's a code too, so the server checks all three together
 // (and a password on its own never gets a yes or no).
-$("#ad-form").onsubmit = async e => {
+$("#lxa-form").onsubmit = async e => {
   e.preventDefault();
   if (!secureHere()) return say("This page isn't secure (no HTTPS), so it won't send your password.");
-  const email = $("#ad-email").value.trim(), password = $("#ad-pw").value;
-  if (!$("#ad-step1").hidden) {
+  const email = $("#lxa-email").value.trim(), password = $("#lxa-pw").value;
+  if (!$("#lxa-step1").hidden) {
     if (!email || !password) return say("Enter your email and password.");
     say(""); return step(2);
   }
-  const code = $("#ad-code").value.replace(/\s+/g, "");
+  const code = $("#lxa-code").value.replace(/\s+/g, "");
   if (!/^\d{6}$/.test(code)) return say("Enter the 6-digit code from your authenticator app.");
-  const go = $("#ad-go2"); go.disabled = true; go.textContent = "Signing in…"; say("");
+  const go = $("#lxa-go2"); go.disabled = true; go.textContent = "Signing in…"; say("");
   try {
     const d = await api("/api/admin/login", { email, password, code });
-    $("#ad-pw").value = ""; $("#ad-code").value = "";
+    $("#lxa-pw").value = ""; $("#lxa-code").value = "";
     start(d.admin);
   } catch (x) {
-    say(x.message); $("#ad-code").value = "";
-    if (x.code === "bad-login" || x.code === "disabled") { $("#ad-pw").value = ""; step(1); } else step(2);
+    say(x.message); $("#lxa-code").value = "";
+    if (x.code === "bad-login" || x.code === "disabled") { $("#lxa-pw").value = ""; step(1); } else step(2);
   }
   finally { go.disabled = false; go.textContent = "Continue"; }
 };
-$("#ad-out").onclick = async () => { try { await api("/api/admin/logout", {}); } catch (_) {} location.replace("/admin"); };
+$("#lxa-out").onclick = async () => { try { await api("/api/admin/logout", {}); } catch (_) {} location.replace("/admin"); };
 
 let me = null;
 function start(admin) {
   me = admin;
-  $("#ad-signin").hidden = true; $("#ad-app").hidden = false;
+  $("#lxa-signin").hidden = true; $("#lxa-app").hidden = false;
   document.body.className = "lt-on-app lt-on-page";
-  $("#ad-who").textContent = admin.name ? `${admin.name} · ${admin.email}` : admin.email;
+  $("#lxa-who").textContent = admin.name ? `${admin.name} · ${admin.email}` : admin.email;
   draw();
 }
 
 // ── The panel ────────────────────────────────────────────────────────
 let area = "pub";
 async function draw() {
-  const page = $("#ad-page");
+  const page = $("#lxa-page");
   let d;
   try { d = await api("/api/admin/overview"); } catch (x) { if (x.code !== "signed-out") page.innerHTML = `<div class="lt-in"><p class="lt-note err">${esc(x.message)}</p></div>`; return; }
   const userOpts = d.users.map(u => `<option value="${u.id}">${esc(u.name || u.email)} (${esc(u.email)})</option>`).join("");
@@ -115,11 +115,11 @@ async function draw() {
 
     <div class="lt-sec"><h2>Invite Someone</h2></div>
     <section class="lt-panel">
-      <form id="ad-inv" class="lt-team-add" novalidate>
-        <input type="email" id="ad-inv-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
+      <form id="lxa-inv" class="lt-team-add" novalidate>
+        <input type="email" id="lxa-inv-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
         <button type="submit" class="lt-btn primary">Invite</button>
       </form>
-      <div id="ad-inv-msg"></div>
+      <div id="lxa-inv-msg"></div>
     </section>
 
     ${d.invites.length ? `<div class="lt-sec"><h2>Waiting Invitations</h2><span>${d.invites.length}</span></div>
@@ -130,7 +130,7 @@ async function draw() {
     ${d.users.length ? `<div class="lt-olist">${d.users.map(u => `<div class="lt-orow lt-user">
       <div class="lt-user-who"><b>${esc(u.name || u.email)}</b><span>${esc(u.email)} · <a href="${esc(u.site)}" target="_blank" rel="noopener">${esc(u.handle)}</a> · last sign-in ${esc(when(u.lastLogin))}</span></div>
       <span class="lt-tags">${u.twoFactor ? `<span class="lt-tag ok">2FA</span>` : `<span class="lt-tag dim">No 2FA</span>`}${u.teams ? `<span class="lt-tag dim">On ${u.teams} team${u.teams === 1 ? "" : "s"}</span>` : ""}${u.disabled ? `<span class="lt-tag bad">Off</span>` : ""}${u.locked ? `<span class="lt-tag bad">Waiting (wrong passwords)</span>` : ""}</span>
-      <span class="lt-orow-r ad-acts">
+      <span class="lt-orow-r lxa-acts">
         <button type="button" class="lt-link" data-u="${u.id}" data-act="sign-out">Sign out everywhere</button>
         ${u.locked ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="unlock">Let them try again</button>` : ""}
         ${u.twoFactor ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="reset-2fa">Turn off 2FA</button>` : ""}
@@ -140,12 +140,12 @@ async function draw() {
     <div class="lt-sec"><h2>Import Old Courses</h2></div>
     <section class="lt-panel">
       <p class="lt-row-text">From the two GitHub repositories Lectern used before: on GitHub, <b>Code → Download ZIP</b> for each, then import each into the account it belongs to. Only files the account doesn't have yet are added: nothing of theirs is changed, and they're emailed about it.</p>
-      ${d.users.length ? `<form id="ad-imp" class="ad-import" novalidate style="margin-top:14px">
-        <label class="lt-form" style="margin:0"><span style="font-size:13px;font-weight:600">Account</span><select id="ad-imp-user" class="lt-filter">${userOpts}</select></label>
+      ${d.users.length ? `<form id="lxa-imp" class="lxa-import" novalidate style="margin-top:14px">
+        <label class="lt-form" style="margin:0"><span style="font-size:13px;font-weight:600">Account</span><select id="lxa-imp-user" class="lt-filter">${userOpts}</select></label>
         <div class="lt-seg" role="group" aria-label="Which repository">
           <button type="button" data-area="pub" aria-pressed="${area === "pub"}">Public: course pages</button><button type="button" data-area="priv" aria-pressed="${area === "priv"}">Private: grades and exams</button>
         </div>
-        <div class="ad-file"><label class="lt-btn"><input type="file" id="ad-imp-file" accept=".zip,application/zip" hidden>Choose ZIP…</label><span id="ad-imp-name">No file chosen</span></div>
+        <div class="lxa-file"><label class="lt-btn"><input type="file" id="lxa-imp-file" accept=".zip,application/zip" hidden>Choose ZIP…</label><span id="lxa-imp-name">No file chosen</span></div>
         <div><button type="submit" class="lt-btn primary">Import</button></div>
       </form>` : `<p class="lt-row-text" style="margin-top:10px">Invite the account first.</p>`}
     </section>
@@ -154,20 +154,20 @@ async function draw() {
     <div class="lt-olist">${d.admins.map(a => `<div class="lt-orow lt-user">
       <div class="lt-user-who"><b>${esc(a.name || a.email)}${a.id === d.me ? " (you)" : ""}</b><span>${esc(a.email)} · last sign-in ${esc(when(a.lastLogin))}</span></div>
       <span class="lt-tags">${a.disabled ? `<span class="lt-tag bad">Off</span>` : ""}</span>
-      <span class="lt-orow-r ad-acts">${a.id === d.me ? "" : a.disabled ? `<button type="button" class="lt-link" data-a="${a.id}" data-act="enable">Turn on</button>` : `<button type="button" class="lt-link lt-del" data-a="${a.id}" data-act="disable">Turn off</button>`}</span>
+      <span class="lt-orow-r lxa-acts">${a.id === d.me ? "" : a.disabled ? `<button type="button" class="lt-link" data-a="${a.id}" data-act="enable">Turn on</button>` : `<button type="button" class="lt-link lt-del" data-a="${a.id}" data-act="disable">Turn off</button>`}</span>
     </div>`).join("")}</div>
   </div>`;
 
-  $("#ad-inv").onsubmit = async e => {
+  $("#lxa-inv").onsubmit = async e => {
     e.preventDefault();
     const btn = e.target.querySelector("[type=submit]"); btn.disabled = true;
     try {
-      const r = await api("/api/admin/invites", { email: $("#ad-inv-email").value.trim() });
+      const r = await api("/api/admin/invites", { email: $("#lxa-inv-email").value.trim() });
       if (r.emailed) { toast(`Invitation emailed to ${r.email}.`); return draw(); }
       await draw();
-      $("#ad-inv-msg").innerHTML = `<p class="lt-note">Send <b>${esc(r.email)}</b> this link (only to them: it works for whoever has it):
+      $("#lxa-inv-msg").innerHTML = `<p class="lt-note">Send <b>${esc(r.email)}</b> this link (only to them: it works for whoever has it):
         <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
-      $("#ad-inv-msg [data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { $("#ad-inv-msg input").select(); } };
+      $("#lxa-inv-msg [data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { $("#lxa-inv-msg input").select(); } };
     } catch (x) { toast(x.message); } finally { btn.disabled = false; }
   };
   page.querySelectorAll("[data-revoke]").forEach(b => { b.onclick = async () => { await api("/api/admin/invites/revoke", { id: b.dataset.revoke }); draw(); }; });
@@ -186,19 +186,19 @@ async function draw() {
     };
   });
   page.querySelectorAll("[data-area]").forEach(b => { b.onclick = () => { area = b.dataset.area; page.querySelectorAll("[data-area]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); }; });
-  const imp = $("#ad-imp");
-  const fileIn = $("#ad-imp-file");
-  if (fileIn) fileIn.onchange = () => { $("#ad-imp-name").textContent = fileIn.files[0] ? fileIn.files[0].name : "No file chosen"; };
+  const imp = $("#lxa-imp");
+  const fileIn = $("#lxa-imp-file");
+  if (fileIn) fileIn.onchange = () => { $("#lxa-imp-name").textContent = fileIn.files[0] ? fileIn.files[0].name : "No file chosen"; };
   if (imp) imp.onsubmit = async e => {
     e.preventDefault();
-    const f = $("#ad-imp-file").files[0], btn = imp.querySelector("[type=submit]");
+    const f = $("#lxa-imp-file").files[0], btn = imp.querySelector("[type=submit]");
     if (!f) return toast("Choose the ZIP file first.");
-    const fd = new FormData(); fd.append("user", $("#ad-imp-user").value); fd.append("area", area); fd.append("zip", f);
+    const fd = new FormData(); fd.append("user", $("#lxa-imp-user").value); fd.append("area", area); fd.append("zip", f);
     btn.disabled = true; btn.textContent = "Importing…";
     try {
       const r = await api("/api/admin/import", fd, { form: true });
       toast(`Imported ${r.files} file${r.files === 1 ? "" : "s"}.${r.already ? ` ${r.already} they already had were left as they are.` : ""}${r.skipped.length ? ` Skipped ${r.skipped.length}.` : ""}`);
-      $("#ad-imp-file").value = ""; $("#ad-imp-name").textContent = "No file chosen";
+      $("#lxa-imp-file").value = ""; $("#lxa-imp-name").textContent = "No file chosen";
     } catch (x) { toast(x.message); } finally { btn.disabled = false; btn.textContent = "Import"; }
   };
 }

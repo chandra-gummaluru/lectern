@@ -121,7 +121,7 @@ export async function accountPage(ctx) {
         <p>In your authenticator app, add an account and scan the code. Or type in the key.</p>
         <div class="lt-qr">${s.qr}</div>
         <p class="lt-key">Key: <code>${esc(s.secret)}</code></p>
-        <form novalidate><div class="lt-form"><label>Then enter the 6-digit code it shows<input type="text" id="tf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456"></label></div>
+        <form novalidate><div class="lt-form"><label>Then enter the 6-digit code it shows<input type="text" id="tf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6-digit code"></label></div>
         <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn primary">Turn on</button></div></form>`;
       m.querySelector("[data-no]").onclick = close;
       m.querySelector("#tf-code").focus();

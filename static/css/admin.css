@@ -1,7 +1,6 @@
 /* The admin panel: Lectern's look (splash.css for signing in, shell.css for the panel), a few extras. */
-.ad-foot { max-width: 30em; font-size: 12.5px; }
-.ad-foot code { font: 12px ui-monospace, Menlo, Consolas, monospace; }
-.ad-foot a { color: var(--ink-2); }
+#ad-step1, #ad-step2 { display: grid; gap: 12px; }
+#ad-step1[hidden], #ad-step2[hidden] { display: none; }
 .ad-bar { gap: 14px; }
 .ad-mark { font: 500 22px/1 var(--font-serif); color: var(--ink); }
 .ad-mark b { font: 600 11px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); vertical-align: 3px; margin-left: 4px; }

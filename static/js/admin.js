@@ -56,24 +56,40 @@ function withPassword(title, text, label, run) {
 }
 
 // ── Signing in ───────────────────────────────────────────────────────
+function step(n) {
+  $("#ad-step1").hidden = n !== 1; $("#ad-step2").hidden = n !== 2;
+  setTimeout(() => (n === 1 ? ($("#ad-email").value ? $("#ad-pw") : $("#ad-email")) : $("#ad-code")).focus(), 0);
+}
+function say(msg) { const st = $("#ad-status"); st.className = `sp-hint${msg ? " is-error" : ""}`; st.textContent = msg; }
 function showSignIn(msg = "") {
   $("#ad-app").hidden = true; $("#ad-signin").hidden = false;
   document.body.className = "lt-on-splash";
-  const st = $("#ad-status"); st.className = `sp-hint${msg ? " is-error" : ""}`; st.textContent = msg;
-  setTimeout(() => $("#ad-email").focus(), 0);
+  say(msg); step(1);
 }
 wireShow($("#ad-form"));
+$("#ad-back").onclick = () => { $("#ad-code").value = ""; say(""); step(1); };
+// Step 1 only asks; nothing is sent until there's a code too, so the server checks all three together
+// (and a password on its own never gets a yes or no).
 $("#ad-form").onsubmit = async e => {
   e.preventDefault();
-  const go = $("#ad-go"), st = $("#ad-status");
-  if (!secureHere()) { st.className = "sp-hint is-error"; st.textContent = "This page isn't secure (no HTTPS), so it won't send your password."; return; }
-  go.disabled = true; go.textContent = "Signing in…"; st.textContent = "";
+  if (!secureHere()) return say("This page isn't secure (no HTTPS), so it won't send your password.");
+  const email = $("#ad-email").value.trim(), password = $("#ad-pw").value;
+  if (!$("#ad-step1").hidden) {
+    if (!email || !password) return say("Enter your email and password.");
+    say(""); return step(2);
+  }
+  const code = $("#ad-code").value.replace(/\s+/g, "");
+  if (!/^\d{6}$/.test(code)) return say("Enter the 6-digit code from your authenticator app.");
+  const go = $("#ad-go2"); go.disabled = true; go.textContent = "Signing in…"; say("");
   try {
-    const d = await api("/api/admin/login", { email: $("#ad-email").value.trim(), password: $("#ad-pw").value, code: $("#ad-code").value.replace(/\s+/g, "") });
+    const d = await api("/api/admin/login", { email, password, code });
     $("#ad-pw").value = ""; $("#ad-code").value = "";
     start(d.admin);
-  } catch (x) { st.className = "sp-hint is-error"; st.textContent = x.message; $("#ad-code").value = ""; }
-  finally { go.disabled = false; go.textContent = "Sign in"; }
+  } catch (x) {
+    say(x.message); $("#ad-code").value = "";
+    if (x.code === "bad-login" || x.code === "disabled") { $("#ad-pw").value = ""; step(1); } else step(2);
+  }
+  finally { go.disabled = false; go.textContent = "Continue"; }
 };
 $("#ad-out").onclick = async () => { try { await api("/api/admin/logout", {}); } catch (_) {} location.replace("/admin"); };
 

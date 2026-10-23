@@ -79,6 +79,7 @@
 .sp-field input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgb(166 124 0 / .16); }
 .sp-field input[readonly] { background: transparent; color: var(--ink-2); }
 .sp-field input.sp-code { font: 600 22px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .3em; text-align: center; }
+.sp-field input.sp-code::placeholder { font: 400 15px var(--sans); letter-spacing: 0; color: var(--ink-3); opacity: .7; }
 .sp-pw { position: relative; display: block; }
 .sp-pw input { padding-right: 62px; }
 .sp-show { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 30px; padding: 0 9px; border: 0; border-radius: 6px; background: none; font: 600 12px var(--sans); color: var(--ink-2); cursor: pointer; }

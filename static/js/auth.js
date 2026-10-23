@@ -77,12 +77,12 @@ export const PW_RULE = "At least 12 characters. A few words together is strong a
 // A two-factor step: an authenticator code, or (instead) one of the recovery codes.
 function codeFields(idPrefix, lt = false) {
   if (lt) return `<label data-k="code">Code from your authenticator app
-      <input type="text" id="${idPrefix}-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456"></label>
+      <input type="text" id="${idPrefix}-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="6-digit code"></label>
     <label data-k="rec" hidden>Recovery code
       <input type="text" id="${idPrefix}-rec" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="abcde-fghij"><small>Each recovery code works once.</small></label>
     <button type="button" class="lt-link" data-swap style="justify-self:start">Use a recovery code instead</button>`;
   return `<label class="sp-field" data-k="code"><span>Code from your authenticator app</span>
-      <input type="text" id="${idPrefix}-code" class="sp-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" placeholder="123456"></label>
+      <input type="text" id="${idPrefix}-code" class="sp-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]*" maxlength="7" placeholder="6-digit code"></label>
     <label class="sp-field" data-k="rec" hidden><span>Recovery code</span>
       <input type="text" id="${idPrefix}-rec" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="abcde-fghij"><small>Each recovery code works once.</small></label>
     <button type="button" class="sp-link" data-swap>Use a recovery code instead</button>`;

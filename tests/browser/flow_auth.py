@@ -136,9 +136,14 @@ def main():
         adminmod.save_admin("root@utoronto.ca", "Root Admin", PASSWORD, ASECRET)
         ap = ctx.new_page()
         ap.goto(srv.base + "admin"); ap.wait_for_selector("#ad-email", state="visible"); ap.screenshot(path=f"{OUT}/a11a-admin-signin.png")
-        ap.fill("#ad-email", "chandra@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.fill("#ad-code", "123456"); ap.click("#ad-go")
+        assert not ap.is_visible("#ad-code"), "the code is asked for after the password"
+        ap.fill("#ad-email", "chandra@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.click("#ad-go")
+        ap.wait_for_selector("#ad-code", state="visible"); ap.screenshot(path=f"{OUT}/a11b-admin-code.png")
+        ap.fill("#ad-code", "123456"); ap.click("#ad-go2")
         expect(ap.locator("#ad-status")).to_contain_text("don't match an admin")      # an account isn't an admin
-        ap.fill("#ad-email", "root@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.fill("#ad-code", security.totp_now(ASECRET)); ap.click("#ad-go")
+        ap.wait_for_selector("#ad-pw", state="visible")                                # back to the password
+        ap.fill("#ad-email", "root@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.click("#ad-go")
+        ap.fill("#ad-code", security.totp_now(ASECRET)); ap.click("#ad-go2")
         ap.wait_for_selector("#ad-inv-email")
         ap.fill("#ad-inv-email", "ta@utoronto.ca"); ap.click("#ad-inv [type=submit]")
         ap.wait_for_selector("#ad-inv-msg .lt-linkbox input"); ap.screenshot(path=f"{OUT}/a11-admin.png", full_page=True)

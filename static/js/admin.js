@@ -125,16 +125,10 @@ async function draw() {
       <span class="lt-orow-r"><button type="button" class="lt-link" data-revoke="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>` : ""}
 
     <div class="lt-sec"><h2>Accounts</h2><span>${d.users.length}</span></div>
-    ${d.users.length ? `<div class="lt-olist">${d.users.map(u => `<div class="lt-orow lt-user">
+    ${d.users.length ? `<div class="lt-olist lxa-users">${d.users.map(u => `<div class="lt-orow lt-user">
       <div class="lt-user-who"><b>${esc(u.name || u.email)}</b><span>${esc(u.email)} · <a href="${esc(u.site)}" target="_blank" rel="noopener">${esc(u.handle)}</a> · last sign-in ${esc(when(u.lastLogin))}</span></div>
       <span class="lt-tags">${u.twoFactor ? `<span class="lt-tag ok">2FA</span>` : `<span class="lt-tag dim">No 2FA</span>`}${u.teams ? `<span class="lt-tag dim">On ${u.teams} team${u.teams === 1 ? "" : "s"}</span>` : ""}${u.disabled ? `<span class="lt-tag bad">Off</span>` : ""}${u.locked ? `<span class="lt-tag bad">Waiting (wrong passwords)</span>` : ""}</span>
-      <span class="lt-orow-r lxa-acts">
-        <button type="button" class="lt-link" data-u="${u.id}" data-act="sign-out">Sign out everywhere</button>
-        ${u.locked ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="unlock">Let them try again</button>` : ""}
-        ${u.twoFactor ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="reset-2fa">Turn off 2FA</button>` : ""}
-        ${u.disabled ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="enable">Turn on</button>` : `<button type="button" class="lt-link lt-del" data-u="${u.id}" data-act="disable">Turn off</button>`}
-        <button type="button" class="lt-link lt-del" data-u="${u.id}" data-act="delete">Delete</button>
-      </span></div>`).join("")}</div>` : `<p class="lt-hint">No accounts yet: invite someone above.</p>`}
+      <span class="lt-orow-r lxa-more-wrap"><button type="button" class="lxa-more" data-more="${u.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Manage ${esc(u.email)}" title="Manage">${DOTS}</button></span></div>`).join("")}</div>` : `<p class="lt-hint">No accounts yet: invite someone above.</p>`}
 
     <div class="lt-sec"><h2>Email</h2><span>${d.email ? "Set up" : "Off"}</span></div>
     <section class="lt-panel" id="lxa-mail"><div class="lt-loading" style="min-height:60px">Loading…</div></section>
@@ -160,15 +154,7 @@ async function draw() {
     } catch (x) { toast(x.message); } finally { btn.disabled = false; }
   };
   page.querySelectorAll("[data-revoke]").forEach(b => { b.onclick = async () => { await api("/api/admin/invites/revoke", { id: b.dataset.revoke }); draw(); }; });
-  page.querySelectorAll("[data-u]").forEach(b => {
-    b.onclick = async () => {
-      const u = d.users.find(x => x.id === Number(b.dataset.u)), act = b.dataset.act, go = password => api(`/api/admin/users/${u.id}`, { action: act, password });
-      if (act === "reset-2fa") return withPassword("Turn off their two-factor sign-in?", `For ${esc(u.email)}, e.g. after a lost phone. They're signed out and emailed, and can turn it on again.`, "Turn it off", go);
-      if (act === "delete") return deleteUser(u);
-      if (act === "disable") return withPassword("Turn this account off?", `${esc(u.email)} is signed out and can't sign in, and their published course pages stop showing. Nothing is deleted: you can turn it back on.`, "Turn it off", go);
-      try { await go(""); toast({ "sign-out": `Signed ${u.email} out everywhere.`, unlock: "They can try again now.", enable: "Turned on." }[act] || "Done."); draw(); } catch (x) { toast(x.message); }
-    };
-  });
+  page.querySelectorAll("[data-more]").forEach(b => { b.onclick = e => { e.stopPropagation(); userMenu(b, d.users.find(x => x.id === Number(b.dataset.more))); }; });
   page.querySelectorAll("[data-a]").forEach(b => {
     b.onclick = async () => {
       const a = d.admins.find(x => x.id === Number(b.dataset.a)), act = b.dataset.act, go = password => api(`/api/admin/admins/${a.id}`, { action: act, password });
@@ -176,6 +162,38 @@ async function draw() {
     };
   });
   drawEmail();
+}
+
+// Each account's actions, in a menu (⋯).
+const DOTS = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>`;
+let openMenu = null;
+function closeUserMenu() { if (openMenu) { openMenu.btn.setAttribute("aria-expanded", "false"); openMenu.el.remove(); openMenu = null; } }
+document.addEventListener("click", closeUserMenu);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && openMenu) { const b = openMenu.btn; closeUserMenu(); b.focus(); } });
+function userMenu(btn, u) {
+  const again = openMenu && openMenu.btn === btn;
+  closeUserMenu();
+  if (again) return;
+  const el = document.createElement("div");
+  el.className = "lt-menu lxa-menu"; el.setAttribute("role", "menu");
+  const item = (act, label, cls = "") => `<button type="button" role="menuitem" data-act="${act}"${cls ? ` class="${cls}"` : ""}>${label}</button>`;
+  el.innerHTML = `<p><b>${esc(u.name || u.email)}</b><br><span class="lt-menu-sub">${esc(u.email)}</span></p><hr>
+    ${item("sign-out", "Sign out everywhere")}
+    ${u.locked ? item("unlock", "Let them try again") : ""}
+    ${u.twoFactor ? item("reset-2fa", "Turn off two-factor sign-in") : ""}
+    ${u.disabled ? item("enable", "Turn account on") : item("disable", "Turn account off")}<hr>
+    ${item("delete", "Delete account…", "lxa-danger")}`;
+  btn.after(el); btn.setAttribute("aria-expanded", "true");
+  openMenu = { el, btn };
+  el.querySelector("[role=menuitem]").focus();
+  el.onclick = e => { e.stopPropagation(); const m = e.target.closest("[data-act]"); if (!m) return; closeUserMenu(); userAct(u, m.dataset.act); };
+}
+async function userAct(u, act) {
+  const go = password => api(`/api/admin/users/${u.id}`, { action: act, password });
+  if (act === "delete") return deleteUser(u);
+  if (act === "reset-2fa") return withPassword("Turn off their two-factor sign-in?", `For ${esc(u.email)}, e.g. after a lost phone. They're signed out and emailed, and can turn it on again.`, "Turn it off", go);
+  if (act === "disable") return withPassword("Turn this account off?", `${esc(u.email)} is signed out and can't sign in, and their published course pages stop showing. Nothing is deleted: you can turn it back on.`, "Turn it off", go);
+  try { await go(""); toast({ "sign-out": `Signed ${u.email} out everywhere.`, unlock: "They can try again now.", enable: "Turned on." }[act] || "Done."); draw(); } catch (x) { toast(x.message); }
 }
 
 // Deleting an account: the admin's password, and their email typed out.

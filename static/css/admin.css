@@ -13,3 +13,13 @@
 .lxa-mail-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 @media (max-width: 520px) { .lxa-mail { grid-template-columns: 1fr; } }
 .lt-lede a { color: inherit; text-underline-offset: 3px; }
+.lxa-more-wrap { position: relative; }
+.lxa-more { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--home-ink-2); cursor: pointer; }
+.lxa-more svg { fill: currentColor; }
+.lxa-more:hover, .lxa-more[aria-expanded="true"] { background: var(--home-strip); border-color: var(--home-line-2); color: var(--home-ink); }
+.lxa-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lxa-menu { top: 40px; min-width: 230px; }
+.lxa-menu button { font: 500 13.5px var(--font-ui); color: var(--ink); cursor: pointer; }
+.lxa-menu button.lxa-danger { color: var(--danger); }
+.lxa-menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.lt-olist.lxa-users { overflow: visible; }

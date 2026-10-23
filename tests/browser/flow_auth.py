@@ -163,7 +163,8 @@ def main():
         keep_user = srv.user; srv.account(email="gone@utoronto.ca", name="Gone Person", handle="gone", admin=False); srv.user = keep_user
         ap.reload(); ap.wait_for_selector("#lxa-page .lt-user")
         row = ap.locator(".lt-user", has_text="gone@utoronto.ca")
-        row.locator("[data-act='delete']").click(); ap.wait_for_selector("#dl-email")
+        row.locator(".lxa-more").click(); ap.wait_for_selector(".lxa-menu"); ap.screenshot(path=f"{OUT}/a11e-admin-menu.png")
+        ap.click(".lxa-menu [data-act='delete']"); ap.wait_for_selector("#dl-email")
         assert ap.is_disabled(".lt-modal [type=submit]")
         ap.fill("#dl-email", "gone@utoronto.ca"); ap.fill("#dl-pw", PASSWORD); ap.screenshot(path=f"{OUT}/a11d-admin-delete.png")
         ap.click(".lt-modal [type=submit]")

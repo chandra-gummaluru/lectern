@@ -27,6 +27,7 @@ X-Lectern header like everything else (core.py); turning anything off needs the 
   POST /api/admin/admins/<id>           { action: disable | enable, password }
 """
 import functools
+import json
 import os
 import re
 import time
@@ -34,6 +35,7 @@ import time
 from flask import Blueprint, g, jsonify, make_response, render_template, request
 
 from . import db, mailer, security as sec
+from .store import _sha_cache
 from .auth import (LOCK_AFTER, Refusal, WAIT, body, create_invite, handles, invite_link, ip, limit, limiter,
                    need_https, norm_email, notify, send_invite, site_of, text)
 
@@ -277,8 +279,14 @@ def user_action(uid):
     u = db.one("SELECT * FROM users WHERE id = ?", (uid,))
     if not u:
         raise Refusal(404, "No such account.")
-    if action in ("reset-2fa", "disable"):
+    if action in ("reset-2fa", "disable", "delete"):
         check_admin_password(text(d, "password", sec.MAX_PASSWORD))
+    if action == "delete":
+        if norm_email(text(d, "confirm")) != u["email"]:
+            raise Refusal(400, "Type their email exactly to confirm.", "confirm")
+        where = delete_user(u)
+        log("delete", f"{u['email']} ({u['handle']}) files kept in {where}")
+        return jsonify(ok=True)
     if action == "disable":
         with db.transaction() as c:
             c.execute("UPDATE users SET disabled = 1 WHERE id = ?", (uid,))
@@ -322,66 +330,96 @@ def admin_action(aid):
     return jsonify(ok=True)
 
 
-# ── Importing old courses (the GitHub repositories, as ZIP files) ─────
-IMPORT_MAX = 512 * 1024 * 1024
-IMPORT_FILES = 20000
-
-
-@admin_bp.post("/api/admin/import")
-@admin_required
-def import_zip():
-    """Copy a GitHub repository's ZIP (GitHub: Code → Download ZIP) into an account's public (course pages)
-    or private (grades, exams) files. Only files the account doesn't have yet: nothing of theirs is ever
-    replaced (so an admin can't change anyone's grades this way). The account is emailed about it."""
-    import io
-    import zipfile
-    from .store import Repo, StoreError, clean_path, quota_bytes
-    uid = int(request.form.get("user") or 0)
-    area = request.form.get("area")
-    f = request.files.get("zip")
-    u = db.one("SELECT * FROM users WHERE id = ?", (uid,))
-    if not u:
-        raise Refusal(404, "No such account.")
-    if area not in ("pub", "priv") or not f:
-        raise Refusal(400, "Choose the account, which repository it is, and its ZIP file.")
+# ── Deleting an account ──────────────────────────────────────────────
+def delete_user(u):
+    """Delete an account: it can't sign in, its course pages go offline, it leaves every teaching team, and the
+    teams on its own offerings end. Its files (and their old versions) aren't erased: they're moved to
+    data/deleted/<when>-<handle>/, with a note of whose they were, for the server's owner to remove by hand
+    when sure. Its page address stays taken (handle_problem), so old links never show someone else's pages.
+    Returns the folder the files went to (relative to the data folder)."""
+    uid, root = u["id"], db.data_dir()
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+    rel = os.path.join("deleted", f"{stamp}-{u['handle']}")
+    dest = os.path.join(root, rel)
+    os.makedirs(dest, exist_ok=False)
+    moved = []
     try:
-        zf = zipfile.ZipFile(io.BytesIO(f.read()))
-    except zipfile.BadZipFile:
-        raise Refusal(400, "That isn't a ZIP file.")
-    names = [i for i in zf.infolist() if not i.is_dir()]
-    if len(names) > IMPORT_FILES:
-        raise Refusal(413, f"That ZIP has more than {IMPORT_FILES} files.")
-    repo = Repo(uid, area)
-    room = min(IMPORT_MAX, (quota_bytes() - repo.used_bytes()) if quota_bytes() else IMPORT_MAX)
-    if sum(i.file_size for i in names) > room:
-        raise Refusal(413, "That's bigger than the account has room for.")
-    # GitHub's ZIP has everything in one folder (courses-utor-main/…): leave it out.
-    tops = {i.filename.split("/", 1)[0] for i in names}
-    strip = (tops.pop() + "/") if len(tops) == 1 and all("/" in i.filename for i in names) else ""
-    files, skipped, kept, total = {}, [], [], 0
-    for i in names:
-        rel = i.filename[len(strip):]
-        try:
-            clean_path(rel)
-        except StoreError:
-            skipped.append(rel)
-            continue
-        if repo.stat(rel):
-            kept.append(rel)
-            continue
-        with zf.open(i) as fh:
-            data = fh.read(room - total + 1)   # never more than the room, whatever the ZIP claims
-        total += len(data)
-        if total > room:
-            raise Refusal(413, "That's bigger than the account has room for.")
-        files[rel] = data
-    if files:
-        try:
-            repo.commit(files, f"Import {f.filename or 'a ZIP'}", repo.head(), "import")
-        except StoreError as e:
-            raise Refusal(e.status, str(e))
-        mailer.send_later(u["email"], "Lectern: your old courses were imported",
-                          f"Hi {u['name'] or u['email']},\n\nYour Lectern admin imported {len(files)} file{'s' if len(files) != 1 else ''} into your "
-                          f"{'course pages' if area == 'pub' else 'grades and exams'} from {f.filename or 'a ZIP file'}. Nothing you already had was changed.\n")
-    log("import", f"{u['email']} {area} {len(files)} new, {len(kept)} already there")
-    return jsonify(ok=True, files=len(files), already=len(kept), skipped=[x for x in skipped if not x.startswith(".")][:20])
+        for part in ("files", "history"):     # first, so that a later account can never find these under its id
+            src = os.path.join(root, part, str(uid))
+            if os.path.isdir(src):
+                os.replace(src, os.path.join(dest, part))
+                moved.append(part)
+        with open(os.path.join(dest, "account.json"), "w", encoding="utf-8") as fh:
+            json.dump({"id": uid, "email": u["email"], "name": u["name"], "handle": u["handle"], "created": u["created"],
+                       "deleted": now(), "by": g.admin["email"]}, fh, indent=2)
+        with db.transaction() as c:
+            c.execute("INSERT OR IGNORE INTO retired_handles (handle, at) VALUES (?, ?)", (u["handle"], now()))
+            c.execute("DELETE FROM objects WHERE user_id = ?", (uid,))
+            c.execute("DELETE FROM commits WHERE user_id = ?", (uid,))
+            c.execute("DELETE FROM invites WHERE email = ? AND used = 0", (u["email"],))
+            c.execute("DELETE FROM team_invites WHERE created_by = ? AND used = 0", (uid,))
+            c.execute("DELETE FROM users WHERE id = ?", (uid,))   # sessions, codes, teams, repos… go with it
+    except Exception:
+        for part in moved:                    # put things back as they were
+            os.replace(os.path.join(dest, part), os.path.join(root, part, str(uid)))
+        raise
+    _sha_cache.clear()
+    mailer.send_later(u["email"], "Lectern: your account was deleted",
+                      f"Hi {u['name'] or u['email']},\n\nYour Lectern admin deleted your Lectern account. You can't sign in any more, and your "
+                      f"course pages are no longer published. If this is a mistake, ask your Lectern admin.\n")
+    return rel
+
+
+# ── Email (SMTP) settings ────────────────────────────────────────────
+_HOST = re.compile(r"^[A-Za-z0-9.-]{1,253}$")
+
+
+def _email_json():
+    s = mailer.settings()
+    return {"source": s["source"], "host": s["host"], "port": str(s.get("port") or ""), "security": s.get("security") or "starttls",
+            "user": s.get("user") or "", "from": s.get("from") or "", "hasPassword": bool(s.get("password"))}   # never the password itself
+
+
+@admin_bp.get("/api/admin/email")
+@admin_required
+def email_get():
+    return jsonify(_email_json())
+
+
+@admin_bp.post("/api/admin/email")
+@admin_required
+def email_set():
+    """Save the SMTP settings (after a test email to the admin goes through), or remove them (back to .env's)."""
+    d = body()
+    check_admin_password(text(d, "password", sec.MAX_PASSWORD))
+    if d.get("action") == "remove":
+        db.run("DELETE FROM settings WHERE key = 'smtp'")
+        log("email-removed")
+        return jsonify(ok=True, **_email_json())
+    host = text(d, "host", 253).strip()
+    security = text(d, "security", 10).strip().lower() or "starttls"
+    port = text(d, "port", 6).strip() or ("465" if security == "ssl" else "587")
+    user, frm = text(d, "user", 254).strip(), text(d, "from", 300).strip()
+    if not _HOST.match(host):
+        raise Refusal(400, "Enter the SMTP server, e.g. smtp.gmail.com.", "host")
+    if security not in ("starttls", "ssl", "none"):
+        raise Refusal(400, "Security is STARTTLS, SSL or none.", "security")
+    if not port.isdigit() or not 0 < int(port) < 65536:
+        raise Refusal(400, "The port is a number, e.g. 587.", "port")
+    if any(ch in user + frm for ch in "\r\n"):
+        raise Refusal(400, "That address can't have line breaks.", "from")
+    pw = text(d, "smtpPassword", 500)
+    if not pw:   # blank: keep the one it has (the panel never shows it)
+        pw = mailer.settings().get("password") or ""
+    cfg = {"host": host, "port": port, "security": security, "user": user, "from": frm, "password": pw}
+    err = mailer.deliver(g.admin["email"], "Lectern: email works",
+                         f"Hi {g.admin['name'] or g.admin['email']},\n\nThis is the test email from Lectern's admin panel: "
+                         f"Lectern can send email through {host}.\n", cfg=cfg)
+    if err:
+        raise Refusal(400, f"The test email didn't go through, so nothing was saved: {err}", "smtp")
+    stored = {k: cfg[k] for k in ("host", "port", "security", "user", "from")}
+    if pw:
+        stored["password_enc"] = sec.encrypt(pw, "smtp")
+    db.run("INSERT INTO settings (key, value) VALUES ('smtp', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (json.dumps(stored),))
+    log("email-set", host)
+    return jsonify(ok=True, **_email_json())

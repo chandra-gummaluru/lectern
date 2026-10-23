@@ -1,5 +1,5 @@
 /* The admin panel (/admin): signing in (email, password and a two-factor code), then invitations,
-   accounts, old courses to import, and the other admins. Its own session, separate from Lectern's.
+   accounts (and deleting them), email settings, and the other admins. Its own session, separate from Lectern's.
    Admins are added only on the server: python app.py admin you@example.com */
 import { wireShow, secureHere } from "./auth.js";
 
@@ -42,10 +42,10 @@ function modal(html, onReady) {
   const first = m.querySelector("input, .primary"); if (first) first.focus();
 }
 // Turning something off: the admin's password again.
-function withPassword(title, text, label, run) {
+function withPassword(title, text, label, run, kind = "lt-btn-danger") {
   modal(`<h2>${esc(title)}</h2><form novalidate><p>${text}</p><div class="lt-form">
       <label>Your password<input type="password" id="ap-pw" autocomplete="current-password"></label></div>
-      <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn lt-btn-danger">${esc(label)}</button></div></form>`, (m, close) => {
+      <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn ${kind}">${esc(label)}</button></div></form>`, (m, close) => {
     m.querySelector("[data-no]").onclick = close;
     m.querySelector("form").onsubmit = async e => {
       e.preventDefault();
@@ -103,15 +103,13 @@ function start(admin) {
 }
 
 // ── The panel ────────────────────────────────────────────────────────
-let area = "pub";
 async function draw() {
   const page = $("#lxa-page");
   let d;
   try { d = await api("/api/admin/overview"); } catch (x) { if (x.code !== "signed-out") page.innerHTML = `<div class="lt-in"><p class="lt-note err">${esc(x.message)}</p></div>`; return; }
-  const userOpts = d.users.map(u => `<option value="${u.id}">${esc(u.name || u.email)} (${esc(u.email)})</option>`).join("");
   page.innerHTML = `<div class="lt-in lt-account">
     <h1>Admin</h1>
-    <p class="lt-lede">Lectern is invite-only: invite each person by email; the link works once, for 7 days. ${d.email ? "" : "<b>The server can't send email</b> (no SMTP settings), so you'll get links to send yourself."}</p>
+    <p class="lt-lede">Lectern is invite-only: invite each person by email; the link works once, for 7 days. ${d.email ? "" : "<b>Email isn't set up</b>, so you'll get links to send yourself: set it up under <a href=\"#lxa-mail\">Email</a>."}</p>
 
     <div class="lt-sec"><h2>Invite Someone</h2></div>
     <section class="lt-panel">
@@ -135,20 +133,11 @@ async function draw() {
         ${u.locked ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="unlock">Let them try again</button>` : ""}
         ${u.twoFactor ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="reset-2fa">Turn off 2FA</button>` : ""}
         ${u.disabled ? `<button type="button" class="lt-link" data-u="${u.id}" data-act="enable">Turn on</button>` : `<button type="button" class="lt-link lt-del" data-u="${u.id}" data-act="disable">Turn off</button>`}
+        <button type="button" class="lt-link lt-del" data-u="${u.id}" data-act="delete">Delete</button>
       </span></div>`).join("")}</div>` : `<p class="lt-hint">No accounts yet: invite someone above.</p>`}
 
-    <div class="lt-sec"><h2>Import Old Courses</h2></div>
-    <section class="lt-panel">
-      <p class="lt-row-text">From the two GitHub repositories Lectern used before: on GitHub, <b>Code → Download ZIP</b> for each, then import each into the account it belongs to. Only files the account doesn't have yet are added: nothing of theirs is changed, and they're emailed about it.</p>
-      ${d.users.length ? `<form id="lxa-imp" class="lxa-import" novalidate style="margin-top:14px">
-        <label class="lt-form" style="margin:0"><span style="font-size:13px;font-weight:600">Account</span><select id="lxa-imp-user" class="lt-filter">${userOpts}</select></label>
-        <div class="lt-seg" role="group" aria-label="Which repository">
-          <button type="button" data-area="pub" aria-pressed="${area === "pub"}">Public: course pages</button><button type="button" data-area="priv" aria-pressed="${area === "priv"}">Private: grades and exams</button>
-        </div>
-        <div class="lxa-file"><label class="lt-btn"><input type="file" id="lxa-imp-file" accept=".zip,application/zip" hidden>Choose ZIP…</label><span id="lxa-imp-name">No file chosen</span></div>
-        <div><button type="submit" class="lt-btn primary">Import</button></div>
-      </form>` : `<p class="lt-row-text" style="margin-top:10px">Invite the account first.</p>`}
-    </section>
+    <div class="lt-sec"><h2>Email</h2><span>${d.email ? "Set up" : "Off"}</span></div>
+    <section class="lt-panel" id="lxa-mail"><div class="lt-loading" style="min-height:60px">Loading…</div></section>
 
     <div class="lt-sec"><h2>Admins</h2><span>Added on the server: <code>python app.py admin them@example.com</code></span></div>
     <div class="lt-olist">${d.admins.map(a => `<div class="lt-orow lt-user">
@@ -175,6 +164,7 @@ async function draw() {
     b.onclick = async () => {
       const u = d.users.find(x => x.id === Number(b.dataset.u)), act = b.dataset.act, go = password => api(`/api/admin/users/${u.id}`, { action: act, password });
       if (act === "reset-2fa") return withPassword("Turn off their two-factor sign-in?", `For ${esc(u.email)}, e.g. after a lost phone. They're signed out and emailed, and can turn it on again.`, "Turn it off", go);
+      if (act === "delete") return deleteUser(u);
       if (act === "disable") return withPassword("Turn this account off?", `${esc(u.email)} is signed out and can't sign in, and their published course pages stop showing. Nothing is deleted: you can turn it back on.`, "Turn it off", go);
       try { await go(""); toast({ "sign-out": `Signed ${u.email} out everywhere.`, unlock: "They can try again now.", enable: "Turned on." }[act] || "Done."); draw(); } catch (x) { toast(x.message); }
     };
@@ -185,22 +175,63 @@ async function draw() {
       withPassword(act === "disable" ? "Turn this admin off?" : "Turn this admin back on?", `${esc(a.email)}${act === "disable" ? " is signed out and can't sign in to the admin panel." : " can sign in to the admin panel again."}`, act === "disable" ? "Turn off" : "Turn on", go);
     };
   });
-  page.querySelectorAll("[data-area]").forEach(b => { b.onclick = () => { area = b.dataset.area; page.querySelectorAll("[data-area]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); }; });
-  const imp = $("#lxa-imp");
-  const fileIn = $("#lxa-imp-file");
-  if (fileIn) fileIn.onchange = () => { $("#lxa-imp-name").textContent = fileIn.files[0] ? fileIn.files[0].name : "No file chosen"; };
-  if (imp) imp.onsubmit = async e => {
-    e.preventDefault();
-    const f = $("#lxa-imp-file").files[0], btn = imp.querySelector("[type=submit]");
-    if (!f) return toast("Choose the ZIP file first.");
-    const fd = new FormData(); fd.append("user", $("#lxa-imp-user").value); fd.append("area", area); fd.append("zip", f);
-    btn.disabled = true; btn.textContent = "Importing…";
-    try {
-      const r = await api("/api/admin/import", fd, { form: true });
-      toast(`Imported ${r.files} file${r.files === 1 ? "" : "s"}.${r.already ? ` ${r.already} they already had were left as they are.` : ""}${r.skipped.length ? ` Skipped ${r.skipped.length}.` : ""}`);
-      $("#lxa-imp-file").value = ""; $("#lxa-imp-name").textContent = "No file chosen";
-    } catch (x) { toast(x.message); } finally { btn.disabled = false; btn.textContent = "Import"; }
+  drawEmail();
+}
+
+// Deleting an account: the admin's password, and their email typed out.
+function deleteUser(u) {
+  modal(`<h2>Delete this account?</h2><form novalidate>
+      <p><b>${esc(u.name || u.email)}</b> (${esc(u.email)}) can't sign in any more, their course pages go offline, they leave every teaching team${u.teams ? ` (${u.teams})` : ""}, and the teams on their own offerings end. They're emailed.</p>
+      <p>Their files aren't erased: they're moved to <code>data/deleted/</code> on the server, for whoever runs it to remove when sure. Their page address (<code>${esc(u.handle)}</code>) isn't given to anyone else. To just stop them signing in, turn the account off instead.</p>
+      <div class="lt-form">
+        <label>Type their email to confirm<input type="text" id="dl-email" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${esc(u.email)}"></label>
+        <label>Your password<input type="password" id="dl-pw" autocomplete="current-password"></label></div>
+      <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn lt-btn-danger" disabled>Delete account</button></div></form>`, (m, close) => {
+    const go = m.querySelector("[type=submit]"), typed = m.querySelector("#dl-email");
+    typed.oninput = () => { go.disabled = typed.value.trim().toLowerCase() !== u.email.toLowerCase(); };
+    m.querySelector("[data-no]").onclick = close;
+    m.querySelector("form").onsubmit = async e => {
+      e.preventDefault();
+      if (go.disabled) return;
+      go.disabled = true;
+      try {
+        await api(`/api/admin/users/${u.id}`, { action: "delete", confirm: typed.value.trim(), password: m.querySelector("#dl-pw").value });
+        close(); toast(`Deleted ${u.email}.`); draw();
+      } catch (x) { m.querySelector(".lt-err").textContent = x.message; go.disabled = false; }
+    };
+  });
+}
+
+// Email: the SMTP settings. Saving sends a test email to you first; nothing is saved unless it goes through.
+async function drawEmail() {
+  const box = $("#lxa-mail");
+  if (!box) return;
+  let e;
+  try { e = await api("/api/admin/email"); } catch (x) { box.innerHTML = `<p class="lt-note err">${esc(x.message)}</p>`; return; }
+  const sec = e.security || "starttls";
+  box.innerHTML = `<p class="lt-row-text">${e.source === "panel" ? `Lectern sends email through <b>${esc(e.host)}</b>.`
+      : e.source === "env" ? `Lectern sends email through <b>${esc(e.host)}</b>, from the server's <code>.env</code>. Saving here takes over from it.`
+      : "Lectern emails invitations, password-reset links, security notices and students' receipts. Any SMTP login works: for Gmail, <code>smtp.gmail.com</code> and an app password."}</p>
+    <form id="lxa-mail-f" class="lt-form lxa-mail" novalidate>
+      <label class="lxa-wide">SMTP server<input type="text" id="ml-host" value="${esc(e.host)}" placeholder="smtp.gmail.com" autocomplete="off" spellcheck="false"></label>
+      <label>Security<select id="ml-sec" class="lt-filter">${[["starttls", "STARTTLS"], ["ssl", "SSL"], ["none", "None"]].map(([v, t]) => `<option value="${v}"${v === sec ? " selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label>Port<input type="text" id="ml-port" inputmode="numeric" value="${esc(e.port)}" placeholder="${sec === "ssl" ? "465" : "587"}"></label>
+      <label class="lxa-wide">Login<input type="text" id="ml-user" value="${esc(e.user)}" placeholder="lectern@example.com" autocomplete="off" spellcheck="false"></label>
+      <label class="lxa-wide">Password<input type="password" id="ml-pw" autocomplete="new-password" placeholder="${e.hasPassword ? "Saved: leave blank to keep it" : "For Gmail, an app password"}"></label>
+      <label class="lxa-wide">From<input type="text" id="ml-from" value="${esc(e.from)}" placeholder="Lectern <lectern@example.com>" spellcheck="false"><small>Leave blank to send from the login.</small></label>
+      <div class="lxa-wide lxa-mail-acts"><button type="submit" class="lt-btn primary">Save and send me a test</button>${e.source === "panel" ? `<button type="button" class="lt-link lt-del" id="ml-rm">Remove these settings</button>` : ""}</div>
+    </form>`;
+  $("#ml-sec").onchange = () => { $("#ml-port").placeholder = $("#ml-sec").value === "ssl" ? "465" : "587"; };
+  $("#lxa-mail-f").onsubmit = ev => {
+    ev.preventDefault();
+    const s = { host: $("#ml-host").value.trim(), security: $("#ml-sec").value, port: $("#ml-port").value.trim(), user: $("#ml-user").value.trim(), smtpPassword: $("#ml-pw").value, from: $("#ml-from").value.trim() };
+    if (!s.host) return toast("Enter the SMTP server first.");
+    withPassword("Save the email settings?", `Lectern sends a test email to <b>${esc(me.email)}</b> first; they're saved only if it goes through.`, "Send test and save",
+      async password => { await api("/api/admin/email", { ...s, password }); toast(`Test email sent to ${me.email}. Settings saved.`); }, "primary");
   };
+  const rm = $("#ml-rm");
+  if (rm) rm.onclick = () => withPassword("Remove the email settings?", "Lectern goes back to the server's <code>.env</code> settings, or to no email (links to send yourself).", "Remove",
+    async password => { await api("/api/admin/email", { action: "remove", password }); toast("Email settings removed."); });
 }
 
 // ── Start ────────────────────────────────────────────────────────────

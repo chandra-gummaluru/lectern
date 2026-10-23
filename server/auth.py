@@ -570,7 +570,7 @@ def suggest_handle(email):
     if base in RESERVED or len(base) < 2:
         base = f"{base}-1".strip("-")
     h, k = base, 2
-    while db.one("SELECT 1 FROM users WHERE handle = ?", (h,)):
+    while db.one("SELECT 1 FROM users WHERE handle = ?", (h,)) or db.one("SELECT 1 FROM retired_handles WHERE handle = ?", (h,)):
         h, k = f"{base}-{k}", k + 1
     return h
 
@@ -580,7 +580,7 @@ def handle_problem(h):
         return "Use 2 to 32 lower-case letters, numbers and dashes (not at the start or end)."
     if h in RESERVED:
         return "That name is reserved. Choose another."
-    if db.one("SELECT 1 FROM users WHERE handle = ?", (h,)):
+    if db.one("SELECT 1 FROM users WHERE handle = ?", (h,)) or db.one("SELECT 1 FROM retired_handles WHERE handle = ?", (h,)):
         return "That name is taken. Choose another."
     return ""
 

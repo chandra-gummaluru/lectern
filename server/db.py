@@ -110,6 +110,14 @@ CREATE TABLE IF NOT EXISTS team_invites (     -- someone asked to join a team: t
   used       REAL NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS team_invites_offering ON team_invites(owner_id, offering);
+CREATE TABLE IF NOT EXISTS settings (         -- set in the admin panel (email): over the .env's
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS retired_handles (  -- page addresses of deleted accounts: never given to anyone else
+  handle TEXT PRIMARY KEY,
+  at     REAL NOT NULL
+);
 CREATE TABLE IF NOT EXISTS resets (
   token_hash TEXT PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

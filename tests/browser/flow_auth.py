@@ -152,6 +152,24 @@ def main():
         link = ap.input_value("#lxa-inv-msg .lt-linkbox input")
         assert re.search(r"#invite=[\w-]{40,}", link), link
         expect(ap.locator("#lxa-page")).to_contain_text("ta@utoronto.ca")
+        # Email settings: the form is there; a test that can't go through saves nothing.
+        ap.wait_for_selector("#ml-host"); ap.locator("#lxa-mail").screenshot(path=f"{OUT}/a11c-admin-email.png")
+        ap.fill("#ml-host", "localhost"); ap.fill("#ml-port", "1"); ap.select_option("#ml-sec", "none"); ap.click("#lxa-mail-f [type=submit]")
+        ap.fill("#ap-pw", PASSWORD); ap.click(".lt-modal [type=submit]")
+        expect(ap.locator(".lt-modal .lt-err")).to_contain_text("nothing was saved", timeout=30000)
+        ap.click(".lt-modal [data-no]")
+        assert not db.one("SELECT 1 FROM settings WHERE key = 'smtp'")
+        # Deleting an account: their email typed out, and the admin's password.
+        keep_user = srv.user; srv.account(email="gone@utoronto.ca", name="Gone Person", handle="gone", admin=False); srv.user = keep_user
+        ap.reload(); ap.wait_for_selector("#lxa-page .lt-user")
+        row = ap.locator(".lt-user", has_text="gone@utoronto.ca")
+        row.locator("[data-act='delete']").click(); ap.wait_for_selector("#dl-email")
+        assert ap.is_disabled(".lt-modal [type=submit]")
+        ap.fill("#dl-email", "gone@utoronto.ca"); ap.fill("#dl-pw", PASSWORD); ap.screenshot(path=f"{OUT}/a11d-admin-delete.png")
+        ap.click(".lt-modal [type=submit]")
+        expect(ap.locator("#lt-toast-root")).to_contain_text("Deleted gone@utoronto.ca")
+        assert not db.one("SELECT 1 FROM users WHERE email = 'gone@utoronto.ca'")
+        expect(ap.locator("#lxa-page")).not_to_contain_text("gone@utoronto.ca")
         ap.close()
 
         # 9. Forgotten password (email printed, no SMTP): the reset link, with the 2FA code it needs.

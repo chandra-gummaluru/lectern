@@ -308,6 +308,7 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 .lt-link.lt-del { color: var(--danger); font-size: 13.5px; }
 .lt-btn.lt-btn-danger, .lt-modal .lt-btn.lt-btn-danger { background: var(--danger); border-color: var(--danger); color: #fff; }
 .lt-btn.lt-btn-danger:disabled { opacity: .45; }
+.lt-btn.lt-btn-danger:hover:not(:disabled) { filter: brightness(.92); }
 .lt-hint { margin: 0; padding: 28px; border: 1px dashed var(--home-line-2); border-radius: 12px; text-align: center; color: var(--home-ink-3); font-size: 14px; line-height: 1.5; }
 
 /* Choosing the repositories */
@@ -410,8 +411,8 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 }
 
 /* ── Buttons: three kinds (as in the builders) ── Primary: black. Secondary: white, light yellow on hover. Add: dashed yellow. */
-.lt-btn:not(.primary):not(.add), .lt-bar > button:not(.lt-save), .lt-acct-wrap > button, .lt-filter { background: var(--home-card) !important; border: 1px solid var(--home-line-2) !important; color: var(--home-ink) !important; transition: background .12s, border-color .12s, color .12s; }
-.lt-btn:not(.primary):not(.add):hover:not(:disabled), .lt-bar > button:not(.lt-save):hover:not(:disabled), .lt-acct-wrap > button:hover, .lt-filter:hover { background: var(--accent-bg) !important; border-color: var(--accent) !important; color: var(--home-ink) !important; }
+.lt-btn:not(.primary):not(.add):not(.lt-btn-danger), .lt-bar > button:not(.lt-save), .lt-acct-wrap > button, .lt-filter { background: var(--home-card) !important; border: 1px solid var(--home-line-2) !important; color: var(--home-ink) !important; transition: background .12s, border-color .12s, color .12s; }
+.lt-btn:not(.primary):not(.add):not(.lt-btn-danger):hover:not(:disabled), .lt-bar > button:not(.lt-save):hover:not(:disabled), .lt-acct-wrap > button:hover, .lt-filter:hover { background: var(--accent-bg) !important; border-color: var(--accent) !important; color: var(--home-ink) !important; }
 .lt-btn.primary, .lt-save, .lt-modal .lt-btn.primary { background: var(--home-ink) !important; border-color: var(--home-ink) !important; color: var(--home-card) !important; }
 .lt-btn.primary:hover:not(:disabled), .lt-save:hover:not(:disabled) { opacity: .88; }
 .lt-btn.add { background: transparent !important; border: 1.5px dashed var(--accent) !important; color: var(--accent) !important; }

@@ -16,9 +16,8 @@ git clone https://github.com/chandra-gummaluru/lectern.git ~/apps/lectern
 `new-lectern.sh` makes a Python environment (`.venv` in the folder; `LECTERN_VENV=~/venvs/cenv ./new-lectern.sh` uses one you have), installs what Lectern needs, then runs **`python app.py setup`**, which asks:
 
 1. **Where it lives:** its public address (e.g. `https://lectern.changapp.net/`), whether HTTPS is handled in front of it (a Cloudflare Tunnel or nginx: almost always yes), its port and institution.
-2. **Email** (optional): an SMTP login, and sends a test email.
+2. **Email** (optional): an SMTP login, and sends a test email. (It can also be set up later, in the admin panel.)
 3. **An admin for the admin panel:** email, name, password, and its two-factor app (a QR code right in the terminal).
-4. **Old courses** (optional): imports git clones of the GitHub repositories.
 
 It writes `.env` (readable only by you), checks that Lectern answers the way visitors will reach it (a redirect loop or a missing package shows up here, not in a browser), and says how to start it and point a tunnel at it. Run `python app.py setup` again any time to change a setting: Enter keeps each one.
 
@@ -44,13 +43,9 @@ At `/admin` on the same address (e.g. `https://lectern.changapp.net/admin`), wit
 
 - **Admins aren't Lectern accounts.** They're added only on the server, and that's the only thing done there: `python app.py admin you@example.com` asks for a name and password and sets up the admin's two-factor app with a QR code in the terminal. Running it for an existing admin replaces their password and app (a forgotten password, a lost phone). A Lectern account can't open the panel, and an admin can't open courses.
 - **Signing in** takes email, password and a code from the authenticator app, every time. The admin session is separate from Lectern's (its own `SameSite=Strict` cookie) and ends after 30 minutes unused (`LECTERN_ADMIN_IDLE_MINUTES`) or 12 hours.
-- **In the panel:** invite people to make Lectern accounts; see every account; sign one out everywhere, let it try again after wrong passwords, turn off its two-factor sign-in (a lost phone), turn it off or back on; import old courses; turn other admins off or back on. Turning anything off needs the admin's password again.
-
-### Moving from GitHub
-
-Lectern used to keep everything in two GitHub repositories. On GitHub, use **Code → Download ZIP** for each, then in the admin panel's **Import Old Courses**, import each into the account it belongs to (public: course pages; private: grades and exams).
-
-Then open each current course page in Lectern and save it, so its **Request Accommodation** buttons point at the new address. (The repositories on GitHub are left as they were; turn off GitHub Pages there when you're ready.)
+- **In the panel:** invite people to make Lectern accounts; see every account; sign one out everywhere, let it try again after wrong passwords, turn off its two-factor sign-in (a lost phone), turn it off or back on, or delete it; set up email (SMTP); turn other admins off or back on. Turning anything off, deleting an account and changing the email settings need the admin's password again.
+- **Deleting an account** needs its email typed out too. It signs them out, takes their course pages offline, and ends their teaching teams. Their files aren't erased: they're moved to `data/deleted/<when>-<handle>/` (with an `account.json` saying whose) for whoever runs the server to remove when sure, and their page address is never given to anyone else.
+- **Email** set up in the panel is kept in the database (the SMTP password encrypted with the server's key) and used instead of `.env`'s. Saving sends a test email to the admin first; nothing is saved unless it goes through.
 
 ## Accounts and security
 
@@ -121,7 +116,7 @@ server/
   db.py                 the database (SQLite, in the data folder): accounts, sessions, versions
   security.py           argon2id, two-factor codes (TOTP), tokens, encryption, rate limits
   auth.py               accounts: sign-in, two-factor, invitations, resets, /api/auth/…
-  admin.py              the admin panel (/admin): admins' own sign-in; invitations, accounts, imports, /api/admin/…
+  admin.py              the admin panel (/admin): admins' own sign-in; invitations, accounts, email settings, /api/admin/…
   store.py              each account's files (/api/store/…, the builders' GitHub-style calls) and /p/…
   pages.py              /: the splash and the app (one page); /api/config
   accommodations.py     accommodation requests: /request (the students' form), /api/accommodations/…

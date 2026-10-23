@@ -13,7 +13,7 @@ Module map:
 - scope_css.py  prefixes a tool's CSS with its scope selector
 - accommodations.py  accommodation requests: the students' form and its API, instructors' decisions
 - mailer.py     email (invitations, password resets, security notices, students), over SMTP
-- admin.py      the admin panel (/admin): its own accounts and sign-in; invitations, accounts, imports
+- admin.py      the admin panel (/admin): its own accounts and sign-in; invitations, accounts, email settings
 - cli.py        python app.py admin / setup
 
 Course pages, grades and exams are kept on this server, in each account's own files. Only course

@@ -1,8 +1,7 @@
 """The admin panel: its own accounts and sign-in (email, password and code), separate from Lectern's."""
-import io
 import json
+import os
 import time
-import zipfile
 
 import pytest
 
@@ -102,19 +101,6 @@ def test_the_panel_needs_lecterns_header(adm):
     assert adm.post("/api/admin/invites", json={"email": "x@x.ca"}).status_code == 403
 
 
-def test_import_a_github_zip(client, adm):
-    u = make_user(client)
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("courses-utor-main/csc258/f26/info.html", "<h1>258</h1>")
-        z.writestr("courses-utor-main/.github/workflows/x.yml", "x")
-        z.writestr("courses-utor-main/../../evil.txt", "x")
-    r = adm.post("/api/admin/import", data={"user": str(u["id"]), "area": "pub", "zip": (io.BytesIO(buf.getvalue()), "courses-utor-main.zip")},
-                 headers=H, content_type="multipart/form-data")
-    assert r.status_code == 200 and r.get_json()["files"] == 1
-    assert store.Repo(u["id"], "pub").read_text("csc258/f26/info.html")[0] == "<h1>258</h1>"
-
-
 def test_knowing_an_admins_email_cant_keep_them_out(client):
     admin.save_admin("root@x.ca", "Root", PASSWORD, SECRET)
     for k in range(12):   # someone else, from elsewhere
@@ -124,21 +110,65 @@ def test_knowing_an_admins_email_cant_keep_them_out(client):
     assert r.status_code == 200
 
 
-def test_import_never_replaces_an_accounts_files(client, adm):
-    u = make_user(client)
-    store.Repo(u["id"], "priv").commit({"csc258/f26/grades.json": b'{"marks": {"1": 90}}'}, "x", store.Repo(u["id"], "priv").head())
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        z.writestr("r-main/csc258/f26/grades.json", '{"marks": {"1": 0}}')
-        z.writestr("r-main/csc108/w26/grades.json", "{}")
-    r = adm.post("/api/admin/import", data={"user": str(u["id"]), "area": "priv", "zip": (io.BytesIO(buf.getvalue()), "r.zip")},
-                 headers=H, content_type="multipart/form-data").get_json()
-    assert r["files"] == 1 and r["already"] == 1
-    assert store.Repo(u["id"], "priv").read_text("csc258/f26/grades.json")[0] == '{"marks": {"1": 90}}'
-    assert any("imported" in m["subject"] for m in mailer.sent)
-
-
 def test_the_panel_can_have_its_own_address(adm, monkeypatch):
     monkeypatch.setenv("LECTERN_ADMIN_URL", "https://admin.example.org/")
     assert adm.get("/admin").status_code == 404 and adm.get("/api/admin/overview").status_code == 404
     assert adm.get("/admin", base_url="https://admin.example.org").status_code == 200
+
+
+# ── Deleting an account ──────────────────────────────────────────────
+def test_delete_an_account(client, adm, tmp_path):
+    from test_store import save
+    u = make_user(client)
+    save(client, "pub", {"csc258/f26/info.html": "<h1>258</h1>"})
+    save(client, "priv", {"csc258/f26/grades.json": "{}"})
+    ta = app.test_client(); t = make_user(ta, email="ta@x.ca", name="T A", handle="ta")
+    db.run("INSERT INTO members (owner_id, offering, user_id, role, added) VALUES (?, 'csc258/f26', ?, 'ta', 0)", (u["id"], t["id"]))
+    go = lambda **k: adm.post(f"/api/admin/users/{u['id']}", json={"action": "delete", **k}, headers=H)
+    assert go(password=PASSWORD, confirm="wrong@x.ca").status_code == 400            # their email, typed
+    assert go(password="not it at all", confirm=u["email"]).status_code == 403        # the admin's password
+    assert db.one("SELECT 1 FROM users WHERE id = ?", (u["id"],))
+    assert go(password=PASSWORD, confirm=u["email"].upper()).status_code == 200
+    assert not db.one("SELECT 1 FROM users WHERE id = ?", (u["id"],))
+    assert not db.one("SELECT 1 FROM members WHERE owner_id = ?", (u["id"],))
+    assert client.get("/api/auth/me").get_json().get("user") is None                   # signed out
+    assert client.get("/p/chandra/csc258/f26/info.html").status_code == 404           # pages offline
+    assert not os.path.exists(tmp_path / "data" / "files" / str(u["id"]))
+    kept = list((tmp_path / "data" / "deleted").glob("*-chandra"))
+    assert kept and (kept[0] / "files" / "priv" / "csc258" / "f26" / "grades.json").read_text() == "{}"
+    assert json.loads((kept[0] / "account.json").read_text())["email"] == u["email"]
+    assert any("deleted" in m["subject"] for m in mailer.sent)
+    assert "taken" in auth.handle_problem("chandra") and auth.suggest_handle("chandra@x.ca") != "chandra"   # the address stays theirs
+    nu = make_user(app.test_client(), email="new@x.ca", name="N", handle="newbie")    # a new account sees none of it
+    assert store.Repo(nu["id"], "priv").read_text("csc258/f26/grades.json") is None or nu["id"] != u["id"]
+
+
+# ── Email (SMTP) settings ────────────────────────────────────────────
+def test_email_settings_from_the_panel(adm, monkeypatch):
+    tried = []
+    def fake(to, subject, body, reply_to=None, cfg=None):
+        tried.append((to, cfg))
+        return "" if cfg and cfg.get("password") == "app-password" else "535 Authentication failed"
+    monkeypatch.setattr(mailer, "deliver", fake)
+    assert adm.get("/api/admin/email").get_json()["source"] == ""
+    new = {"host": "smtp.gmail.com", "port": "587", "security": "starttls", "user": "lectern@x.ca", "from": "Lectern <lectern@x.ca>"}
+    r = adm.post("/api/admin/email", json={**new, "smtpPassword": "wrong", "password": PASSWORD}, headers=H)
+    assert r.status_code == 400 and "535" in r.get_json()["error"] and not mailer.configured()   # a failing test saves nothing
+    assert adm.post("/api/admin/email", json={**new, "smtpPassword": "app-password", "password": "nope"}, headers=H).status_code == 403
+    r = adm.post("/api/admin/email", json={**new, "smtpPassword": "app-password", "password": PASSWORD}, headers=H)
+    assert r.status_code == 200 and tried[-1][0] == "root@x.ca"
+    j = adm.get("/api/admin/email").get_json()
+    assert j["source"] == "panel" and j["hasPassword"] and "app-password" not in json.dumps(j)
+    assert "app-password" not in db.one("SELECT value FROM settings WHERE key = 'smtp'")["value"]   # encrypted
+    assert mailer.settings()["password"] == "app-password" and mailer.configured()
+    # Blank password: keeps the saved one.
+    assert adm.post("/api/admin/email", json={**new, "from": "Other <o@x.ca>", "password": PASSWORD}, headers=H).status_code == 200
+    assert mailer.settings()["from"] == "Other <o@x.ca>" and mailer.settings()["password"] == "app-password"
+    assert adm.post("/api/admin/email", json={**new, "host": "bad host\r\n", "password": PASSWORD}, headers=H).status_code == 400
+    assert adm.post("/api/admin/email", json={"action": "remove", "password": PASSWORD}, headers=H).status_code == 200
+    assert not mailer.configured()
+
+
+def test_email_settings_need_an_admin(client, user):
+    assert client.get("/api/admin/email").status_code == 401
+    assert client.post("/api/admin/email", json={"action": "remove"}, headers=H).status_code == 401

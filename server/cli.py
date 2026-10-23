@@ -5,7 +5,7 @@
                                          (a forgotten password or a lost phone)
   python app.py setup                    set this Lectern up (or change its settings), adding the first admin
 
-Everything else (inviting people, looking after accounts, importing old courses) is in the admin panel.
+Everything else (inviting people, looking after accounts, email settings) is in the admin panel.
 """
 import getpass
 import re

@@ -93,8 +93,8 @@ PUBLIC_POSTS = {"/api/accommodations/verify", "/api/accommodations/submit"}
 
 @app.before_request
 def _guard():
-    # Only saves (a course page's uploads) and the admin's imports may be big; sign-in and the rest are small JSON.
-    if not ((request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")) or request.path == "/api/admin/import"):
+    # Only saves (a course page's uploads) may be big; sign-in and the rest are small JSON.
+    if not (request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")):
         request.max_content_length = SMALL_BODY
     # Anything but localhost goes over HTTPS: passwords and session cookies never travel in the clear.
     if not secure_enough():

@@ -7,7 +7,9 @@
 .lxa-who { margin-left: auto; font-size: 13.5px; color: var(--ink-2); }
 .lxa-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
 .lxa-acts .lt-link { font-size: 13px; }
-.lxa-import { display: grid; gap: 12px; max-width: 560px; }
-.lxa-file { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--home-ink-3); }
-.lxa-file label { cursor: pointer; }
-.lxa-import select { height: 36px; }
+.lxa-mail { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; max-width: 560px; margin-top: 14px; }
+.lxa-mail .lxa-wide { grid-column: 1 / -1; }
+.lxa-mail select { height: 36px; width: 100%; }
+.lxa-mail-acts { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+@media (max-width: 520px) { .lxa-mail { grid-template-columns: 1fr; } }
+.lt-lede a { color: inherit; text-underline-offset: 3px; }

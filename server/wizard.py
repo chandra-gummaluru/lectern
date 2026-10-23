@@ -279,7 +279,7 @@ Point your tunnel or proxy at it. For a Cloudflare Tunnel, in cloudflared's conf
 proxy_pass http://127.0.0.1:{port}; with proxy_set_header X-Forwarded-Proto $scheme;
 and proxy_set_header X-Forwarded-For $remote_addr;""")
     say(f"\nThen sign in to the admin panel at {env['LECTERN_APP_URL']}admin and invite people (yourself too, for\n"
-        f"your own Lectern account). Old courses from GitHub can be imported there as well.")
+        f"your own Lectern account). Email can be set up there as well.")
     say(f"Add more admins any time: python app.py admin them@example.com\n"
         f"Back up {os.environ.get('LECTERN_DATA_DIR') or os.path.join(BASE_PATH, 'data')} (secret.key included).")
 

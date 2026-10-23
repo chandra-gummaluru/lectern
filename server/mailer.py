@@ -8,10 +8,14 @@ Settings (environment variables, or .env beside app.py):
   LECTERN_SMTP_FROM       the From address, e.g. "Lectern <lectern@changapp.net>" (default: the login)
   LECTERN_SMTP_SECURITY   starttls (default), ssl or none
 
+The admin panel can set these too (Email): they're kept in the database (the password encrypted with the
+server's key) and used instead of the environment's. Removing them there goes back to the environment's.
+
 Without a host, nothing is sent and send() returns False so the caller can say so. Only the address
 and subject go to the server's log: emails carry sign-in links, so their text is printed only when
 LECTERN_PRINT_EMAILS=1 (for trying Lectern on your own computer).
 """
+import json
 import os
 import smtplib
 import ssl
@@ -24,14 +28,36 @@ sent = []      # with keep on (tests): the last few messages, newest last. Off i
 keep = False
 
 
-def configured():
-    return bool(os.environ.get("LECTERN_SMTP_HOST"))
+KEYS = ("host", "port", "security", "user", "password", "from")
 
 
-def send(to, subject, body, reply_to=None):
-    """Send one plain-text email. Returns True if it went out."""
+def settings():
+    """The SMTP settings in use: the admin panel's if it has some, else the environment's. Includes the password."""
+    from . import db, security
+    row = None
+    try:
+        row = db.one("SELECT value FROM settings WHERE key = 'smtp'")
+    except Exception:
+        pass
+    if row:
+        d = json.loads(row["value"])
+        d["password"] = security.decrypt(d.pop("password_enc"), "smtp") if d.get("password_enc") else ""
+        d["source"] = "panel"
+        return d
     env = os.environ.get
-    sender = env("LECTERN_SMTP_FROM") or env("LECTERN_SMTP_USER") or "lectern@localhost"
+    d = {k: env(f"LECTERN_SMTP_{k.upper()}") or "" for k in KEYS}
+    d["source"] = "env" if d["host"] else ""
+    return d
+
+
+def configured():
+    return bool(settings()["host"])
+
+
+def deliver(to, subject, body, reply_to=None, cfg=None):
+    """Send one plain-text email. Returns "" if it went out, else what went wrong."""
+    cfg = cfg or settings()
+    sender = cfg.get("from") or cfg.get("user") or "lectern@localhost"
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = sender, to, subject
     msg["Message-ID"] = make_msgid(domain="lectern")
@@ -41,12 +67,12 @@ def send(to, subject, body, reply_to=None):
     if keep:
         sent.append({"to": to, "subject": subject, "body": body})
         del sent[:-20]
-    if not configured():
-        text = f"\n{body}\n" if env("LECTERN_PRINT_EMAILS") == "1" else ""
-        print(f"[lectern] email not sent (no LECTERN_SMTP_HOST) → {to}: {subject}{text}", file=sys.stderr)
-        return False
-    host, sec = env("LECTERN_SMTP_HOST"), (env("LECTERN_SMTP_SECURITY") or "starttls").lower()
-    port = int(env("LECTERN_SMTP_PORT") or (465 if sec == "ssl" else 587))
+    if not cfg.get("host"):
+        text = f"\n{body}\n" if os.environ.get("LECTERN_PRINT_EMAILS") == "1" else ""
+        print(f"[lectern] email not sent (no SMTP settings) → {to}: {subject}{text}", file=sys.stderr)
+        return "Email isn't set up."
+    host, sec = cfg["host"], (cfg.get("security") or "starttls").lower()
+    port = int(cfg.get("port") or (465 if sec == "ssl" else 587))
     try:
         if sec == "ssl":
             s = smtplib.SMTP_SSL(host, port, timeout=20, context=ssl.create_default_context())
@@ -55,13 +81,18 @@ def send(to, subject, body, reply_to=None):
             if sec == "starttls":
                 s.starttls(context=ssl.create_default_context())
         with s:
-            if env("LECTERN_SMTP_USER"):
-                s.login(env("LECTERN_SMTP_USER"), env("LECTERN_SMTP_PASSWORD", ""))
+            if cfg.get("user"):
+                s.login(cfg["user"], cfg.get("password") or "")
             s.send_message(msg)
-        return True
+        return ""
     except Exception as e:
         print(f"[lectern] email to {to} failed: {e}", file=sys.stderr)
-        return False
+        return str(e) or type(e).__name__
+
+
+def send(to, subject, body, reply_to=None):
+    """Send one plain-text email. Returns True if it went out."""
+    return deliver(to, subject, body, reply_to) == ""
 
 
 def send_later(to, subject, body):

@@ -54,35 +54,43 @@ def configured():
     return bool(settings()["host"])
 
 
-def deliver(to, subject, body, reply_to=None, cfg=None):
-    """Send one plain-text email. Returns "" if it went out, else what went wrong."""
-    cfg = cfg or settings()
-    sender = cfg.get("from") or cfg.get("user") or "lectern@localhost"
+def _message(cfg, to, subject, body, reply_to=None):
     msg = EmailMessage()
-    msg["From"], msg["To"], msg["Subject"] = sender, to, subject
+    msg["From"], msg["To"], msg["Subject"] = cfg.get("from") or cfg.get("user") or "lectern@localhost", to, subject
     msg["Message-ID"] = make_msgid(domain="lectern")
     if reply_to:
         msg["Reply-To"] = reply_to
     msg.set_content(body)
     if keep:
-        sent.append({"to": to, "subject": subject, "body": body})
+        sent.append({"to": to, "subject": subject, "body": body, "from": msg["From"], "reply_to": reply_to or ""})
         del sent[:-20]
+    return msg
+
+
+def _connect(cfg):
+    host, sec = cfg["host"], (cfg.get("security") or "starttls").lower()
+    port = int(cfg.get("port") or (465 if sec == "ssl" else 587))
+    if sec == "ssl":
+        s = smtplib.SMTP_SSL(host, port, timeout=20, context=ssl.create_default_context())
+    else:
+        s = smtplib.SMTP(host, port, timeout=20)
+        if sec == "starttls":
+            s.starttls(context=ssl.create_default_context())
+    if cfg.get("user"):
+        s.login(cfg["user"], cfg.get("password") or "")
+    return s
+
+
+def deliver(to, subject, body, reply_to=None, cfg=None):
+    """Send one plain-text email. Returns "" if it went out, else what went wrong."""
+    cfg = cfg or settings()
+    msg = _message(cfg, to, subject, body, reply_to)
     if not cfg.get("host"):
         text = f"\n{body}\n" if os.environ.get("LECTERN_PRINT_EMAILS") == "1" else ""
         print(f"[lectern] email not sent (no SMTP settings) → {to}: {subject}{text}", file=sys.stderr)
         return "Email isn't set up."
-    host, sec = cfg["host"], (cfg.get("security") or "starttls").lower()
-    port = int(cfg.get("port") or (465 if sec == "ssl" else 587))
     try:
-        if sec == "ssl":
-            s = smtplib.SMTP_SSL(host, port, timeout=20, context=ssl.create_default_context())
-        else:
-            s = smtplib.SMTP(host, port, timeout=20)
-            if sec == "starttls":
-                s.starttls(context=ssl.create_default_context())
-        with s:
-            if cfg.get("user"):
-                s.login(cfg["user"], cfg.get("password") or "")
+        with _connect(cfg) as s:
             s.send_message(msg)
         return ""
     except Exception as e:
@@ -90,9 +98,47 @@ def deliver(to, subject, body, reply_to=None, cfg=None):
         return str(e) or type(e).__name__
 
 
-def send(to, subject, body, reply_to=None):
+def deliver_many(to_list, subject, body, reply_to=None, cfg=None, done=None):
+    """The same email to each address, one at a time (nobody sees the others), over one connection
+    (opened again if it drops). done(address, error) after each. Returns {address: error} for those that failed."""
+    cfg = cfg or settings()
+    failed, conn = {}, None
+    for to in to_list:
+        msg = _message(cfg, to, subject, body, reply_to)
+        err = ""
+        if not cfg.get("host"):
+            err = "Email isn't set up."
+        else:
+            for attempt in (1, 2):
+                try:
+                    conn = conn or _connect(cfg)
+                    conn.send_message(msg)
+                    err = ""
+                    break
+                except smtplib.SMTPRecipientsRefused as e:
+                    err = str(e)
+                    break
+                except Exception as e:
+                    err = str(e) or type(e).__name__
+                    try:
+                        conn and conn.close()
+                    except Exception:
+                        pass
+                    conn = None
+        if err:
+            failed[to] = err
+        if done:
+            done(to, err)
+    try:
+        conn and conn.quit()
+    except Exception:
+        pass
+    return failed
+
+
+def send(to, subject, body, reply_to=None, cfg=None):
     """Send one plain-text email. Returns True if it went out."""
-    return deliver(to, subject, body, reply_to) == ""
+    return deliver(to, subject, body, reply_to, cfg) == ""
 
 
 def send_later(to, subject, body):

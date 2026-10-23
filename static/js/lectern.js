@@ -43,6 +43,7 @@ const ICON = {
   gear: svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', 1.6),
   warn: svgI('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
   team: svgI('<circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.1c2.6.2 4.5 2.1 4.5 4.9"/>', 1.8),
+  mail: svgI('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/>', 1.8),
   accom: svgI('<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>', 1.8),
   user: svgI('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', 1.8),
 };
@@ -633,6 +634,10 @@ function offeringPage(c, t) {
         <p class="lt-part-text" id="lt-accom-sum">Requests students make with the course page's Request Accommodation buttons. Approve or reject each one; the student gets an email.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-accom"${!o.grades && loading ? " disabled" : ""}>Open Accommodations</button></div>
       </section>` : ""}
+      ${edit && o.grades ? `<section class="lt-part lt-wide lt-mail" id="lt-mail">
+        <div class="lt-part-head">${ICON.mail}<h2>Email the Class</h2></div>
+        <div class="lt-mail-body"><p class="lt-part-text">Loading…</p></div>
+      </section>` : ""}
       <section class="lt-part lt-wide lt-team" id="lt-team">
         <div class="lt-part-head">${ICON.team}<h2>Teaching Team</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
@@ -651,6 +656,7 @@ function offeringPage(c, t) {
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
   teamPart(c, t);
+  if (edit && o.grades) mailPart(c, t);
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
   if (o.exams.length) docLinks(c, t).then(links => {
     const linked = new Set(Object.values(links).map(d => d.folder)), loose = o.exams.filter(e => !linked.has(e)), el = $("#lt-loose");
@@ -658,6 +664,88 @@ function offeringPage(c, t) {
     el.innerHTML = `<p class="lt-part-text lt-loose-h">Not linked to an evaluation:</p><ul class="lt-rows">${loose.map(e => `<li><button type="button" class="row" data-exam="${esc(e)}">${ICON.doc}${esc(e)}</button></li>`).join("")}</ul>`;
     el.querySelectorAll("[data-exam]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "exams", c, t, e: b.dataset.exam }); });
   }).catch(() => {});
+}
+
+// ── Emailing the class ───────────────────────────────────────────────
+// Every student in the gradebook has an email (at the domain in its Settings). An instructor writes here;
+// the server sends one email to each student, from the offering's sender, with replies coming back to them.
+async function mailPart(c, t) {
+  const box = $("#lt-mail .lt-mail-body"), o = curOwner(), owner = o || S.user.handle;
+  const here = () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box);
+  const base = `/api/mail/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
+  let d;
+  try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
+  if (!here()) return;
+  const set = d.settings, from = set.from || set.user;
+  const sender = set.source === "offering" ? `from <b>${esc(from)}</b> (this offering's email settings)`
+    : set.host ? `from <b>${esc(from || "Lectern")}</b> (Lectern's email; you can give this offering its own)` : "";
+  const ago = at => { const m = Math.round((Date.now() / 1000 - at) / 60); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(at * 1000).toLocaleDateString("en-CA", { month: "short", day: "numeric" }); };
+  box.innerHTML = `<p class="lt-part-text">${d.total ? `<b>${d.total} student${d.total === 1 ? "" : "s"}</b> can be emailed${sender ? `, ${sender}` : ""}. Replies come to you (${esc(d.you)}).` : "No student in the saved gradebook has an email yet."}
+      ${d.missingCount ? `<br><span class="lt-mail-warn">${d.missingCount} enrolled student${d.missingCount === 1 ? " doesn't" : "s don't"} have ${d.domain ? `an @${esc(d.domain)}` : "an"} email</span>: they won't get it.` : ""}</p>
+    ${set.host ? "" : `<p class="lt-note">Email isn't set up yet. Set up this offering's email (any SMTP login), or ask your Lectern admin to set up Lectern's.</p>`}
+    <div class="lt-part-acts"><button type="button" class="lt-btn primary" id="lt-mail-new"${d.total && set.host ? "" : " disabled"}>${ICON.mail}Write to the Class</button><button type="button" class="lt-btn" id="lt-mail-set">Email Settings</button>${d.missingCount ? `<button type="button" class="lt-btn" id="lt-mail-fix">See Who's Missing</button>` : ""}</div>
+    ${d.sends.length ? `<div class="lt-olist lt-mail-log">${d.sends.map(x => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(x.subject)}</b><span>To ${esc(x.to)} · by ${esc(x.by)} · ${esc(ago(x.at))}</span></div>
+      <span class="lt-orow-r">${!x.done ? `<span class="lt-tag">Sending ${x.sent + x.failed} of ${x.total}…</span>` : x.failed ? `<span class="lt-tag bad" title="${esc(Object.entries(x.errors).map(([a, e]) => `${a}: ${e}`).join("\n"))}">${x.sent} sent · ${x.failed} failed</span>` : `<span class="lt-tag ok">Sent to ${x.sent}</span>`}</span></div>`).join("")}</div>` : ""}`;
+  const again = () => mailPart(c, t);
+  if (d.sends.some(x => !x.done)) setTimeout(() => { if (here()) again(); }, 3000);
+  const fix = $("#lt-mail-fix");
+  if (fix) fix.onclick = () => modal(`<h2>Not emailed</h2><p>${d.missingCount} enrolled student${d.missingCount === 1 ? " has" : "s have"} no email${d.domain ? ` at @${esc(d.domain)}` : ""}. Open the gradebook, click each one's name and set it on their page (or import the class list again with its email column), then save.</p>
+      <div class="lt-olist lt-mail-miss">${d.missing.map(x => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(x.name)}</b><span>${esc(x.num)}${x.email ? ` · ${esc(x.email)}` : " · no email"}</span></div></div>`).join("")}</div>
+      <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Close</button><button type="button" class="lt-btn primary" data-yes>Open Gradebook</button></div>`, (m, close) => {
+    m.querySelector("[data-no]").onclick = close;
+    m.querySelector("[data-yes]").onclick = () => { close(); go({ page: "tool", tool: "grades", part: "book", c, t }); };
+  });
+  $("#lt-mail-set").onclick = () => mailSettings(base, set, d.you, again);
+  const nw = $("#lt-mail-new");
+  if (nw) nw.onclick = () => modal(`<h2>Write to the Class</h2><form novalidate><div class="lt-form">
+      <label>To<select id="cm-to" class="lt-filter"><option value="all">Everyone (${d.total})</option>${d.sections.map(x => `<option value="section:${esc(x.name)}">Section ${esc(x.name)} (${x.count})</option>`).join("")}</select></label>
+      <label>Subject<input type="text" id="cm-subj" maxlength="200" placeholder="e.g. Midterm room"></label>
+      <label>Message<textarea id="cm-body" rows="10" maxlength="20000" placeholder="Plain text. Each student gets their own email; replies come to you."></textarea></label></div>
+      <p class="lt-part-text lt-mail-from">From ${esc(from || "Lectern")} · replies to ${esc(d.you)}</p>
+      <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn primary">Send</button></div></form>`, (m, close) => {
+    m.querySelector("[data-no]").onclick = close;
+    m.querySelector("form").onsubmit = async e => {
+      e.preventDefault();
+      const err = m.querySelector(".lt-err"), btn = m.querySelector("[type=submit]");
+      const to = m.querySelector("#cm-to"), subject = m.querySelector("#cm-subj").value.trim(), body = m.querySelector("#cm-body").value.trim();
+      if (!subject || !body) { err.textContent = "Write a subject and a message."; return; }
+      const who = to.options[to.selectedIndex].textContent;
+      if (!await confirmBox("Send it?", `<b>${esc(subject)}</b> goes to ${esc(who.replace(/^Everyone/, "everyone").replace(/^Section/, "section"))}, each as their own email. It can't be taken back.`, "Send")) return;
+      btn.disabled = true; btn.textContent = "Sending…";
+      try { const r = await Auth.api(`${base}/send`, { to: to.value, subject, body }); close(); toast(`Sending to ${r.total} student${r.total === 1 ? "" : "s"}.`); again(); }
+      catch (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Send"; }
+    };
+  }, { sticky: true });
+}
+// This offering's own SMTP settings. Saving sends you a test first; nothing is saved unless it goes through.
+function mailSettings(base, e, you, again) {
+  const sec = e.security || "starttls", own = e.source === "offering";
+  modal(`<h2>Email Settings</h2><form novalidate>
+      <p>${own ? "This offering sends with its own settings." : e.host ? `This offering uses Lectern's email (${esc(e.host)}). Give it its own, e.g. a course address as the sender.` : "Any SMTP login works: for Gmail, smtp.gmail.com and an app password."} The password is kept on the server, encrypted, and never shown again.</p>
+      <div class="lt-form lt-mail-form">
+        <label class="w">SMTP server<input type="text" id="ms-host" value="${own ? esc(e.host) : ""}" placeholder="smtp.gmail.com" spellcheck="false" autocomplete="off"></label>
+        <label>Security<select id="ms-sec" class="lt-filter">${[["starttls", "STARTTLS"], ["ssl", "SSL"], ["none", "None"]].map(([v, n]) => `<option value="${v}"${(own ? sec : "starttls") === v ? " selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label>Port<input type="text" id="ms-port" inputmode="numeric" value="${own ? esc(e.port) : ""}" placeholder="587"></label>
+        <label class="w">Login<input type="text" id="ms-user" value="${own ? esc(e.user) : ""}" spellcheck="false" autocomplete="off"></label>
+        <label class="w">Password<input type="password" id="ms-pw" autocomplete="new-password" placeholder="${own && e.hasPassword ? "Saved: leave blank to keep it" : ""}"></label>
+        <label class="w">From<input type="text" id="ms-from" value="${own ? esc(e.from) : ""}" placeholder="CSC258 <csc258@example.com>" spellcheck="false"><small>Leave blank to send from the login.</small></label>
+      </div>
+      <p class="lt-err"></p><div class="lt-modal-acts">${own ? `<button type="button" class="lt-btn lt-btn-danger" data-rm>Use Lectern's Email</button><span style="flex:1"></span>` : ""}<button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn primary">Save and Send Me a Test</button></div></form>`, (m, close) => {
+    m.querySelector("[data-no]").onclick = close;
+    m.querySelector("#ms-sec").onchange = ev => { m.querySelector("#ms-port").placeholder = ev.target.value === "ssl" ? "465" : "587"; };
+    const rm = m.querySelector("[data-rm]");
+    if (rm) rm.onclick = async () => { try { await Auth.api(`${base}/settings`, { action: "remove" }); close(); toast("This offering uses Lectern's email now."); again(); } catch (x) { m.querySelector(".lt-err").textContent = x.message; } };
+    m.querySelector("form").onsubmit = async ev => {
+      ev.preventDefault();
+      const v = id => m.querySelector(id).value.trim(), btn = m.querySelector("[type=submit]"), err = m.querySelector(".lt-err");
+      if (!v("#ms-host")) { err.textContent = "Enter the SMTP server."; return; }
+      btn.disabled = true; btn.textContent = "Sending a test…"; err.textContent = "";
+      try {
+        await Auth.api(`${base}/settings`, { host: v("#ms-host"), security: m.querySelector("#ms-sec").value, port: v("#ms-port"), user: v("#ms-user"), smtpPassword: m.querySelector("#ms-pw").value, from: v("#ms-from") });
+        close(); toast(`Test email sent to ${you}. Saved.`); again();
+      } catch (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Save and Send Me a Test"; }
+    };
+  }, { sticky: true });
 }
 
 // ── The teaching team: who else works on this offering, as instructor or TA ──

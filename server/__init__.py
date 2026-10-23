@@ -12,6 +12,7 @@ Module map:
 - tools.py      the three builders, split and scoped so they share one page
 - scope_css.py  prefixes a tool's CSS with its scope selector
 - accommodations.py  accommodation requests: the students' form and its API, instructors' decisions
+- classmail.py  emailing a class from Lectern, and each offering's own email settings
 - mailer.py     email (invitations, password resets, security notices, students), over SMTP
 - admin.py      the admin panel (/admin): its own accounts and sign-in; invitations, accounts, email settings
 - cli.py        python app.py admin / setup
@@ -30,6 +31,7 @@ from .teams import teams_bp
 from .admin import admin_bp
 from .tools import tools_bp
 from .accommodations import accom_bp
+from .classmail import mail_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
@@ -38,3 +40,4 @@ app.register_blueprint(teams_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(tools_bp)
 app.register_blueprint(accom_bp)
+app.register_blueprint(mail_bp)

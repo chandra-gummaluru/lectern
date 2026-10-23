@@ -114,6 +114,30 @@ CREATE TABLE IF NOT EXISTS settings (         -- set in the admin panel (email):
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS offering_mail (     -- an offering's own email (SMTP) settings: classmail.py
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering   TEXT NOT NULL,
+  smtp       TEXT NOT NULL,                     -- JSON; the password encrypted (password_enc)
+  updated    REAL NOT NULL,
+  updated_by INTEGER,
+  PRIMARY KEY (owner_id, offering)
+);
+CREATE TABLE IF NOT EXISTS mail_sends (        -- emails to a class: who sent what, to how many, how it went
+  id        INTEGER PRIMARY KEY,
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  by_user   INTEGER,
+  by_name   TEXT NOT NULL DEFAULT '',
+  at        REAL NOT NULL,
+  subject   TEXT NOT NULL,
+  to_label  TEXT NOT NULL DEFAULT '',
+  total     INTEGER NOT NULL DEFAULT 0,
+  sent      INTEGER NOT NULL DEFAULT 0,
+  failed    INTEGER NOT NULL DEFAULT 0,
+  done      INTEGER NOT NULL DEFAULT 0,
+  errors    TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS mail_sends_offering ON mail_sends(owner_id, offering, at);
 CREATE TABLE IF NOT EXISTS retired_handles (  -- page addresses of deleted accounts: never given to anyone else
   handle TEXT PRIMARY KEY,
   at     REAL NOT NULL

@@ -1344,6 +1344,13 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .set-card > .fld-row:first-of-type { border-top: 0; }
 .fld-k { width: 84px; flex: none; font: 700 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #7a7f87; }
 .fld-row input[type=text] { width: 260px; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid #b4b6ba; font: 14px var(--font-ui); color: #1f2329; }
+.fld-at { font: 14px var(--font-ui); color: #7a7f87; }
+.fld-row input[data-fl="emailDomain"] { width: 200px; }
+.s-mail-bad { color: #9a5b06; font-weight: 600; }
+.st-mail { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0 6px; }
+.st-mail label { display: flex; align-items: center; gap: 10px; font: 600 13px var(--font-ui); color: #4a4f57; }
+.st-mail input { width: 300px; max-width: 70vw; height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid #b4b6ba; font: 14px var(--font-ui); color: #1f2329; background: #fff; }
+.st-mail input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .fld-row input[type=text]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .fld-fixed { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 8px; background: #f6f5f2; color: #4a4f57; font-weight: 600; }
 .fld-row .spacer { flex: 1; }
@@ -1816,7 +1823,7 @@ const codeName = c => (CODES.find(x => x[0] === c) || [c, c])[1];
 const BLANK_POLICIES = () => ({ round: { step: 0, dir: "nearest" }, buckets: [], autofail: [] });
 // Student fields: the identifier (required and unique; its name can be changed), first and
 // last name, and any custom fields. A field called "Section" is the one students can be filtered by.
-const BLANK_FIELDS = () => ({ idLabel: "Student Identifier", custom: [] });
+const BLANK_FIELDS = () => ({ idLabel: "Student Identifier", emailDomain: "", custom: [{ id: "email", label: "Email" }] });
 const BLANK_BOOK = () => ({ format: "grade-builder/1", course: { code: "", term: "" }, fields: BLANK_FIELDS(), evals: [], groups: [], students: [], marks: {}, overrides: {}, policies: BLANK_POLICIES(), finals: {} });
 const newGroup = () => ({ id: uid(), name: "Assignments", short: "", weight: 20, keep: 1, members: [] });
 
@@ -1883,16 +1890,24 @@ function normalizeBook(x) {
   // Fields: older gradebooks had a student number, a name, and UTORid / email / section.
   const old = !(x && x.fields), raw = b.students || [];   // looked up on what was opened, before defaults are filled in
   b.fields = Object.assign(BLANK_FIELDS(), b.fields || {});
-  b.fields.custom = (b.fields.custom || []).map(f => ({ id: f.id || uid(), label: f.label || "Field" }));
+  b.fields.custom = ((x && x.fields && x.fields.custom) || []).map(f => ({ id: f.id || uid(), label: f.label || "Field" }));
   if (old) {
     if (raw.length) b.fields.idLabel = "Student number";
     [["utorid", "UTORid"], ["email", "Email"], ["section", "Section"]].forEach(([k, label]) => { if (raw.some(s => s[k])) b.fields.custom.push({ id: k, label }); });
   }
+  // Every student has an email (Lectern emails the class with it): a built-in field, first. A field someone
+  // made called "Email" becomes it.
+  const mine = b.fields.custom.find(f => f.id === "email") || b.fields.custom.find(f => /^\s*e-?mail( address)?\s*$/i.test(f.label));
+  const fromId = mine && mine.id !== "email" ? mine.id : "";
+  b.fields.custom = [{ id: "email", label: "Email" }, ...b.fields.custom.filter(f => f !== mine)];
+  b.fields.emailDomain = cleanDomain(b.fields.emailDomain);
   b.students = raw.map(s => {
     let first = s.first, last = s.last;
     if (first == null && last == null) { const n = String(s.name || "").trim(); if (n.includes(",")) [last, first] = n.split(",").map(x => x.trim()); else { const w = n.split(/\s+/).filter(Boolean); if (w.length > 1) { last = w.pop(); first = w.join(" "); } else { last = w[0] || ""; first = ""; } } }
     const f = Object.assign({}, s.f || {});
     if (old) ["utorid", "email", "section"].forEach(k => { if (s[k]) f[k] = s[k]; });
+    if (fromId && f[fromId] != null) { if (!f.email) f.email = f[fromId]; delete f[fromId]; }
+    if (f.email) f.email = String(f.email).trim();
     return withName({ num: String(s.num || "").trim(), first: first || "", last: last || "", f, ...(s.dropped ? { dropped: true } : {}), ...(noteList(s.notes).length ? { notes: noteList(s.notes) } : {}) });
   }).filter(s => s.num);
   b.marks = b.marks || {}; b.overrides = b.overrides || {};
@@ -1910,6 +1925,24 @@ const evalById = id => model.evals.find(e => e.id === id);
 // A student's display name ("Last, First"), kept with them; their custom fields; the filter field.
 function withName(s) { s.name = [s.last, s.first].filter(Boolean).join(", "); return s; }
 const fieldVal = (s, id) => String(((s.f || {})[id]) ?? "");
+// The course's email domain (Settings), e.g. mail.utoronto.ca: every student's email must be at it.
+function cleanDomain(d) { return String(d || "").trim().toLowerCase().replace(/^.*@/, "").replace(/[^a-z0-9.-]/g, ""); }
+const emailDomain = () => (model.fields && model.fields.emailDomain) || "";
+// What's wrong with a student's email, if anything: "" (fine), "none" or "domain" (or "bad": not an address).
+function emailProblem(s) {
+  const v = fieldVal(s, "email").trim().toLowerCase(), d = emailDomain();
+  if (!v) return "none";
+  if (!/^[^\s@]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(v)) return "bad";
+  return d && !(v.endsWith("@" + d)) ? "domain" : "";
+}
+// Who can't be emailed: a note with their names (each opens their page, to set it).
+function emailNoticeHTML() {
+  const bad = enrolled().filter(emailProblem);
+  if (!bad.length) return "";
+  const names = bad.slice(0, 8).map(s => `<button type="button" class="link" data-act="ed-student" data-num="${esc(s.num)}">${esc(s.name || s.num)}</button>`).join("; ") + (bad.length > 8 ? `; and ${bad.length - 8} more` : "");
+  return notice(`<b>${bad.length} student${bad.length === 1 ? " doesn't" : "s don't"} have ${emailDomain() ? `an @${esc(emailDomain())}` : "an"} email</b>, so Lectern can't email ${bad.length === 1 ? "them" : "them"}: ${names}. Click a name to set it, or import the class list again with its email column.${emailDomain() ? "" : " Set the email domain in Settings."}`);
+}
+const emailProblemText = p => p === "none" ? "No email" : p === "bad" ? "Email isn't an address" : p === "domain" ? `Email isn't @${emailDomain()}` : "";
 const idLabel = () => (model.fields && model.fields.idLabel) || "Student Identifier";
 const customFields = () => (model.fields && model.fields.custom) || [];
 const filterField = () => customFields().find(f => /^\s*sections?\s*$/i.test(f.label)) || null;   // only a field called "Section" filters
@@ -2623,9 +2656,11 @@ function focusHTML() {
       ${evs.length && model.students.length ? `<button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>` : ""}`;
   const headBar = `<div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>${acts}</div>`;
   if (!evs.length || !model.students.length) return `<div class="page-in wide">${headBar}
+    ${emailNoticeHTML()}
     ${!evs.length ? `<div class="ep-empty">No evaluations yet. Add the course's assignments, tests and exams in <button type="button" class="link" data-act="go-evals">Evaluations</button>.</div>` : ""}
     ${!model.students.length ? `<div class="ep-empty">No students yet. Import a class list from Quercus or ACORN, or add students one at a time.</div>` : ""}</div>`;
   return `<div class="page-in xwide"><div class="pg-head"><div class="pg-title"><h1>Grades</h1></div></div>
+    ${emailNoticeHTML()}
     <div class="fx-wrap">
       <div class="stools fx-tools">${picker}${filterBtn}<input class="gfind" id="gfind" type="search" placeholder="Find a student" value="${esc(ui.find)}" aria-label="Find a student">
         ${sections.length > 1 ? `<div class="sec-filter">${[["", `All ${esc(filterField().label.toLowerCase())}s`], ...sections.map(x => [x, x])].map(([v2, l]) => `<button type="button" data-act="sec" data-v="${esc(v2)}" aria-pressed="${ui.section === v2}">${esc(l)}</button>`).join("")}</div>` : ""}
@@ -2712,6 +2747,7 @@ stage.addEventListener("input", e => {
     const p = parseCell(t.value); t.classList.toggle("bad-input", !p); if (!p) return;
     noteTyping(); setMark(t.dataset.s, t.dataset.e, p); refreshRow(t.dataset.s); placeBar(); refreshSoon(); return;
   }
+  if (t.dataset.fl === "emailDomain") { noteTyping(); model.fields.emailDomain = cleanDomain(t.value); refreshSoon(); return; }
   if (t.dataset.fl === "idLabel") { noteTyping(); model.fields.idLabel = t.value.trim() || "Student Identifier"; refreshSoon(); return; }
   if (t.dataset.fl === "label") { const f = model.fields.custom.find(x => x.id === t.closest("[data-field]").dataset.field); if (f) { noteTyping(); f.label = t.value.trim() || "Field"; ui.section = ""; refreshSoon(); } return; }
   if (t.dataset.pol && t.type === "number") {
@@ -2726,6 +2762,7 @@ stage.addEventListener("input", e => {
 
 });
 stage.addEventListener("change", e => {
+  if (e.target.dataset && e.target.dataset.fl === "emailDomain") { e.target.value = emailDomain(); return; }   // shown tidied: mail.utoronto.ca
   const t = e.target;
   if (t.dataset.pol && t.tagName === "SELECT") { const row = t.closest("[data-fail]"), x = model.policies.autofail.find(y => y.id === row.dataset.fail); if (x) change(() => { x[t.dataset.pol] = t.value; }); return; }
   if (t.id === "gdrop") { ui.showDropped = t.checked; return render(); }
@@ -3102,6 +3139,7 @@ document.addEventListener("click", ev => {
 document.addEventListener("change", ev => {
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.dataset.ed === "fg-grade") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box
+  if (t.dataset.ed === "email") { const s = model.students.find(x => x.num === m.dataset.student); if (s) change(() => { s.f = s.f || {}; const v = t.value.trim(); if (v) s.f.email = v; else delete s.f.email; }); return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (t.dataset.ed === "fg-code") { const n = m.dataset.student; change(() => { if (t.value) model.finals[n] = { code: t.value }; else delete model.finals[n]; }); return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (t.dataset.ed === "gacc-ex") {   // excuse a member of a group, for this student
     const n = m.dataset.student, g = model.groups.find(x => x.id === m.dataset.acc.slice(2)), go = groupOverride(n, g) || {}, ex = new Set(go.excused || []);
@@ -3365,10 +3403,11 @@ function settingsHTML() {
   const targets = [...counted().filter(e => !groupOf(e)).map(e => [e.id, e.name]), ...(model.groups || []).map(g => [`g:${g.id}`, `${g.name} (group)`]), ...counted().filter(e => groupOf(e)).map(e => [e.id, e.name])];
   const F = model.fields;
   return `<div class="page-in st-page"><div class="pg-head"><h1>Settings</h1></div>
-    <section class="set-card"><h2>Students</h2><p class="set-help">Each student is identified by one field. It must be unique, and it's how students are matched in class lists and mark files. A field called Section lets you filter students by section.</p>
+    <section class="set-card"><h2>Students</h2><p class="set-help">Each student is identified by one field. It must be unique, and it's how students are matched in class lists and mark files. Every student needs an email, at the domain you set (Lectern emails the class with them). A field called Section lets you filter students by section.</p>
       <div class="fld-row"><span class="fld-k">Identifier</span><input type="text" data-fl="idLabel" value="${esc(F.idLabel)}" placeholder="Student Identifier" aria-label="The identifier's name"></div>
       <div class="fld-row"><span class="fld-k">Name</span><span class="fld-fixed">First Name</span><span class="fld-fixed">Last Name</span></div>
-      ${F.custom.map(f => `<div class="fld-row" data-field="${esc(f.id)}"><span class="fld-k">Field</span><input type="text" data-fl="label" value="${esc(f.label)}" placeholder="e.g. Email" aria-label="Field name">
+      <div class="fld-row"><span class="fld-k">Email</span><span class="fld-at">Required for every student, at @</span><input type="text" data-fl="emailDomain" value="${esc(F.emailDomain || "")}" placeholder="mail.utoronto.ca" aria-label="The email domain every student's email must be at" spellcheck="false"></div>
+      ${F.custom.filter(f => f.id !== "email").map(f => `<div class="fld-row" data-field="${esc(f.id)}"><span class="fld-k">Field</span><input type="text" data-fl="label" value="${esc(f.label)}" placeholder="e.g. Email" aria-label="Field name">
         <span class="spacer"></span><button type="button" class="ic trash" data-act="fld-del" data-id="${esc(f.id)}" title="Delete this field (and its values)" aria-label="Delete this field">${svg("trash")}</button></div>`).join("")}
       <button type="button" class="add-mk" data-act="fld-add">${svg("plus")}Add a Field</button>
 </section>
@@ -3421,7 +3460,7 @@ function studentsHTML() {
     const ovName = k => (k.startsWith("g:") ? model.groups.find(g => g.id === k.slice(2)).name : evalById(k).name);
     return `<div class="srow${s.dropped ? " dropped" : ""}" data-act="ed-student" data-num="${esc(s.num)}" role="button" tabindex="0">
       <span class="av">${esc(initials(s))}</span>
-      <span class="s-who"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}</small></span>
+      <span class="s-who"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}${!s.dropped && emailProblem(s) ? ` · <span class="s-mail-bad">${esc(emailProblemText(emailProblem(s)))}</span>` : ""}</small></span>
       <span class="s-sec">${esc(sectionOf(s))}</span>
       <span class="s-ov">${noteList(s.notes).length ? `<span class="s-note" title="${esc(noteList(s.notes).map(n => n.text).join("\n"))}">${PIC.note}</span>` : ""}${ov.length ? `<span class="acc-badge" title="Their own policy for ${ov.map(k => esc(ovName(k))).join(", ")}">${PIC.acc}<b>Accommodation</b></span>` : ""}</span>
       <span class="s-st">${s.dropped ? "Dropped" : "Enrolled"}</span>
@@ -3433,6 +3472,7 @@ function studentsHTML() {
       ${sections.length > 1 ? `<div class="sec-filter">${[["", `All ${esc(filterField().label.toLowerCase())}s`], ...sections.map(x => [x, x])].map(([v2, l]) => `<button type="button" data-act="sec" data-v="${esc(v2)}" aria-pressed="${ui.section === v2}">${esc(l)}</button>`).join("")}</div>` : ""}
       ${nAcc ? `<button type="button" class="acc-filter" data-act="only-acc" aria-pressed="${!!ui.onlyAcc}">${PIC.acc}With accommodations (${nAcc})</button>` : ""}
       <span class="spacer"></span>${nDrop ? `<label class="tb-check gdrop"><input type="checkbox" id="gdrop"${ui.showDropped ? " checked" : ""}> Show Dropped (${nDrop})</label>` : ""}</div>
+    ${emailNoticeHTML()}
     <div class="slist">${list.map(row).join("") || `<div class="g-nomatch">No student matches.</div>`}</div></div>`;
 }
 
@@ -3546,9 +3586,11 @@ function drawStudentEditor() {
       ${g.members.map(evalById).filter(Boolean).map(x => accRow(x, true)).join("")}</div>`;
   };
   const accs = units().map(u => (u.g ? groupRow(u.g) : accRow(u.e, false))).join("");
-  const info = [`${esc(idLabel())} ${esc(s.num)}`, ...customFields().filter(f => fieldVal(s, f.id)).map(f => `${esc(f.label)} ${esc(fieldVal(s, f.id))}`)].join(" · ");
+  const info = [`${esc(idLabel())} ${esc(s.num)}`, ...customFields().filter(f => f.id !== "email" && fieldVal(s, f.id)).map(f => `${esc(f.label)} ${esc(fieldVal(s, f.id))}`)].join(" · ");
+  const ep = emailProblem(s);
   const nOwn = counted().filter(x => !groupOf(x) && overrideOf(s.num, x.id)).length + (model.groups || []).filter(g => groupOverride(s.num, g)).length;
   $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}</small></div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span></div>
+    <div class="st-mail"><label><span>Email</span><input type="email" data-ed="email" value="${esc(fieldVal(s, "email"))}" placeholder="${emailDomain() ? `name@${esc(emailDomain())}` : "name@example.com"}" spellcheck="false" autocomplete="off"></label>${ep ? `<span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</div>
     <h3 class="ed-sec">Course Grade</h3>
     ${finalGradeHTML(s)}
     <h3 class="ed-sec">Accommodations</h3>
@@ -3563,7 +3605,7 @@ function addStudentForm() {
   const fld = (id, label, extra = "") => `<label class="pf"><span>${esc(label)}</span><input type="text" id="as-${id}" spellcheck="false" autocomplete="off"${extra}></label>`;
   const m = modal(`<h2>Add a Student</h2><div class="ed-grid add-st">
       ${fld("num", `${idLabel()} (required)`)}<span></span>${fld("first", "First Name")}${fld("last", "Last Name")}
-      ${customFields().map(f => fld(`f-${f.id}`, f.label)).join("")}</div>
+      ${customFields().map(f => fld(`f-${f.id}`, f.id === "email" ? `Email (required${emailDomain() ? `, @${emailDomain()}` : ""})` : f.label)).join("")}</div>
     <div id="as-err"></div><div class="row"><button type="button" id="as-close">Cancel</button><button type="button" class="primary" id="as-ok">Add</button></div>`, "editor");
   const val = id => $(`#as-${id}`, m).value.trim();
   $("#as-close", m).onclick = closeModal;
@@ -3572,6 +3614,8 @@ function addStudentForm() {
     if (!n) return ($("#as-err", m).innerHTML = notice(`<b>${esc(idLabel())} is required.</b>`));
     if (model.students.some(x => x.num.toLowerCase() === n.toLowerCase())) return ($("#as-err", m).innerHTML = notice(`<b>${esc(n)} is already in the list.</b> ${esc(idLabel())} must be unique.`));
     const f = {}; customFields().forEach(x => { if (val(`f-${x.id}`)) f[x.id] = val(`f-${x.id}`); });
+    const ep = emailProblem({ f });
+    if (ep) return ($("#as-err", m).innerHTML = notice(`<b>${esc(emailProblemText(ep))}.</b> Every student needs ${emailDomain() ? `an @${esc(emailDomain())}` : "an"} email.`));
     change(() => model.students.push(withName({ num: n, first: val("first"), last: val("last"), f })));
     closeModal(); toast(`${val("first") || val("last") ? `${val("first")} ${val("last")}`.trim() : n} added.`);
   };
@@ -3656,7 +3700,7 @@ function act(b) {
         pop => pop.addEventListener("click", e => { const o = e.target.closest("[data-pick]"); if (!o) return; closePops(); ui.stats.who = o.dataset.pick; ui.stats.q = ""; render(); const q = $("#st-q"); if (q) q.focus(); }), "dd-pop");
     }
     case "fld-add": { const f = { id: uid(), label: "New field" }; change(() => model.fields.custom.push(f)); const i = $(`#view [data-field="${CSS.escape(f.id)}"] [data-fl="label"]`); if (i) { i.focus(); i.select(); } return; }
-    case "fld-del": { const f = model.fields.custom.find(x => x.id === b.dataset.id); change(() => { model.fields.custom = model.fields.custom.filter(x => x !== f); model.students.forEach(s => { if (s.f) delete s.f[f.id]; }); }); return toast(`${f.label} deleted, with its values.`, true); }
+    case "fld-del": { if (b.dataset.id === "email") return; const f = model.fields.custom.find(x => x.id === b.dataset.id); change(() => { model.fields.custom = model.fields.custom.filter(x => x !== f); model.students.forEach(s => { if (s.f) delete s.f[f.id]; }); }); return toast(`${f.label} deleted, with its values.`, true); }
     case "pol-step": return change(() => { model.policies.round.step = num(b.dataset.v); });
     case "pol-dir": return change(() => { model.policies.round.dir = b.dataset.v; });
     case "pol-badd": return change(() => model.policies.buckets.push({ id: uid(), from: 48, to: 49.99, value: 50 }));

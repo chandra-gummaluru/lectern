@@ -94,6 +94,12 @@ Requests go in your private files, `csc258/f26/accommodations.json`. The offerin
 
 Optional: `LECTERN_TIMEZONE` (request deadlines; default `America/Toronto`).
 
+## Emailing the class
+
+- **Every student has an email.** It's a built-in field in the gradebook (Settings → Students), at the domain set there (e.g. `mail.utoronto.ca`). The gradebook says who's missing one (or has one at another domain); click a name to set it on their page, or import the class list again with its email column.
+- **Email the Class** (on the offering's page, for its instructors): write a subject and a message, choose everyone or one section, and Lectern sends each student their own email (nobody sees the others' addresses), with replies going to the instructor who wrote it. It goes out in the background; the page shows how each one went. Up to 10 a course an hour.
+- **Each offering can have its own email settings** (Email Settings there): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails use them too.
+
 ## Where things are
 
 | | Private (only you) | Public (published at `/p/<handle>/`) |
@@ -119,6 +125,7 @@ server/
   admin.py              the admin panel (/admin): admins' own sign-in; invitations, accounts, email settings, /api/admin/…
   store.py              each account's files (/api/store/…, the builders' GitHub-style calls) and /p/…
   pages.py              /: the splash and the app (one page); /api/config
+  classmail.py          emailing a class, and each offering's own email settings (/api/mail/…)
   accommodations.py     accommodation requests: /request (the students' form), /api/accommodations/…
   mailer.py             email (SMTP): invitations, resets, security notices, students
   cli.py                python app.py admin (adding admins: the one thing done on the server) | setup

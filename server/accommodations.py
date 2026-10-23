@@ -425,7 +425,8 @@ def submit():
 
         _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
         subject, body = receipt_email(rec)
-        emailed = mailer.send(email, subject, body)
+        from .classmail import settings_for
+        emailed = mailer.send(email, subject, body, cfg=settings_for(uid, o))
         return jsonify(ok=True, id=rec["id"], email=email, emailed=emailed), 201
     except Refusal as x:
         return _err(x)
@@ -463,7 +464,8 @@ def decide():
                     lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} accommodation request from {r['student']} for {r['evalName']}",
                     g.user["email"])
         subject, body = decision_email(r)
-        emailed = bool(r.get("email")) and mailer.send(r["email"], subject, body)
+        from .classmail import settings_for
+        emailed = bool(r.get("email")) and mailer.send(r["email"], subject, body, reply_to=g.user["email"], cfg=settings_for(owner, o))
         return jsonify(ok=True, request=r, emailed=emailed)
     except Refusal as x:
         return _err(x)

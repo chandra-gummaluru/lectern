@@ -4,7 +4,29 @@ One web app for teaching a course: the **course page**, the **grades** and the *
 
 Course pages, grades and exams are kept on Lectern's server, in each person's own account. Course pages (and the files they link) are published from the server; grades and exams never are.
 
+## A new Lectern, in one go
+
+On a server (or your own computer), with Python 3 and git:
+
+```
+git clone https://github.com/chandra-gummaluru/lectern.git ~/apps/lectern
+~/apps/lectern/new-lectern.sh
+```
+
+`new-lectern.sh` makes a Python environment (`.venv` in the folder; `LECTERN_VENV=~/venvs/cenv ./new-lectern.sh` uses one you have), installs what Lectern needs, then runs **`python app.py setup`**, which asks:
+
+1. **Where it lives:** its public address (e.g. `https://lectern.changapp.net/`), whether HTTPS is handled in front of it (a Cloudflare Tunnel or nginx: almost always yes), its port and institution.
+2. **Email** (optional): an SMTP login, and sends a test email.
+3. **Your admin account:** email, name, the name in your course pages' address, password.
+4. **Old courses** (optional): imports git clones of the GitHub repositories.
+
+It writes `.env` (readable only by you), checks that Lectern answers the way visitors will reach it (a redirect loop or a missing package shows up here, not in a browser), and says how to start it and point a tunnel at it. Run `python app.py setup` again any time to change a setting: Enter keeps each one.
+
+Then start it with `python app.py` (under tmux or systemd on a server), sign in, and turn on two-factor sign-in.
+
 ## Run it
+
+On your own computer, without the questions:
 
 ```
 pip install -r requirements.txt
@@ -12,7 +34,7 @@ python app.py invite you@utoronto.ca --admin
 python app.py
 ```
 
-`invite` prints a link (and emails it, once SMTP is set up). Open it to create your account: your name, the address for your course pages (e.g. `chandra` → `/p/chandra/csc258/f26/info.html`) and a password. Then open **Your account** (the menu at the top right) and turn on **two-factor sign-in**. Lectern opens at <http://localhost:5003/> (`--port` changes the port).
+`invite` prints a link (and emails it, once SMTP is set up). Open it to create your account: your name, the address for your course pages (e.g. `chandra` → `/p/chandra/csc258/f26/info.html`) and a password. Lectern opens at <http://localhost:5003/> (`--port` or `LECTERN_PORT` changes the port).
 
 To try password resets without SMTP, start it with `LECTERN_PRINT_EMAILS=1`: emails are then printed to the server's log instead of sent (never do this on a real server: they carry sign-in links).
 
@@ -76,7 +98,8 @@ A course offering is the same folder in both. Only the course page and its files
 ## How it's put together
 
 ```
-app.py                  python app.py: the development runner
+app.py                  python app.py: the runner (and its commands: setup, invite…)
+new-lectern.sh          a new Lectern: code, Python environment, requirements, then setup
 server/
   core.py               the Flask app: HTTPS, cross-site request checks, security headers (no caching)
   paths.py              where things are
@@ -87,7 +110,8 @@ server/
   pages.py              /: the splash and the app (one page); /api/config
   accommodations.py     accommodation requests: /request (the students' form), /api/accommodations/…
   mailer.py             email (SMTP): invitations, resets, security notices, students
-  cli.py                python app.py invite | users | reset-2fa | disable | enable | import
+  cli.py                python app.py setup | invite | users | reset-2fa | disable | enable | import
+  wizard.py             python app.py setup: the questions, .env, the first admin, the checks
   tools.py              the builders, split for sharing one page: /tools/<name>.css|.json|.js|.html
   scope_css.py          scopes a builder's CSS to its own element
 templates/index.html    the splash (modelled on beamer.changapp.net) and the app's frame

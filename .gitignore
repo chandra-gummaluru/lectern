@@ -13,3 +13,7 @@ tests/browser/shots/
 
 # Accounts, sessions and everyone's files (the server's data) — never commit
 data/
+
+# The Python environment new-lectern.sh makes
+.venv/
+.env.bak

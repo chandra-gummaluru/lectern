@@ -1,5 +1,7 @@
 """Lectern's command line, for whoever runs the server:
 
+  python app.py setup                            set up this Lectern (or change its settings): a few questions
+
   python app.py invite you@utoronto.ca --admin   an invitation link (emailed too, when SMTP is set up);
                                                  the way to make the first admin account
   python app.py users                            every account
@@ -17,7 +19,7 @@ import time
 from . import db
 from .auth import Refusal, create_invite, invite_link, send_invite
 
-COMMANDS = ("invite", "users", "reset-2fa", "disable", "enable", "import")
+COMMANDS = ("setup", "invite", "users", "reset-2fa", "disable", "enable", "import")
 
 
 def _base():
@@ -33,6 +35,9 @@ def _user(email):
 
 
 def main(argv):
+    if argv and argv[0] == "setup":
+        from .wizard import main as setup
+        return setup(argv[1:])
     p = argparse.ArgumentParser(prog="python app.py")
     sub = p.add_subparsers(dest="cmd", required=True)
     i = sub.add_parser("invite", help="invite someone to make an account")

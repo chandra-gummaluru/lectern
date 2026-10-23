@@ -39,7 +39,7 @@ if __name__ == '__main__':
         sys.exit(0)
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=5003)
+    parser.add_argument('--port', type=int, default=int(os.environ.get('LECTERN_PORT') or 5003))
     parser.add_argument('--host', default='127.0.0.1',
                         help='Use 0.0.0.0 to reach it from other machines (then it must be behind HTTPS: see the README).')
     args = parser.parse_args()

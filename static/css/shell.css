@@ -362,6 +362,20 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 .lt-menu-sub { font-size: 12px; color: var(--ink-3); }
 .lt-src a { color: inherit; }
 
+/* A course offering's teaching team */
+.lt-team-line { margin: 8px 0 0; font-size: 13.5px; color: var(--home-ink-2); }
+.lt-part.lt-team { flex-direction: column; align-items: stretch; }
+.lt-team .lt-part-head { padding-bottom: 6px; }
+.lt-team-body { padding: 0 18px 18px; }
+.lt-part.lt-team .lt-team-body > .lt-part-text { padding: 0; flex: none; }
+.lt-team-list { margin-top: 12px; }
+.lt-team-list .lt-orow-r { display: inline-flex; align-items: center; gap: 12px; }
+.lt-team-list .lt-filter { height: 32px; }
+.lt-team-add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.lt-team-add input { flex: 1 1 220px; min-width: 0; height: 38px; padding: 0 11px; border-radius: 9px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); font: 14px var(--font-ui); box-sizing: border-box; }
+.lt-team-add input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.lt-team-add .lt-filter { height: 38px; }
+
 /* ── Windows and messages ── */
 .lt-modal-bg { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 16px; background: rgb(20 22 26 / .38); }
 .lt-modal { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; box-sizing: border-box; padding: 22px 22px 18px; border-radius: 12px; background: var(--bar); color: var(--ink); box-shadow: 0 20px 60px rgb(0 0 0 / .3); }

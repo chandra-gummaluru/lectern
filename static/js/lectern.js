@@ -8,6 +8,7 @@
      #/csc258/f26/course   the Course Page Builder on csc258/f26/info.html (public repo)
      #/csc258/f26/grades   the Grade Builder on csc258/f26/grades.json (private repo)
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
+     #/~ana/csc258/f26/…   the same, for an offering in someone else's files that you're on the teaching team of
      #/account             your account: password, two-factor sign-in, sessions
      #/admin               (admins) invitations and accounts
    Everything is kept on Lectern's server, in your account's two areas: "pub" (course pages, published
@@ -42,6 +43,7 @@ const ICON = {
   evals: svgI('<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3.5 6 1.2 1.2L7 5M3.5 12l1.2 1.2L7 11M3.5 18l1.2 1.2L7 17"/>', 1.8),
   gear: svgI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>', 1.6),
   warn: svgI('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
+  team: svgI('<circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.1c2.6.2 4.5 2.1 4.5 4.9"/>', 1.8),
   accom: svgI('<path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m8.8 12 2.2 2.2 4.2-4.4"/>', 1.8),
   user: svgI('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>', 1.8),
 };
@@ -54,6 +56,7 @@ const TOOLS = {
 // ── State ────────────────────────────────────────────────────────────
 const S = {
   user: null,          // { id, email, name, handle, admin, twoFactor, recoveryLeft, site }
+  shared: [],          // offerings in others' files you're on the team of: { owner (handle), ownerName, offering, role }
   offerings: null,     // "c/t" → { c, t, page, grades, exams: [] }
   listing: null, listError: null,
   route: { page: "home" },
@@ -64,9 +67,20 @@ const store = {
   set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} },
 };
 
-const siteURL = () => (S.user ? S.user.site : "");
-const liveURL = (c, t) => { const s = siteURL(); return s ? `${s}${encPath(`${c}/${t}/info.html`)}` : ""; };
-const offering = (c, t) => (S.offerings && S.offerings.get(`${c}/${t}`)) || { c, t, page: false, grades: false, exams: [] };
+// Whose files an offering is in: "" for your own, else the owner's handle (a teaching team you're on).
+// Pages inside an offering take it from the route, so links within one stay in the same owner's files.
+const curOwner = () => (S.route && S.route.o) || "";
+const pagesBase = () => (S.user ? S.user.site.slice(0, -(S.user.handle.length + 1)) : "");
+const siteURL = (o = curOwner()) => (S.user ? (o ? `${pagesBase()}${o}/` : S.user.site) : "");
+const liveURL = (c, t, o = curOwner()) => { const s = siteURL(o); return s ? `${s}${encPath(`${c}/${t}/info.html`)}` : ""; };
+const okey = (c, t, o = curOwner()) => `${o}|${c}/${t}`;
+const offering = (c, t, o = curOwner()) => (S.offerings && S.offerings.get(okey(c, t, o))) || { c, t, o, page: false, grades: false, exams: [] };
+// Your role in an offering: owner (your own), instructor or ta.
+const roleIn = (c, t, o = curOwner()) => !o ? "owner" : ((S.shared.find(x => x.owner === o && x.offering === `${c}/${t}`) || {}).role || "");
+const canEdit = (c, t, o) => ["owner", "instructor"].includes(roleIn(c, t, o));
+const area = (which, o = curOwner()) => (o ? `${o}.${which}` : which);
+const ROLE_NAME = { owner: "Owner", instructor: "Instructor", ta: "TA" };
+const ownerName = o => ((S.shared.find(x => x.owner === o) || {}).ownerName || o);
 
 // ── Messages and windows ─────────────────────────────────────────────
 function toast(msg) {
@@ -116,14 +130,23 @@ function showApp() {
   $("#splash").hidden = true; $("#app").hidden = false;
 }
 
-async function start(user, how) {
+async function start(user, how, team, note) {
   S.user = user;
   S.ready = true;
+  if (note) setTimeout(() => toast(note), 300);
   showApp();
   renderBar();
   connectAll();
   listAll();
-  // A new account: straight to its page, to turn on two-factor sign-in.
+  // A new account on a teaching team: straight to that offering. Any other new account: to its page,
+  // to turn on two-factor sign-in.
+  if (team) {
+    const [c, t] = team.offering.split("/");
+    const isNew = Date.now() / 1000 - (user.created || 0) < 300;
+    toast(`You're on the teaching team for ${c.toUpperCase()} ${t}.${isNew ? " When you have a moment, turn on two-factor sign-in (Your account)." : ""}`);
+    await listed();
+    return go({ page: "offering", c, t, o: team.owner });
+  }
   if (how === "invite") { toast(`Welcome to Lectern, ${user.name.split(" ")[0]}. Next: turn on two-factor sign-in.`); return go({ page: "account" }); }
   route();
 }
@@ -138,9 +161,10 @@ Lectern.reauth = Auth.reauth;
 // ── Listing every course offering ────────────────────────────────────
 function listAll() {
   const map = new Map();
-  const add = (c, t, what) => {
+  const add = (c, t, what, owner = "") => {
     if ([c, t].some(x => x.startsWith(".") || x.startsWith("_"))) return;
-    const k = `${c}/${t}`, o = map.get(k) || { c, t, page: false, grades: false, exams: [] };
+    if (owner && !S.shared.some(x => x.owner === owner && x.offering === `${c}/${t}`)) return;
+    const k = okey(c, t, owner), o = map.get(k) || { c, t, o: owner, page: false, grades: false, exams: [] };
     if (what.page) o.page = true;
     if (what.grades) o.grades = true;
     if (what.exams) what.exams.forEach(e => { if (!o.exams.includes(e)) o.exams.push(e); });
@@ -148,54 +172,71 @@ function listAll() {
     map.set(k, o);
   };
   S.listing = (async () => {
-    {
-      const [pv, pb] = await Promise.all([Store.tree(Store.PRIV), Store.tree(Store.PUB)]);
+    // The teams you're on (their offerings are in their owners' files), then every owner's files you can see.
+    try { S.shared = (await Auth.api("/api/teams/mine")).shared; } catch (_) {}
+    const owners = ["", ...new Set(S.shared.map(x => x.owner))];
+    await Promise.all(owners.map(async owner => {
+      const [pv, pb] = await Promise.all([Store.tree(area(Store.PRIV, owner)), Store.tree(area(Store.PUB, owner))]);
       pb.forEach(x => {
         const p = x.path.split("/");
-        if (x.type === "tree" && p.length === 2) add(p[0], p[1], { folder: true });
-        if (x.type === "blob" && p.length === 3 && p[2] === "info.html") add(p[0], p[1], { page: true });
+        if (x.type === "tree" && p.length === 2) add(p[0], p[1], { folder: true }, owner);
+        if (x.type === "blob" && p.length === 3 && p[2] === "info.html") add(p[0], p[1], { page: true }, owner);
       });
       pv.forEach(x => {
         const p = x.path.split("/");
-        if (x.type === "tree" && p.length === 2) add(p[0], p[1], { folder: true });
-        if (x.type === "blob" && p.length === 3 && p[2] === "grades.json") add(p[0], p[1], { grades: true });
-        if (x.type === "blob" && p.length === 4 && p[3] === "exam.json") add(p[0], p[1], { exams: [p[2]] });
+        if (x.type === "tree" && p.length === 2) add(p[0], p[1], { folder: true }, owner);
+        if (x.type === "blob" && p.length === 3 && p[2] === "grades.json") add(p[0], p[1], { grades: true }, owner);
+        if (x.type === "blob" && p.length === 4 && p[3] === "exam.json") add(p[0], p[1], { exams: [p[2]] }, owner);
       });
-    }
+    }));
+    // A shared offering is there even before it has files.
+    S.shared.forEach(x => { const [c, t] = x.offering.split("/"); add(c, t, {}, x.owner); });
     // A folder that has nothing yet counts only if it's named like a term (f26, w27, s26).
-    for (const [k, o] of map) if (!o.page && !o.grades && !o.exams.length && !isTerm(o.t)) map.delete(k);
+    for (const [k, o] of map) if (!o.o && !o.page && !o.grades && !o.exams.length && !isTerm(o.t)) map.delete(k);
     map.forEach(o => o.exams.sort());
     S.offerings = map; S.listError = null;
     return map;
   })().catch(e => { S.listError = e; throw e; });
-  S.listing.then(() => { if (S.route.page !== "tool") renderPage(); }, () => { if (S.route.page !== "tool") renderPage(); });
+  // Pages that show the list draw again when it arrives (not a builder, and not your account or the admin page, which don't use it).
+  const redraw = () => { if (["home", "offering", "accom"].includes(S.route.page)) renderPage(); };
+  S.listing.then(redraw, redraw);
   return S.listing;
 }
 const listed = () => (S.listing || listAll()).catch(() => null);
 
 // ── Routes ───────────────────────────────────────────────────────────
 function parseHash() {
-  const p = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  let p = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean).map(decodeURIComponent);
+  let o = "";
+  if (p[0] && /^~[a-z0-9-]+$/.test(p[0])) { o = p[0].slice(1); p = p.slice(1); }   // someone else's offering (a team you're on)
+  if (S.user && o === S.user.handle) o = "";
   if (p.length >= 2 && slugOK(p[0]) && slugOK(p[1])) {
     const [c, t, tool, e] = p;
-    if (tool === "course") return { page: "tool", tool, c, t };
+    if (tool === "course") return { page: "tool", tool, c, t, o };
     // The gradebook's three parts: Evaluations, the Gradebook (grades and students) and the course's Settings
     const part = { evaluations: "evals", gradebook: "book", grades: "book", settings: "settings" }[tool];
-    if (part) return { page: "tool", tool: "grades", part, c, t };
-    if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e };
-    if (tool === "accommodations") return { page: "accom", c, t };
-    return { page: "offering", c, t };
+    if (part) return { page: "tool", tool: "grades", part, c, t, o };
+    if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e, o };
+    if (tool === "accommodations") return { page: "accom", c, t, o };
+    return { page: "offering", c, t, o };
   }
   if (p.length === 1 && (p[0] === "account" || (p[0] === "admin" && S.user && S.user.admin))) return { page: p[0] };
   return { page: "home" };
 }
 const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Settings" } };
 const partOf = view => view === "evals" ? "evals" : view === "settings" ? "settings" : "book";
-const hashFor = r => r.page === "home" ? "#/" : r.page === "account" || r.page === "admin" ? `#/${r.page}` : r.page === "offering" ? `#/${r.c}/${r.t}` : r.page === "accom" ? `#/${r.c}/${r.t}/accommodations` : r.tool === "exams" ? `#/${r.c}/${r.t}/exams/${r.e}`
-  : r.tool === "grades" ? `#/${r.c}/${r.t}/${PARTS[r.part || "book"].slug}` : `#/${r.c}/${r.t}/${r.tool}`;
+const hashFor = r => {
+  if (r.page === "home") return "#/";
+  if (r.page === "account" || r.page === "admin") return `#/${r.page}`;
+  const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.tool === "exams" ? `${at}/exams/${r.e}`
+    : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
+};
 const routeKey = r => hashFor(r);
 let pendingOpen = null;      // options for the next open (copy from, title), set by a button just before it navigates
 function go(r, opts = null) {
+  // Within an offering, links stay in the same owner's files unless they say otherwise.
+  if (r.c && r.o === undefined) r = { ...r, o: curOwner() };
   pendingOpen = opts;
   const h = hashFor(r);
   if (location.hash === h) route(); else location.hash = h;
@@ -216,7 +257,7 @@ async function route() {
   window.scrollTo(0, scrolls[routeKey(r)] || 0);
 }
 window.addEventListener("hashchange", () => {
-  if (/^#(invite|reset)=/.test(location.hash)) return location.reload();   // an invitation or reset link, pasted into this tab
+  if (/^#(invite|join|reset)=/.test(location.hash)) return location.reload();   // an invitation or reset link, pasted into this tab
   stamp(); route();
 });
 
@@ -288,9 +329,10 @@ new ResizeObserver(() => { if (!$("#lt-bar").hidden) syncBarHeight(); }).observe
 function unsavedTools() {
   return Object.entries(Lectern.tools).filter(([, t]) => t.api && t.api.state().unsaved && t.api.state().path).map(([name, t]) => ({ name, path: t.api.state().path }));
 }
-function routeForPath(tool, path, part) {
+function routeForPath(tool, path, part, o) {
   const p = path.split("/");
-  return tool === "exams" ? { page: "tool", tool, c: p[0], t: p[1], e: p[2] } : tool === "grades" ? { page: "tool", tool, part: part || "book", c: p[0], t: p[1] } : { page: "tool", tool, c: p[0], t: p[1] };
+  if (o === undefined) o = (Lectern.tools[tool] && Lectern.tools[tool].owner) || "";
+  return tool === "exams" ? { page: "tool", tool, c: p[0], t: p[1], e: p[2], o } : tool === "grades" ? { page: "tool", tool, part: part || "book", c: p[0], t: p[1], o } : { page: "tool", tool, c: p[0], t: p[1], o };
 }
 function renderBar() {
   const st = $("#lt-status");
@@ -329,6 +371,14 @@ async function saveAll() {
       setSaving(un.length > 1 ? `Saving ${k + 1} of ${un.length}…` : "Saving…");
       const p = u.path.split("/"), what = u.name === "exams" ? `${p[2]} exam` : SAVE_WHAT[u.name];
       const msg = `Update ${p[0]} ${p[1]} ${what}`;
+      const t = Lectern.tools[u.name], ta = roleIn(p[0], p[1], t.owner || "") === "ta";
+      // A TA saves marks only: not exams or the course page, and only the marks in a gradebook (the server
+      // keeps everything else as it was, so say so first if they changed anything else).
+      if (ta && u.name !== "grades") { failed.push({ u, error: "As a TA you can't save changes here: ask an instructor." }); continue; }
+      if (ta && t.taBase && t.taBase !== noMarks(api.book())
+          && !await confirmBox("Only marks are saved", "As a TA, only your marks are saved. Your other changes here (evaluations, students or settings) will be undone. Save the marks?", "Save the marks", "Cancel")) {
+        failed.push({ u, error: "Not saved." }); continue;
+      }
       let r;
       try { r = await api.save(msg); } catch (e) { r = { error: e.message }; }
       if (r.conflict) {
@@ -336,6 +386,7 @@ async function saveAll() {
         if (yes) { try { r = await api.save(msg, true); } catch (e) { r = { error: e.message }; } }
         else { failed.push({ u, error: "Skipped: it changed elsewhere." }); continue; }
       }
+      if (r.ok && ta) await reopenAfterTA(t, u.path);   // show what was kept: the gradebook as saved
       if (r.ok) done.push(u); else failed.push({ u, error: r.error || "Couldn't save." });
     }
   } finally {
@@ -352,6 +403,18 @@ async function saveAll() {
   }
 }
 Lectern.saveAll = saveAll;
+
+// A TA's gradebook: what it was when opened (tidied by the builder), apart from marks, to tell whether a
+// TA changed anything else; and after a save, open it again from the server so it shows what was kept.
+const noMarks = b => { try { const x = JSON.parse(JSON.stringify(b)); delete x.marks; return JSON.stringify(x); } catch (_) { return ""; } };
+async function reopenAfterTA(t, path) {
+  const where = t.api.where ? t.api.where() : null;
+  try {
+    await t.api.open(path.split("/").slice(0, 2).join("/"), true);
+    t.taBase = noMarks(t.api.book());
+    if (where && t.api.goto) t.api.goto(where);
+  } catch (e) { console.warn("[Lectern] reopen:", e); }
+}
 
 // ── Deleting takes two clicks: the first turns the button red ("Delete?"), the second deletes. ──
 // For every delete button in Lectern and its builders (not the course offering's, which asks you to type its name).
@@ -434,7 +497,8 @@ function renderPath(steps) {
 }
 // The path starts at the repository (Home: all its courses).
 const HOME_STEP = { label: "Home", go: () => go({ page: "home" }) };
-const offeringStep = (c, t) => ({ label: `${c} / ${t}`, go: () => go({ page: "offering", c, t }) });
+const offeringLabel = (c, t, o = curOwner()) => `${c} / ${t}${o ? ` (${ownerName(o)})` : ""}`;
+const offeringStep = (c, t) => ({ label: offeringLabel(c, t), go: () => go({ page: "offering", c, t }) });
 
 // ── Lectern's own pages ──────────────────────────────────────────────
 function pageHTML(html) { $("#lt-page").innerHTML = html; }
@@ -442,7 +506,7 @@ function renderPage() {
   renderBar();
   const r = S.route;
   if (r.page === "home") { renderPath([{ label: HOME_STEP.label }]); return homePage(); }
-  if (r.page === "offering") { renderPath([HOME_STEP, { label: `${r.c} / ${r.t}` }]); return offeringPage(r.c, r.t); }
+  if (r.page === "offering") { renderPath([HOME_STEP, { label: offeringLabel(r.c, r.t) }]); return offeringPage(r.c, r.t); }
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
   const ctx = { S, pageHTML, modal, toast, setUser: u => { S.user = u; renderBar(); } };
   if (r.page === "account") { renderPath([HOME_STEP, { label: "Your Account" }]); return accountPage(ctx); }
@@ -465,7 +529,7 @@ function homePage() {
   const sel = (k, label, opts, name) => `<select class="lt-filter" data-f="${k}" aria-label="${label}"><option value="">${label}</option>${opts.map(v => `<option value="${esc(v)}"${homeFilter[k] === v ? " selected" : ""}>${esc(name(v))}</option>`).join("")}</select>`;
   pageHTML(`<div class="lt-in">
     <h1>Your Courses</h1>
-    <p class="lt-lede">Each course offering is a course in one term, like <code>csc258/f26</code>. It has a course page for students, its evaluations and a gradebook.</p>
+    <p class="lt-lede">Each course offering is a course in one term, like <code>csc258/f26</code>. It has a course page for students, its evaluations and a gradebook, and a teaching team. Offerings you're on someone else's team for are here too.</p>
     ${sourceBar()}
     <div class="lt-sec"><h2>Course Offerings</h2>${all && n ? `<div class="lt-filters">${sel("t", "All Terms", terms, t => `${termName(t)} (${t})`)}${sel("c", "All Courses", courses, c => c.toUpperCase())}</div>` : ""}
       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
@@ -481,10 +545,11 @@ function homePage() {
     const n2 = $("#lt-new2"); if (n2) n2.onclick = newOfferingDialog;
     return; }
   // The three most recent as cards; the rest as a list.
-  const live = o => (o.page ? liveURL(o.c, o.t) : "");
+  const live = o => (o.page ? liveURL(o.c, o.t, o.o) : "");
+  const team = o => (o.o ? `${esc(ownerName(o.o))}'s · ${ROLE_NAME[roleIn(o.c, o.t, o.o)] || ""}` : "");
   const cards = offs.slice(0, 3), rest = offs.slice(3);
   list.innerHTML = `<div class="lt-grid">${cards.map((o, k) => `<div class="lt-card go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
-      <div class="lt-strip"><span>${esc(o.c)}/${esc(o.t)}</span></div>
+      <div class="lt-strip"><span>${esc(o.c)}/${esc(o.t)}</span>${o.o ? `<span class="r" title="On ${esc(ownerName(o.o))}'s teaching team">${team(o)}</span>` : ""}</div>
       <div class="lt-body">
         <div><h3 class="lt-title">${esc(o.c.toUpperCase())}</h3>
         <p class="lt-sub">${esc(termName(o.t))}</p></div>
@@ -493,12 +558,12 @@ function homePage() {
       <div class="lt-foot">${live(o) ? `<span>Published</span><a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : `<span>No course page yet</span>`}</div>
     </div>`).join("")}</div>${rest.length ? `
     <div class="lt-olist">${rest.map((o, j) => `<div class="lt-orow go" role="link" tabindex="0" data-k="${j + 3}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
-      <span class="lt-orow-t">${esc(o.t)}</span><b>${esc(o.c.toUpperCase())}</b><span class="lt-orow-n">${esc(termName(o.t))}</span>
+      <span class="lt-orow-t">${esc(o.t)}</span><b>${esc(o.c.toUpperCase())}</b><span class="lt-orow-n">${esc(termName(o.t))}${o.o ? ` · ${team(o)}` : ""}</span>
       <span class="lt-orow-r">${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}</span>
     </div>`).join("")}</div>` : ""}`;
   list.querySelectorAll("[data-k]").forEach(el => {
     const o = offs[Number(el.dataset.k)];
-    const open = e => { if (e.target.closest("[data-chip]")) return; go({ page: "offering", c: o.c, t: o.t }); };
+    const open = e => { if (e.target.closest("[data-chip]")) return; go({ page: "offering", c: o.c, t: o.t, o: o.o }); };
     el.addEventListener("click", open);
     el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
   });
@@ -525,7 +590,7 @@ function newOfferingDialog() {
       if (!slugOK(c)) { err.textContent = "Enter the course as letters and numbers, e.g. csc258."; return; }
       if (!yy) { err.textContent = "Enter the year, e.g. 2026."; return; }
       close();
-      go({ page: "offering", c, t: `${m.querySelector("#no-s").value}${yy[1]}` });
+      go({ page: "offering", c, t: `${m.querySelector("#no-s").value}${yy[1]}`, o: "" });
     };
     m.querySelector("[data-ok]").onclick = ok;
     m.querySelectorAll("input").forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") ok(); }));
@@ -534,45 +599,53 @@ function newOfferingDialog() {
 
 function offeringPage(c, t) {
   const o = offering(c, t), loading = !S.offerings && !S.listError;
-  // Another term of the same course with a course page: a new page can start from a copy of the newest.
-  const others = S.offerings ? [...S.offerings.values()].filter(x => x.c === c && x.t !== t && x.page).sort((a, b) => termOrder(a.t, b.t)) : [];
+  const role = roleIn(c, t), edit = role === "owner" || role === "instructor", ta = role === "ta", own = !curOwner();
+  // Another term of the same course (in the same files) with a course page: a new page can start from a copy of the newest.
+  const others = S.offerings ? [...S.offerings.values()].filter(x => x.o === curOwner() && x.c === c && x.t !== t && x.page).sort((a, b) => termOrder(a.t, b.t)) : [];
   const live = o.page ? liveURL(c, t) : "";
   const book = path => ` data-part="${path}"${!o.grades && loading ? " disabled" : ""}`;
   pageHTML(`<div class="lt-in">
     <div class="lt-off-head">
-      <div><h1>${esc(c.toUpperCase())}</h1><p class="lt-term-line">${esc(termName(t))}</p></div>
-      <div class="lt-off-acts"><button type="button" class="lt-btn" data-part="settings"${!o.grades && loading ? " disabled" : ""} title="The course's settings: student fields, and the rules for course grades (ranges, rounding, automatic fail)">${ICON.gear}Settings</button><button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button></div>
+      <div><h1>${esc(c.toUpperCase())}</h1><p class="lt-term-line">${esc(termName(t))}</p>
+        ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${role === "ta" ? "a TA" : "an instructor"}</p>` : ""}</div>
+      <div class="lt-off-acts">${edit ? `<button type="button" class="lt-btn" data-part="settings"${!o.grades && loading ? " disabled" : ""} title="The course's settings: student fields, and the rules for course grades (ranges, rounding, automatic fail)">${ICON.gear}Settings</button><button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
+    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook, and look at the evaluations and exams. Changes to anything else (weights, students, settings, exams, the course page) are for the instructors: Lectern won't save them.</p>` : ""}
     <div class="lt-three">
       <section class="lt-part">
         <div class="lt-part-head">${ICON.page}<h2>Course Page</h2></div>
-        <p class="lt-part-text">${o.page ? `What students see: the weekly schedule with lectures, files and links, deadlines and announcements.` : `No course page for this term yet.${others.length ? ` Start from <code>${esc(others[0].c)}/${esc(others[0].t)}</code>'s page (without its announcements), or from a blank page.` : ""}`}</p>
+        <p class="lt-part-text">${o.page ? `What students see: the weekly schedule with lectures, files and links, deadlines and announcements.` : `No course page for this term yet.${edit && others.length ? ` Start from <code>${esc(others[0].c)}/${esc(others[0].t)}</code>'s page (without its announcements), or from a blank page.` : ""}`}</p>
         <div class="lt-part-acts">${o.page
-          ? `<button type="button" class="lt-btn primary" data-go="course">Open Course Page</button>${live ? `<a class="lt-btn" href="${esc(live)}" target="_blank" rel="noopener">Live page ${ICON.out}</a>` : ""}`
-          : `${others.length ? `<button type="button" class="lt-btn primary" data-go="course" data-copy="${esc(others[0].c)}/${esc(others[0].t)}">Copy ${esc(others[0].t)}'s Page</button>` : ""}<button type="button" class="lt-btn${others.length ? "" : " primary"}" data-go="course"${loading ? " disabled" : ""}>Start a Blank Page</button>`}</div>
+          ? `${edit ? `<button type="button" class="lt-btn primary" data-go="course">Open Course Page</button>` : ""}${live ? `<a class="lt-btn${edit ? "" : " primary"}" href="${esc(live)}" target="_blank" rel="noopener">Live page ${ICON.out}</a>` : ""}`
+          : !edit ? "" : `${others.length ? `<button type="button" class="lt-btn primary" data-go="course" data-copy="${esc(others[0].c)}/${esc(others[0].t)}">Copy ${esc(others[0].t)}'s Page</button>` : ""}<button type="button" class="lt-btn${others.length ? "" : " primary"}" data-go="course"${loading ? " disabled" : ""}>Start a Blank Page</button>`}</div>
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.evals}<h2>Evaluations</h2></div>
-        <p class="lt-part-text">${o.grades ? `The assignments, tests and exams: weights, dates, and what happens if one is missed. Build each one's exam or handout from here.` : "No evaluations for this term yet."}</p>
+        <p class="lt-part-text">${o.grades ? `The assignments, tests and exams: weights, dates, and what happens if one is missed.${edit ? " Build each one's exam or handout from here." : ""}` : "No evaluations for this term yet."}</p>
         <div id="lt-loose"></div>
-        <div class="lt-part-acts"><button type="button" class="lt-btn primary"${book("evals")}>${o.grades ? "Open Evaluations" : "Add Evaluations"}</button></div>
+        <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${edit ? " primary" : ""}"${book("evals")}>${o.grades ? (edit ? "Open Evaluations" : "See Evaluations") : "Add Evaluations"}</button>` : ""}</div>
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.grades}<h2>Gradebook</h2></div>
-        <p class="lt-part-text">${o.grades ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation).` : "No gradebook for this term yet: it starts with the evaluations."}</p>
-        <div class="lt-part-acts"><button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button></div>
+        <p class="lt-part-text">${o.grades ? (edit ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation).` : "Enter marks, and see every student's grade.") : "No gradebook for this term yet: it starts with the evaluations."}</p>
+        <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button>` : ""}</div>
       </section>
-      <section class="lt-part lt-wide">
+      ${edit ? `<section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>
         <p class="lt-part-text" id="lt-accom-sum">Requests students make with the course page's Request Accommodation buttons. Approve or reject each one; the student gets an email.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-accom"${!o.grades && loading ? " disabled" : ""}>Open Accommodations</button></div>
+      </section>` : ""}
+      <section class="lt-part lt-wide lt-team" id="lt-team">
+        <div class="lt-part-head">${ICON.team}<h2>Teaching Team</h2></div>
+        <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
       </section>
     </div>
   </div>`);
-  $("#lt-accom").onclick = () => go({ page: "accom", c, t });
-  if (o.grades) readAccom(c, t).then(d => {
+  const acc = $("#lt-accom");
+  if (acc) acc.onclick = () => go({ page: "accom", c, t });
+  if (acc && o.grades) readAccom(c, t).then(d => {
     const el = $("#lt-accom-sum"), n = d ? d.requests.filter(x => x.status === "pending").length : 0;
     if (!el || !n || S.route.page !== "offering" || S.route.c !== c || S.route.t !== t) return;
     el.innerHTML = `<b>${n} request${n === 1 ? "" : "s"} waiting</b> for a decision. Approve or reject each one; the student gets an email.`;
@@ -580,7 +653,8 @@ function offeringPage(c, t) {
   }).catch(() => {});
   $("#lt-page").querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go({ page: "tool", tool: b.dataset.go, c, t }, b.dataset.copy ? { copyFrom: b.dataset.copy } : null); });
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
-  $("#lt-del-off").onclick = () => deleteOfferingDialog(c, t);
+  const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
+  teamPart(c, t);
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
   if (o.exams.length) docLinks(c, t).then(links => {
     const linked = new Set(Object.values(links).map(d => d.folder)), loose = o.exams.filter(e => !linked.has(e)), el = $("#lt-loose");
@@ -588,6 +662,60 @@ function offeringPage(c, t) {
     el.innerHTML = `<p class="lt-part-text lt-loose-h">Not linked to an evaluation:</p><ul class="lt-rows">${loose.map(e => `<li><button type="button" class="row" data-exam="${esc(e)}">${ICON.doc}${esc(e)}</button></li>`).join("")}</ul>`;
     el.querySelectorAll("[data-exam]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "exams", c, t, e: b.dataset.exam }); });
   }).catch(() => {});
+}
+
+// ── The teaching team: who else works on this offering, as instructor or TA ──
+// Instructors add people by email (someone without an account gets an invitation that makes one),
+// change roles and remove people; anyone can leave. The server enforces what each role may do.
+async function teamPart(c, t) {
+  const box = $("#lt-team .lt-team-body"), o = curOwner(), owner = o || S.user.handle;
+  const here = () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box);
+  const base = `/api/teams/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
+  let d;
+  try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
+  if (!here()) return;
+  const lead = d.you === "owner" || d.you === "instructor";
+  const roleSel = p => `<select class="lt-filter" data-role="${p.id}" aria-label="Role for ${esc(p.email)}"><option value="instructor"${p.role === "instructor" ? " selected" : ""}>Instructor</option><option value="ta"${p.role === "ta" ? " selected" : ""}>TA</option></select>`;
+  box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams." : "The people who work on this offering."}</p>
+    <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
+        <div class="lt-user-who"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></div>
+        <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag">Owner</span>`
+          : lead && p.id !== d.me ? `${roleSel(p)}<button type="button" class="lt-link lt-del" data-remove="${p.id}">Remove</button>`
+          : `<span class="lt-tag${p.role === "ta" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>
+      </div>`).join("")}
+      ${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited as ${i.role === "ta" ? "a TA" : "an instructor"}: waiting for them to accept</span></div>
+        <span class="lt-orow-r"><button type="button" class="lt-link" data-uninvite="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>
+    ${lead ? `<form class="lt-team-add" id="lt-team-add" novalidate>
+      <input type="email" id="lt-team-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
+      <select class="lt-filter" id="lt-team-role" aria-label="Role"><option value="ta">TA</option><option value="instructor">Instructor</option></select>
+      <button type="submit" class="lt-btn add">${ICON.plus}Add to the team</button></form><div id="lt-team-msg"></div>` : ""}`;
+  const again = () => teamPart(c, t);
+  const call = async (what, body) => { try { await Auth.api(`${base}/${what}`, body); return true; } catch (e) { toast(e.message); again(); return false; } };
+  box.querySelectorAll("[data-role]").forEach(sel => { sel.onchange = async () => { if (await call("role", { user: Number(sel.dataset.role), role: sel.value })) toast("Role changed."); }; });
+  box.querySelectorAll("[data-remove]").forEach(b => {
+    b.onclick = async () => {
+      const me = Number(b.dataset.remove) === d.me;
+      if (!await confirmBox(me ? "Leave this team?" : "Remove them from the team?", me ? `You won't see ${esc(c)}/${esc(t)} any more, unless someone adds you again.` : "They won't see this offering any more. You can add them again.", me ? "Leave" : "Remove")) return;
+      if (!await call("remove", { user: Number(b.dataset.remove) })) return;
+      if (me) { toast(`You left ${c}/${t}.`); await listAll().catch(() => null); return go({ page: "home" }); }
+      again();
+    };
+  });
+  box.querySelectorAll("[data-uninvite]").forEach(b => { b.onclick = async () => { if (await call("uninvite", { id: b.dataset.uninvite })) again(); }; });
+  const f = $("#lt-team-add");
+  if (f) f.onsubmit = async e => {
+    e.preventDefault();
+    const btn = f.querySelector("[type=submit]"); btn.disabled = true;
+    try {
+      const r = await Auth.api(`${base}/add`, { email: $("#lt-team-email").value.trim(), role: $("#lt-team-role").value });
+      await again();
+      const msg = $("#lt-team-msg"); if (!msg) return;
+      if (r.emailed) { toast("Invitation emailed. They join once they accept it."); return; }
+      msg.innerHTML = `<p class="lt-note">The server can't send email, so send them this link: they join once they open it (and sign in, or make an account). Only to them: it works for whoever has it.
+        <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
+      const cp = msg.querySelector("[data-copy]"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { msg.querySelector("input").select(); } };
+    } catch (x) { toast(x.message); btn.disabled = false; }
+  };
 }
 function deleteOfferingDialog(c, t) {
   const o = offering(c, t), name = `${c}/${t}`;
@@ -606,11 +734,11 @@ function deleteOfferingDialog(c, t) {
       ok.disabled = true; ok.textContent = "Deleting…";
       try {
         const msg = `Delete ${name}`;
-        await Store.deleteFolder(Store.PUB, name, msg);
-        await Store.deleteFolder(Store.PRIV, name, msg);
+        await Store.deleteFolder(area(Store.PUB), name, msg);
+        await Store.deleteFolder(area(Store.PRIV), name, msg);
         close();
         toast(`Deleted ${name}.`);
-        S.offerings && S.offerings.delete(name);
+        S.offerings && S.offerings.delete(okey(c, t));
         listAll();
         go({ page: "home" });
       } catch (e) { ok.disabled = false; ok.textContent = "Delete"; m.querySelector("#del-err").textContent = e.message; }
@@ -619,7 +747,7 @@ function deleteOfferingDialog(c, t) {
 }
 
 function newExamDialog(c, t) {
-  const all = S.offerings ? [...S.offerings.values()].sort((a, b) => termOrder(a.t, b.t) || a.c.localeCompare(b.c)).flatMap(o => o.exams.map(e => `${o.c}/${o.t}/${e}`)) : [];
+  const all = S.offerings ? [...S.offerings.values()].filter(o => o.o === curOwner()).sort((a, b) => termOrder(a.t, b.t) || a.c.localeCompare(b.c)).flatMap(o => o.exams.map(e => `${o.c}/${o.t}/${e}`)) : [];
   const have = offering(c, t).exams;
   modal(`<h2>New exam</h2><p>Its folder goes in <code>${esc(c)}/${esc(t)}/</code>, with the grades (private).</p>
     <div class="lt-form">
@@ -722,7 +850,7 @@ async function accomPage(c, t) {
       ok.onclick = async () => {
         ok.disabled = true; ok.textContent = yes ? "Approving…" : "Rejecting…";
         try {
-          const d = await Auth.api("/api/accommodations/decide", { offering: `${c}/${t}`, id: r.id, decision, note: m.querySelector("#dc-note").value });
+          const d = await Auth.api("/api/accommodations/decide", { owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision, note: m.querySelector("#dc-note").value });
           Object.assign(r, d.request);
           close();
           toast(`${yes ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);
@@ -739,7 +867,7 @@ const num = x => (Number.isFinite(+x) ? +x : 0);
 const fmtW = n => String(Math.round(num(n) * 100) / 100);
 
 // A file in your private files (grades, exams).
-const readPriv = path => Store.readText(Store.PRIV, path);
+const readPriv = (path, o = curOwner()) => Store.readText(area(Store.PRIV, o), path);
 
 // The gradebook for an offering: the Grade Builder's copy when it has that one open (so changes not yet
 // saved count too), else the file in the private repository.
@@ -808,7 +936,7 @@ function schemeOf(b, from, requests = null) {
 // offering, by your handle (the server finds your gradebook from it).
 const lecternURL = () => getCfg().then(c => c.app_url || `${location.origin}/`);
 async function requestsFor(c, t) {
-  return S.user ? { url: `${await lecternURL()}request`, repo: S.user.handle, offering: `${c}/${t}` } : null;
+  return S.user ? { url: `${await lecternURL()}request`, repo: curOwner() || S.user.handle, offering: `${c}/${t}` } : null;
 }
 
 // Each evaluation's exam or handout in an offering: the Exam Builder's open one, and every exam.json
@@ -856,13 +984,13 @@ async function crossLink(tool, r, t, opts) {
 // ── The builders ─────────────────────────────────────────────────────
 // Each builder talks GitHub's REST API to "lectern/pub" or "lectern/priv"; scope.js sends those calls to
 // your files on Lectern's server, with your session (the token here is only a placeholder).
-function connection(tool) {
-  return { mode: "github", repo: Store.repoName(TOOLS[tool].repo === "pub" ? Store.PUB : Store.PRIV), branch: "main", token: "session", site: siteURL() };
+function connection(tool, o = curOwner()) {
+  return { mode: "github", repo: Store.repoName(area(TOOLS[tool].repo === "pub" ? Store.PUB : Store.PRIV, o)), branch: "main", token: "session", site: siteURL(o) };
 }
 function connectAll() {
   Object.entries(Lectern.tools).forEach(([name, t]) => {
     if (!t.api) return;
-    try { t.api.connect(connection(name)); } catch (e) { console.error(e); }
+    try { t.api.connect(connection(name, t.owner || "")); } catch (e) { console.error(e); }
   });
 }
 
@@ -934,7 +1062,7 @@ async function openTool(r, my) {
   const target = `${folder}/${TOOLS[tool].file}`;
   let t = Lectern.tools[tool] && Lectern.tools[tool].api ? Lectern.tools[tool] : null;
   // Already showing that file: just show the builder again.
-  if (!(t && t.api.state().path === target)) {
+  if (!(t && t.api.state().path === target && (t.owner || "") === curOwner())) {
     showPageChrome();
     renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: tool === "exams" ? r.e : TOOLS[tool].title }]);
     pageHTML(`<div class="lt-loading">Opening ${esc(target)}…</div>`);
@@ -947,16 +1075,18 @@ async function openTool(r, my) {
         Lectern.show(null);
         $("#lt-page").hidden = false; $("#lt-bar").hidden = false;
       }
-      t.api.connect(connection(tool));
       const st = t.api.state();
-      if (st.path !== target && st.unsaved && st.path) {
+      if (!(st.path === target && (t.owner || "") === curOwner()) && st.unsaved && st.path) {
         const discard = await confirmBox("Not saved", `<code>${esc(st.path)}</code> has changes that aren't saved yet. Open <code>${esc(target)}</code> instead and lose them?`, "Discard and open", "Keep editing it");
         if (my !== seq) return;
         if (!discard) return go(routeForPath(tool, st.path));
       }
+      t.owner = curOwner();   // whose files it's working in (yours, or a team's owner's)
+      t.api.connect(connection(tool, t.owner));
       const o = offering(r.c, r.t);
       const has = tool === "course" ? o.page : tool === "grades" ? o.grades : o.exams.includes(r.e);
       await t.api.open(folder, has, opts && opts.copyFrom, opts && opts.title, opts || {});
+      t.taBase = tool === "grades" && roleIn(r.c, r.t) === "ta" && t.api.book ? noMarks(t.api.book()) : "";
       const where = "in Lectern";
       if (!has) toast(tool === "course" ? `Started ${target}. Save to create it.` : tool === "grades" ? `New gradebook for ${r.c}/${r.t}. Save to put it ${where}.`
         : opts && opts.created ? `New ${opts.layout === "handout" ? "handout" : "exam"} for ${opts.title}, in ${folder}. Its total marks become the evaluation's out of. Save to put it ${where}.` : `New exam ${folder}. Save to put it ${where}.`);
@@ -989,11 +1119,18 @@ async function openTool(r, my) {
 // ── Start ────────────────────────────────────────────────────────────
 $("title").dataset.splash = document.title;
 (async () => {
-  const onSignedIn = (user, how) => start(user, how);
+  const onSignedIn = (user, how, team, note) => start(user, how, team, note);
   // An invitation or reset link always shows its step, even when signed in already (as someone else, maybe).
   if (/^#(invite|reset)=/.test(location.hash)) { await Auth.signOut(); showSplash(); return Auth.initSplash(onSignedIn); }
   let d = null;
   try { d = await Auth.me(); } catch (e) { showSplash(e.message, true); Auth.initSplash(onSignedIn); return; }
+  // A teaching team's invitation, already signed in: accept it straight away.
+  const join = /^#join=([\w-]{20,200})$/.exec(location.hash);
+  if (join && d.signedIn) {
+    history.replaceState(null, "", location.pathname + location.search + "#/");
+    try { const j = await Auth.api("/api/teams/join", { token: join[1] }); return start(d.user, "join", { owner: j.owner, offering: j.offering }); }
+    catch (e) { start(d.user); return setTimeout(() => toast(e.message), 300); }
+  }
   if (d.signedIn) return start(d.user);
   showSplash();
   Auth.initSplash(onSignedIn);

@@ -5,7 +5,7 @@
    HTTP anywhere but localhost), and nothing here keeps it: no storage, no cookies. The server's session
    cookie is HttpOnly, so no script on the page can read it either.
 
-   Invitation and reset links carry their token after # (…/#invite=…, …/#reset=…), which browsers never
+   Invitation, team and reset links carry their token after # (…/#invite=…, #join=…, #reset=…), which browsers never
    send to a server or in a Referer; it's read here and taken out of the address straight away. */
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -101,8 +101,17 @@ function wireCode(root, idPrefix) {
 }
 
 // ── The splash: sign in, and the steps around it ─────────────────────
-/** Wire the splash. onSignedIn(user, how) is called once there's a session ("login" | "invite"). */
+/** Wire the splash. onSignedIn(user, how, team) is called once there's a session ("login" | "invite" | "join";
+    team: { owner, offering } after joining a teaching team). */
 export function initSplash(onSignedIn) {
+  let joining = "";   // a team invitation to accept once signed in (an existing account)
+  const signedIn = async user => {
+    if (!joining) return onSignedIn(user, "login");
+    try {
+      const j = await api("/api/teams/join", { token: joining }, { retry: false });
+      onSignedIn(user, "join", { owner: j.owner, offering: j.offering });
+    } catch (x) { onSignedIn(user, "login", null, x.message); }
+  };
   const form = $("#sp-form"), panel = $("#sp-panel"), status = $("#splash-status");
   const say = (msg, err = true) => { status.className = `sp-hint${err ? " is-error" : ""}`; status.textContent = msg || ""; };
   const busy = (b, on, label) => { b.disabled = on; if (label) b.textContent = label; };
@@ -124,7 +133,7 @@ export function initSplash(onSignedIn) {
       const d = await api("/api/auth/login", { email, password }, { retry: false });
       $("#sp-pw").value = "";
       if (d.twoFactor) return codeStep();
-      setHint(true); onSignedIn(d.user, "login");
+      setHint(true); signedIn(d.user);
     } catch (x) { say(x.message); if (x.code === "bad-login") { $("#sp-pw").select(); } }
     finally { busy(go, false, "Sign in"); }
   };
@@ -143,7 +152,7 @@ export function initSplash(onSignedIn) {
       const go = $("#sp2-go"); busy(go, true, "Checking…");
       try {
         const d = await api("/api/auth/login/2fa", get(), { retry: false });
-        setHint(true); onSignedIn(d.user, "login");
+        setHint(true); signedIn(d.user);
       } catch (x) {
         if (x.code === "expired") return showForm(x.message, true);
         say(x.message); busy(go, false, "Continue");
@@ -170,11 +179,11 @@ export function initSplash(onSignedIn) {
     };
   };
 
-  // A link from an email: #invite=… or #reset=…
-  const m = /^#(invite|reset)=([\w-]{20,200})$/.exec(location.hash);
+  // A link from an email: #invite=…, #join=… or #reset=…
+  const m = /^#(invite|join|reset)=([\w-]{20,200})$/.exec(location.hash);
   if (m) {
     history.replaceState(null, "", location.pathname + location.search + "#/");   // out of the address bar and history
-    return m[1] === "invite" ? inviteStep(m[2]) : resetStep(m[2]);
+    return m[1] === "invite" ? inviteStep(m[2]) : m[1] === "join" ? joinStep(m[2]) : resetStep(m[2]);
   }
   showForm();
   return null;
@@ -215,8 +224,36 @@ export function initSplash(onSignedIn) {
     let info;
     try { info = await api("/api/auth/invite/check", { token }, { retry: false }); }
     catch (x) { return showForm(x.message, true); }
+    createStep(token, info, `You're invited as <b>${esc(info.email)}</b>.`, "/api/auth/invite/accept", "invite");
+  }
+
+  // A teaching team's invitation: accept it signed in (an account for that email), or by making the account.
+  async function joinStep(token) {
+    showPanel(`<div class="sp-form"><p>Checking the invitation…</p></div>`);
+    let info;
+    try { info = await api("/api/teams/join/check", { token }, { retry: false }); }
+    catch (x) { return showForm(x.message, true); }
+    const what = `${esc(info.ownerName)} asked you to join the teaching team for <b>${esc(info.offering.replace("/", " ").toUpperCase())}</b>, as ${info.role === "ta" ? "a TA" : "an instructor"}.`;
+    const signIn = () => {
+      joining = token;
+      $("#sp-email").value = info.email;
+      showForm();
+      status.className = "sp-hint"; status.innerHTML = `${what} Sign in as <b>${esc(info.email)}</b> to accept.`;
+    };
+    showPanel(`<div class="sp-form">
+        <h2>Join the teaching team</h2><p>${what}</p><p>For <b>${esc(info.email)}</b>.</p>
+        <button type="button" class="sp-btn sp-btn--primary" id="jn-in">I have a Lectern account: sign in</button>
+        ${info.canCreate ? `<button type="button" class="sp-btn sp-btn--quiet" id="jn-new">I'm new to Lectern: make an account</button>` : `<p style="font-size:12.5px;color:var(--ink-3)">New accounts for this address need your Lectern admin.</p>`}
+      </div>`);
+    $("#jn-in").onclick = signIn;
+    const nw = $("#jn-new");
+    if (nw) nw.onclick = () => createStep(token, info, `${what} Your account: <b>${esc(info.email)}</b>.`, "/api/teams/join/create", "join", signIn);
+    $("#jn-in").focus();
+  }
+
+  function createStep(token, info, intro, endpoint, how, ifExists) {
     showPanel(`<form id="sp-iv" novalidate><div class="sp-form">
-        <h2>Create your account</h2><p>You're invited as <b>${esc(info.email)}</b>.</p>
+        <h2>Create your account</h2><p>${intro}</p>
         <input type="email" autocomplete="username" value="${esc(info.email)}" hidden readonly>
         <label class="sp-field"><span>Your name</span><input type="text" id="iv-name" autocomplete="name" required></label>
         <label class="sp-field"><span>Address for your course pages</span><input type="text" id="iv-handle" value="${esc(info.handle)}" autocapitalize="off" spellcheck="false" required>
@@ -236,9 +273,13 @@ export function initSplash(onSignedIn) {
       const go = $("#iv-go"); busy(go, true, "Creating…");
       try {
         needSecure();
-        const d = await api("/api/auth/invite/accept", { token, name: $("#iv-name").value.trim(), handle: h.value.trim().toLowerCase(), password: pw }, { retry: false });
-        setHint(true); onSignedIn(d.user, "invite");
-      } catch (x) { say(x.message); busy(go, false, "Create account"); if (x.status === 410) showForm(x.message, true); }
+        const d = await api(endpoint, { token, name: $("#iv-name").value.trim(), handle: h.value.trim().toLowerCase(), password: pw }, { retry: false });
+        setHint(true); onSignedIn(d.user, how, d.team);
+      } catch (x) {
+        busy(go, false, "Create account");
+        if (x.code === "exists" && ifExists) { ifExists(); return say(x.message); }
+        say(x.message); if (x.status === 410) showForm(x.message, true);
+      }
     };
   }
 }

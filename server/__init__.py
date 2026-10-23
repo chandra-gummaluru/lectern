@@ -6,6 +6,7 @@ Module map:
 - db.py         the SQLite database (accounts, sessions, versions) under LECTERN_DATA_DIR
 - security.py   password hashing (argon2id), two-factor codes (TOTP), tokens, encryption, rate limits
 - auth.py       accounts: sign-in, two-factor, invitations, password resets, the account and admin API
+- teams.py      teaching teams: instructors and TAs on a course offering, and what each may do
 - store.py      each account's files (answering the builders' GitHub-style calls) and published pages (/p/…)
 - pages.py      the page at / (splash + app), /api/config and the PWA manifest
 - tools.py      the three builders, split and scoped so they share one page
@@ -24,11 +25,13 @@ from .core import app
 from .auth import auth_bp
 from .pages import pages_bp
 from .store import store_bp
+from .teams import teams_bp
 from .tools import tools_bp
 from .accommodations import accom_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
+app.register_blueprint(teams_bp)
 app.register_blueprint(tools_bp)
 app.register_blueprint(accom_bp)

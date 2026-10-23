@@ -41,6 +41,7 @@ store_bp = Blueprint("store", __name__)
 REPOS = ("pub", "priv")
 BRANCH = "main"
 OBJECT_TTL = 86400          # a save's pieces wait this long to be used
+MEMBER_PENDING = 32 * 1024 * 1024   # a teaching team member's uploads waiting to be saved, at most
 _BAD = re.compile(r'[\x00-\x1f\\:*?"<>|]')
 
 
@@ -163,8 +164,12 @@ class Repo:
                     pass
         return n
 
-    def pending_bytes(self):
-        return db.one("SELECT COALESCE(SUM(LENGTH(data)), 0) AS n FROM objects WHERE user_id = ? AND kind = 'blob'", (self.uid,))["n"]
+    def pending_bytes(self, uploader=None):
+        """Uploads waiting to be saved: the owner's own (uploader None), or one team member's."""
+        if uploader is None:
+            q = "SELECT COALESCE(SUM(LENGTH(data)), 0) AS n FROM objects WHERE user_id = ? AND kind = 'blob' AND (uploader IS NULL OR uploader = ?)"
+            return db.one(q, (self.uid, self.uid))["n"]
+        return db.one("SELECT COALESCE(SUM(LENGTH(data)), 0) AS n FROM objects WHERE user_id = ? AND kind = 'blob' AND uploader = ?", (self.uid, uploader))["n"]
 
     def used_bytes(self):
         """The account's space in use: both areas' files, and uploads waiting to be saved. (Kept old
@@ -191,13 +196,23 @@ class Repo:
                 break
 
     # ── A save's pieces ──
-    def put_object(self, kind, data, sha=None):
+    def put_object(self, kind, data, sha=None, uploader=None):
+        """A save's piece. Uploads (blobs) take space: the owner's count against the account's space; a team
+        member's against an allowance of their own (MEMBER_PENDING), so they can't fill the owner's.
+        A save's tree and commit are tiny (file contents are always blobs), and a delete must always work."""
         db.run("DELETE FROM objects WHERE user_id = ? AND created < ?", (self.uid, time.time() - OBJECT_TTL))
-        if kind == "blob":   # only uploads take space; a save's tree and commit are tiny, and a delete must always work
-            self.check_room(len(data))
+        member = uploader is not None and uploader != self.uid
+        if kind == "blob":
+            if member:
+                if self.pending_bytes(uploader) + len(data) > MEMBER_PENDING:
+                    raise StoreError(413, "Too much waiting to be saved. Save (or wait a day), then try again.")
+            else:
+                self.check_room(len(data))
+        elif len(data) > 2 * 1024 * 1024:
+            raise StoreError(413, "That save is too big.")
         sha = sha or hashlib.sha1(kind.encode() + b"\0" + data + secrets.token_bytes(8)).hexdigest()
-        db.run("INSERT OR REPLACE INTO objects (user_id, repo, sha, kind, data, created) VALUES (?, ?, ?, ?, ?, ?)",
-               (self.uid, self.name, sha, kind, data, time.time()))
+        db.run("INSERT OR REPLACE INTO objects (user_id, repo, sha, kind, data, created, uploader) VALUES (?, ?, ?, ?, ?, ?, ?)",
+               (self.uid, self.name, sha, kind, data, time.time(), uploader if member else None))
         return sha
 
     def get_object(self, kind, sha):
@@ -205,7 +220,7 @@ class Repo:
         return bytes(r["data"]) if r else None
 
     # ── Saving ──
-    def commit(self, changes, message, parent, author="", force=False):
+    def commit(self, changes, message, parent, author="", force=False, check=None):
         """Write changes ({path: bytes, or None to delete}) as one save on top of `parent`.
         Returns the new head, or raises StoreError(422) if something else was saved since `parent`."""
         changes = {clean_path(p): v for p, v in changes.items()}
@@ -213,6 +228,8 @@ class Repo:
             head = self.head()
             if parent != head and not force:
                 raise StoreError(422, "Update is not a fast forward")
+            if check:   # check(path, current bytes or None, new bytes or None) → what to write; raises to refuse
+                changes = {p: check(p, self.read(p), v) for p, v in changes.items()}
             # Only growth is checked (a save that frees space always works); its uploads already counted.
             grow = sum((len(v) if v is not None else 0) - (self.stat(p).st_size if self.stat(p) else 0) for p, v in changes.items())
             if quota_bytes() and grow > 0 and self.used_bytes() - self.pending_bytes() + grow > quota_bytes():
@@ -284,15 +301,44 @@ def _info(name, head):
             "owner": {"login": "lectern"}, "permissions": {"push": True}, "head": head}
 
 
+def open_area(name):
+    """The store's address names an area: "pub"/"priv" (your own), or "<handle>.pub"/"<handle>.priv"
+    (someone else's, for the offerings you're on the teaching team of). → (Repo, Access)"""
+    from .teams import Access
+    handle, _, area = name.rpartition(".")
+    if area not in REPOS:
+        raise StoreError(404, "Not Found")
+    if handle:
+        u = db.one("SELECT id, disabled FROM users WHERE handle = ?", (handle.lower(),))
+        if not u or u["disabled"]:
+            raise StoreError(404, "Not Found")
+        owner = u["id"]
+    else:
+        owner = g.user["id"]
+    acc = Access(g.user["id"], owner, area)
+    if not acc.any():
+        raise StoreError(404, "Not Found")
+    return Repo(owner, area), acc
+
+
 @store_bp.route("/api/store/<name>", defaults={"rest": ""}, methods=["GET"])
 @store_bp.route("/api/store/<name>/<path:rest>", methods=["GET", "POST", "PATCH"])
 @signed_in
 def api(name, rest):
+    from .auth import Refusal
     try:
-        repo = Repo(g.user["id"], name)
-        return _dispatch(repo, request.method, rest.strip("/"))
+        repo, acc = open_area(name)
+        return _dispatch(repo, acc, request.method, rest.strip("/"))
     except StoreError as e:
         return _gh(e.status, str(e))
+    except Refusal as e:
+        return _gh(e.status, str(e))
+
+
+def _member_rate():
+    from .auth import limiter
+    if not limiter.ok(f"member-save:{g.user['id']}", 600, 3600):
+        raise StoreError(429, "Too many saves at once. Wait a while, then try again.")
 
 
 def _body():
@@ -302,7 +348,7 @@ def _body():
     return d
 
 
-def _dispatch(repo, m, rest):
+def _dispatch(repo, acc, m, rest):
     head = repo.head()
     if rest == "" and m == "GET":
         return jsonify(_info(repo.name, head))
@@ -318,20 +364,21 @@ def _dispatch(repo, m, rest):
         sha = rest.split("/", 2)[2]
         return jsonify(sha=sha, tree={"sha": sha}, parents=[])
     if m == "GET" and rest.startswith("git/trees/"):
-        return jsonify(sha=head, tree=repo.walk(), truncated=False)
+        tree = [e for e in repo.walk() if (acc.can_read(e["path"]) if e["type"] == "blob" else acc.can_see_folder(e["path"]))]
+        return jsonify(sha=head, tree=tree, truncated=False)
     if m == "GET" and rest.startswith("contents/"):
         path = clean_path(rest[len("contents/"):])
-        data = repo.read(path)
+        data = repo.read(path) if acc.can_read(path) else None
         if data is None:
             raise StoreError(404, "Not Found")
         return jsonify(type="file", path=path, name=path.rsplit("/", 1)[-1], size=len(data), sha=blob_sha(data),
                        encoding="base64", content=base64.b64encode(data).decode())
     if m == "GET" and rest == "commits":
         p = request.args.get("path", "")
-        st = repo.stat(p) if p else None
+        st = repo.stat(p) if p and acc.can_read(p) else None
         if p and not st:
             return jsonify([])
-        r = db.one("SELECT * FROM commits WHERE user_id = ? AND repo = ? ORDER BY at DESC LIMIT 1", (repo.uid, repo.name))
+        r = db.one("SELECT * FROM commits WHERE user_id = ? AND repo = ? ORDER BY at DESC LIMIT 1", (repo.uid, repo.name)) if acc.own else None
         at = st.st_mtime if st else (r["at"] if r else time.time())
         return jsonify([{"sha": head, "commit": {"message": (r["message"] if r else ""), "committer": {"date": _iso(at)}, "author": {"date": _iso(at)}}}])
     if m == "POST" and rest == "git/blobs":
@@ -346,20 +393,36 @@ def _dispatch(repo, m, rest):
                 raise StoreError(422, "Bad base64")
         else:
             data = content.encode("utf-8")
+        if not acc.own:   # a teaching team member: uploads only where their role can write
+            acc.may_upload(len(data))
+            _member_rate()
         sha = blob_sha(data)
-        repo.put_object("blob", data, sha)
+        repo.put_object("blob", data, sha, uploader=g.user["id"])
         return jsonify(sha=sha, url=""), 201
     if m == "POST" and rest == "git/trees":
         entries = _body().get("tree")
         if not isinstance(entries, list) or len(entries) > 5000:
             raise StoreError(422, "Invalid tree")
+        if not acc.own:
+            _member_rate()
         clean = []
         for e in entries:
             if not isinstance(e, dict):
                 raise StoreError(422, "Invalid tree")
-            clean.append({"path": clean_path(e.get("path")), "sha": e.get("sha"), "content": e.get("content")})
-        return jsonify(sha=repo.put_object("tree", json.dumps(clean).encode())), 201
+            path, sha, content = clean_path(e.get("path")), e.get("sha"), e.get("content")
+            if not acc.own:
+                acc.may_change(path, deleting=sha is None and content is None)
+            if content is not None:   # a file's text given inline: an upload like any other (same limits)
+                data = str(content).encode("utf-8")
+                if not acc.own:
+                    acc.may_upload(len(data))
+                sha = blob_sha(data)
+                repo.put_object("blob", data, sha, uploader=g.user["id"])
+            clean.append({"path": path, "sha": sha})
+        return jsonify(sha=repo.put_object("tree", json.dumps(clean).encode(), uploader=g.user["id"])), 201
     if m == "POST" and rest == "git/commits":
+        if not acc.own:
+            _member_rate()
         d = _body()
         parents = d.get("parents") or []
         if not isinstance(parents, list) or len(parents) != 1:
@@ -377,7 +440,7 @@ def _dispatch(repo, m, rest):
             raise StoreError(422, "Commit not found")
         c = json.loads(raw)
         tree = json.loads(repo.get_object("tree", c["tree"]) or b"[]")
-        current = {e["sha"]: e["path"] for e in repo.walk() if e["type"] == "blob"}
+        current = {e["sha"]: e["path"] for e in repo.walk() if e["type"] == "blob" and acc.can_read(e["path"])}
         changes = {}
         for e in tree:
             if e.get("content") is not None:
@@ -391,7 +454,9 @@ def _dispatch(repo, m, rest):
                 if data is None:
                     raise StoreError(422, f"Blob not found for {e['path']}")
                 changes[e["path"]] = data
-        new = repo.commit(changes, c["message"], c["parent"], g.user["email"], bool(d.get("force")))
+        # A teaching team member: only what their role allows (teams.py), checked inside the save's lock.
+        check = None if acc.own else acc.check_write
+        new = repo.commit(changes, c["message"], c["parent"], g.user["email"], bool(d.get("force")) and acc.own, check=check)
         used = [d.get("sha"), c["tree"]] + [e["sha"] for e in tree if e.get("sha")]   # the save's pieces: done with
         for k in range(0, len(used), 400):
             part = used[k:k + 400]

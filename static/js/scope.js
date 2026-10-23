@@ -121,10 +121,10 @@ function addScript(src) {
 }
 
 // The builders save with GitHub's REST calls. For "lectern/pub" and "lectern/priv" (your files on
-// Lectern's server) those go to the server instead, at /api/store/<pub|priv>/…, with the session cookie
+// Lectern's server; "lectern/<handle>.priv" for an offering on someone's teaching team) those go to the server instead, at /api/store/<pub|priv>/…, with the session cookie
 // (not a token) and Lectern's X-Lectern header. A session that ended mid-save gets the sign-in-again
 // window, and then the same call is made again, so the save carries on.
-const STORE = /^https:\/\/api\.github\.com\/repos\/lectern\/(pub|priv)(\/[^#]*)?$/;
+const STORE = /^https:\/\/api\.github\.com\/repos\/lectern\/((?:[a-z0-9-]+\.)?(?:pub|priv))(\/[^#]*)?$/;   // "pub", or "ana.priv" (a team's owner's)
 async function storeFetch(repo, rest, opts = {}, again = false) {
   const headers = {};
   new Headers(opts.headers || {}).forEach((v, k) => { if (!/^(authorization|x-github-api-version)$/i.test(k)) headers[k] = v; });

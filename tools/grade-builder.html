@@ -1981,7 +1981,7 @@ const overrideOf = (s, e) => ((model.overrides[s] || {})[e]) || null;
 // evaluation's policy), "aiv" (academic integrity violation: always zero),
 // "excused" (doesn't count; the student's others scale) or "deferred" (still to come).
 const STATUSES = { missed: "Not submitted", aiv: "Academic integrity violation", excused: "Excused", deferred: "Deferred" };
-const statusOf = m => (m.missed ? "missed" : m.status || "");
+const statusOf = m => (m.missed ? "missed" : STATUSES[m.status] ? m.status : "");   // only a known one (it goes into class names)
 const hasEntry = m => m.pts != null || !!statusOf(m);
 function setStatus(s, e, st) { setMark(s, e, st === "missed" ? { missed: true, pts: null, status: null } : st ? { missed: false, pts: null, status: st } : { missed: false, status: null }); }
 function setMark(s, e, patch) {

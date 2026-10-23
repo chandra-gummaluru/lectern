@@ -23,7 +23,10 @@ def save(client, repo, files, message="Save", parent=None, force=False):
             return b
         b = b.get_json()
         entries.append({"path": path, "mode": "100644", "type": "blob", "sha": b["sha"]})
-    tree = client.post(f"{R}/git/trees", json={"base_tree": head, "tree": entries}, headers=H).get_json()
+    tree = client.post(f"{R}/git/trees", json={"base_tree": head, "tree": entries}, headers=H)
+    if tree.status_code != 201:
+        return tree
+    tree = tree.get_json()
     commit = client.post(f"{R}/git/commits", json={"message": message, "tree": tree["sha"], "parents": [head]}, headers=H).get_json()
     return client.patch(f"{R}/git/refs/heads/main", json={"sha": commit["sha"], **({"force": True} if force else {})}, headers=H)
 

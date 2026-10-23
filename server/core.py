@@ -133,7 +133,7 @@ def _headers(resp):
     if not (request.path or '').startswith('/p/'):
         # Lectern's own pages: never inside another site's frame (clickjacking), no plugins, no <base> tricks.
         h.setdefault('X-Frame-Options', 'DENY')
-        h.setdefault('Content-Security-Policy', CSP)
+        h.setdefault('Content-Security-Policy', csp())
     return resp
 
 
@@ -147,16 +147,14 @@ KATEX = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/"
 def csp(extra_scripts=""):
     return "; ".join([
         "default-src 'self'",
-        f"script-src 'self' {KATEX}{(' ' + extra_scripts) if extra_scripts else ''}",
+        # Only Lectern's own code: /static/ and /tools/ (not /p/, where people's published files are).
+        f"script-src {request.host_url}static/ {request.host_url}tools/ {KATEX}{(' ' + extra_scripts) if extra_scripts else ''}",
         f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com {KATEX}",
         f"font-src 'self' data: https://fonts.gstatic.com {KATEX}",
         "img-src 'self' data: blob: https:",
         "connect-src 'self' https://api.github.com",
         "frame-src 'none'", "frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
     ])
-
-
-CSP = csp()
 
 
 @app.errorhandler(413)

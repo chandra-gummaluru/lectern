@@ -17,3 +17,6 @@ data/
 # The Python environment new-lectern.sh makes
 .venv/
 .env.bak
+
+# Stray archives
+*.tgz

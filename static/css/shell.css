@@ -98,7 +98,6 @@ html.lt-has-session #splash { display: none; }
   white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
 #lt-path::-webkit-scrollbar { display: none; }
-#lt-path .lt-step:first-child { font: 500 13px/1 var(--font-mono); }
 #lt-path .lt-step {
   all: unset; box-sizing: border-box; flex: 0 1 auto; min-width: 0; max-width: 32ch;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

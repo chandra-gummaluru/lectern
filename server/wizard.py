@@ -32,6 +32,7 @@ LAYOUT = [
      "# Lectern must then listen only on 127.0.0.1 (the default), so nothing else can reach it.", ["LECTERN_BEHIND_PROXY"]),
     ("The port Lectern listens on (python app.py)", ["LECTERN_PORT"]),
     ("Under the wordmark", ["LECTERN_INSTITUTION"]),
+    ("Teaching team invitations may make new accounts only for these email domains (unset: any)", ["LECTERN_TEAM_DOMAINS"]),
     ("Email: invitations, password resets, security notices, students' receipts", [
         "LECTERN_SMTP_HOST", "LECTERN_SMTP_PORT", "LECTERN_SMTP_SECURITY", "LECTERN_SMTP_USER", "LECTERN_SMTP_PASSWORD", "LECTERN_SMTP_FROM"]),
 ]
@@ -167,6 +168,13 @@ def where(env):
         say("  A number, e.g. 5003.")
     env["LECTERN_PORT"] = port
     env["LECTERN_INSTITUTION"] = ask("Institution (shown under the wordmark)", env.get("LECTERN_INSTITUTION") or "University of Toronto")
+    say("\nInstructors can invite people to their teaching teams, and someone new makes an account that way.\n"
+        "To allow that only for some email domains, list them (e.g. utoronto.ca, which includes mail.utoronto.ca).")
+    doms = ask("Domains for new accounts from teaching teams (Enter: any; '-' to clear)", env.get("LECTERN_TEAM_DOMAINS", ""))
+    if doms.strip() == "-":
+        env.pop("LECTERN_TEAM_DOMAINS", None)
+    elif doms.strip():
+        env["LECTERN_TEAM_DOMAINS"] = ",".join(d.strip().lstrip("@").lower() for d in doms.split(",") if d.strip())
 
 
 def email(env):
@@ -174,7 +182,7 @@ def email(env):
     say("Lectern emails invitations, password-reset links, security notices and students' receipts.\nAny SMTP login works (for Gmail: smtp.gmail.com, and an app password).")
     if not yes("Set up email now", bool(env.get("LECTERN_SMTP_HOST"))):
         if env.get("LECTERN_SMTP_HOST") and yes("Turn email off (remove the SMTP settings)", False):
-            for k in LAYOUT[4][1]:
+            for k in next(keys for _, keys in LAYOUT if "LECTERN_SMTP_HOST" in keys):
                 env.pop(k, None)
         return
     env["LECTERN_SMTP_HOST"] = ask("SMTP server", env.get("LECTERN_SMTP_HOST") or "smtp.gmail.com")

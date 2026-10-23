@@ -435,10 +435,16 @@ def submit():
 @accom_bp.post("/api/accommodations/decide")
 @signed_in
 def decide():
-    """Approve or reject one request in your own course: saved in your files, then emailed."""
+    """Approve or reject one request, in your own course or one you're an instructor of: saved, then emailed."""
     try:
         d = _body()
         o = _offering(d.get("offering"))
+        owner = g.user["id"]
+        if d.get("owner"):
+            from .teams import role_of
+            owner = _owner(d.get("owner"))
+            if role_of(g.user["id"], owner, o) not in ("owner", "instructor"):
+                raise Refusal(404 if not role_of(g.user["id"], owner, o) else 403, "Only the offering's instructors can decide requests.")
         rid = str(d.get("id") or "")
         decision = d.get("decision")
         note = str(d.get("note") or "").strip()[:MAX_DETAILS]
@@ -453,7 +459,7 @@ def decide():
             r.update(status=decision, decided=_now(), decidedBy=who, note=note)
             return dict(r)
 
-        r = _update(g.user["id"], o, apply,
+        r = _update(owner, o, apply,
                     lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} accommodation request from {r['student']} for {r['evalName']}",
                     g.user["email"])
         subject, body = decision_email(r)

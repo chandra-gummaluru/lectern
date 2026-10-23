@@ -66,6 +66,28 @@ CREATE TABLE IF NOT EXISTS invites (
   expires    REAL NOT NULL,
   used       REAL NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS members (          -- teaching teams: who else works on an offering, and as what
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,   -- whose files the offering is in
+  offering  TEXT NOT NULL,                                             -- <course>/<term>, e.g. csc258/f26
+  user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role      TEXT NOT NULL,                                             -- instructor | ta
+  added_by  INTEGER,
+  added     REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, user_id)
+);
+CREATE INDEX IF NOT EXISTS members_user ON members(user_id);
+CREATE TABLE IF NOT EXISTS team_invites (     -- someone asked to join a team: they accept (and make an account if need be)
+  token_hash TEXT PRIMARY KEY,
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering   TEXT NOT NULL,
+  email      TEXT NOT NULL,
+  role       TEXT NOT NULL,
+  created_by INTEGER NOT NULL,
+  created    REAL NOT NULL,
+  expires    REAL NOT NULL,
+  used       REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS team_invites_offering ON team_invites(owner_id, offering);
 CREATE TABLE IF NOT EXISTS resets (
   token_hash TEXT PRIMARY KEY,
   user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -129,6 +151,18 @@ def _connect(path):
     return c
 
 
+# Columns added after a database was first made: (table, column, definition).
+MIGRATIONS = [
+    ("objects", "uploader", "INTEGER"),   # who uploaded a save's piece (a teaching team member's count separately)
+]
+
+
+def _migrate(c):
+    for table, col, kind in MIGRATIONS:
+        if col not in {r[1] for r in c.execute(f"PRAGMA table_info({table})")}:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {kind}")
+
+
 def conn():
     """This thread's connection to the database (made, and the schema set up, on first use)."""
     path = os.path.join(data_dir(), "lectern.db")
@@ -139,6 +173,7 @@ def conn():
                 first = _connect(path)
                 first.execute("PRAGMA journal_mode = WAL")
                 first.executescript(SCHEMA)
+                _migrate(first)
                 first.close()
                 _ready.add(path)
                 try:

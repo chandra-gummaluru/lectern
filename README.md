@@ -74,6 +74,17 @@ Lectern must be served over **HTTPS**. Behind nginx (or another proxy) that hand
 
 Other settings: `LECTERN_INSTITUTION` (under the wordmark; default "University of Toronto"), `LECTERN_LEARN_MORE` (the splash's "Learn more" link; hidden when unset), `LECTERN_MAX_UPLOAD_MB` (one save, default 64).
 
+## Teaching teams
+
+Each course offering has a **Teaching Team** (on its page). Its owner, the account whose files it's in, adds people by email, as:
+
+- **Instructor:** everything the owner can do with that offering: its course page, evaluations, gradebook, exams, accommodation requests, and its team. They can't remove the owner.
+- **TA:** sees the gradebook (marks, grades, students) and the evaluations and exams, and **enters marks**. A TA can't change evaluations, students, settings, exams or the course page, can't see students' accommodation requests, and can't change the team (but can leave it). The server enforces this: from a TA's save it takes only the marks (and no more than 25 cleared at once), and Lectern tells a TA before saving if anything else would be undone.
+
+Adding someone emails them a link (or, without SMTP, shows it to send yourself). They join only once they accept: by signing in, or, new to Lectern, by making an account then and there, which is how a TA gets an account without an admin. To allow that only for your institution's addresses, set `LECTERN_TEAM_DOMAINS=utoronto.ca` (setup asks). A link works once, for 7 days, and stops working if whoever sent it leaves the team. Offerings shared with you are on your Home, marked with the owner's name and your role, at addresses like `#/~chandra/csc258/f26`.
+
+Two people saving the same gradebook at once: the second is told it changed and can replace it or reopen it, as before. (Replacing overwrites the other's marks; reopen instead when in doubt.)
+
 ## Accommodation requests
 
 In **Evaluations**, each evaluation has an **Accommodations** section. Its standard accommodation is its own policy for missed work (its makeups, and where its weight moves), so there's nothing to type. Choose **Students must request the standard accommodation** (it then applies only once you approve), **Students can request an alternate accommodation**, and a **Request By** date and time (the same calendar as the evaluation's date). With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). Open the course page in Lectern and save it after changing these.

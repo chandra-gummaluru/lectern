@@ -2,5 +2,5 @@
 // (a hint only: the server decides), so the splash doesn't flash. A file of its own, not inline,
 // because Lectern's Content-Security-Policy runs no inline scripts.
 try {
-  if (localStorage.getItem("lectern.signedin") === "1" && !/[#&](invite|reset)=/.test(location.hash)) document.documentElement.classList.add("lt-has-session");
+  if (localStorage.getItem("lectern.signedin") === "1" && !/[#&](invite|join|reset)=/.test(location.hash)) document.documentElement.classList.add("lt-has-session");
 } catch (_) {}

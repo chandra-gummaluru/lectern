@@ -37,9 +37,9 @@ def client():
 PASSWORD = "correct horse battery staple"
 
 
-def make_user(client, email="chandra@utoronto.ca", name="Chandra Gummaluru", handle="chandra", admin=True, password=PASSWORD):
+def make_user(client, email="chandra@utoronto.ca", name="Chandra Gummaluru", handle="chandra", password=PASSWORD):
     """An account, made the way a person makes one: an invitation, then its link. Leaves client signed in."""
-    tok = auth.create_invite(email, admin)
+    tok = auth.create_invite(email)
     r = client.post("/api/auth/invite/accept", json={"token": tok, "name": name, "handle": handle, "password": password}, headers=H)
     assert r.status_code == 200, r.get_json()
     return r.get_json()["user"]

@@ -65,7 +65,7 @@ def test_delete_files_and_keep_history(client, user, tmp_path):
 def test_accounts_dont_see_each_others_files(client, user):
     save(client, "priv", {"secret.json": "grades"})
     other = client.application.test_client()
-    make_user(other, email="ta@x.ca", name="T A", handle="ta", admin=False)
+    make_user(other, email="ta@x.ca", name="T A", handle="ta")
     assert read(other, "priv", "secret.json") is None
     assert other.get("/api/store/priv/git/trees/main").get_json()["tree"] == []
 

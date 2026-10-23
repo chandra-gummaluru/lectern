@@ -25,7 +25,7 @@ def course(client, user):
 
 def member(email, handle):
     c = app.test_client()
-    u = make_user(c, email=email, name=handle.upper(), handle=handle, admin=False)
+    u = make_user(c, email=email, name=handle.upper(), handle=handle)
     return c, u
 
 
@@ -72,7 +72,7 @@ def test_invitation_makes_an_account_on_the_team(client, course):
     info = c.post("/api/teams/join/check", json={"token": tok}, headers=H).get_json()
     assert info["handle"] == "new" and info["canCreate"]
     d = c.post("/api/teams/join/create", json={"token": tok, "name": "New Person", "handle": "newp", "password": PASSWORD}, headers=H).get_json()
-    assert d["team"] == {"owner": "chandra", "offering": "csc258/f26"} and not d["user"]["admin"]
+    assert d["team"] == {"owner": "chandra", "offering": "csc258/f26"}
     assert c.get("/api/teams/mine").get_json()["shared"][0]["role"] == "instructor"
 
 

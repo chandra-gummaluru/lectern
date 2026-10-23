@@ -55,7 +55,7 @@ def test_weak_passwords_are_refused(client, pw, why):
 
 # ── Invitations ──────────────────────────────────────────────────────
 def test_invite_makes_an_account_and_signs_in(client, user):
-    assert user["email"] == "chandra@utoronto.ca" and user["handle"] == "chandra" and user["admin"]
+    assert user["email"] == "chandra@utoronto.ca" and user["handle"] == "chandra" and "admin" not in user
     me = client.get("/api/auth/me").get_json()
     assert me["signedIn"] and me["user"]["site"] == "http://localhost/p/chandra/"
 
@@ -350,42 +350,9 @@ def test_signed_out_requests_are_refused(client):
     assert client.get("/api/store/priv/git/trees/main").status_code == 401
 
 
-# ── Admin ────────────────────────────────────────────────────────────
-def test_admin_invites_and_manages(client, user):
-    r = client.post("/api/admin/invites", json={"email": "ta@utoronto.ca"}, headers=H).get_json()
-    assert r["link"].startswith("http://localhost/#invite=") and not r["emailed"]
-    assert client.get("/api/admin/users").get_json()["invites"][0]["email"] == "ta@utoronto.ca"
-    ta = client.application.test_client()
-    tok = r["link"].split("#invite=")[1]
-    assert ta.post("/api/auth/invite/accept", json={"token": tok, "name": "T A", "handle": "ta", "password": PASSWORD}, headers=H).status_code == 200
-    assert ta.get("/api/admin/users").status_code == 403                     # not an admin
-    uid = ta.get("/api/auth/me").get_json()["user"]["id"]
-    assert client.post(f"/api/admin/users/{uid}", json={"action": "disable"}, headers=H).status_code == 403   # needs your password
-    assert client.post(f"/api/admin/users/{uid}", json={"action": "disable", "password": PASSWORD}, headers=H).status_code == 200
-    assert ta.get("/api/auth/me").get_json()["signedIn"] is False
-
-
-def test_admin_cant_disable_themselves(client, user):
-    for action in ("disable", "reset-2fa", "remove-admin"):
-        r = client.post(f"/api/admin/users/{user['id']}", json={"action": action, "password": PASSWORD}, headers=H)
-        assert r.status_code == 400, action
-
-
-def test_inviting_an_admin_needs_your_password(client, user):
-    assert client.post("/api/admin/invites", json={"email": "x@x.ca", "admin": True}, headers=H).status_code == 403
-    assert client.post("/api/admin/invites", json={"email": "x@x.ca", "admin": True, "password": PASSWORD}, headers=H).status_code == 200
-
-
 def test_big_bodies_are_refused_except_uploads(client, user):
     r = client.post("/api/auth/forgot", data=b'{"email": "' + b"a" * 400000 + b'"}', headers={**H, "Content-Type": "application/json"})
     assert r.status_code == 413
-
-
-def test_cli_invite(capsys):
-    from server import cli
-    cli.main(["invite", "first@x.ca", "--admin"])
-    out = capsys.readouterr().out
-    assert "#invite=" in out and db.one("SELECT is_admin FROM invites")["is_admin"] == 1
 
 
 # ── Every request ────────────────────────────────────────────────────
@@ -423,13 +390,3 @@ def test_security_headers(client):
     assert client.get("/api/auth/me").headers["Cache-Control"] == "no-store"
 
 
-def test_cli_import(client, user, tmp_path, capsys):
-    from server import cli, store
-    pub, priv = tmp_path / "courses", tmp_path / "courses-private"
-    (pub / "csc258" / "f26").mkdir(parents=True); (pub / ".git").mkdir()
-    (pub / "csc258" / "f26" / "info.html").write_text("<h1>hi</h1>"); (pub / ".git" / "config").write_text("x")
-    (priv / "csc258" / "f26").mkdir(parents=True); (priv / "csc258" / "f26" / "grades.json").write_text("{}")
-    cli.main(["import", "chandra@utoronto.ca", str(pub), str(priv)])
-    assert store.Repo(user["id"], "pub").read_text("csc258/f26/info.html")[0] == "<h1>hi</h1>"
-    assert [e["path"] for e in store.Repo(user["id"], "pub").walk() if e["type"] == "blob"] == ["csc258/f26/info.html"]
-    assert store.Repo(user["id"], "priv").read_text("csc258/f26/grades.json")[0] == "{}"

@@ -5,7 +5,7 @@ Module map:
 - paths.py      BASE_PATH and derived folders
 - db.py         the SQLite database (accounts, sessions, versions) under LECTERN_DATA_DIR
 - security.py   password hashing (argon2id), two-factor codes (TOTP), tokens, encryption, rate limits
-- auth.py       accounts: sign-in, two-factor, invitations, password resets, the account and admin API
+- auth.py       accounts: sign-in, two-factor, invitations, password resets, the account API
 - teams.py      teaching teams: instructors and TAs on a course offering, and what each may do
 - store.py      each account's files (answering the builders' GitHub-style calls) and published pages (/p/…)
 - pages.py      the page at / (splash + app), /api/config and the PWA manifest
@@ -13,7 +13,8 @@ Module map:
 - scope_css.py  prefixes a tool's CSS with its scope selector
 - accommodations.py  accommodation requests: the students' form and its API, instructors' decisions
 - mailer.py     email (invitations, password resets, security notices, students), over SMTP
-- cli.py        python app.py invite / users / reset-2fa
+- admin.py      the admin panel (/admin): its own accounts and sign-in; invitations, accounts, imports
+- cli.py        python app.py admin / setup
 
 Course pages, grades and exams are kept on this server, in each account's own files. Only course
 pages (and the files they link) are public, at /p/<handle>/…; grades and exams never are.
@@ -26,6 +27,7 @@ from .auth import auth_bp
 from .pages import pages_bp
 from .store import store_bp
 from .teams import teams_bp
+from .admin import admin_bp
 from .tools import tools_bp
 from .accommodations import accom_bp
 
@@ -33,5 +35,6 @@ app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
 app.register_blueprint(teams_bp)
+app.register_blueprint(admin_bp)
 app.register_blueprint(tools_bp)
 app.register_blueprint(accom_bp)

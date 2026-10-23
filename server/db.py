@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
   totp_secret   TEXT,                          -- encrypted (AES-GCM with the server key); NULL: no 2FA
   totp_pending  TEXT,                          -- encrypted: a secret being set up, not yet confirmed
   totp_step     INTEGER NOT NULL DEFAULT 0,    -- the last time step used (a code works once)
-  is_admin      INTEGER NOT NULL DEFAULT 0,
+  is_admin      INTEGER NOT NULL DEFAULT 0,    -- no longer used: admins have their own accounts (admins table)
   disabled      INTEGER NOT NULL DEFAULT 0,
   failed        INTEGER NOT NULL DEFAULT 0,    -- wrong passwords / codes in a row
   locked_until  REAL NOT NULL DEFAULT 0,
@@ -76,6 +76,28 @@ CREATE TABLE IF NOT EXISTS members (          -- teaching teams: who else works 
   PRIMARY KEY (owner_id, offering, user_id)
 );
 CREATE INDEX IF NOT EXISTS members_user ON members(user_id);
+CREATE TABLE IF NOT EXISTS admins (           -- the admin panel's own accounts: added only from the terminal
+  id           INTEGER PRIMARY KEY,
+  email        TEXT NOT NULL UNIQUE,
+  name         TEXT NOT NULL DEFAULT '',
+  pw_hash      TEXT NOT NULL,
+  totp_secret  TEXT NOT NULL,                  -- encrypted; two-factor is required for admins
+  totp_step    INTEGER NOT NULL DEFAULT 0,
+  disabled     INTEGER NOT NULL DEFAULT 0,
+  failed       INTEGER NOT NULL DEFAULT 0,
+  locked_until REAL NOT NULL DEFAULT 0,
+  created      REAL NOT NULL,
+  last_login   REAL NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS admin_sessions (
+  id_hash   TEXT PRIMARY KEY,
+  admin_id  INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+  created   REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  expires   REAL NOT NULL,
+  ip        TEXT NOT NULL DEFAULT '',
+  agent     TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS team_invites (     -- someone asked to join a team: they accept (and make an account if need be)
   token_hash TEXT PRIMARY KEY,
   owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

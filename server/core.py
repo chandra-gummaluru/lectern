@@ -73,7 +73,7 @@ def link_base():
 
 
 def trusted_hosts():
-    hosts = [h for h in (_host_of(configured_url()), _host_of(os.environ.get("LECTERN_PAGES_URL", ""))) if h]
+    hosts = [h for h in (_host_of(configured_url()), _host_of(os.environ.get("LECTERN_PAGES_URL", "")), _host_of(os.environ.get("LECTERN_ADMIN_URL", ""))) if h]
     return hosts + ["localhost", "127.0.0.1", "::1"] if hosts else []
 
 
@@ -93,8 +93,8 @@ PUBLIC_POSTS = {"/api/accommodations/verify", "/api/accommodations/submit"}
 
 @app.before_request
 def _guard():
-    # Only saves (a course page's uploads) may be big; sign-in and the rest are small JSON.
-    if not (request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")):
+    # Only saves (a course page's uploads) and the admin's imports may be big; sign-in and the rest are small JSON.
+    if not ((request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")) or request.path == "/api/admin/import"):
         request.max_content_length = SMALL_BODY
     # Anything but localhost goes over HTTPS: passwords and session cookies never travel in the clear.
     if not secure_enough():

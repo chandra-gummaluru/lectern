@@ -1,8 +1,9 @@
 """Lectern accounts: sign-in with an email and password, optional two-factor codes, invitations,
-password resets, and the account and admin pages' API.
+password resets, and the account page's API.
 
-Accounts are invite-only: an admin invites an email (Admin page, or `python app.py invite <email>`),
-and the link in that email creates the account. The first admin comes from the command line.
+Accounts are invite-only: an admin invites an email from the admin panel (/admin, admin.py), and the
+link in that email creates the account. (Or an instructor invites someone to a teaching team: teams.py.)
+Admins aren't accounts here: they have their own, separate sign-in, added only from the terminal.
 
 Sessions
   A random 256-bit value in an HttpOnly, Secure, SameSite=Lax cookie (__Host-lectern on HTTPS);
@@ -173,7 +174,7 @@ def log(user_id, kind, detail=""):
 def user_json(u):
     left = db.one("SELECT COUNT(*) AS n FROM recovery_codes WHERE user_id = ? AND used = 0", (u["id"],))["n"]
     return {
-        "id": u["id"], "email": u["email"], "name": u["name"], "handle": u["handle"], "admin": bool(u["is_admin"]),
+        "id": u["id"], "email": u["email"], "name": u["name"], "handle": u["handle"],
         "twoFactor": bool(u["totp_secret"]), "recoveryLeft": left, "site": site_of(u["handle"]),
         "created": u["created"], "passwordChanged": u["pw_changed"],
     }
@@ -252,16 +253,6 @@ def signed_in(fn):
             return fn(*a, **k)
         except Refusal as e:
             return _err(e)
-    return run
-
-
-def admin_only(fn):
-    @functools.wraps(fn)
-    @signed_in
-    def run(*a, **k):
-        if not g.user["is_admin"]:
-            raise Refusal(403, "Only an admin can do that.")
-        return fn(*a, **k)
     return run
 
 
@@ -533,7 +524,7 @@ def reset():
 
 
 # ── Invitations ──────────────────────────────────────────────────────
-def create_invite(email, is_admin=False, by=None):
+def create_invite(email, by=None):
     """A new invitation for email → its link. (Any earlier one for that email stops working.)"""
     email = norm_email(email)
     if not _EMAIL.match(email):
@@ -543,8 +534,8 @@ def create_invite(email, is_admin=False, by=None):
     tok = sec.new_token()
     with db.transaction() as c:
         c.execute("DELETE FROM invites WHERE email = ? AND used = 0", (email,))
-        c.execute("INSERT INTO invites (token_hash, email, is_admin, created_by, created, expires) VALUES (?, ?, ?, ?, ?, ?)",
-                  (sec.token_hash(tok), email, 1 if is_admin else 0, by, now(), now() + INVITE_DAYS * 86400))
+        c.execute("INSERT INTO invites (token_hash, email, created_by, created, expires) VALUES (?, ?, ?, ?, ?)",
+                  (sec.token_hash(tok), email, by, now(), now() + INVITE_DAYS * 86400))
     return tok
 
 
@@ -624,8 +615,8 @@ def invite_accept():
             if not again or again["used"]:
                 raise Refusal(410, "That invitation was already used.", "expired")
             c.execute("UPDATE invites SET used = ? WHERE token_hash = ?", (t, r["token_hash"]))
-            cur = c.execute("INSERT INTO users (email, handle, name, pw_hash, pw_changed, is_admin, created) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                            (r["email"], handle, name, sec.hash_password(pw), t, r["is_admin"], t))
+            cur = c.execute("INSERT INTO users (email, handle, name, pw_hash, pw_changed, created) VALUES (?, ?, ?, ?, ?, ?)",
+                            (r["email"], handle, name, sec.hash_password(pw), t, t))
             uid = cur.lastrowid
     except db.sqlite3.IntegrityError:
         raise Refusal(409, "That email or name already has an account.", "exists")
@@ -758,79 +749,4 @@ def revoke():
     else:
         raise Refusal(400, "Which session?")
     log(g.user["id"], "sessions-revoked", which)
-    return jsonify(ok=True)
-
-
-# ── Admin ────────────────────────────────────────────────────────────
-@auth_bp.get("/api/admin/users")
-@admin_only
-def admin_users():
-    users = db.all_("SELECT * FROM users ORDER BY created")
-    invites = db.all_("SELECT * FROM invites WHERE used = 0 AND expires > ? ORDER BY created DESC", (now(),))
-    return jsonify(
-        users=[{**{k: v for k, v in user_json(u).items() if k != "recoveryLeft"}, "disabled": bool(u["disabled"]), "lastLogin": u["last_login"],
-                "locked": bool(_locked(u))} for u in users],
-        invites=[{"id": i["token_hash"][:16], "email": i["email"], "admin": bool(i["is_admin"]), "created": i["created"], "expires": i["expires"]} for i in invites],
-        email=mailer.configured(),
-    )
-
-
-@auth_bp.post("/api/admin/invites")
-@admin_only
-def admin_invite():
-    d = body()
-    email = norm_email(text(d, "email"))
-    if d.get("admin"):   # a new admin can do anything you can: your password, again
-        check_own_password(fresh_user(), text(d, "password", sec.MAX_PASSWORD))
-    tok = create_invite(email, bool(d.get("admin")), g.user["id"])
-    link = invite_link(tok)
-    emailed = send_invite(email, link, g.user["name"])
-    log(g.user["id"], "invited", email)
-    return jsonify(ok=True, email=email, emailed=emailed, link=link)
-
-
-@auth_bp.post("/api/admin/invites/revoke")
-@admin_only
-def admin_invite_revoke():
-    which = text(body(), "id", 40)
-    if not re.fullmatch(r"[0-9a-f]{16}", which):
-        raise Refusal(400, "Which invitation?")
-    db.run("DELETE FROM invites WHERE substr(token_hash, 1, 16) = ? AND used = 0", (which,))
-    return jsonify(ok=True)
-
-
-@auth_bp.post("/api/admin/users/<int:uid>")
-@admin_only
-def admin_user(uid):
-    d = body()
-    action = text(d, "action", 40)
-    u = db.one("SELECT * FROM users WHERE id = ?", (uid,))
-    if not u:
-        raise Refusal(404, "No such account.")
-    me_ = uid == g.user["id"]
-    if action in ("disable", "remove-admin", "reset-2fa") and me_:
-        raise Refusal(400, "You can't do that to your own account.")
-    if action in ("reset-2fa", "make-admin", "remove-admin", "disable"):
-        check_own_password(fresh_user(), text(d, "password", sec.MAX_PASSWORD))
-    if action == "disable":
-        with db.transaction() as c:
-            c.execute("UPDATE users SET disabled = 1 WHERE id = ?", (uid,))
-            c.execute("DELETE FROM sessions WHERE user_id = ?", (uid,))
-    elif action == "enable":
-        db.run("UPDATE users SET disabled = 0, failed = 0, locked_until = 0 WHERE id = ?", (uid,))
-    elif action == "unlock":
-        db.run("UPDATE users SET failed = 0, locked_until = 0 WHERE id = ?", (uid,))
-    elif action == "sign-out":
-        db.run("DELETE FROM sessions WHERE user_id = ?" + (" AND id_hash != ?" if me_ else ""), (uid, g.session) if me_ else (uid,))
-    elif action == "reset-2fa":
-        with db.transaction() as c:
-            c.execute("UPDATE users SET totp_secret = NULL, totp_pending = NULL, totp_step = 0 WHERE id = ?", (uid,))
-            c.execute("DELETE FROM recovery_codes WHERE user_id = ?", (uid,))
-            c.execute("DELETE FROM sessions WHERE user_id = ?", (uid,))
-        notify(u, "two-factor sign-in was turned off", ["Your Lectern admin turned off two-factor sign-in for your account (for example, after a lost phone). Sign in and turn it on again."])
-    elif action in ("make-admin", "remove-admin"):
-        db.run("UPDATE users SET is_admin = ? WHERE id = ?", (1 if action == "make-admin" else 0, uid))
-    else:
-        raise Refusal(400, "Unknown action.")
-    log(g.user["id"], f"admin-{action}", str(uid))
     return jsonify(ok=True)

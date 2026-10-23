@@ -198,7 +198,7 @@ def test_decide_needs_access(client, gh):
     rid = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).get_json()["id"]
     assert decide(client, rid, "approved").status_code == 401                 # a student isn't signed in
     other = app.test_client()
-    make_user(other, email="ta@x.ca", name="T A", handle="ta", admin=False)
+    make_user(other, email="ta@x.ca", name="T A", handle="ta")
     assert decide(other, rid, "approved").status_code == 404                  # someone else's course: not theirs to see
     assert decide(gh.client, rid, "approved", headers={}).status_code == 403  # not from Lectern's page
     assert decide(gh.client, "r-nope", "approved").status_code == 404

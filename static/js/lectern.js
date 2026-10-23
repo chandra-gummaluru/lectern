@@ -10,13 +10,12 @@
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
      #/~ana/csc258/f26/…   the same, for an offering in someone else's files that you're on the teaching team of
      #/account             your account: password, two-factor sign-in, sessions
-     #/admin               (admins) invitations and accounts
    Everything is kept on Lectern's server, in your account's two areas: "pub" (course pages, published
    at /p/<handle>/…) and "priv" (grades, exams). See store.js and server/store.py.
    ============================================================ */
 import * as Auth from "./auth.js";
 import * as Store from "./store.js";
-import { accountPage, adminPage } from "./account.js";
+import { accountPage } from "./account.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -55,7 +54,7 @@ const TOOLS = {
 
 // ── State ────────────────────────────────────────────────────────────
 const S = {
-  user: null,          // { id, email, name, handle, admin, twoFactor, recoveryLeft, site }
+  user: null,          // { id, email, name, handle, twoFactor, recoveryLeft, site }
   shared: [],          // offerings in others' files you're on the team of: { owner (handle), ownerName, offering, role }
   offerings: null,     // "c/t" → { c, t, page, grades, exams: [] }
   listing: null, listError: null,
@@ -197,7 +196,7 @@ function listAll() {
     S.offerings = map; S.listError = null;
     return map;
   })().catch(e => { S.listError = e; throw e; });
-  // Pages that show the list draw again when it arrives (not a builder, and not your account or the admin page, which don't use it).
+  // Pages that show the list draw again when it arrives (not a builder, and not your account page, which doesn't use it).
   const redraw = () => { if (["home", "offering", "accom"].includes(S.route.page)) renderPage(); };
   S.listing.then(redraw, redraw);
   return S.listing;
@@ -220,14 +219,14 @@ function parseHash() {
     if (tool === "accommodations") return { page: "accom", c, t, o };
     return { page: "offering", c, t, o };
   }
-  if (p.length === 1 && (p[0] === "account" || (p[0] === "admin" && S.user && S.user.admin))) return { page: p[0] };
+  if (p.length === 1 && p[0] === "account") return { page: "account" };
   return { page: "home" };
 }
 const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Settings" } };
 const partOf = view => view === "evals" ? "evals" : view === "settings" ? "settings" : "book";
 const hashFor = r => {
   if (r.page === "home") return "#/";
-  if (r.page === "account" || r.page === "admin") return `#/${r.page}`;
+  if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
   return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
@@ -438,7 +437,7 @@ window.addEventListener("keydown", e => {
   saveAll();
 }, true);
 
-// The account menu: who's signed in, Save, your account, accounts (admins), sign out.
+// The account menu: who's signed in, Save, your account, sign out.
 let menuEl = null;
 function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; $("#lt-acct").setAttribute("aria-expanded", "false"); } }
 $("#lt-acct").onclick = e => {
@@ -449,7 +448,6 @@ $("#lt-acct").onclick = e => {
   menuEl.innerHTML = `<p>Signed in as <b>${esc(S.user && (S.user.name || S.user.email))}</b><br><span class="lt-menu-sub">${esc(S.user && S.user.email)}</span></p><hr>
        <button type="button" role="menuitem" data-m="save" class="lt-menu-save"></button><hr>
        <button type="button" role="menuitem" data-m="account">Your account</button>
-       ${S.user && S.user.admin ? `<button type="button" role="menuitem" data-m="admin">Accounts and invitations</button>` : ""}
        <button type="button" role="menuitem" data-m="out">Sign out</button>`;
   $("#lt-acct").after(menuEl);
   drawMenuSave();
@@ -459,7 +457,6 @@ $("#lt-acct").onclick = e => {
     closeMenu();
     if (m.dataset.m === "save") saveAll();
     if (m.dataset.m === "account") go({ page: "account" });
-    if (m.dataset.m === "admin") go({ page: "admin" });
     if (m.dataset.m === "out") {
       const un = unsavedTools();
       if (un.length && !await confirmBox("Not saved", `${esc(un.map(saveLabel).join(", "))} ${un.length === 1 ? "has" : "have"} changes that aren't saved. Sign out and lose them?`, "Sign out", "Cancel")) return;
@@ -510,7 +507,6 @@ function renderPage() {
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
   const ctx = { S, pageHTML, modal, toast, setUser: u => { S.user = u; renderBar(); } };
   if (r.page === "account") { renderPath([HOME_STEP, { label: "Your Account" }]); return accountPage(ctx); }
-  if (r.page === "admin") { renderPath([HOME_STEP, { label: "Accounts" }]); return adminPage(ctx); }
 }
 
 function sourceBar() {
@@ -675,7 +671,10 @@ async function teamPart(c, t) {
   try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
   if (!here()) return;
   const lead = d.you === "owner" || d.you === "instructor";
-  const roleSel = p => `<select class="lt-filter" data-role="${p.id}" aria-label="Role for ${esc(p.email)}"><option value="instructor"${p.role === "instructor" ? " selected" : ""}>Instructor</option><option value="ta"${p.role === "ta" ? " selected" : ""}>TA</option></select>`;
+  // Instructor or TA: a two-way switch, like Lectern's other choices.
+  const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["instructor", "Instructor"], ["ta", "TA"]].map(([v, n]) =>
+    `<button type="button" role="radio" ${attrs} data-v="${v}" aria-checked="${cur === v}" aria-pressed="${cur === v}">${n}</button>`).join("")}</span>`;
+  const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
   box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams." : "The people who work on this offering."}</p>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
         <div class="lt-user-who"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></div>
@@ -687,11 +686,21 @@ async function teamPart(c, t) {
         <span class="lt-orow-r"><button type="button" class="lt-link" data-uninvite="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>
     ${lead ? `<form class="lt-team-add" id="lt-team-add" novalidate>
       <input type="email" id="lt-team-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
-      <select class="lt-filter" id="lt-team-role" aria-label="Role"><option value="ta">TA</option><option value="instructor">Instructor</option></select>
+      ${roleSeg("ta", 'data-newrole=""', "Role", false)}
       <button type="submit" class="lt-btn add">${ICON.plus}Add to the team</button></form><div id="lt-team-msg"></div>` : ""}`;
   const again = () => teamPart(c, t);
   const call = async (what, body) => { try { await Auth.api(`${base}/${what}`, body); return true; } catch (e) { toast(e.message); again(); return false; } };
-  box.querySelectorAll("[data-role]").forEach(sel => { sel.onchange = async () => { if (await call("role", { user: Number(sel.dataset.role), role: sel.value })) toast("Role changed."); }; });
+  box.querySelectorAll("button[data-role]").forEach(b => {
+    b.onclick = async () => {
+      if (b.getAttribute("aria-pressed") === "true") return;
+      b.parentElement.querySelectorAll("button").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); });
+      if (await call("role", { user: Number(b.dataset.role), role: b.dataset.v })) toast(`Now ${b.dataset.v === "ta" ? "a TA" : "an instructor"}.`);
+    };
+  });
+  let newRole = "ta";
+  box.querySelectorAll("button[data-newrole]").forEach(b => {
+    b.onclick = () => { newRole = b.dataset.v; box.querySelectorAll("button[data-newrole]").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); }); };
+  });
   box.querySelectorAll("[data-remove]").forEach(b => {
     b.onclick = async () => {
       const me = Number(b.dataset.remove) === d.me;
@@ -707,7 +716,7 @@ async function teamPart(c, t) {
     e.preventDefault();
     const btn = f.querySelector("[type=submit]"); btn.disabled = true;
     try {
-      const r = await Auth.api(`${base}/add`, { email: $("#lt-team-email").value.trim(), role: $("#lt-team-role").value });
+      const r = await Auth.api(`${base}/add`, { email: $("#lt-team-email").value.trim(), role: newRole });
       await again();
       const msg = $("#lt-team-msg"); if (!msg) return;
       if (r.emailed) { toast("Invitation emailed. They join once they accept it."); return; }

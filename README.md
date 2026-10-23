@@ -17,12 +17,12 @@ git clone https://github.com/chandra-gummaluru/lectern.git ~/apps/lectern
 
 1. **Where it lives:** its public address (e.g. `https://lectern.changapp.net/`), whether HTTPS is handled in front of it (a Cloudflare Tunnel or nginx: almost always yes), its port and institution.
 2. **Email** (optional): an SMTP login, and sends a test email.
-3. **Your admin account:** email, name, the name in your course pages' address, password.
+3. **An admin for the admin panel:** email, name, password, and its two-factor app (a QR code right in the terminal).
 4. **Old courses** (optional): imports git clones of the GitHub repositories.
 
 It writes `.env` (readable only by you), checks that Lectern answers the way visitors will reach it (a redirect loop or a missing package shows up here, not in a browser), and says how to start it and point a tunnel at it. Run `python app.py setup` again any time to change a setting: Enter keeps each one.
 
-Then start it with `python app.py` (under tmux or systemd on a server), sign in, and turn on two-factor sign-in.
+Then start it with `python app.py` (under tmux or systemd on a server), sign in to the admin panel at `/admin`, and invite people, yourself included (your Lectern account is separate from your admin one).
 
 ## Run it
 
@@ -30,29 +30,33 @@ On your own computer, without the questions:
 
 ```
 pip install -r requirements.txt
-python app.py invite you@utoronto.ca --admin
+python app.py admin you@utoronto.ca
 python app.py
 ```
 
-`invite` prints a link (and emails it, once SMTP is set up). Open it to create your account: your name, the address for your course pages (e.g. `chandra` → `/p/chandra/csc258/f26/info.html`) and a password. Lectern opens at <http://localhost:5003/> (`--port` or `LECTERN_PORT` changes the port).
+Then open <http://localhost:5003/admin>, sign in as that admin, and invite yourself. Open the invitation's link to create your Lectern account: your name, the address for your course pages (e.g. `chandra` → `/p/chandra/csc258/f26/info.html`) and a password. Lectern opens at <http://localhost:5003/> (`--port` or `LECTERN_PORT` changes the port).
 
 To try password resets without SMTP, start it with `LECTERN_PRINT_EMAILS=1`: emails are then printed to the server's log instead of sent (never do this on a real server: they carry sign-in links).
 
+## The admin panel
+
+At `/admin` on the same address (e.g. `https://lectern.changapp.net/admin`), with a sign-in of its own:
+
+- **Admins aren't Lectern accounts.** They're added only on the server, and that's the only thing done there: `python app.py admin you@example.com` asks for a name and password and sets up the admin's two-factor app with a QR code in the terminal. Running it for an existing admin replaces their password and app (a forgotten password, a lost phone). A Lectern account can't open the panel, and an admin can't open courses.
+- **Signing in** takes email, password and a code from the authenticator app, every time. The admin session is separate from Lectern's (its own `SameSite=Strict` cookie) and ends after 30 minutes unused (`LECTERN_ADMIN_IDLE_MINUTES`) or 12 hours.
+- **In the panel:** invite people to make Lectern accounts; see every account; sign one out everywhere, let it try again after wrong passwords, turn off its two-factor sign-in (a lost phone), turn it off or back on; import old courses; turn other admins off or back on. Turning anything off needs the admin's password again.
+
 ### Moving from GitHub
 
-Lectern used to keep everything in two GitHub repositories. Copy your git clones of them into your account once:
-
-```
-python app.py import you@utoronto.ca path/to/courses-utor path/to/courses-utor-private
-```
+Lectern used to keep everything in two GitHub repositories. On GitHub, use **Code → Download ZIP** for each, then in the admin panel's **Import Old Courses**, import each into the account it belongs to (public: course pages; private: grades and exams).
 
 Then open each current course page in Lectern and save it, so its **Request Accommodation** buttons point at the new address. (The repositories on GitHub are left as they were; turn off GitHub Pages there when you're ready.)
 
 ## Accounts and security
 
-- **Invite-only.** There's no public sign-up. An admin invites each person by email (**Accounts and invitations** in the menu, or `python app.py invite`); the link works once, for 7 days. Inviting another admin needs your password again.
+- **Invite-only.** There's no public sign-up. An admin invites each person by email from the admin panel (or an instructor, to a teaching team); the link works once, for 7 days.
 - **Passwords** are hashed with **argon2id** (salted, memory-hard) and never stored, logged or sent anywhere else. They travel only inside HTTPS: Lectern refuses to take a password over plain HTTP anywhere but `localhost`, and redirects HTTP to HTTPS. New passwords need at least 12 characters and can't be a very common one or contain your email or name (NIST SP 800-63B: length, not symbol rules).
-- **Two-factor sign-in** (optional, recommended): any authenticator app (TOTP, RFC 6238). Each code works once. Ten one-time **recovery codes** for when the phone isn't there. Secrets are encrypted at rest (AES-256-GCM); recovery codes are stored only as keyed hashes. Swapping in a new app, or making new recovery codes, needs a current code too. An admin can turn it off for someone who lost their phone (`python app.py reset-2fa you@…` from the server, too).
+- **Two-factor sign-in** (optional, recommended): any authenticator app (TOTP, RFC 6238). Each code works once. Ten one-time **recovery codes** for when the phone isn't there. Secrets are encrypted at rest (AES-256-GCM); recovery codes are stored only as keyed hashes. Swapping in a new app, or making new recovery codes, needs a current code too. An admin can turn it off for someone who lost their phone, from the admin panel.
 - **Sessions** are server-side: the browser holds only a random 256-bit value in an `HttpOnly`, `Secure`, `SameSite=Lax` cookie (`__Host-lectern`), and the server keeps only its SHA-256. A session ends after 12 hours unused or 7 days at most (`LECTERN_SESSION_IDLE_HOURS`, `LECTERN_SESSION_DAYS`), at sign-out, when the password changes (every other device) or is reset (all of them). **Your account** lists where you're signed in, and signs any of them out. If a session ends while you're working, Lectern asks you to sign in again in a window, and nothing unsaved is lost.
 - **Guessing** is slowed down: each address and each email has a limit, and after 5 wrong passwords or codes in a row an account waits (30 s, then 1, 2, 4… up to 15 minutes). A browser that has signed in to the account before isn't held up by that wait, so nobody can lock you out by guessing. A wrong email and a wrong password look exactly the same (message, timing and waiting), as does "forgot password" for an email with no account.
 - **Forgotten passwords:** a link by email, good for an hour, once. With two-factor on, the reset needs a code (or a recovery code) as well. Every device is signed out, and you get an email whenever your password or two-factor sign-in changes.
@@ -68,7 +72,7 @@ Lectern must be served over **HTTPS**. Behind nginx (or another proxy) that hand
 2. In nginx, pass `X-Forwarded-For $remote_addr` and `X-Forwarded-Proto $scheme`, and redirect HTTP to HTTPS.
 3. In `.env` beside `app.py` (copy `.env.example`): **`LECTERN_APP_URL=https://lectern.changapp.net/`** (required: links in emails use only this address, and requests for any other host name are refused) and `LECTERN_BEHIND_PROXY=1`.
 4. Fill in the `LECTERN_SMTP_…` settings (any SMTP login; for Gmail, an app password), so invitations, password resets and students' receipts are emailed.
-5. `python app.py invite you@utoronto.ca --admin`, open the link, turn on two-factor sign-in.
+5. `python app.py admin you@utoronto.ca`, then sign in at `/admin` and invite yourself; open the link, and turn on two-factor sign-in.
 
 **Back up** the data folder (`LECTERN_DATA_DIR`, default `data/` beside `app.py`): `lectern.db` (accounts), `files/` (everyone's courses), `history/` (old versions) and `secret.key`. Without `secret.key` (or `LECTERN_SECRET_KEY`, if you set one), two-factor secrets and recovery codes can't be checked. The folder is in `.gitignore`: never commit it.
 
@@ -109,31 +113,34 @@ A course offering is the same folder in both. Only the course page and its files
 ## How it's put together
 
 ```
-app.py                  python app.py: the runner (and its commands: setup, invite…)
+app.py                  python app.py: the runner (and its commands: setup, admin)
 new-lectern.sh          a new Lectern: code, Python environment, requirements, then setup
 server/
   core.py               the Flask app: HTTPS, cross-site request checks, security headers (no caching)
   paths.py              where things are
   db.py                 the database (SQLite, in the data folder): accounts, sessions, versions
   security.py           argon2id, two-factor codes (TOTP), tokens, encryption, rate limits
-  auth.py               accounts: sign-in, two-factor, invitations, resets, /api/auth/…, /api/admin/…
+  auth.py               accounts: sign-in, two-factor, invitations, resets, /api/auth/…
+  admin.py              the admin panel (/admin): admins' own sign-in; invitations, accounts, imports, /api/admin/…
   store.py              each account's files (/api/store/…, the builders' GitHub-style calls) and /p/…
   pages.py              /: the splash and the app (one page); /api/config
   accommodations.py     accommodation requests: /request (the students' form), /api/accommodations/…
   mailer.py             email (SMTP): invitations, resets, security notices, students
-  cli.py                python app.py setup | invite | users | reset-2fa | disable | enable | import
+  cli.py                python app.py admin (adding admins: the one thing done on the server) | setup
   wizard.py             python app.py setup: the questions, .env, the first admin, the checks
   tools.py              the builders, split for sharing one page: /tools/<name>.css|.json|.js|.html
   scope_css.py          scopes a builder's CSS to its own element
 templates/index.html    the splash (modelled on beamer.changapp.net) and the app's frame
 templates/request.html  the students' accommodation request form (static/js/request.js, static/css/request.css)
+templates/admin.html    the admin panel (static/js/admin.js, static/css/admin.css)
 static/css/             splash.css (Beamer+'s tokens and layout), shell.css (top bar, path, Home)
 static/js/
   scope.js              runs each builder in its own scope (see below)
   boot.js               before the first paint: splash or app
   lectern.js            the shell: Home, a course offering, the pinned path, opening builders
   auth.js               signing in (and again, mid-work), two-factor, invitations, resets
-  account.js            Your account, and (admins) Accounts and invitations
+  account.js            Your account
+  admin.js              the admin panel
   store.js              the calls the shell makes to your files
 tools/                  the three builders, each still a single HTML file that works on its own;
                         suite.css (their shared look, kept identical in all three) and course.cls (the exam class) for reference

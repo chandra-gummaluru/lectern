@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lectern Admin — {{ institution }}</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/static/css/splash.css">
+    <link rel="stylesheet" href="/static/css/shell.css">
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body class="lt-on-splash">
+    <!-- Signing in: email, password and a two-factor code, every time. -->
+    <div class="splash" id="ad-signin" hidden>
+        <main class="sp-screen">
+            <header class="sp-copy">
+                <h1 class="sp-title">Lectern</h1>
+                <p class="sp-inst">Admin · {{ institution }}</p>
+                <form class="sp-form" id="ad-form" action="#" method="post" novalidate>
+                    <label class="sp-field"><span>Email</span>
+                        <input type="email" id="ad-email" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+                    <label class="sp-field"><span>Password</span>
+                        <span class="sp-pw"><input type="password" id="ad-pw" autocomplete="current-password" required><button type="button" class="sp-show" data-show="ad-pw" aria-label="Show password">Show</button></span></label>
+                    <label class="sp-field"><span>Code from your authenticator app</span>
+                        <input type="text" id="ad-code" class="sp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" required></label>
+                    <button type="submit" class="sp-btn sp-btn--primary" id="ad-go">Sign in</button>
+                </form>
+                <p class="sp-hint" id="ad-status" role="status" aria-live="polite"></p>
+                <p class="sp-hint ad-foot">Admins are added on the server: <code>python app.py admin you@example.com</code>. This isn't where Lectern accounts sign in: <a href="/">Lectern</a>.</p>
+            </header>
+        </main>
+    </div>
+
+    <!-- The panel -->
+    <div class="lt-app" id="ad-app" hidden>
+        <header class="lt-bar ad-bar">
+            <span class="ad-mark">Lectern <b>Admin</b></span>
+            <span class="lt-status"></span>
+            <span class="ad-who" id="ad-who"></span>
+            <button type="button" id="ad-out">Sign out</button>
+        </header>
+        <main class="lt-page" id="ad-page"></main>
+    </div>
+    <div id="lt-modal-root"></div>
+    <div id="lt-toast-root"></div>
+    <script type="module" src="/static/js/admin.js"></script>
+</body>
+</html>

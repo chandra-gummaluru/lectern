@@ -4,9 +4,8 @@
      Tunnel, nginx); its port; the institution under the wordmark.
   2. Email (optional): an SMTP login, and a test email.
   3. Writes .env beside app.py (readable only by you; the old one is kept as .env.bak).
-  4. The first admin account (asked here, so there's no link to open), if there isn't one yet.
-  5. Import (optional): course pages, grades and exams from git clones of the old GitHub repositories.
-  6. Checks that Lectern answers the way visitors will reach it (through the tunnel or proxy).
+  4. An admin for the admin panel (/admin), with its two-factor app, if there isn't one yet.
+  5. Checks that Lectern answers the way visitors will reach it (through the tunnel or proxy).
 
 Run it again any time: it starts from the current settings, and Enter keeps each one.
 new-lectern.sh does the rest of a new install (gets the code, makes a Python environment) and then runs this.
@@ -208,73 +207,18 @@ def test_email(env):
 
 
 def admin(env):
-    from . import db, security as sec
-    from .auth import RESERVED, _HANDLE, suggest_handle
-    heading("4. Your admin account")
-    users = db.all_("SELECT email, is_admin FROM users")
-    if users:
-        admins = [u["email"] for u in users if u["is_admin"]]
-        say(f"There {'is' if len(users) == 1 else 'are'} already {len(users)} account{'s' if len(users) != 1 else ''}; admin{'s' if len(admins) != 1 else ''}: {', '.join(admins) or 'none'}.")
-        if not yes("Make another admin account", not admins):
-            return admins[0] if admins else None
-    while True:
-        em = ask("Your email").lower()
-        if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", em):
-            say("  An email address, please.")
-            continue
-        if db.one("SELECT 1 FROM users WHERE email = ?", (em,)):
-            say("  That email already has an account.")
-            continue
-        break
-    name = ""
-    while not name:
-        name = ask("Your name")
-    handle = suggest_handle(em)
-    say(f"Your course pages will be at {env['LECTERN_APP_URL']}p/<name>/…, e.g. {env['LECTERN_APP_URL']}p/{handle}/csc258/f26/info.html")
-    while True:
-        h = ask("Name for that address (lower case, dashes)", handle).lower()
-        if not _HANDLE.match(h) or len(h) < 2 or h in RESERVED:
-            say("  2 to 32 lower-case letters, numbers and dashes; not a reserved word.")
-        elif db.one("SELECT 1 FROM users WHERE handle = ?", (h,)):
-            say("  That's taken.")
-        else:
-            break
-    while True:
-        pw = secret(f"Password ({sec.MIN_PASSWORD}+ characters; a few words together is good)")
-        bad = sec.password_problem(pw, em, name)
-        if bad:
-            say(f"  {bad}")
-            continue
-        if secret("Password, again") != pw:
-            say("  The two aren't the same.")
-            continue
-        break
-    t = time.time()
-    db.run("INSERT INTO users (email, handle, name, pw_hash, pw_changed, is_admin, created) VALUES (?, ?, ?, ?, ?, 1, ?)",
-           (em, h, name, sec.hash_password(pw), t, t))
-    db.run("INSERT INTO events (user_id, kind, at, detail) VALUES ((SELECT id FROM users WHERE email = ?), 'account-created', ?, 'setup')", (em, t))
-    say(f"  Made {em} (an admin). After you sign in, turn on two-factor sign-in under Your account.")
-    return em
-
-
-def import_courses(email_):
-    heading("5. Courses from GitHub (optional)")
-    say("If your course pages, grades and exams are in the old pair of GitHub repositories, Lectern can copy\nthem in from git clones on this machine (e.g. courses-utor and courses-utor-private).")
-    if not email_ or not yes("Import now", False):
-        return
+    """The admin panel's admin (an account of its own, added only here, on the server)."""
     from . import db
-    from .cli import _import
-    u = db.one("SELECT * FROM users WHERE email = ?", (email_,))
-    while True:
-        pub = os.path.expanduser(ask("Folder of the public repository (course pages)"))
-        priv = os.path.expanduser(ask("Folder of the private repository (grades, exams)"))
-        if os.path.isdir(pub) and os.path.isdir(priv):
-            break
-        say(f"  Not found: {pub if not os.path.isdir(pub) else priv}")
-        if not yes("Try again", True):
+    from .cli import add_admin
+    heading("4. An admin for the admin panel")
+    say(f"The admin panel ({env['LECTERN_APP_URL']}admin) is where you invite people and look after accounts.\n"
+        "Its admins are separate from Lectern accounts, and are added only here, on the server.")
+    admins = [r["email"] for r in db.all_("SELECT email FROM admins WHERE disabled = 0")]
+    if admins:
+        say(f"Admins: {', '.join(admins)}.")
+        if not yes("Add another admin (or replace one's password and two-factor app)", False):
             return
-    _import(u, pub, priv)
-    say("  Delete the clones when you've checked everything is there: they hold grades.")
+    add_admin(ask("Admin's email"), out=say)
 
 
 CHECK = r"""
@@ -295,7 +239,7 @@ print(json.dumps({"page": r.status_code, "location": r.headers.get("Location", "
 
 
 def check(env, env_path):
-    heading("6. Checking")
+    heading("5. Checking")
     full = {**os.environ, **{k: v for k, v in env.items() if v}}
     r = subprocess.run([sys.executable, "-c", CHECK], cwd=BASE_PATH, env=full, capture_output=True, text=True)
     problems = []
@@ -334,8 +278,9 @@ Point your tunnel or proxy at it. For a Cloudflare Tunnel, in cloudflared's conf
 (and a DNS route: cloudflared tunnel route dns <tunnel name> {p.hostname}). For nginx:
 proxy_pass http://127.0.0.1:{port}; with proxy_set_header X-Forwarded-Proto $scheme;
 and proxy_set_header X-Forwarded-For $remote_addr;""")
-    say(f"\nThen sign in at {env['LECTERN_APP_URL']} and turn on two-factor sign-in (Your account).")
-    say(f"Invite others from the account menu, or: python app.py invite them@example.com\n"
+    say(f"\nThen sign in to the admin panel at {env['LECTERN_APP_URL']}admin and invite people (yourself too, for\n"
+        f"your own Lectern account). Old courses from GitHub can be imported there as well.")
+    say(f"Add more admins any time: python app.py admin them@example.com\n"
         f"Back up {os.environ.get('LECTERN_DATA_DIR') or os.path.join(BASE_PATH, 'data')} (secret.key included).")
 
 
@@ -354,8 +299,7 @@ def main(argv=()):
         os.environ.update({k: v for k, v in env.items() if v})
         say(f"  Wrote {env_path} (only you can read it){'; the old one is .env.bak' if os.path.exists(env_path + '.bak') else ''}.")
         test_email(env)
-        who = admin(env)
-        import_courses(who)
+        admin(env)
         ok = check(env, env_path)
         finish(env, ok)
     except (Quit, KeyboardInterrupt):

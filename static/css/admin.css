@@ -1,0 +1,14 @@
+/* The admin panel: Lectern's look (splash.css for signing in, shell.css for the panel), a few extras. */
+.ad-foot { max-width: 30em; font-size: 12.5px; }
+.ad-foot code { font: 12px ui-monospace, Menlo, Consolas, monospace; }
+.ad-foot a { color: var(--ink-2); }
+.ad-bar { gap: 14px; }
+.ad-mark { font: 500 22px/1 var(--font-serif); color: var(--ink); }
+.ad-mark b { font: 600 11px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); vertical-align: 3px; margin-left: 4px; }
+.ad-who { margin-left: auto; font-size: 13.5px; color: var(--ink-2); }
+.ad-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
+.ad-acts .lt-link { font-size: 13px; }
+.ad-import { display: grid; gap: 12px; max-width: 560px; }
+.ad-file { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--home-ink-3); }
+.ad-file label { cursor: pointer; }
+.ad-import select { height: 36px; }

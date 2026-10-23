@@ -1,9 +1,6 @@
-/* Your account (#/account) and, for admins, everyone's (#/admin).
-
-   Account: your name, your course pages' address, your password, two-factor sign-in (an authenticator
-   app, and recovery codes for when the phone isn't there) and where you're signed in.
-   Admin: invite people (Lectern has no public sign-up), and look after accounts: sign them out, turn
-   two-factor off after a lost phone, make admins, turn an account off. */
+/* Your account (#/account): your name, your course pages' address, your password, two-factor sign-in
+   (an authenticator app, and recovery codes for when the phone isn't there) and where you're signed in.
+   (Inviting people and looking after accounts is the admin panel's: /admin, admin.js.) */
 import { api, PW_RULE, codeFields, wireCode } from "./auth.js";
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -181,90 +178,4 @@ export async function accountPage(ctx) {
   others.hidden = list.length < 2;
   others.onclick = async () => { await api("/api/auth/sessions/revoke", { id: "others" }); toast("Signed out everywhere else."); accountPage(ctx); };
   box.querySelectorAll("[data-out]").forEach(b => { b.onclick = async () => { await api("/api/auth/sessions/revoke", { id: b.dataset.out }); accountPage(ctx); }; });
-}
-
-// ── #/admin ──────────────────────────────────────────────────────────
-export async function adminPage(ctx) {
-  const { S, pageHTML, modal, toast } = ctx;
-  pageHTML(`<div class="lt-in lt-account">
-    <h1>Accounts</h1>
-    <p class="lt-lede">Lectern is invite-only: invite each person by email. The link works once, for 7 days.</p>
-    <div class="lt-sec"><h2>Invite Someone</h2></div>
-    <section class="lt-panel">
-      <form id="ad-inv" class="lt-form lt-narrow" novalidate>
-        <label>Email<input type="email" id="ad-email" autocomplete="off" placeholder="name@utoronto.ca"></label>
-        <label class="lt-check"><input type="checkbox" id="ad-admin"> An admin (can invite others and manage accounts)</label>
-        <div><button type="submit" class="lt-btn primary">Invite</button></div>
-      </form>
-      <div id="ad-link"></div>
-    </section>
-    <div id="ad-body"><div class="lt-loading" style="min-height:120px">Loading…</div></div>
-  </div>`);
-  const $ = s => document.querySelector(s);
-  let d;
-  const load = async () => {
-    try { d = await api("/api/admin/users"); } catch (x) { $("#ad-body").innerHTML = `<p class="lt-note err">${esc(x.message)}</p>`; return; }
-    draw();
-  };
-  $("#ad-inv").onsubmit = async e => {
-    e.preventDefault();
-    const btn = e.target.querySelector("[type=submit]"); btn.disabled = true;
-    const send = password => api("/api/admin/invites", { email: $("#ad-email").value.trim(), admin: $("#ad-admin").checked, password });
-    if ($("#ad-admin").checked) {   // a new admin: your password, again
-      btn.disabled = false;
-      return withPassword("Invite an admin?", `${esc($("#ad-email").value.trim())} could invite people and manage every account.`, "Invite", false, async pw => shown(await send(pw)));
-    }
-    try { shown(await send("")); } catch (x) { toast(x.message); } finally { btn.disabled = false; }
-  };
-  function shown(r) {
-    {
-      $("#ad-email").value = ""; $("#ad-admin").checked = false;
-      $("#ad-link").innerHTML = `<p class="lt-note">${r.emailed ? `Invitation emailed to <b>${esc(r.email)}</b>. You can also send them this link:` : `<b>The server can't send email</b> (no SMTP settings), so send <b>${esc(r.email)}</b> this link yourself. Only to them: anyone with it can make the account.`}
-        <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
-      $("#ad-link [data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { $("#ad-link input").select(); } };
-      load();
-    }
-  }
-
-  const withPassword = (title, text, label, danger, run) => modal(`<h2>${esc(title)}</h2>
-    <form novalidate><p>${text}</p><div class="lt-form">
-      <input type="email" autocomplete="username" value="${esc(S.user.email)}" hidden readonly>
-      <label>Your password<input type="password" id="ap-pw" autocomplete="current-password"></label></div>
-    <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn ${danger ? "lt-btn-danger" : "primary"}">${esc(label)}</button></div></form>`, (m, close) => {
-    m.querySelector("[data-no]").onclick = close;
-    form(m, async () => { await run(m.querySelector("#ap-pw").value); close(); load(); });
-  });
-
-  function draw() {
-    const me = S.user.id;
-    $("#ad-body").innerHTML = `${d.invites.length ? `<div class="lt-sec"><h2>Waiting Invitations</h2></div>
-      <div class="lt-olist">${d.invites.map(i => `<div class="lt-orow"><b>${esc(i.email)}</b><span class="lt-orow-n">${i.admin ? "admin · " : ""}sent ${esc(day(i.created))}, until ${esc(day(i.expires))}</span>
-        <span class="lt-orow-r"><button type="button" class="lt-link" data-revoke="${esc(i.id)}">Cancel it</button></span></div>`).join("")}</div>` : ""}
-      <div class="lt-sec"><h2>Accounts</h2><span>${d.users.length}</span></div>
-      <div class="lt-olist">${d.users.map(u => `<div class="lt-orow lt-user">
-        <div class="lt-user-who"><b>${esc(u.name || u.email)}</b><span>${esc(u.email)} · <a href="${esc(u.site)}" target="_blank" rel="noopener">${esc(u.handle)}</a></span></div>
-        <span class="lt-tags">${u.admin ? `<span class="lt-tag">Admin</span>` : ""}${u.twoFactor ? `<span class="lt-tag ok">2FA</span>` : `<span class="lt-tag dim">No 2FA</span>`}${u.disabled ? `<span class="lt-tag bad">Off</span>` : ""}${u.locked ? `<span class="lt-tag bad">Waiting (wrong passwords)</span>` : ""}</span>
-        <span class="lt-orow-n">last sign-in ${esc(when(u.lastLogin))}</span>
-        <span class="lt-orow-r"><select class="lt-filter" data-act="${u.id}" aria-label="Actions for ${esc(u.email)}"><option value="">Actions…</option>
-          <option value="sign-out">Sign out everywhere</option>
-          ${u.locked ? `<option value="unlock">Let them try again now</option>` : ""}
-          ${u.twoFactor ? `<option value="reset-2fa">Turn off two-factor (lost phone)</option>` : ""}
-          ${u.id !== me ? (u.admin ? `<option value="remove-admin">Remove admin</option>` : `<option value="make-admin">Make admin</option>`) : ""}
-          ${u.id !== me ? (u.disabled ? `<option value="enable">Turn the account back on</option>` : `<option value="disable">Turn the account off</option>`) : ""}
-        </select></span></div>`).join("")}</div>`;
-    document.querySelectorAll("[data-revoke]").forEach(b => { b.onclick = async () => { await api("/api/admin/invites/revoke", { id: b.dataset.revoke }); load(); }; });
-    document.querySelectorAll("select[data-act]").forEach(sel => {
-      sel.onchange = async () => {
-        const action = sel.value, uid = Number(sel.dataset.act), u = d.users.find(x => x.id === uid); sel.value = "";
-        if (!action) return;
-        const go = password => api(`/api/admin/users/${uid}`, { action, password });
-        if (action === "reset-2fa") return withPassword("Turn off their two-factor sign-in?", `For ${esc(u.email)}, e.g. after a lost phone. They're signed out, emailed, and can turn it on again.`, "Turn it off", true, go);
-        if (action === "make-admin") return withPassword("Make them an admin?", `${esc(u.email)} could then invite people and manage every account.`, "Make admin", false, go);
-        if (action === "remove-admin") return withPassword("Remove admin?", `${esc(u.email)} keeps their account and courses.`, "Remove admin", false, go);
-        if (action === "disable") return withPassword("Turn this account off?", `${esc(u.email)} is signed out and can't sign in, and their published course pages stop showing. Nothing is deleted: you can turn it back on.`, "Turn it off", true, go);
-        try { await go(""); toast(action === "sign-out" ? `Signed ${u.email} out everywhere.` : "Done."); load(); } catch (x) { toast(x.message); }
-      };
-    });
-  }
-  load();
 }

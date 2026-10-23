@@ -39,7 +39,7 @@ def main():
         print("wrong password:", page.inner_text("#splash-status"))
 
         # 2. An invitation link → a new account (the token is taken out of the address).
-        tok = auth.create_invite("chandra@utoronto.ca", True)
+        tok = auth.create_invite("chandra@utoronto.ca")
         page.goto(srv.base + "#invite=" + tok)
         page.wait_for_selector("#iv-name"); shot("a02-invite")
         assert tok not in page.url, page.url
@@ -127,13 +127,25 @@ def main():
         assert page.evaluate("() => window.Lectern.tools.grades.api.state().path") == "csc258/f26/grades.json"
         assert len(db.all_("SELECT 1 FROM sessions")) == 1
 
-        # 8. Admin: invite someone.
-        page.click("#lt-acct"); page.click("[data-m='admin']"); page.wait_for_selector("#ad-email")
-        page.fill("#ad-email", "ta@utoronto.ca"); page.click("#ad-inv [type=submit]")
-        page.wait_for_selector(".lt-linkbox input"); shot("a11-admin")
-        link = page.input_value(".lt-linkbox input")
+        # 8. The admin panel: its own admin (added as on the terminal), its own sign-in; no way in for an account.
+        page.click("#lt-acct")
+        assert not page.query_selector("[data-m='admin']"), "accounts have no admin menu"
+        page.keyboard.press("Escape")
+        from server import admin as adminmod
+        ASECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
+        adminmod.save_admin("root@utoronto.ca", "Root Admin", PASSWORD, ASECRET)
+        ap = ctx.new_page()
+        ap.goto(srv.base + "admin"); ap.wait_for_selector("#ad-email", state="visible"); ap.screenshot(path=f"{OUT}/a11a-admin-signin.png")
+        ap.fill("#ad-email", "chandra@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.fill("#ad-code", "123456"); ap.click("#ad-go")
+        expect(ap.locator("#ad-status")).to_contain_text("don't match an admin")      # an account isn't an admin
+        ap.fill("#ad-email", "root@utoronto.ca"); ap.fill("#ad-pw", PASSWORD); ap.fill("#ad-code", security.totp_now(ASECRET)); ap.click("#ad-go")
+        ap.wait_for_selector("#ad-inv-email")
+        ap.fill("#ad-inv-email", "ta@utoronto.ca"); ap.click("#ad-inv [type=submit]")
+        ap.wait_for_selector("#ad-inv-msg .lt-linkbox input"); ap.screenshot(path=f"{OUT}/a11-admin.png", full_page=True)
+        link = ap.input_value("#ad-inv-msg .lt-linkbox input")
         assert re.search(r"#invite=[\w-]{40,}", link), link
-        expect(page.locator("#ad-body")).to_contain_text("ta@utoronto.ca")
+        expect(ap.locator("#ad-page")).to_contain_text("ta@utoronto.ca")
+        ap.close()
 
         # 9. Forgotten password (email printed, no SMTP): the reset link, with the 2FA code it needs.
         page.click("#lt-acct"); page.click("[data-m='out']"); page.wait_for_selector("#sp-forgot", state="visible")

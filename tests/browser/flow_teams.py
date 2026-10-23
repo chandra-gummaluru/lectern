@@ -42,7 +42,7 @@ def main():
         srv.sign_in(own, hash="#/csc258/f26")
         own.wait_for_selector("#lt-team-add"); own.screenshot(path=f"{OUT}/t01-team-owner.png", full_page=True)
         def invite(email, role):
-            own.fill("#lt-team-email", email); own.select_option("#lt-team-role", role); own.click("#lt-team-add [type=submit]")
+            own.fill("#lt-team-email", email); own.click(f"#lt-team-add button[data-newrole][data-v='{role}']"); own.click("#lt-team-add [type=submit]")
             own.wait_for_function("e => { const i = document.querySelector('#lt-team-msg .lt-linkbox input'); return i && i.value && i.value !== e; }", arg=getattr(invite, "last", ""))
             invite.last = own.input_value("#lt-team-msg .lt-linkbox input")
             return invite.last

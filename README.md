@@ -94,6 +94,16 @@ Requests go in your private files, `csc258/f26/accommodations.json`. The offerin
 
 Optional: `LECTERN_TIMEZONE` (request deadlines; default `America/Toronto`).
 
+## The course hub
+
+Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course>/<term>/`: **Overview** (description, teaching team, meeting times and office hours), **This week** (the week's announcements, lectures, evaluations and each day's meetings; it opens here), **Lectures**, **Evaluations**, **Announcements**, **Policies** and **My accommodations**.
+
+- The Course Page Builder saves `course.json` (the page as data) beside `info.html`. The hub is built from `course.json`; `info.html` is still written, for downloading or pasting into Quercus.
+- Once an offering has a `course.json`, its published address (`/p/<handle>/<course>/<term>/` or `…/info.html`) leads to the hub, and `course.json` itself is never served from `/p/`. Pages saved before this need opening and saving once.
+- **Course hub tabs** (under the description in the builder): each tab is public or for signed-in people only. My accommodations is always signed-in only. A visitor's This week only shows what's on tabs they can see.
+- **Meeting Times & Office Hours** (a builder section): each is a weekly time (what, day, start, end, where, who), so This week puts it on its day.
+- Signed in means the offering's owner and teaching team for now (students sign in in a later step). Staff see a bar on the hub with **See it as a visitor** (`?as=public`).
+
 ## Emailing the class
 
 - **Every student has an email.** It's a built-in field in the gradebook (Settings → Students), at the domain set there (e.g. `mail.utoronto.ca`). The gradebook says who's missing one (or has one at another domain); click a name to set it on their page, or import the class list again with its email column.

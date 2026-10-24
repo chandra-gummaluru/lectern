@@ -31,7 +31,7 @@ import threading
 import time
 from datetime import datetime, timezone
 
-from flask import Blueprint, Response, abort, g, jsonify, request
+from flask import Blueprint, Response, abort, g, jsonify, redirect, request
 
 from . import db
 from .auth import signed_in
@@ -485,6 +485,16 @@ def published(handle, sub):
         path = clean_path(sub)
     except StoreError:
         abort(404)
+    # A course page with its data (course.json) is the course hub now: its address leads there, and
+    # the data itself only reaches people through the hub's API (which keeps signed-in tabs private).
+    parts = path.split("/")
+    if len(parts) == 3 and parts[2] in ("index.html", "info.html", "course.json"):
+        from .hub import has_hub, PAGE_DATA
+        from .core import app_url
+        if has_hub(u["id"], parts[0], parts[1]):
+            if parts[2] == PAGE_DATA:
+                abort(404)
+            return redirect(f"{app_url()}c/{handle.lower()}/{parts[0]}/{parts[1]}/", code=302)
     data = Repo(u["id"], "pub").read(path)
     if data is None:
         abort(404)

@@ -100,3 +100,11 @@ One web app at **lectern.changapp.net** that merges the Course Page Builder, Gra
 - Email over SMTP: a receipt on submit; the decision (with an optional note) on approve/reject.
 - Lectern: Accommodations part on the offering page (waiting count) and its own page `#/<course>/<term>/accommodations`: Waiting / Decided / All, filter by evaluation, Approve / Reject, change a decision.
 - Folder mode: the page shows the folder's copy; deciding needs GitHub sign-in.
+
+## 15. Course hub (Oct 24 2026)
+- Lectern serves the course page in tabs at `/c/<handle>/<course>/<term>/` (server/hub.py, static/js/hub.js); `/p/…/info.html` redirects there once `course.json` exists.
+- The builder writes `course.json` beside `info.html`, and opens a page from `course.json` when there is one.
+- Tabs: Overview, This week (opens here), Lectures, Evaluations, Announcements, Policies, My accommodations. Each is public or signed-in only (the builder's "Course hub tabs"); My accommodations always signed-in. The API leaves out what a viewer may not see.
+- New builder section: Meeting Times & Office Hours (structured weekly times) for This week's day-by-day list.
+- Evaluations come from the gradebook's scheme only (no hand-made Grading table fallback).
+- Next pieces: student/TA magic-link sign-in, accommodations in the hub, grades, discussions, notifications, end of term.

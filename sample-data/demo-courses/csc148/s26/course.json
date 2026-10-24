@@ -1,0 +1,1028 @@
+{
+ "format": "lectern-course/1",
+ "page": {
+  "title": "Introduction to Computer Science",
+  "code": "CSC148",
+  "term": "Summer 2026",
+  "school": "University of Toronto",
+  "description": "Abstract data types, object-oriented design, recursion, linked lists, trees and the cost of algorithms.",
+  "sections": [
+   {
+    "id": "w92qbqpu",
+    "type": "schedule",
+    "title": "Schedule & Materials",
+    "caption": "Week-by-week topics, deadlines and lecture slides",
+    "open": true,
+    "weeks": [
+     {
+      "label": "Week 1",
+      "dates": "May 4 – 8",
+      "start": "2026-05-04",
+      "end": "2026-05-08",
+      "topic": "Objects and classes",
+      "deadlines": [],
+      "announcements": [
+       {
+        "title": "Welcome to CSC148!",
+        "date": "May 4, 2026, 09:00",
+        "body": "Tutorials start in week 2. See you in lecture."
+       }
+      ],
+      "cards": [
+       {
+        "label": "Lecture 01",
+        "title": "Objects and classes",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec01.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 02",
+        "title": "Objects and classes (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec02.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 01",
+        "title": "Practice: Objects and classes",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 2",
+      "dates": "May 11 – 15",
+      "start": "2026-05-11",
+      "end": "2026-05-15",
+      "topic": "Inheritance",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 03",
+        "title": "Inheritance",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec03.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 04",
+        "title": "Inheritance (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec04.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 02",
+        "title": "Practice: Inheritance",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 3",
+      "dates": "May 18 – 22",
+      "start": "2026-05-18",
+      "end": "2026-05-22",
+      "topic": "Stacks and queues",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 05",
+        "title": "Stacks and queues",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec05.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 06",
+        "title": "Stacks and queues (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec06.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 03",
+        "title": "Practice: Stacks and queues",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 4",
+      "dates": "May 25 – 29",
+      "start": "2026-05-25",
+      "end": "2026-05-29",
+      "topic": "Linked lists",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 07",
+        "title": "Linked lists",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec07.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 08",
+        "title": "Linked lists (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec08.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 04",
+        "title": "Practice: Linked lists",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 5",
+      "dates": "Jun 1 – 5",
+      "start": "2026-06-01",
+      "end": "2026-06-05",
+      "topic": "Recursion",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 09",
+        "title": "Recursion",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec09.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 10",
+        "title": "Recursion (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec10.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 05",
+        "title": "Practice: Recursion",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 6",
+      "dates": "Jun 8 – 12",
+      "start": "2026-06-08",
+      "end": "2026-06-12",
+      "topic": "Recursion on nested lists",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 11",
+        "title": "Recursion on nested lists",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec11.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 12",
+        "title": "Recursion on nested lists (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec12.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 06",
+        "title": "Practice: Recursion on nested lists",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "isBreak": true,
+      "text": "Reading Week"
+     },
+     {
+      "label": "Week 7",
+      "dates": "Jun 22 – 26",
+      "start": "2026-06-22",
+      "end": "2026-06-26",
+      "topic": "Trees",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 13",
+        "title": "Trees",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec13.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 14",
+        "title": "Trees (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec14.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 07",
+        "title": "Practice: Trees",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 8",
+      "dates": "Jun 29 – Jul 3",
+      "start": "2026-06-29",
+      "end": "2026-07-03",
+      "topic": "Binary search trees",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 15",
+        "title": "Binary search trees",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec15.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 16",
+        "title": "Binary search trees (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec16.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 08",
+        "title": "Practice: Binary search trees",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 9",
+      "dates": "Jul 6 – 10",
+      "start": "2026-07-06",
+      "end": "2026-07-10",
+      "topic": "Efficiency and big-O",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 17",
+        "title": "Efficiency and big-O",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec17.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 18",
+        "title": "Efficiency and big-O (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec18.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 09",
+        "title": "Practice: Efficiency and big-O",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 10",
+      "dates": "Jul 13 – 17",
+      "start": "2026-07-13",
+      "end": "2026-07-17",
+      "topic": "Sorting algorithms",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 19",
+        "title": "Sorting algorithms",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec19.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 20",
+        "title": "Sorting algorithms (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec20.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 10",
+        "title": "Practice: Sorting algorithms",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 11",
+      "dates": "Jul 20 – 24",
+      "start": "2026-07-20",
+      "end": "2026-07-24",
+      "topic": "Hashing",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 21",
+        "title": "Hashing",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec21.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 22",
+        "title": "Hashing (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec22.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 11",
+        "title": "Practice: Hashing",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 12",
+      "dates": "Jul 27 – 31",
+      "start": "2026-07-27",
+      "end": "2026-07-31",
+      "topic": "Review",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 23",
+        "title": "Review",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec23.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 24",
+        "title": "Review (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc148/s26/lec24.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 12",
+        "title": "Practice: Review",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     }
+    ]
+   },
+   {
+    "id": "kd3d5e9n",
+    "type": "scheme",
+    "title": "Marking Scheme",
+    "caption": "Each evaluation, its weight and when it is",
+    "open": false
+   },
+   {
+    "id": "wzotkvv8",
+    "type": "policies",
+    "title": "Policies",
+    "caption": "Course rules, and what to do if you miss work",
+    "open": false,
+    "show": {},
+    "blocks": []
+   },
+   {
+    "id": "88x3biqc",
+    "type": "table",
+    "title": "Instructors & Contact",
+    "caption": "Office hours and email",
+    "open": false,
+    "columns": [
+     "Name",
+     "Office",
+     "Email",
+     "Office Hours"
+    ],
+    "rows": [
+     [
+      "Dr. Ada Lovelace",
+      "BA 4010",
+      "ada.lovelace@example.edu",
+      "Mon 14:00–16:00"
+     ],
+     [
+      "Alan Turing (TA)",
+      "BA 3201",
+      "alan.turing@example.edu",
+      "Thu 11:00–12:00"
+     ]
+    ],
+    "footer": null,
+    "blocks": []
+   },
+   {
+    "id": "meet4214",
+    "type": "meetings",
+    "title": "Meeting Times & Office Hours",
+    "caption": "Lectures, tutorials and office hours, every week",
+    "open": false,
+    "items": [
+     {
+      "kind": "lecture",
+      "label": "LEC0101",
+      "day": "1",
+      "start": "10:00",
+      "end": "11:00",
+      "where": "BA 1160",
+      "who": "Dr. Ada Lovelace"
+     },
+     {
+      "kind": "lecture",
+      "label": "LEC0101",
+      "day": "3",
+      "start": "10:00",
+      "end": "11:00",
+      "where": "BA 1160",
+      "who": "Dr. Ada Lovelace"
+     },
+     {
+      "kind": "tutorial",
+      "label": "",
+      "day": "5",
+      "start": "10:00",
+      "end": "11:00",
+      "where": "BA 3175",
+      "who": ""
+     },
+     {
+      "kind": "office",
+      "label": "",
+      "day": "1",
+      "start": "14:00",
+      "end": "16:00",
+      "where": "BA 4010",
+      "who": "Dr. Ada Lovelace"
+     },
+     {
+      "kind": "office",
+      "label": "",
+      "day": "4",
+      "start": "11:00",
+      "end": "12:00",
+      "where": "BA 3201",
+      "who": "Alan Turing (TA)"
+     }
+    ],
+    "blocks": []
+   }
+  ],
+  "scheme": {
+   "from": "csc148/s26/grades.json",
+   "units": [
+    {
+     "kind": "group",
+     "id": "glab",
+     "name": "Labs",
+     "weight": 10,
+     "keep": 8,
+     "count": 10,
+     "members": [
+      {
+       "id": "l1",
+       "name": "Lab 1",
+       "short": "L1",
+       "type": "assignment",
+       "date": "2026-05-14",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l2",
+       "name": "Lab 2",
+       "short": "L2",
+       "type": "assignment",
+       "date": "2026-05-21",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l3",
+       "name": "Lab 3",
+       "short": "L3",
+       "type": "assignment",
+       "date": "2026-05-28",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l4",
+       "name": "Lab 4",
+       "short": "L4",
+       "type": "assignment",
+       "date": "2026-06-04",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l5",
+       "name": "Lab 5",
+       "short": "L5",
+       "type": "assignment",
+       "date": "2026-06-11",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l6",
+       "name": "Lab 6",
+       "short": "L6",
+       "type": "assignment",
+       "date": "2026-06-25",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l7",
+       "name": "Lab 7",
+       "short": "L7",
+       "type": "assignment",
+       "date": "2026-07-02",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l8",
+       "name": "Lab 8",
+       "short": "L8",
+       "type": "assignment",
+       "date": "2026-07-09",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l9",
+       "name": "Lab 9",
+       "short": "L9",
+       "type": "assignment",
+       "date": "2026-07-16",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "l10",
+       "name": "Lab 10",
+       "short": "L10",
+       "type": "assignment",
+       "date": "2026-07-23",
+       "time": "17:00",
+       "notes": []
+      }
+     ]
+    },
+    {
+     "kind": "eval",
+     "id": "a1",
+     "name": "Assignment 1",
+     "short": "A1",
+     "type": "assignment",
+     "date": "2026-06-05",
+     "time": "23:59",
+     "weight": 15,
+     "notes": []
+    },
+    {
+     "kind": "eval",
+     "id": "a2",
+     "name": "Assignment 2",
+     "short": "A2",
+     "type": "assignment",
+     "date": "2026-07-24",
+     "time": "23:59",
+     "weight": 15,
+     "notes": []
+    },
+    {
+     "kind": "eval",
+     "id": "mt",
+     "name": "Midterm",
+     "short": "MT",
+     "type": "test",
+     "date": "2026-06-23",
+     "time": "18:10",
+     "weight": 20,
+     "notes": []
+    },
+    {
+     "kind": "eval",
+     "id": "fe",
+     "name": "Final Exam",
+     "short": "FE",
+     "type": "test",
+     "date": "",
+     "time": "",
+     "weight": 40,
+     "notes": []
+    }
+   ],
+   "evals": [
+    {
+     "id": "l1",
+     "name": "Lab 1",
+     "short": "L1",
+     "type": "assignment",
+     "date": "2026-05-14",
+     "time": "17:00"
+    },
+    {
+     "id": "l2",
+     "name": "Lab 2",
+     "short": "L2",
+     "type": "assignment",
+     "date": "2026-05-21",
+     "time": "17:00"
+    },
+    {
+     "id": "l3",
+     "name": "Lab 3",
+     "short": "L3",
+     "type": "assignment",
+     "date": "2026-05-28",
+     "time": "17:00"
+    },
+    {
+     "id": "l4",
+     "name": "Lab 4",
+     "short": "L4",
+     "type": "assignment",
+     "date": "2026-06-04",
+     "time": "17:00"
+    },
+    {
+     "id": "l5",
+     "name": "Lab 5",
+     "short": "L5",
+     "type": "assignment",
+     "date": "2026-06-11",
+     "time": "17:00"
+    },
+    {
+     "id": "l6",
+     "name": "Lab 6",
+     "short": "L6",
+     "type": "assignment",
+     "date": "2026-06-25",
+     "time": "17:00"
+    },
+    {
+     "id": "l7",
+     "name": "Lab 7",
+     "short": "L7",
+     "type": "assignment",
+     "date": "2026-07-02",
+     "time": "17:00"
+    },
+    {
+     "id": "l8",
+     "name": "Lab 8",
+     "short": "L8",
+     "type": "assignment",
+     "date": "2026-07-09",
+     "time": "17:00"
+    },
+    {
+     "id": "l9",
+     "name": "Lab 9",
+     "short": "L9",
+     "type": "assignment",
+     "date": "2026-07-16",
+     "time": "17:00"
+    },
+    {
+     "id": "l10",
+     "name": "Lab 10",
+     "short": "L10",
+     "type": "assignment",
+     "date": "2026-07-23",
+     "time": "17:00"
+    },
+    {
+     "id": "a1",
+     "name": "Assignment 1",
+     "short": "A1",
+     "type": "assignment",
+     "date": "2026-06-05",
+     "time": "23:59"
+    },
+    {
+     "id": "a2",
+     "name": "Assignment 2",
+     "short": "A2",
+     "type": "assignment",
+     "date": "2026-07-24",
+     "time": "23:59"
+    },
+    {
+     "id": "mt",
+     "name": "Midterm",
+     "short": "MT",
+     "type": "test",
+     "date": "2026-06-23",
+     "time": "18:10"
+    },
+    {
+     "id": "fe",
+     "name": "Final Exam",
+     "short": "FE",
+     "type": "test",
+     "date": "",
+     "time": ""
+    }
+   ],
+   "policies": [
+    {
+     "id": "round",
+     "kind": "round",
+     "title": "Rounding",
+     "show": false,
+     "text": "Course grades are rounded to the nearest whole percent."
+    }
+   ]
+  },
+  "evalFiles": {}
+ }
+}

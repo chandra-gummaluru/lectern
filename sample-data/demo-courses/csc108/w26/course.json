@@ -1,0 +1,945 @@
+{
+ "format": "lectern-course/1",
+ "page": {
+  "title": "Introduction to Computer Programming",
+  "code": "CSC108",
+  "term": "Winter 2026",
+  "school": "University of Toronto",
+  "description": "Programming in Python: values, functions, conditionals, loops, lists, files and testing. No experience needed.",
+  "sections": [
+   {
+    "id": "z5np59b8",
+    "type": "schedule",
+    "title": "Schedule & Materials",
+    "caption": "Week-by-week topics, deadlines and lecture slides",
+    "open": true,
+    "weeks": [
+     {
+      "label": "Week 1",
+      "dates": "Jan 5 – 9",
+      "start": "2026-01-05",
+      "end": "2026-01-09",
+      "topic": "Welcome; Python as a calculator",
+      "deadlines": [],
+      "announcements": [
+       {
+        "title": "Welcome to CSC108!",
+        "date": "Jan 5, 2026, 09:00",
+        "body": "Tutorials start in week 2. See you in lecture."
+       }
+      ],
+      "cards": [
+       {
+        "label": "Lecture 01",
+        "title": "Welcome; Python as a calculator",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec01.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 02",
+        "title": "Welcome; Python as a calculator (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec02.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 01",
+        "title": "Practice: Welcome",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 2",
+      "dates": "Jan 12 – 16",
+      "start": "2026-01-12",
+      "end": "2026-01-16",
+      "topic": "Variables and functions",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 03",
+        "title": "Variables and functions",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec03.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 04",
+        "title": "Variables and functions (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec04.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 02",
+        "title": "Practice: Variables and functions",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 3",
+      "dates": "Jan 19 – 23",
+      "start": "2026-01-19",
+      "end": "2026-01-23",
+      "topic": "Strings and conditionals",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 05",
+        "title": "Strings and conditionals",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec05.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 06",
+        "title": "Strings and conditionals (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec06.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 03",
+        "title": "Practice: Strings and conditionals",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 4",
+      "dates": "Jan 26 – 30",
+      "start": "2026-01-26",
+      "end": "2026-01-30",
+      "topic": "Loops",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 07",
+        "title": "Loops",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec07.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 08",
+        "title": "Loops (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec08.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 04",
+        "title": "Practice: Loops",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 5",
+      "dates": "Feb 2 – 6",
+      "start": "2026-02-02",
+      "end": "2026-02-06",
+      "topic": "Lists",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 09",
+        "title": "Lists",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec09.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 10",
+        "title": "Lists (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec10.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 05",
+        "title": "Practice: Lists",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 6",
+      "dates": "Feb 9 – 13",
+      "start": "2026-02-09",
+      "end": "2026-02-13",
+      "topic": "Files and dictionaries",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 11",
+        "title": "Files and dictionaries",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec11.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 12",
+        "title": "Files and dictionaries (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec12.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 06",
+        "title": "Practice: Files and dictionaries",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "isBreak": true,
+      "text": "Reading Week"
+     },
+     {
+      "label": "Week 7",
+      "dates": "Feb 23 – 27",
+      "start": "2026-02-23",
+      "end": "2026-02-27",
+      "topic": "Testing and debugging",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 13",
+        "title": "Testing and debugging",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec13.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 14",
+        "title": "Testing and debugging (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec14.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 07",
+        "title": "Practice: Testing and debugging",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 8",
+      "dates": "Mar 2 – 6",
+      "start": "2026-03-02",
+      "end": "2026-03-06",
+      "topic": "Objects and classes",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 15",
+        "title": "Objects and classes",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec15.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 16",
+        "title": "Objects and classes (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec16.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 08",
+        "title": "Practice: Objects and classes",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 9",
+      "dates": "Mar 9 – 13",
+      "start": "2026-03-09",
+      "end": "2026-03-13",
+      "topic": "Searching",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 17",
+        "title": "Searching",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec17.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 18",
+        "title": "Searching (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec18.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 09",
+        "title": "Practice: Searching",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 10",
+      "dates": "Mar 16 – 20",
+      "start": "2026-03-16",
+      "end": "2026-03-20",
+      "topic": "Sorting",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 19",
+        "title": "Sorting",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec19.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 20",
+        "title": "Sorting (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec20.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 10",
+        "title": "Practice: Sorting",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 11",
+      "dates": "Mar 23 – 27",
+      "start": "2026-03-23",
+      "end": "2026-03-27",
+      "topic": "Efficiency",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 21",
+        "title": "Efficiency",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec21.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 22",
+        "title": "Efficiency (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec22.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 11",
+        "title": "Practice: Efficiency",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     },
+     {
+      "label": "Week 12",
+      "dates": "Mar 30 – Apr 3",
+      "start": "2026-03-30",
+      "end": "2026-04-03",
+      "topic": "Review",
+      "deadlines": [],
+      "announcements": [],
+      "cards": [
+       {
+        "label": "Lecture 23",
+        "title": "Review",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec23.pdf"
+         }
+        ],
+        "at": 0,
+        "hours": 1
+       },
+       {
+        "label": "Lecture 24",
+        "title": "Review (continued)",
+        "description": "",
+        "files": [
+         {
+          "label": "Slides",
+          "url": "https://example.edu/csc108/w26/lec24.pdf"
+         }
+        ],
+        "at": 1,
+        "hours": 1
+       },
+       {
+        "label": "Tutorial 12",
+        "title": "Practice: Review",
+        "description": "",
+        "files": [
+         {
+          "label": "Download",
+          "url": ""
+         }
+        ],
+        "at": 2,
+        "hours": 1
+       }
+      ],
+      "hours": 3,
+      "off": []
+     }
+    ]
+   },
+   {
+    "id": "770w53vu",
+    "type": "scheme",
+    "title": "Marking Scheme",
+    "caption": "Each evaluation, its weight and when it is",
+    "open": false
+   },
+   {
+    "id": "pluzrq3p",
+    "type": "policies",
+    "title": "Policies",
+    "caption": "Course rules, and what to do if you miss work",
+    "open": false,
+    "show": {},
+    "blocks": []
+   },
+   {
+    "id": "ucqx0bqu",
+    "type": "table",
+    "title": "Instructors & Contact",
+    "caption": "Office hours and email",
+    "open": false,
+    "columns": [
+     "Name",
+     "Office",
+     "Email",
+     "Office Hours"
+    ],
+    "rows": [
+     [
+      "Dr. Ada Lovelace",
+      "BA 4010",
+      "ada.lovelace@example.edu",
+      "Mon 14:00–16:00"
+     ],
+     [
+      "Alan Turing (TA)",
+      "BA 3201",
+      "alan.turing@example.edu",
+      "Thu 11:00–12:00"
+     ]
+    ],
+    "footer": null,
+    "blocks": []
+   },
+   {
+    "id": "meet1695",
+    "type": "meetings",
+    "title": "Meeting Times & Office Hours",
+    "caption": "Lectures, tutorials and office hours, every week",
+    "open": false,
+    "items": [
+     {
+      "kind": "lecture",
+      "label": "LEC0101",
+      "day": "1",
+      "start": "10:00",
+      "end": "11:00",
+      "where": "MP 102",
+      "who": "Dr. Ada Lovelace"
+     },
+     {
+      "kind": "lecture",
+      "label": "LEC0101",
+      "day": "3",
+      "start": "10:00",
+      "end": "11:00",
+      "where": "MP 102",
+      "who": "Dr. Ada Lovelace"
+     },
+     {
+      "kind": "tutorial",
+      "label": "",
+      "day": "5",
+      "start": "10:00",
+      "end": "11:00",
+      "where": "BA 3175",
+      "who": ""
+     },
+     {
+      "kind": "office",
+      "label": "",
+      "day": "1",
+      "start": "14:00",
+      "end": "16:00",
+      "where": "BA 4010",
+      "who": "Dr. Ada Lovelace"
+     },
+     {
+      "kind": "office",
+      "label": "",
+      "day": "4",
+      "start": "11:00",
+      "end": "12:00",
+      "where": "BA 3201",
+      "who": "Alan Turing (TA)"
+     }
+    ],
+    "blocks": []
+   }
+  ],
+  "scheme": {
+   "from": "csc108/w26/grades.json",
+   "units": [
+    {
+     "kind": "group",
+     "id": "gex",
+     "name": "Exercises",
+     "weight": 10,
+     "keep": 4,
+     "count": 5,
+     "members": [
+      {
+       "id": "ex1",
+       "name": "Exercise 1",
+       "short": "Ex1",
+       "type": "assignment",
+       "date": "2026-01-16",
+       "time": "23:59",
+       "notes": []
+      },
+      {
+       "id": "ex2",
+       "name": "Exercise 2",
+       "short": "Ex2",
+       "type": "assignment",
+       "date": "2026-01-30",
+       "time": "23:59",
+       "notes": []
+      },
+      {
+       "id": "ex3",
+       "name": "Exercise 3",
+       "short": "Ex3",
+       "type": "assignment",
+       "date": "2026-02-13",
+       "time": "23:59",
+       "notes": []
+      },
+      {
+       "id": "ex4",
+       "name": "Exercise 4",
+       "short": "Ex4",
+       "type": "assignment",
+       "date": "2026-03-06",
+       "time": "23:59",
+       "notes": []
+      },
+      {
+       "id": "ex5",
+       "name": "Exercise 5",
+       "short": "Ex5",
+       "type": "assignment",
+       "date": "2026-03-20",
+       "time": "23:59",
+       "notes": []
+      }
+     ]
+    },
+    {
+     "kind": "eval",
+     "id": "a1",
+     "name": "Assignment 1: Text adventure",
+     "short": "A1",
+     "type": "assignment",
+     "date": "2026-02-06",
+     "time": "23:59",
+     "weight": 10,
+     "notes": []
+    },
+    {
+     "kind": "eval",
+     "id": "a2",
+     "name": "Assignment 2: Word puzzles",
+     "short": "A2",
+     "type": "assignment",
+     "date": "2026-03-20",
+     "time": "23:59",
+     "weight": 10,
+     "notes": []
+    },
+    {
+     "kind": "eval",
+     "id": "mt",
+     "name": "Midterm",
+     "short": "MT",
+     "type": "test",
+     "date": "2026-02-25",
+     "time": "18:10",
+     "weight": 20,
+     "notes": [
+      "If it isn't submitted, 20% moves to Final Exam."
+     ]
+    },
+    {
+     "kind": "eval",
+     "id": "fe",
+     "name": "Final Exam",
+     "short": "FE",
+     "type": "test",
+     "date": "",
+     "time": "",
+     "weight": 50,
+     "notes": []
+    }
+   ],
+   "evals": [
+    {
+     "id": "ex1",
+     "name": "Exercise 1",
+     "short": "Ex1",
+     "type": "assignment",
+     "date": "2026-01-16",
+     "time": "23:59"
+    },
+    {
+     "id": "ex2",
+     "name": "Exercise 2",
+     "short": "Ex2",
+     "type": "assignment",
+     "date": "2026-01-30",
+     "time": "23:59"
+    },
+    {
+     "id": "ex3",
+     "name": "Exercise 3",
+     "short": "Ex3",
+     "type": "assignment",
+     "date": "2026-02-13",
+     "time": "23:59"
+    },
+    {
+     "id": "ex4",
+     "name": "Exercise 4",
+     "short": "Ex4",
+     "type": "assignment",
+     "date": "2026-03-06",
+     "time": "23:59"
+    },
+    {
+     "id": "ex5",
+     "name": "Exercise 5",
+     "short": "Ex5",
+     "type": "assignment",
+     "date": "2026-03-20",
+     "time": "23:59"
+    },
+    {
+     "id": "a1",
+     "name": "Assignment 1: Text adventure",
+     "short": "A1",
+     "type": "assignment",
+     "date": "2026-02-06",
+     "time": "23:59"
+    },
+    {
+     "id": "a2",
+     "name": "Assignment 2: Word puzzles",
+     "short": "A2",
+     "type": "assignment",
+     "date": "2026-03-20",
+     "time": "23:59"
+    },
+    {
+     "id": "mt",
+     "name": "Midterm",
+     "short": "MT",
+     "type": "test",
+     "date": "2026-02-25",
+     "time": "18:10"
+    },
+    {
+     "id": "fe",
+     "name": "Final Exam",
+     "short": "FE",
+     "type": "test",
+     "date": "",
+     "time": ""
+    }
+   ],
+   "policies": [
+    {
+     "id": "fail:af1",
+     "kind": "autofail",
+     "title": "Automatic fail",
+     "show": true,
+     "text": "If your mark on Final Exam is below 40%, your course grade is at most 47%."
+    }
+   ]
+  },
+  "evalFiles": {}
+ }
+}

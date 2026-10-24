@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{{ title }}</title>
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/static/css/hub.css">
+</head>
+<body>
+    <!-- The course hub: an offering's course page in tabs. hub.js fills it from the API below
+         (only the tabs this viewer may see come back). -->
+    <div class="hb" id="hb" data-api="{{ api }}">
+        <div class="hb-staff" id="hb-staff" hidden></div>
+        <header class="hb-head">
+            <div class="hb-head-in">
+                <div class="hb-titles">
+                    <p class="hb-sub" id="hb-sub">&nbsp;</p>
+                    <h1 class="hb-title" id="hb-title">{{ title }}</h1>
+                </div>
+                <div class="hb-who" id="hb-who"></div>
+            </div>
+        </header>
+        <nav class="hb-tabs" id="hb-tabs" aria-label="Course page"></nav>
+        <main class="hb-main" id="hb-main" aria-live="polite">
+            <p class="hb-loading">Loading…</p>
+        </main>
+        <footer class="hb-foot">Lectern</footer>
+    </div>
+    <script src="/static/js/hub.js"></script>
+</body>
+</html>

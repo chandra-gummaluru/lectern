@@ -484,6 +484,21 @@ tr.e-drop-after td { box-shadow: inset 0 -3px 0 #a67c00 !important; }
 .e-file2 { display: grid; grid-template-columns: 160px 1fr 36px 36px; gap: 8px; align-items: center; }
 .e-row2 button.c.icon, .e-file2 button.c.icon { width: 36px; height: 36px; }
 .e-pend2 { margin: -6px 0 0 168px; font-size: 12px; color: #7a7f87; }
+/* Meeting times and office hours: one row per weekly time */
+.e-meets { display: grid; gap: 8px; margin: 0 0 6px; overflow-x: auto; }
+.e-meet { display: grid; grid-template-columns: 120px minmax(80px, .8fr) 116px 118px 118px minmax(90px, 1fr) minmax(110px, 1.2fr) 36px; gap: 8px; align-items: center; min-width: 844px; }
+.e-meet.e-mhead { font: 600 12px var(--font-ui); color: #7a7f87; text-transform: uppercase; letter-spacing: .04em; }
+.e-meet input, .e-meet select { width: 100%; box-sizing: border-box; height: 36px; margin: 0; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 14px var(--font-ui); }
+.e-meet select { appearance: none; -webkit-appearance: none; padding-right: 28px; background: var(--field) var(--chevron) no-repeat right 8px center / 13px; cursor: pointer; }
+.e-meet input:focus, .e-meet select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.e-meet button.c.icon { width: 36px; height: 36px; }
+/* Which course hub tabs people must sign in to see */
+.e-tabs { margin: 0 0 22px; padding: 12px 14px; border: 1px dashed #cfd0d3; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.e-tabs-h { font: 600 13px var(--font-ui); color: #4a4f57; margin-right: 4px; }
+.e-tabs button.c { height: 30px; font-size: 13px; padding: 0 10px; border-radius: 99px; display: inline-flex; gap: 6px; align-items: center; }
+.e-tabs button.c small { font-size: 11.5px; color: #7a7f87; font-weight: 600; }
+.e-tabs button.c.on small { color: #7d5c00; }
+.e-tabs .e-help { margin: 0; flex-basis: 100%; font-size: 12.5px; }
 .e-subcard > button.c.add { justify-self: start; }
 .e-cards { display: flex; flex-wrap: wrap; align-items: flex-start; }
 /* The lecture row on a week's page: hours in thirds, as students see it */
@@ -1022,6 +1037,7 @@ const BLANK_PAGE = () => ({
       weeks: [{ label: "Week 1", dates: "", topic: "", deadlines: [], cards: [newCard("Lecture 01")] }] },
     { id: uid(), type: "table", title: "Instructors & Contact", caption: "Office hours and email", open: false,
       columns: ["Name", "Office", "Email", "Office Hours"], rows: [["", "", "", ""]], footer: null, blocks: [] },
+    NEW_SECTION.meetings(),
     { id: uid(), type: "table", title: "Grading", caption: "Mark breakdown", open: false,
       columns: ["Component", "Weight", "Notes"], rows: [["", "", ""]], footer: ["Total", "100%", ""], blocks: [] },
     { id: uid(), type: "policies", title: "Policies", caption: "Course rules, and what to do if you miss work", open: false,
@@ -1036,7 +1052,18 @@ function ensureContact(m) {
   m.sections.splice(k + 1, 0, NEW_SECTION.contact());
   return true;
 }
+// Meeting times and office hours: each a weekly time (day 1 = Monday … 7 = Sunday, 24-hour times), so the
+// course hub's This week can put them on their days.
+const newMeeting = (kind = "lecture") => ({ kind, label: "", day: "1", start: "", end: "", where: "", who: "" });
+function ensureMeetings(m) {
+  if (m.sections.some(x => x.type === "meetings") || (m.removed || []).includes("meetings")) return false;
+  const k = m.sections.findIndex(isContact), j = m.sections.findIndex(x => x.type === "schedule");
+  m.sections.splice((k >= 0 ? k : j) + 1, 0, NEW_SECTION.meetings());
+  return true;
+}
 const NEW_SECTION = {
+  meetings: () => ({ id: uid(), type: "meetings", title: "Meeting Times & Office Hours", caption: "Lectures, tutorials and office hours, every week", open: false,
+    items: [newMeeting("lecture"), newMeeting("office")], blocks: [] }),
   contact: () => ({ id: uid(), type: "table", title: "Instructors & Contact", caption: "Office hours and email", open: false,
     columns: ["Name", "Office", "Email", "Office Hours"], rows: [["", "", "", ""]], footer: null, blocks: [] }),
   schedule: () => ({ id: uid(), type: "schedule", title: "Schedule", caption: "", open: false,
@@ -1739,6 +1766,46 @@ function sessionsBody(s, p) {
       </div>${EDIT ? `<div class="e-adds">${B("add", `${p}.groups`, "+ Add Lecture Section", "Add a lecture section", 'data-kind="group"', "add")}</div>` : ""}` + blocksBody(s, p);
 }
 
+// ── Meeting times and office hours ───────────────────────────────────
+const MEET_KIND = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab", office: "Office hours", other: "Other" };
+const MEET_DAY = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const meetName = m => (m.label || "").trim() || (m.kind === "other" ? "Meeting" : MEET_KIND[m.kind] || "Meeting");
+const meetTime = m => (m.start ? (m.end ? `${m.start}–${m.end}` : m.start) : "");
+function meetingsBody(s, p) {
+  const items = s.items || [];
+  if (EDIT) {
+    const opt = (o, v) => Object.entries(o).map(([k, t]) => `<option value="${k}"${String(v) === k ? " selected" : ""}>${esc(t)}</option>`).join("");
+    const days = Object.fromEntries(MEET_DAY.slice(1).map((d, k) => [String(k + 1), d]));
+    const rows = items.map((m, j) => { const q = `${p}.items.${j}`; return `
+        <div class="e-meet">
+          <select data-bindv="${q}.kind" aria-label="What">${opt(MEET_KIND, m.kind)}</select>
+          <input type="text" data-bindv="${q}.label" value="${esc(m.label)}" placeholder="${m.kind === "office" ? "Optional" : m.kind === "other" ? "e.g. Review session" : "e.g. LEC0101"}" aria-label="Name" autocomplete="off">
+          <select data-bindv="${q}.day" aria-label="Day">${opt(days, m.day)}</select>
+          <input type="time" data-bindv="${q}.start" value="${esc(m.start)}" aria-label="Starts">
+          <input type="time" data-bindv="${q}.end" value="${esc(m.end)}" aria-label="Ends">
+          <input type="text" data-bindv="${q}.where" value="${esc(m.where)}" placeholder="e.g. BA 1170" aria-label="Where" autocomplete="off">
+          <input type="text" data-bindv="${q}.who" value="${esc(m.who)}" placeholder="e.g. Dr. Lovelace" aria-label="Who" autocomplete="off">
+          ${ctlDel(`${p}.items`, j, "time")}
+        </div>`; }).join("");
+    return `
+      <p class="e-help" style="margin: 0 0 10px;">Each one happens every week of the term. On the course hub, This week shows them on their days.</p>
+      <div class="e-meets"><div class="e-meet e-mhead"><span>What</span><span>Name</span><span>Day</span><span>Starts</span><span>Ends</span><span>Where</span><span>Who</span><span></span></div>${rows}</div>
+      <div class="e-adds">${B("add", `${p}.items`, "+ Add a Time", "Add a weekly meeting time or office hour", 'data-kind="meeting"', "add")}</div>` + blocksBody(s, p);
+  }
+  const shown = items.filter(m => m.day).slice().sort((a, b) => Number(a.day) - Number(b.day) || String(a.start).localeCompare(String(b.start)));
+  return `
+      <div style="${S.wide}">
+        <div style="${S.tblwrap}">
+          <table class="cpb-meets" style="${S.ttable} min-width: 520px;">
+            <thead><tr><th style="${S.tth} padding-left: 20px;">What</th><th style="${S.tth}">When</th><th style="${S.tth}">Where</th><th style="${S.tth}">Who</th></tr></thead>
+            <tbody>${shown.map(m => `<tr><td style="${S.tdb}">${esc(meetName(m))}</td><td style="${S.ttd}">${esc(`${MEET_DAY[Number(m.day)] || ""} ${meetTime(m)}`.trim())}</td><td style="${S.ttd}">${esc(m.where)}</td><td style="${S.ttd}">${esc(m.who)}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="cpb-meet-data" data-json="${esc(JSON.stringify(items))}" style="display: none;"></div>` + blocksBody(s, p);
+}
+
 // ── Text blocks: a heading and a Markdown body ───────────────────────
 // Markdown supported: blank line = new paragraph, "- " bullets, "1. " numbered
 // lists, "### " small heading, ``` code blocks ```, plus the inline shorthand
@@ -1848,7 +1915,7 @@ function policiesBody(s, p) {
 }
 
 // ── Sections and the whole page ───────────────────────────────────────
-const BODY = { schedule: scheduleBody, table: tableBody, sessions: sessionsBody, text: blocksBody, scheme: schemeBody, policies: policiesBody };
+const BODY = { schedule: scheduleBody, table: tableBody, sessions: sessionsBody, text: blocksBody, scheme: schemeBody, policies: policiesBody, meetings: meetingsBody };
 
 function section(s, i, n) {
   const p = `sections.${i}`;
@@ -1892,6 +1959,15 @@ function subtitleHTML(m) {
     <p class="cpb-subtitle" style="${S.sub}">${parts.map(([k, v]) => `<span class="cpb-${k}">${esc(v.trim())}</span>`).join(" &middot; ")}</p>`;
 }
 
+// The course hub's tabs (Lectern serves the page in tabs): which ones people must sign in to see.
+// My accommodations is always for signed-in people only, so it isn't here.
+const HUB_TABS = [["overview", "Overview"], ["week", "This week"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["announcements", "Announcements"], ["policies", "Policies"]];
+const tabVis = (m, id) => (m.tabs && m.tabs[id] === "signed-in" ? "signed-in" : "public");
+function tabsPanel(m) {
+  return `<div class="e-tabs"><span class="e-tabs-h">Course hub tabs</span>${HUB_TABS.map(([id, t]) => { const sg = tabVis(m, id) === "signed-in"; return `<button type="button" class="c${sg ? " on" : ""}" data-act="tab-vis" data-v="${id}" aria-pressed="${sg}" title="${sg ? "Only people in the course, signed in, see this tab: click to make it public" : "Anyone with the link sees this tab: click to make it for signed-in people only"}">${esc(t)}<small>${sg ? "Signed in" : "Public"}</small></button>`; }).join("")}
+    <p class="e-help">This week only shows what's on the tabs a visitor can see.</p></div>`;
+}
+
 function renderPage(m, edit) {
   EDIT = edit;
   const header = edit
@@ -1900,19 +1976,20 @@ function renderPage(m, edit) {
     ${T("title", m.title, "h2", S.h2, "Course title", "", { plain: true })}
     <p style="${S.sub}">${T("code", m.code, "span", "", "Course code", "", { plain: true })}<span class="e-dot"> · </span>${T("term", m.term, "span", "", "Term", "", { plain: true })}<span class="e-dot"> · </span>${T("school", m.school, "span", "", "School", "", { plain: true })}</p>
     ${T("description", m.description, "p", S.intro, "Short course description", "")}
+    ${tabsPanel(m)}
   </div>`
     : `
   <div class="cpb-head" style="padding: 0 10px;">
     <h2 class="cpb-title" style="${S.h2}">${esc(m.title)}</h2>${subtitleHTML(m)}${m.description ? `
     <p class="cpb-desc" style="${S.intro}">${rich(m.description)}</p>` : ""}
   </div>`;
-  const secs = m.sections.map((s, i) => section(s, i, m.sections.length)).join("");
+  const secs = m.sections.map((s, i) => (!edit && s.type === "meetings" && !(s.items || []).some(x => x.day) ? "" : section(s, i, m.sections.length))).join("");
   // Adding a section: one of your own, with text and tables in it.
   const adds = edit ? `
   <div class="e-addsec">${B("addsec", "sections", "+ Add a Section", "Add a section at the end: a heading, then text and tables", 'data-kind="text"', "add")}</div>` : "";
   EDIT = false;
-  const meta = !edit && (m.removed || []).length ? `
-  <div class="cpb-meta" data-json="${esc(JSON.stringify({ removed: m.removed }))}" style="display: none;"></div>` : "";
+  const meta = !edit && ((m.removed || []).length || m.tabs) ? `
+  <div class="cpb-meta" data-json="${esc(JSON.stringify({ removed: m.removed || [], ...(m.tabs ? { tabs: m.tabs } : {}) }))}" style="display: none;"></div>` : "";
   return `<div class="cpb-page" style="${S.page}">${header}${secs}${adds}${meta}
 </div>
 `;
@@ -1950,6 +2027,10 @@ function parsePage(html) {
     const type = (sec.className.match(/cpb-type-(\w+)/) || [])[1] || "text";
     const s = { id: uid(), type, title: txt(sec.querySelector(".cpb-sname")), caption: txt(sec.querySelector(".cpb-scap")), open: sec.hasAttribute("open"), ...(sec.hasAttribute("data-hidden") ? { hidden: true } : {}) };
     if (type === "scheme") { page.sections.push(s); return; }
+    if (type === "meetings") {
+      try { s.items = JSON.parse(sec.querySelector(".cpb-meet-data").getAttribute("data-json")).filter(x => x && typeof x === "object").map(x => ({ ...newMeeting(), ...x })); } catch (_) { s.items = []; }
+      s.blocks = blocksOf(sec); page.sections.push(s); return;
+    }
     if (type === "policies") {
       let d = {}; try { d = JSON.parse(sec.querySelector(".cpb-pol-data").getAttribute("data-json")); } catch (_) { d = { blocks: blocksOf(sec) }; }
       Object.assign(s, { show: d.show || {}, blocks: (d.blocks || []).map(b => ({ heading: b.heading || "", body: b.body || "", ...(b.hidden ? { hidden: true } : {}) })) });
@@ -1994,7 +2075,7 @@ function parsePage(html) {
     }
     page.sections.push(s);
   });
-  try { const md = root.querySelector(".cpb-meta"); if (md) page.removed = JSON.parse(md.getAttribute("data-json")).removed || []; } catch (_) {}
+  try { const md = root.querySelector(".cpb-meta"); if (md) { const j = JSON.parse(md.getAttribute("data-json")); page.removed = j.removed || []; if (j.tabs) page.tabs = j.tabs; } } catch (_) {}
   const sd = root.querySelector(".cpb-scheme-data");
   try { page.scheme = sd ? JSON.parse(sd.getAttribute("data-json")) : null; } catch (_) { page.scheme = null; }
   page.evalFiles = {};
@@ -2176,7 +2257,7 @@ stage.addEventListener("input", e => {
 });
 function autosize(el) { el.style.height = "auto"; el.style.height = el.scrollHeight + 2 + "px"; }
 // A pasted link turns "Coming soon" into a button; redraw once focus leaves the box.
-stage.addEventListener("change", e => { if (e.target.dataset.bindv) { flushTyping(); if (ui.page) refreshPageBits(); else render(); } });
+stage.addEventListener("change", e => { if (e.target.dataset.bindv) { flushTyping(); if (e.target.closest(".e-meet")) return; if (ui.page) refreshPageBits(); else render(); } });   // a meeting time's boxes don't redraw: the next box keeps the focus
 // Leaving a deadline pill redraws it, so a test or due date turns dark straight away.
 stage.addEventListener("focusout", e => { if (e.target.closest && e.target.closest(".e-pill")) setTimeout(() => { if (!stage.contains(document.activeElement) || !document.activeElement.closest(".e-pill")) { flushTyping(); render(); } }); });
 stage.addEventListener("change", e => {
@@ -2253,6 +2334,7 @@ function makeItem(kind, list) {
     case "row": return getP(model, list.replace(/\.rows$/, "")).columns.map(() => "");
     case "group": return { name: "", extra: "", slots: [{ a: "", b: "" }] };
     case "slot": return { a: "", b: "" };
+    case "meeting": { const last = arr[arr.length - 1]; return last ? { ...newMeeting(last.kind), day: last.day, where: last.where, who: last.who } : newMeeting(); }
     case "block": return { heading: "", body: "" };
     case "tblock": return { heading: "", table: { columns: ["Column 1", "Column 2", "Column 3"], rows: [["", "", ""]], footer: null } };
     case "file": return { label: arr.length ? "" : /^evalFiles\./.test(list) ? "Handout" : "Download", url: "" };
@@ -2266,7 +2348,7 @@ function act(d) {
   const path = d.path, i = Number(d.i);
   switch (d.act) {
     case "move": { const j = i + Number(d.d); if (ui.page === `${path}.${i}`) ui.page = `${path}.${j}`; change(() => { const a = getP(model, path); [a[i], a[j]] = [a[j], a[i]]; }); break; }
-    case "del": if (path === "sections" && model.sections[i] && (["scheme", "policies"].includes(model.sections[i].type) || isContact(model.sections[i]))) { const ty = isContact(model.sections[i]) ? "contact" : model.sections[i].type; model.removed = [...new Set([...(model.removed || []), ty])]; }
+    case "del": if (path === "sections" && model.sections[i] && (["scheme", "policies", "meetings"].includes(model.sections[i].type) || isContact(model.sections[i]))) { const ty = isContact(model.sections[i]) ? "contact" : model.sections[i].type; model.removed = [...new Set([...(model.removed || []), ty])]; }
       if (ui.page === `${path}.${i}` || ui.page.startsWith(`${path}.${i}.`)) ui.page = parentPage(`${path}.${i}`); change(() => getP(model, path).splice(i, 1)); toast(`${NOUN[d.noun] || "Item"} deleted`, true); break;
     case "add": {
       // Weeks opened from older pages may not have an announcements list yet.
@@ -2309,6 +2391,7 @@ function act(d) {
       break;
     }
     case "edit-grades": if (editGrades) editGrades(d.v); break;
+    case "tab-vis": change(() => { const t = { ...(model.tabs || {}) }; t[d.v] = tabVis(model, d.v) === "signed-in" ? "public" : "signed-in"; if (Object.values(t).every(v => v === "public")) delete model.tabs; else model.tabs = t; }); break;
     case "addsec": {   // at the end, open in the editor
       const k = d.kind;
       const sec = k === "scheme" ? { id: uid(), type: "scheme", title: "Marking Scheme", caption: "Each evaluation, its weight and when it is", open: false }
@@ -2516,6 +2599,10 @@ $("#copy").addEventListener("click", async () => {
 // ═════════════════════════════════════════════════════════════════════
 const GH_KEY = "course-page-builder.github";
 const PAGE_FILE = "info.html";
+// The same page as data, beside it: Lectern's course hub is built from this file.
+const DATA_FILE = "course.json";
+const dataPath = path => path.replace(/[^/]*$/, DATA_FILE);
+const pageData = () => JSON.stringify({ format: "lectern-course/1", page: model }, null, 1) + "\n";
 
 function ghLoad() {
   let saved = null;
@@ -2875,6 +2962,13 @@ async function fetchPage(path) {
   let text, sha;
   if (src.mode === "local") ({ text, version: sha } = await readLocal(path));
   else { const f = await ghApi(`/repos/${gh.repo}/contents/${encPath(path)}?ref=${encodeURIComponent(gh.branch)}`); text = b64decode(f.content); sha = f.sha; }
+  try {
+    let data = null;
+    if (src.mode === "local") { try { data = (await readLocal(dataPath(path))).text; } catch (_) {} }
+    else { try { data = b64decode((await ghApi(`/repos/${gh.repo}/contents/${encPath(dataPath(path))}?ref=${encodeURIComponent(gh.branch)}`)).content); } catch (_) {} }
+    const d = data ? JSON.parse(data) : null;
+    if (d && d.page && Array.isArray(d.page.sections) && text.includes("cpb-page")) { fitAll(d.page); return { page: d.page, sha }; }
+  } catch (_) {}
   try { return { page: parsePage(text), sha }; }
   catch (_) { throw new GhError(0, `${path} wasn't made with this builder, so it can't be opened for editing.`); }
 }
@@ -2891,7 +2985,7 @@ async function pullPage(folder, has, m, copyFrom) {
     }
     else page = BLANK_PAGE();
     if (unsaved) undoStack.push(JSON.stringify(model));
-    model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has; ui.collapsed.clear();
+    model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has; ensureMeetings(model); ui.collapsed.clear();
     closeModal(); render();
     toast(has ? `Opened ${path}` : copyFrom ? `Started ${path} from a copy of ${copyFrom}. Update it, then Save.` : `Started a blank page for ${path}. Save to create it.`);
   } catch (e) { ok.disabled = false; $("#pl-err", m).textContent = e.message; }
@@ -3020,6 +3114,8 @@ async function doSave(m, path, message, overwrite) {
     step("Saving…");
     const page = await ghApi(`${R}/git/blobs`, { method: "POST", body: JSON.stringify({ content: exportDoc(), encoding: "utf-8" }) });
     entries.push({ path, mode: "100644", type: "blob", sha: page.sha });
+    const data = await ghApi(`${R}/git/blobs`, { method: "POST", body: JSON.stringify({ content: pageData(), encoding: "utf-8" }) });
+    entries.push({ path: dataPath(path), mode: "100644", type: "blob", sha: data.sha });
     const tree = await ghApi(`${R}/git/trees`, { method: "POST", body: JSON.stringify({ base_tree: baseTree, tree: entries }) });
     const commit = await ghApi(`${R}/git/commits`, { method: "POST", body: JSON.stringify({ message, tree: tree.sha, parents: [head] }) });
     try { await ghApi(`${R}/git/refs/heads/${encodeURIComponent(gh.branch)}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }); }
@@ -3054,6 +3150,7 @@ async function saveLocal(m, path, overwrite) {
     for (let k = 0; k < ups.length; k++) { ok.textContent = `Copying ${k + 1} of ${ups.length}…`; await writeLocal(ups[k][0], ups[k][1]); }
     ok.textContent = "Saving…";
     await writeLocal(path, exportDoc());
+    await writeLocal(dataPath(path), pageData());
     gh.path = path; gh.sha = (await readLocal(path)).version; fileName = ""; unsaved = false;
     pending.clear();
     render();
@@ -3352,7 +3449,7 @@ if (lectern) {
       }
       else page = BLANK_PAGE();
       if (unsaved) undoStack.push(JSON.stringify(model));
-      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has; ui.collapsed.clear(); ui.page = "";
+      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has; ensureMeetings(model); ui.collapsed.clear(); ui.page = "";
       leaveHome(); render();
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }

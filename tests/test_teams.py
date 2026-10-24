@@ -246,3 +246,22 @@ def test_inline_contents_are_uploads(client, course):
     add(client, "ta@x.ca", "ta", who=ta)
     r = ta.post("/api/store/chandra.pub/git/trees", json={"tree": [{"path": "csc258/f26/info.html", "content": "<h1>x</h1>"}]}, headers=H)
     assert r.status_code == 403
+
+
+def test_staff_see_but_change_nothing(client, course):
+    st, _ = member("staff@x.ca", "stf")
+    add(client, "staff@x.ca", "staff", who=st)
+    team = client.get("/api/teams/chandra/csc258/f26").get_json()
+    assert [p["role"] for p in team["people"] if p["email"] == "staff@x.ca"] == ["staff"]
+    assert read(st, "chandra.priv", "csc258/f26/grades.json") is not None
+    assert read(st, "chandra.pub", "csc258/f26/info.html") == "<h1>258</h1>"
+    assert read(st, "chandra.priv", "csc258/f26/accommodations.json") is None    # students' requests: instructors only
+    def mark(b):
+        b["marks"] = {"1001": {"mt": {"pts": 20}}}
+    r = save(st, "chandra.priv", {"csc258/f26/grades.json": book_with(st, "chandra.priv", "csc258/f26/grades.json", mark)})
+    assert r.status_code == 403   # not even marks
+    assert st.post("/api/teams/chandra/csc258/f26/add", json={"email": "x@y.ca", "role": "ta"}, headers=H).status_code == 403
+    # An instructor can make someone staff, or back.
+    uid = [p["id"] for p in team["people"] if p["email"] == "staff@x.ca"][0]
+    assert client.post("/api/teams/chandra/csc258/f26/role", json={"user": uid, "role": "ta"}, headers=H).status_code == 200
+    assert client.post("/api/teams/chandra/csc258/f26/role", json={"user": uid, "role": "staff"}, headers=H).status_code == 200

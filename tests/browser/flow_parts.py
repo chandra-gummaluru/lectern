@@ -43,8 +43,14 @@ def main():
         expect(me.locator("[data-an]").first).to_contain_text("Welcome to CSC258!")
         me.click("#an-new"); me.wait_for_selector("#an-title")
         me.fill("#an-title", "Midterm rooms posted")
-        me.fill("#an-date", "2026-10-27"); me.dispatch_event("#an-date", "change")
-        me.fill("#an-time", "09:30"); me.dispatch_event("#an-time", "change")
+        # When: the calendar, as in Evaluations (to October 2026, the 27th, then the time typed).
+        me.click("#an-when")
+        for _ in range(24):
+            if me.inner_text(".lxw-head b") == "October 2026": break
+            me.click(".lxw-head [data-w=%s]" % ("prev" if me.evaluate("new Date().getFullYear() * 12 + new Date().getMonth()") > 2026 * 12 + 9 else "next"))
+        me.click(".lxw-days [data-day='2026-10-27']")
+        me.fill(".lxw-t", "9:30 am"); me.press(".lxw-t", "Enter")
+        expect(me.locator("#an-when")).to_have_text("Tue, Oct 27, 2026 · 09:30")
         me.fill("#an-body", "Rooms by **last name**:\n\n- A–L: EX 100\n- M–Z: EX 200")
         me.wait_for_timeout(1500)
         expect(me.locator("#an-status")).to_have_text("Saved")

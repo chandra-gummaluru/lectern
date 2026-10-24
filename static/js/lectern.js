@@ -90,7 +90,8 @@ const offering = (c, t, o = curOwner()) => (S.offerings && S.offerings.get(okey(
 const roleIn = (c, t, o = curOwner()) => !o ? "owner" : ((S.shared.find(x => x.owner === o && x.offering === `${c}/${t}`) || {}).role || "");
 const canEdit = (c, t, o) => ["owner", "instructor"].includes(roleIn(c, t, o));
 const area = (which, o = curOwner()) => (o ? `${o}.${which}` : which);
-const ROLE_NAME = { owner: "Owner", instructor: "Instructor", ta: "TA" };
+const ROLE_NAME = { owner: "Owner", instructor: "Instructor", ta: "TA", staff: "Staff" };
+const A_ROLE = { instructor: "an instructor", ta: "a TA", staff: "staff" };
 const ownerName = o => ((S.shared.find(x => x.owner === o) || {}).ownerName || o);
 
 // ── Messages and windows ─────────────────────────────────────────────
@@ -237,7 +238,7 @@ function parseHash() {
   if (p.length === 1 && p[0] === "account") return { page: "account" };
   return { page: "home" };
 }
-const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Grade Settings" } };
+const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Gradebook" } };
 const partOf = view => view === "evals" ? "evals" : view === "settings" ? "settings" : "book";
 const hashFor = r => {
   if (r.page === "home") return "#/";
@@ -388,6 +389,7 @@ async function saveAll() {
       const t = Lectern.tools[u.name], ta = roleIn(p[0], p[1], t.owner || "") === "ta";
       // A TA saves marks only: not exams or the course page, and only the marks in a gradebook (the server
       // keeps everything else as it was, so say so first if they changed anything else).
+      if (roleIn(p[0], p[1], t.owner || "") === "staff") { failed.push({ u, error: "As staff you can look, but not change anything: ask an instructor." }); continue; }
       if (ta && u.name !== "grades") { failed.push({ u, error: "As a TA you can't save changes here: ask an instructor." }); continue; }
       if (ta && t.taBase && t.taBase !== noMarks(api.book())
           && !await confirmBox("Only marks are saved", "As a TA, only your marks are saved. Your other changes here (evaluations, students or settings) will be undone. Save the marks?", "Save the marks", "Cancel")) {
@@ -671,12 +673,13 @@ function offeringPage(c, t) {
     <div class="lt-off-head">
       <div class="lt-off-id"><h1>${esc(c.toUpperCase())}</h1>
         <p class="lt-term-line">${esc(termName(t))}</p>
-        ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${role === "ta" ? "a TA" : "an instructor"}</p>` : ""}</div>
+        ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "an instructor"}</p>` : ""}</div>
       <div class="lt-off-acts"><button type="button" class="lt-btn primary" id="lt-view-page" title="The course page: a preview, and which tabs are only for people signed in">${ICON.page}View Course Page</button>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
     <div class="lt-about" id="lt-about"><p class="lt-about-title">&nbsp;</p></div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
+    ${role === "staff" ? `<p class="lt-note">As staff you can look at everything here (the gradebook, evaluations, exams, lectures and students), but not change anything.</p>` : ""}
     ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook, and look at the evaluations and exams. Changes to anything else (weights, students, settings, exams, the course page) are for the instructors: Lectern won't save them.</p>` : ""}
     <div class="lt-three lt-four">
       <section class="lt-part">
@@ -771,6 +774,8 @@ function gradebookOf(c, t, o = curOwner()) {
 function studentsPart(c, t) {
   const box = $("#lt-students .lt-team-body"), o = curOwner(), owner = o || S.user.handle;
   return studentsCard({ box, esc, toast, modal, confirmBox, Store, area: a => area(a, o), api: Auth.api, owner, lead: canEdit(c, t), ICON, termName,
+    // A student's own page, in the gradebook (their marks, accommodations, notes; dropping or deleting them).
+    openStudent: num => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: num, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } }),
     here: () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box),
     gradebook: () => gradebookOf(c, t, o),
     // The file changed: an open gradebook reads it again when it next shows; a new one is on Home.
@@ -785,18 +790,18 @@ async function teamPart(c, t) {
   try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
   if (!here()) return;
   const lead = d.you === "owner" || d.you === "instructor";
-  // Instructor or TA: a two-way switch, like Lectern's other choices.
-  const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["instructor", "Instructor"], ["ta", "TA"]].map(([v, n]) =>
+  // Instructor, TA or staff: a switch, like Lectern's other choices.
+  const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["instructor", "Instructor"], ["ta", "TA"], ["staff", "Staff"]].map(([v, n]) =>
     `<button type="button" role="radio" ${attrs} data-v="${v}" aria-checked="${cur === v}" aria-pressed="${cur === v}">${n}</button>`).join("")}</span>`;
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
-  box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams." : "The people who work on this offering."}</p>
+  box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams. Staff see everything and change nothing." : "The people who work on this offering."}</p>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
         <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag">Owner</span>`
           : lead && p.id !== d.me ? `${roleSel(p)}<button type="button" class="lt-link lt-del" data-remove="${p.id}">Remove</button>`
-          : `<span class="lt-tag${p.role === "ta" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>
+          : `<span class="lt-tag${p.role === "ta" || p.role === "staff" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>
       </div>`).join("")}
-      ${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited as ${i.role === "ta" ? "a TA" : "an instructor"}: waiting for them to accept</span></div>
+      ${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited as ${A_ROLE[i.role] || "an instructor"}: waiting for them to accept</span></div>
         <span class="lt-orow-r"><button type="button" class="lt-link" data-uninvite="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>
     ${lead ? `<form class="lt-team-add" id="lt-team-add" novalidate>
       <input type="email" id="lt-team-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
@@ -808,7 +813,7 @@ async function teamPart(c, t) {
     b.onclick = async () => {
       if (b.getAttribute("aria-pressed") === "true") return;
       b.parentElement.querySelectorAll("button").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); });
-      if (await call("role", { user: Number(b.dataset.role), role: b.dataset.v })) toast(`Now ${b.dataset.v === "ta" ? "a TA" : "an instructor"}.`);
+      if (await call("role", { user: Number(b.dataset.role), role: b.dataset.v })) toast(`Now ${A_ROLE[b.dataset.v]}.`);
     };
   });
   let newRole = "ta";
@@ -1097,7 +1102,7 @@ async function teamFor(c, t) {
   let info = {}; try { info = (JSON.parse(raw || "{}") || {}).people || {}; } catch (_) {}
   return d.people.filter(p => (info[p.id] || {}).show !== false).map(p => {
     const me = info[p.id] || {};
-    return { name: p.name || p.email, role: p.role === "ta" ? "ta" : "instructor", email: me.email || p.email, office: me.office || "",
+    return { name: p.name || p.email, role: p.role === "ta" || p.role === "staff" ? p.role : "instructor", email: me.email || p.email, office: me.office || "",
       times: (me.times || []).map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "" })) };
   });
 }
@@ -1286,6 +1291,7 @@ async function openTool(r, my) {
   if (tool === "grades" && t.api.section) t.api.section(r.part || "book");
   t.sync();
   if (pendingWhere) { applyWhere(t, pendingWhere); pendingWhere = null; }
+  else if (opts && opts.where) applyWhere(t, opts.where);   // e.g. a student's page, from the offering's Students card
   else if (t.api.where && !(history.state || {}).lt) history.replaceState({ ...(history.state || {}), lt: t.api.where() }, "");
   toolPath(t);
   window.scrollTo(0, scrolls[routeKey(S.route)] || 0);

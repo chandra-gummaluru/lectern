@@ -591,7 +591,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-acts { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .lx-grid { display: grid; grid-template-columns: auto 1fr 1.8fr; gap: 10px; align-items: end; }
 .lx-grid.two { grid-template-columns: 1fr 1fr; }
-.lx-grid.ann { grid-template-columns: 2fr 1fr 1fr; }
+.lx-grid.ann { grid-template-columns: 1.5fr 1fr; }
 .lx-grid.week { grid-template-columns: 1fr 1fr 1fr; }
 .lx-f { display: grid; gap: 4px; font: 600 12.5px var(--font-ui); color: var(--home-ink-2); min-width: 0; }
 .lx-f input, .lx-f select, .lx-f textarea, .lx-frow input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--lx-line); background: var(--home-card); color: var(--home-ink); font: 14.5px var(--font-ui); }
@@ -616,7 +616,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-preview:hover { box-shadow: none; }
 .lx-preview .an-body { margin-top: 6px; }
 .lx-grid.one { grid-template-columns: 1fr; margin-top: 12px; }
-.lx-grid.when { grid-template-columns: 1.6fr 1fr 1fr; margin-top: 14px; }
+.lx-grid.when { grid-template-columns: 1fr 1fr; margin-top: 14px; }
 @media (max-width: 760px) {
   .lx-row { flex-direction: column; align-items: stretch; } .lx-side { justify-content: flex-start; }
   .lx-grid, .lx-grid.two, .lx-grid.when, .lx-grid.ann, .lx-grid.week, .lx-grid.one, .lx-frow { grid-template-columns: 1fr; }
@@ -653,3 +653,34 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .rt.quiet .rt-link { position: absolute; left: -1px; right: -1px; top: calc(100% + 6px); z-index: 5; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); }
 .rt.quiet .rt-ed { min-height: 0; padding: 4px 10px; font-size: 15px; color: var(--home-ink-2); }
 .rt.quiet .rt-ed.empty::before { font-style: italic; }
+
+/* ── A date (and time) field: one button, and a calendar under it (when.js), as in Evaluations ── */
+.lxw { min-width: 0; }
+.lxw-btn { display: flex; align-items: center; gap: 9px; width: 100%; height: 36px; padding: 0 12px; border: 1px solid var(--lx-line, #b4b6ba); border-radius: 8px; background: var(--home-card); color: var(--home-ink); font: 500 14px var(--font-ui); cursor: pointer; text-align: left; box-sizing: border-box; }
+.lxw-btn:hover:not(:disabled) { border-color: var(--home-ink-3); }
+.lxw-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lxw-btn:disabled { background: transparent; color: var(--home-ink-2); cursor: default; }
+.lxw-btn svg { width: 17px; height: 17px; color: var(--home-ink-3); flex: none; }
+.lxw-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lxw-btn.empty { color: var(--home-ink-3); }
+.lxw-pop { position: absolute; z-index: 200; width: 300px; padding: 12px; border-radius: 12px; background: var(--home-card); border: 1px solid var(--home-line-2); box-shadow: 0 14px 40px rgb(0 0 0 / .16), 0 2px 6px rgb(0 0 0 / .08); font: 14px var(--font-ui); color: var(--home-ink); display: grid; gap: 10px; box-sizing: border-box; }
+.lxw-head { display: flex; align-items: center; justify-content: space-between; }
+.lxw-head b { font: 600 14.5px var(--font-ui); }
+.lxw-pop button { font: inherit; border: 0; background: none; color: var(--home-ink); cursor: pointer; border-radius: 7px; }
+.lxw-head button { width: 30px; height: 30px; display: grid; place-items: center; color: var(--home-ink-2); }
+.lxw-head button:hover, .lxw-days button:hover { background: var(--home-strip); }
+.lxw-head svg { width: 16px; height: 16px; }
+.lxw-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.lxw-days i { font: 600 11px var(--font-ui); font-style: normal; color: var(--home-ink-3); padding: 2px 0 4px; }
+.lxw-days button { height: 34px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.lxw-days button.out { color: var(--home-ink-3); opacity: .55; }
+.lxw-days button.today { box-shadow: inset 0 0 0 1px var(--home-line-2); font-weight: 600; }
+.lxw-days button.on { background: var(--home-ink); color: var(--home-card); font-weight: 600; }
+.lxw-time { display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--home-line); }
+.lxw-time label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font: 600 12.5px var(--font-ui); color: var(--home-ink-2); }
+.lxw-time .grow { flex: 1; }
+.lxw-time input { flex: 1; width: 0; min-width: 0; height: 32px; padding: 0 10px; border: 1px solid var(--lx-line, #b4b6ba); border-radius: 7px; background: var(--home-card); color: var(--home-ink); font: 14px var(--font-ui); }
+.lxw-time input:focus { outline: none; border-color: var(--accent); }
+.lxw-time input.bad { border-color: #c4554d; }
+.lxw-pop .lxw-clear { flex: none; height: 32px; padding: 0 12px; border: 1px solid var(--lx-line, #b4b6ba); border-radius: 7px; background: var(--home-card); font: 600 12.5px var(--font-ui); }
+.lxw-pop .lxw-clear:hover { border-color: var(--accent); }

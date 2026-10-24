@@ -14,6 +14,7 @@
    announcements.json with the first change. Changes save by themselves. Instructors write them; TAs see them. */
 
 import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
+import { whenField } from "./when.js";
 
 const COLOR = "#c99a06";
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -66,7 +67,7 @@ export function announcementsPage(ctx, r) {
   }
   function status(text, bad) { const el = $("#an-status"); if (el) { el.textContent = text; el.classList.toggle("bad", !!bad); } }
   const status$ = () => (edit ? `<span class="lx-status" id="an-status"></span>` : "");
-  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">As a TA you can read the announcements; the instructors write them.</p>`);
+  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can read the announcements; the instructors write them.</p>`);
   const whenOf = x => whenText(x.date, true) || "No date yet";
 
   function draw() {
@@ -115,23 +116,20 @@ export function announcementsPage(ctx, r) {
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid ann">
           <label class="lx-f">Title<input type="text" id="an-title" value="${esc(x.title)}" placeholder="e.g. Midterm rooms posted"${dis}></label>
-          <label class="lx-f">Date<input type="date" id="an-date" value="${esc(when.date)}"${dis}></label>
-          <label class="lx-f">Time<input type="time" id="an-time" value="${esc(when.time)}"${dis}></label>
+          <div class="lx-f">When<div id="an-when-f"></div></div>
         </div>
         <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
         <h3 class="lx-sec">Message</h3>
         <label class="lx-f"><textarea id="an-body" class="tall" rows="10" placeholder="Write it here. A blank line starts a new paragraph; - for bullets; **bold**, *italic*, [a link](https://…)." aria-label="Message"${dis}>${esc(x.body)}</textarea></label>
-        <h3 class="lx-sec">As Students See It</h3>
-        <div class="lx-row lx-preview" style="--c:${COLOR}"><div class="lx-main"><p class="lx-when" id="an-pd">${esc(whenOf(x))}</p><div class="lx-top"><h3 id="an-pt">${esc(x.title || "Untitled")}</h3></div><div class="an-body" id="an-pb">${markdown(x.body)}</div></div></div>
       </div>
     </div></div>`);
+    whenField($("#an-when-f"), { date: when.date, time: when.time, id: "an-when", label: "When", empty: "Choose a date", timeLabel: "At", disabled: !edit,
+      onChange: ({ date, time }) => { x.date = date ? writeStamp(date, time) : ""; changed(); } });
     if (!edit) return;
     let shown = x.title || "New announcement";
-    const head = () => { $("#an-pt").textContent = x.title || "Untitled"; $("#an-pd").textContent = whenOf(x); const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };
+    const head = () => { const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };
     $("#an-title").oninput = $("#an-title").onchange = e => { x.title = e.target.value.trim(); head(); changed(); };
-    const stamp = () => { const d = $("#an-date").value, tm = $("#an-time").value; x.date = d ? writeStamp(d, tm) : ""; head(); changed(); };
-    $("#an-date").onchange = stamp; $("#an-time").onchange = stamp;
-    $("#an-body").oninput = e => { x.body = e.target.value; $("#an-pb").innerHTML = markdown(x.body); changed(); };
+    $("#an-body").oninput = e => { x.body = e.target.value; changed(); };
     $("#an-del").onclick = async () => {
       if (!await confirmBox("Delete this announcement?", "It goes from the course page.", "Delete")) return;
       st.data.items = st.data.items.filter(y => y !== x); changed(); go({ page: "announcements", c, t });

@@ -48,7 +48,7 @@ TABS = [
 ALWAYS_SIGNED_IN = {"accommodations"}
 DEFAULT_VIS = {t: "public" for t, _ in TABS}
 DEFAULT_VIS.update({t: "signed-in" for t in ALWAYS_SIGNED_IN})
-STAFF = {"owner", "instructor", "ta"}
+STAFF = {"owner", "instructor", "ta", "staff"}
 
 
 # ── Reading an offering's page data ───────────────────────────────────
@@ -149,7 +149,7 @@ def team_of(owner_id, course, term):
             day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
             times.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "section": _s(x.get("section"), 60), "day": day,
                           "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
-        out.append({"name": _s(u["name"], 200), "role": "ta" if role == "ta" else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
+        out.append({"name": _s(u["name"], 200), "role": role if role in ("ta", "staff") else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
                     "office": _s(me.get("office"), 200), "times": times})
     return out
 

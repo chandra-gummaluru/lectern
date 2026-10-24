@@ -2609,6 +2609,7 @@ function gridHTML() {
   }).join("");
   return `<div class="page-in xwide"><div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>
       <button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>
+      ${HOSTED ? `<button type="button" class="btn" data-act="view" data-v="settings" title="Grade ranges, rounding and course rules">${PIC.gear || ""}Settings</button>` : ""}
       <span class="legend"><i class="lg missed"></i>zero <i class="lg rw"></i>weight moved <i class="lg mu"></i>made up <i class="lg dr"></i>not counted <i class="lg ov"></i>accommodation</span></div>
     <div class="stools"><input class="gfind" id="gfind" type="search" placeholder="Find a student" value="${esc(ui.find)}" aria-label="Find a student">
       ${sections.length > 1 ? `<div class="sec-filter">${[["", `All ${esc(filterField().label.toLowerCase())}s`], ...sections.map(x => [x, x])].map(([v2, l]) => `<button type="button" data-act="sec" data-v="${esc(v2)}" aria-pressed="${ui.section === v2}">${esc(l)}</button>`).join("")}</div>` : ""}
@@ -2664,7 +2665,8 @@ function focusHTML() {
     return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="c-cell ${cellClass(st.num, e, r)}${unused ? " mk-unused" : ""}"><input class="mk" data-s="${esc(st.num)}" data-e="${esc(e.id)}" value="${esc(cellView(m, r))}" inputmode="decimal" spellcheck="false" autocomplete="off" aria-label="${esc(st.name || st.num)}, ${esc(shortName(e))}"${unused ? ' readonly tabindex="-1"' : ""}>${statusOf(m) ? statusIco(statusOf(m)) : ""}${unused ? "" : `<button type="button" class="mk-st" data-act="cell-st" data-s="${esc(st.num)}" data-e="${esc(e.id)}" tabindex="-1" title="Not submitted, excused, deferred…" aria-label="Status">${svg("caret")}</button>`}</td></tr>`;
   }).join("");
   const acts = `${HOSTED ? "" : `<button type="button" class="btn" data-act="imp-roster">${svg("upload")}Import a Class List</button><button type="button" class="btn" data-act="st-add">${svg("plus")}Add a Student</button>`}
-      ${evs.length && model.students.length ? `<button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>` : ""}`;
+      ${evs.length && model.students.length ? `<button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>` : ""}
+      ${HOSTED ? `<button type="button" class="btn" data-act="view" data-v="settings" title="Grade ranges, rounding and course rules">${PIC.gear || ""}Settings</button>` : ""}`;
   const headBar = `<div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>${acts}</div>`;
   if (!evs.length || !model.students.length) return `<div class="page-in wide">${headBar}
     ${emailNoticeHTML()}
@@ -3444,7 +3446,7 @@ function settingsHTML() {
   const targets = [...counted().filter(e => !groupOf(e)).map(e => [e.id, e.name]), ...(model.groups || []).map(g => [`g:${g.id}`, `${g.name} (group)`]), ...counted().filter(e => groupOf(e)).map(e => [e.id, e.name])];
   const F = model.fields, sh = P.show || {};
   const showBox = (k, on, what) => `<label class="set-show"><input type="checkbox" data-pshow="${k}"${on ? " checked" : ""}> Show ${what} on the course page (its About tab)</label>`;
-  return `<div class="page-in st-page"><div class="pg-head"><h1>${HOSTED ? "Grade Settings" : "Settings"}</h1></div>
+  return `<div class="page-in st-page">${HOSTED ? crumbsHTML([{ label: "Gradebook", to: "grades" }, { label: "Settings" }]) : ""}<div class="pg-head"><h1>${HOSTED ? "Grade Settings" : "Settings"}</h1></div>
     ${HOSTED ? "" : `<section class="set-card"><h2>Students</h2><p class="set-help">Each student is identified by one field. It must be unique, and it's how students are matched in class lists and mark files. Every student needs an email, at the domain you set (Lectern emails the class with them). A field called Section lets you filter students by section.</p>
       <div class="fld-row"><span class="fld-k">Identifier</span><input type="text" data-fl="idLabel" value="${esc(F.idLabel)}" placeholder="Student Identifier" aria-label="The identifier's name"></div>
       <div class="fld-row"><span class="fld-k">Name</span><span class="fld-fixed">First Name</span><span class="fld-fixed">Last Name</span></div>
@@ -3631,8 +3633,8 @@ function drawStudentEditor() {
   const info = [`${esc(idLabel())} ${esc(s.num)}`, ...customFields().filter(f => f.id !== "email" && fieldVal(s, f.id)).map(f => `${esc(f.label)} ${esc(fieldVal(s, f.id))}`)].join(" · ");
   const ep = emailProblem(s);
   const nOwn = counted().filter(x => !groupOf(x) && overrideOf(s.num, x.id)).length + (model.groups || []).filter(g => groupOverride(s.num, g)).length;
-  $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}</small></div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}${HOSTED ? "" : `<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span>`}</div>
-    ${HOSTED ? `<p class="ed-help st-mail-ro">${fieldVal(s, "email") ? esc(fieldVal(s, "email")) : "No email"}${ep && fieldVal(s, "email") ? ` · <span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""} · Their details are in the course offering's Students card.</p>`
+  $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}</small></div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}${`<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span>`}</div>
+    ${HOSTED ? `<p class="ed-help st-mail-ro">${fieldVal(s, "email") ? esc(fieldVal(s, "email")) : "No email"}${ep && fieldVal(s, "email") ? ` · <span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""} · Their details can't be changed.</p>`
       : `<div class="st-mail"><label><span>Email</span><input type="email" data-ed="email" value="${esc(fieldVal(s, "email"))}" placeholder="${emailDomain() ? `name@${esc(emailDomain())}` : "name@example.com"}" spellcheck="false" autocomplete="off"></label>${ep ? `<span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</div>`}
     <h3 class="ed-sec">Course Grade</h3>
     ${finalGradeHTML(s)}
@@ -4229,11 +4231,10 @@ if (lectern) {
     state: () => ({ path: gh.path, unsaved, view: ui.view }),
     // Which part of it Lectern shows: "evals" (Evaluations), "book" (the Gradebook: Grades and Students) or "settings".
     section(part) {
-      const T = { evals: ["evals"], book: ["grades", "settings"], settings: ["grades", "settings"] }[part];
+      const T = { evals: ["evals"], book: ["grades"], settings: ["settings"] }[part];
       if (!T) return;
       const same = tabs && tabs.join() === T.join();
       tabs = T;
-      if (part === "settings" && ui.view !== "settings") { ui.view = "settings"; ui.evalEd = ui.groupEd = ui.student = ui.stAcc = ""; ui.cell = null; return render(); }
       if (!T.includes(ui.view) && !(part === "book" && ui.view === "students" && ui.student)) { ui.view = T[0]; ui.evalEd = ui.groupEd = ui.student = ui.stAcc = ""; ui.cell = null; }
       else if (same) return;
       render();

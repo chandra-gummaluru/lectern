@@ -9,7 +9,9 @@
 
    Each enrolled student (not dropped) with an email can sign in to the course page with it and a code it
    emails them (server/students.py, which also says who has signed in and been sent the link).
-   Instructors change the list; TAs see it. Each change saves straight away. */
+   Instructors add students here (one at a time, or from a class list), and can send the course page's link
+   to anyone who hasn't joined yet. Nothing else about a student changes here: clicking one opens their page in
+   the gradebook (where they're dropped or deleted). The team sees the list. Each change saves straight away. */
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const EMAIL = /^[^\s@,;<>]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
@@ -39,10 +41,6 @@ function emailProblem(email, domain) {
   if (!EMAIL.test(v)) return "Email isn't an address";
   return domain && !v.endsWith("@" + domain) ? `Email isn't @${domain}` : "";
 }
-// Anything the gradebook keeps for them besides their details: then they're dropped (kept), not deleted.
-const keptFor = (b, num) => !!Object.keys((b.marks || {})[num] || {}).length || !!Object.keys((b.overrides || {})[num] || {}).length || !!(b.finals || {})[num]
-  || !!((b.students || []).find(s => s.num === num) || {}).notes;
-
 // ── CSV (as the Gradebook reads class lists) ─────────────────────────
 function parseCSV(text) {
   const rows = []; let row = [], cell = "", q = false;
@@ -71,7 +69,7 @@ const NUM_COL = [/student\s*(id\s*)?(number|#|no\.?)/, "sis user id", "id number
 const ui = {};   // per offering: what's typed in Find a student
 
 export async function studentsCard(ctx, c, t) {
-  const { box, esc, toast, modal, confirmBox, Store, area, api, owner, lead, ICON, here, gradebook, changedBook, termName } = ctx;
+  const { box, esc, toast, modal, confirmBox, Store, area, api, owner, lead, ICON, here, gradebook, changedBook, termName, openStudent } = ctx;
   const path = `${c}/${t}/grades.json`, repo = area(Store.PRIV), key = `${owner}/${c}/${t}`;
   const base = `/api/students/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
   const st = (ui[key] = ui[key] || { find: "" });
@@ -115,7 +113,7 @@ export async function studentsCard(ctx, c, t) {
   function draw() {
     const F = fieldsOf(book), all = list().slice().sort((a, b) => (!!a.dropped - !!b.dropped) || String(a.name || a.last || "").localeCompare(String(b.name || b.last || "")) || a.num.localeCompare(b.num));
     const locked = all.length > 0, held = lead && busy(), dis = held ? " disabled" : "";
-    const enrolled = all.filter(s => !s.dropped), canMail = info.email && enrolled.some(s => !emailProblem(emailOf(s), F.emailDomain));
+    const enrolled = all.filter(s => !s.dropped), waiting = enrolled.filter(s => !emailProblem(emailOf(s), F.emailDomain) && !joined(s)), canMail = info.email && waiting.length;
     const custom = F.custom.filter(f => f.id !== "email");
     const fields = lead && !locked ? `<div class="lt-st-fields">
         <p class="lt-st-h">What each student has <span>Set it before adding students: once there are students, it's fixed.</span></p>
@@ -133,19 +131,20 @@ export async function studentsCard(ctx, c, t) {
       ${lead && !info.email ? `<p class="lt-note lt-st-note">Email isn't set up on this server, so Lectern can't email students their link or a sign-in code.</p>` : ""}
       ${fields}
       ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="st-add"${dis}>${ICON.plus}Add a Student</button><button type="button" class="lt-btn" id="st-import"${dis}>${ICON.upload || ""}Import a Class List</button></div>` : ""}
-      <div class="lt-st-bar"><p class="lt-part-text lt-st-count">${all.length ? `${enrolled.length} student${enrolled.length === 1 ? "" : "s"}${all.length > enrolled.length ? ` · ${all.length - enrolled.length} dropped` : ""}` : "No students yet."}${lead && canMail ? ` · <button type="button" class="lt-link" id="st-all"${dis}>Email everyone the link</button>` : ""}</p>
+      <div class="lt-st-bar"><p class="lt-part-text lt-st-count">${all.length ? `${enrolled.length} student${enrolled.length === 1 ? "" : "s"}${all.length > enrolled.length ? ` · ${all.length - enrolled.length} dropped` : ""}` : "No students yet."}${lead && canMail ? ` · <button type="button" class="lt-link" id="st-all">Send the link to the ${waiting.length} who haven't joined</button>` : ""}</p>
         ${all.length > 8 ? `<input type="search" class="lt-st-find" id="st-find" placeholder="Find a student" value="${esc(st.find)}" aria-label="Find a student">` : ""}</div>
       ${all.length ? `<div class="lt-olist lt-st-list">${all.map(s => {
         const mail = emailOf(s), ok = !s.dropped && !emailProblem(mail, F.emailDomain), q = [s.name, s.first, s.last, s.num, mail, ...custom.map(f => fieldOf(s, f.id))].join(" ").toLowerCase();
         const who = `<b>${esc(s.name || [s.last, s.first].filter(Boolean).join(", ") || s.num)}</b><span>${esc(s.num)}${mail ? ` · ${esc(mail)}` : ""} · <em>${esc(stateOf(s, F))}</em></span>`;
+        const sent = ((info.state || {})[mail.toLowerCase()] || {}).invited;
         return `<div class="lt-orow lt-user${s.dropped ? " lt-st-dropped" : ""}" data-q="${esc(q)}">
-          ${lead ? `<button type="button" class="lt-user-who lt-user-open" data-st-edit="${esc(s.num)}" title="Their details">${who}</button>` : `<div class="lt-user-who">${who}</div>`}
-          ${lead ? `<span class="lt-orow-r">${s.dropped ? `<button type="button" class="lt-link" data-st-back="${esc(s.num)}"${dis}>Re-enrol</button>`
-            : `${ok && info.email ? `<button type="button" class="lt-link" data-st-invite="${esc(mail)}">Email the link</button>` : ""}<button type="button" class="lt-link lt-del" data-st-remove="${esc(s.num)}"${dis}>Remove</button>`}</span>` : ""}</div>`;
+          <button type="button" class="lt-user-who lt-user-open" data-st-open="${esc(s.num)}" title="Their page in the gradebook">${who}</button>
+          ${lead && ok && info.email && !joined(s) ? `<span class="lt-orow-r"><button type="button" class="lt-link" data-st-invite="${esc(mail)}">${sent ? "Resend the link" : "Send the link"}</button></span>` : ""}</div>`;
       }).join("")}</div>` : ""}`;
     wire(F);
     filter();
   }
+  const joined = s => !!((info.state || {})[emailOf(s).toLowerCase()] || {}).last_in;
   function filter() {
     const q = st.find.trim().toLowerCase();
     box.querySelectorAll(".lt-st-list [data-q]").forEach(r => { r.hidden = !!q && !r.dataset.q.includes(q); });
@@ -155,6 +154,7 @@ export async function studentsCard(ctx, c, t) {
     const $ = s => box.querySelector(s);
     $("#st-copy").onclick = async () => { try { await navigator.clipboard.writeText(info.link); toast("Copied the course page's link."); } catch (_) { toast(info.link); } };
     const find = $("#st-find"); if (find) find.oninput = () => { st.find = find.value; filter(); };
+    box.querySelectorAll("[data-st-open]").forEach(x => { x.onclick = () => openStudent(x.dataset.stOpen); });
     if (!lead) return;
     const idIn = $("#sf-id"), domIn = $("#sf-dom");
     if (idIn) idIn.onchange = () => run(b => { b.fields = fieldsOf(b); b.fields.idLabel = idIn.value.trim() || "Student Identifier"; }, "Student fields");
@@ -170,31 +170,16 @@ export async function studentsCard(ctx, c, t) {
     box.querySelectorAll("[data-sf-del]").forEach(x => { x.onclick = () => run(b => { b.fields = fieldsOf(b); b.fields.custom = b.fields.custom.filter(f => f.id !== x.dataset.sfDel); }, "Student fields"); });
     $("#st-add").onclick = () => studentDialog(null);
     $("#st-import").onclick = importDialog;
-    box.querySelectorAll("[data-st-edit]").forEach(x => { x.onclick = () => studentDialog(list().find(s => s.num === x.dataset.stEdit)); });
-    box.querySelectorAll("[data-st-remove]").forEach(x => { x.onclick = () => remove(x.dataset.stRemove); });
-    box.querySelectorAll("[data-st-back]").forEach(x => { x.onclick = () => run(b => { const s = b.students.find(y => y.num === x.dataset.stBack); if (!s) return false; delete s.dropped; }, "Re-enrol a student"); });
-    box.querySelectorAll("[data-st-invite]").forEach(x => { x.onclick = async () => { try { await api(`${base}/invite`, { email: x.dataset.stInvite }); toast(`Emailed ${x.dataset.stInvite} the link.`); refreshInfo(); } catch (e) { toast(e.message); } }; });
+    box.querySelectorAll("[data-st-invite]").forEach(x => { x.onclick = async e => { e.stopPropagation(); try { await api(`${base}/invite`, { email: x.dataset.stInvite }); toast(`Emailed ${x.dataset.stInvite} the link.`); refreshInfo(); } catch (er) { toast(er.message); } }; });
     const all = $("#st-all");
     if (all) all.onclick = async () => {
-      const n = list().filter(s => !s.dropped && !emailProblem(emailOf(s), F.emailDomain)).length;
-      if (!await confirmBox("Email everyone the link?", `Each of the ${n} student${n === 1 ? "" : "s"} who can sign in gets an email with the course page's link.`, "Email Them")) return;
-      try { const r = await api(`${base}/invite`, {}); toast(`Emailed ${r.invited} student${r.invited === 1 ? "" : "s"} the link.`); refreshInfo(); } catch (e) { toast(e.message); }
+      const to = list().filter(s => !s.dropped && !emailProblem(emailOf(s), F.emailDomain) && !joined(s)).map(emailOf), n = to.length;
+      if (!await confirmBox("Send them the link?", `Each of the ${n} student${n === 1 ? "" : "s"} who ${n === 1 ? "hasn't" : "haven't"} signed in to the course page yet gets an email with its link.`, "Send It")) return;
+      try { const r = await api(`${base}/invite`, { emails: to }); toast(`Emailed ${r.invited} student${r.invited === 1 ? "" : "s"} the link.`); refreshInfo(); } catch (e) { toast(e.message); }
     };
   }
 
-  async function remove(num) {
-    const s = list().find(x => x.num === num); if (!s) return;
-    const keep = keptFor(book, num), who = esc(s.name || s.num);
-    if (!await confirmBox(keep ? "Drop them?" : "Take them off the class list?", keep
-      ? `${who} has marks or notes in the gradebook, so they stay there as dropped: left out of the class's figures, and they can't sign in to the course page. You can re-enrol them.`
-      : `${who} comes off the class list, and can't sign in to the course page any more.`, keep ? "Drop" : "Remove")) return;
-    run(b => {
-      const i = b.students.findIndex(x => x.num === num); if (i < 0) return false;
-      if (keptFor(b, num)) b.students[i].dropped = true; else b.students.splice(i, 1);
-    }, keep ? "Drop a student" : "Remove a student");
-  }
-
-  // One student: adding them, or their details (everything but the identifier, which their marks are kept by).
+  // Adding one student. (Once added, nothing about them changes here.)
   function studentDialog(s) {
     const F = fieldsOf(book), custom = F.custom.filter(f => f.id !== "email");
     const v = (id, k) => esc(s ? (k ? fieldOf(s, k) : s[id] || "") : "");

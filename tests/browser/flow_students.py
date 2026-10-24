@@ -2,8 +2,9 @@
 
 1. Before any students: what each student has (identifier, email domain, a UTORid field), saved to grades.json.
 2. Add a student; the fields are fixed now. Import a class list (one new student has no @domain email).
-3. Remove a student; the Gradebook shows the others for marks, and has no way to add students. A student
-   added while the Gradebook is open shows when it opens again. Its Grade Settings have no Students card;
+3. The card doesn't change or remove students: a student opens their page in the Gradebook, where they're
+   deleted; the Gradebook shows the others for marks, and has no way to add students. A student added
+   while the Gradebook is open shows when it opens again. Its Grade Settings have no Students card;
    a rule shown on the course page gets there when the gradebook is saved.
 4. A student opens the course page, signs in there with their email and the code it emails them, and
    sees the signed-in tabs; a dropped student can't get a code.
@@ -76,21 +77,29 @@ def main():
         me.screenshot(path=f"{OUT}/212-class-list.png")
         print("2 class list:", sorted(st))
 
-        # 3. Remove Ana; the Gradebook has the others; one added while it's open shows when it opens again.
-        me.click(S + "[data-st-remove='1003']"); me.click(".lt-modal [data-yes]"); me.wait_for_timeout(900)
-        assert sorted(s["num"] for s in book()["students"]) == ["1001", "1002"]
+        # 3. The card can't change or remove a student: clicking one opens their page in the gradebook, where
+        #    they're deleted. A student added while the gradebook is open shows when it opens again.
+        assert not me.query_selector(S + "[data-st-remove], " + S + "[data-st-edit]"), "the card still changes students"
         bk = book(); bk["evals"] = [{"id": "a1", "name": "Assignment 1", "short": "A1", "total": 10, "weight": 100}]
         srv.put("priv", {"csc258/f26/grades.json": json.dumps(bk)})   # an evaluation (made in Evaluations), so the grades show
-        me.click("[data-part=book]"); me.wait_for_selector("[data-lt-tool=grades] .page-in")
+        me.reload(); me.wait_for_selector(S + ".lt-st-list")
+        me.click(S + "[data-st-open='1003']")
         g = me.locator("[data-lt-tool=grades]")
+        me.wait_for_selector("[data-lt-tool=grades] [data-ed=sremove]")
+        expect(g.locator(".st-head h2")).to_have_text("Li, Ana")
+        me.screenshot(path=f"{OUT}/213-student-page.png")
+        me.click("[data-lt-tool=grades] [data-ed=sremove]"); me.click("[data-lt-tool=grades] [data-ed=sremove]")   # Delete takes two clicks
+        me.keyboard.press("Control+s"); me.wait_for_timeout(2000)
+        assert sorted(s["num"] for s in book()["students"]) == ["1001", "1002"], [s["num"] for s in book()["students"]]
         expect(g).to_contain_text("Castillo, Maya")
         assert not me.query_selector("[data-lt-tool=grades] [data-act=imp-roster], [data-lt-tool=grades] [data-act=st-add]"), "the gradebook still adds students"
+        assert not me.query_selector("[data-lt-tool=grades] #tb-view button"), "the gradebook still has Grades | Settings tabs"
         me.locator("#lt-path button", has_text="csc258 / f26").click(); me.wait_for_selector("#st-add")
         me.click("#st-add"); me.fill("#sd-num", "1004"); me.fill("#sd-first", "Raj"); me.fill("#sd-last", "Patel"); me.fill("#sd-email", "raj.patel@mail.utoronto.ca")
         me.click(".lt-modal [data-ok]"); me.wait_for_timeout(900)
         me.click("[data-part=book]"); me.wait_for_timeout(1200)
         expect(g).to_contain_text("Patel, Raj")
-        me.click("[data-lt-tool=grades] #tb-view button:has-text('Settings')")
+        me.click("[data-lt-tool=grades] [data-act=view][data-v=settings]")   # Settings, beside Upload Marks
         expect(g.locator("h1")).to_have_text("Grade Settings")
         assert "Each student is identified" not in g.inner_text(), "Grade Settings has the Students card"
         me.screenshot(path=f"{OUT}/213-grade-settings.png")

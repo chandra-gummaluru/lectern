@@ -233,7 +233,7 @@ export function initSplash(onSignedIn) {
     let info;
     try { info = await api("/api/teams/join/check", { token }, { retry: false }); }
     catch (x) { return showForm(x.message, true); }
-    const what = `${esc(info.ownerName)} asked you to join the teaching team for <b>${esc(info.offering.replace("/", " ").toUpperCase())}</b>, as ${info.role === "ta" ? "a TA" : "an instructor"}.`;
+    const what = `${esc(info.ownerName)} asked you to join the teaching team for <b>${esc(info.offering.replace("/", " ").toUpperCase())}</b>, as ${({ ta: "a TA", staff: "staff" })[info.role] || "an instructor"}.`;
     const signIn = () => {
       joining = token;
       $("#sp-email").value = info.email;

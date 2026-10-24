@@ -20,6 +20,7 @@
    with the first change. Changes save by themselves. Instructors change it; TAs see it. */
 
 import { richText } from "./richtext.js";
+import { whenField } from "./when.js";
 
 const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];
 const KIND_COLOR = { lecture: "#3b7dd8", tutorial: "#2e9b6a", lab: "#8a5cd1", other: "#8b8f96" };
@@ -147,7 +148,7 @@ export function lecturesPage(ctx, r) {
   const lecWhen = x => [x.title ? x.label : (new RegExp(`^${kindName(kindOf(x))}\\b`, "i").test(x.label || "") ? "" : kindName(kindOf(x))), whenText(x.date) || "no date yet"].filter(Boolean).join(", ");
   const lecMore = x => { const n = (x.files || []).length; return n ? `${n} file${n === 1 ? "" : "s"} or link${n === 1 ? "" : "s"}.` : "No files yet: the course page says Coming soon."; };
   const status$ = () => (edit ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
-  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">As a TA you can look at the lectures; the instructors change them.</p>`);
+  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the lectures; the instructors change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
   const toLec = (w, x) => go({ page: "lectures", c, t, w: w.id, l: x.id });
 
@@ -297,8 +298,8 @@ export function lecturesPage(ctx, r) {
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this week" aria-label="Delete this week">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid week">
           <label class="lx-f">Name<input type="text" id="lw-label" value="${esc(w.label)}" placeholder="e.g. Week 4"${dis}></label>
-          <label class="lx-f">Starts<input type="date" id="lw-start" value="${esc(w.start)}"${dis}></label>
-          <label class="lx-f">Ends<input type="date" id="lw-end" value="${esc(w.end)}"${dis}></label>
+          <div class="lx-f">Starts<div id="lw-start-f"></div></div>
+          <div class="lx-f">Ends<div id="lw-end-f"></div></div>
         </div>
         <p class="lx-help">Its class days, e.g. Monday to Friday. On the course page, This week runs to the Sunday after.</p>
         <div class="lx-grid one"><label class="lx-f">Topic<input type="text" id="lw-topic" value="${esc(w.topic)}" placeholder="What this week covers"${dis}></label></div>
@@ -310,13 +311,15 @@ export function lecturesPage(ctx, r) {
     </div></div>`);
     const root = $(".lx");
     wire(root);
+    let endF = null;
+    whenField($("#lw-start-f"), { date: w.start, withTime: false, id: "lw-start", label: "Starts", empty: "Choose a date", disabled: !edit,
+      onChange: ({ date }) => { w.start = date; if (w.start && (!w.end || w.end < w.start)) { w.end = addDays(w.start, 4); endF.set({ date: w.end }); } changed(); } });
+    endF = whenField($("#lw-end-f"), { date: w.end, withTime: false, id: "lw-end", label: "Ends", empty: "Choose a date", disabled: !edit, onChange: ({ date }) => { w.end = date; changed(); } });
     if (!edit) return;
     const bind = (id, k, after) => { const el = $(id); el.oninput = el.onchange = () => { w[k] = el.value.trim(); if (after) after(); changed(); }; };
     let shown = w.label || "Week";
     bind("#lw-label", "label", () => { if ((w.label || "Week") === shown) return; shown = w.label || "Week"; $("#lw-h").textContent = shown; renderPath(weekSteps(w)); });
     bind("#lw-topic", "topic");
-    bind("#lw-start", "start", () => { if (w.start && (!w.end || w.end < w.start)) { w.end = addDays(w.start, 4); $("#lw-end").value = w.end; } });
-    bind("#lw-end", "end");
     root.querySelectorAll("[data-add-kind]").forEach(b => { b.onclick = () => addLecture(w, b.dataset.addKind); });
     $("#lw-del").onclick = async () => {
       const n = (w.cards || []).length;
@@ -345,8 +348,7 @@ export function lecturesPage(ctx, r) {
         <p class="lx-help" id="lw-named">${namedHTML(x)}</p>
         <div class="lx-grid when">
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""}>${esc([y.label || "Week", rangeText(y.start, y.end)].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>
-          <label class="lx-f">Date<input type="date" id="lw-date" value="${esc(when.date)}"${dis}></label>
-          <label class="lx-f">Time<input type="time" id="lw-time" value="${esc(when.time)}"${dis}></label>
+          <div class="lx-f">When<div id="lw-when-f"></div></div>
         </div>
         <p class="lx-help">The date and time are optional: with a date, This week shows it on its day.</p>
         <h3 class="lx-sec">Description</h3>
@@ -357,6 +359,8 @@ export function lecturesPage(ctx, r) {
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
       </div>
     </div></div>`);
+    whenField($("#lw-when-f"), { date: when.date, time: when.time, id: "lw-when", label: "When", empty: "Choose a date", timeLabel: "Starts At", near: w.start, disabled: !edit,
+      onChange: ({ date, time }) => { if (date) x.date = writeStamp(date, time); else delete x.date; changed(); } });
     richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;
     let shown = titleOf(x);
@@ -364,8 +368,6 @@ export function lecturesPage(ctx, r) {
     const bind = (id, fn) => { const el = $(id); el.oninput = el.onchange = () => { fn(el.value); changed(); }; };
     bind("#lw-label", v => { x.label = v.trim(); head(); });
     bind("#lw-title", v => { x.title = v.trim(); head(); });
-    const stamp = () => { const d = $("#lw-date").value, tm = $("#lw-time").value; if (d) x.date = writeStamp(d, tm); else delete x.date; };
-    bind("#lw-date", stamp); bind("#lw-time", stamp);
     document.querySelectorAll("[data-kind]").forEach(b => { b.onclick = () => {   // a new type: the label follows, if it was the usual one
       const was = kindOf(x), now = b.dataset.kind; if (now === was) return;
       x.kind = now;

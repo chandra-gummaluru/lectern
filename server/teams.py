@@ -8,6 +8,7 @@ others to its team, each as
   ta           sees the gradebook and exams and enters marks (grades.json's "marks", nothing else);
                can't change evaluations, settings or students, publish the course page, see
                accommodation requests, or change the team (but can leave it)
+  staff        sees what a TA sees, and changes nothing (not even marks); can leave the team
 
 Members reach the owner's files for that offering only, through the same store API as the owner
 (/api/store/<owner handle>.<pub|priv>/…, see store.py), so every rule here is enforced on the server.
@@ -41,8 +42,9 @@ from .auth import (Refusal, _EMAIL, body, handle_problem, handles, limit, limite
 
 teams_bp = Blueprint("teams", __name__)
 
-ROLES = ("instructor", "ta")
-ROLE_NAME = {"owner": "owner", "instructor": "instructor", "ta": "TA"}
+ROLES = ("instructor", "ta", "staff")
+ROLE_NAME = {"owner": "owner", "instructor": "instructor", "ta": "TA", "staff": "staff"}
+A_ROLE = {"instructor": "an instructor", "ta": "a TA", "staff": "staff"}
 _SLUG = re.compile(r"^[\w.-]{1,64}$")
 
 
@@ -100,7 +102,7 @@ class Access:
         r = self.role(path)
         if r in ("owner", "instructor"):
             return True
-        if r == "ta":   # not the students' accommodation requests (they can hold medical details)
+        if r in ("ta", "staff"):   # not the students' accommodation requests (they can hold medical details)
             return not (self.area == "priv" and path.split("/")[2:] == ["accommodations.json"])
         return False
 
@@ -118,7 +120,7 @@ class Access:
             return
         if self.area == "priv" and "ta" in self.roles.values() and size <= TA_UPLOAD:
             return
-        raise Refusal(403, "As a TA you can only save marks.", "ta")
+        raise Refusal(403, "As staff you can look, but not change anything." if "staff" in self.roles.values() else "As a TA you can only save marks.", "ta")
 
     def may_change(self, path, deleting=False):
         """Early check, as a save is put together (the full check is check_write, when it lands)."""
@@ -127,6 +129,8 @@ class Access:
             return
         if r == "ta" and self.area == "priv" and not deleting and path == f"{offering_of(path)}/grades.json":
             return
+        if r == "staff":
+            raise Refusal(403, "As staff you can look, but not change anything.", "ta")
         raise Refusal(403, "As a TA you can only save marks." if r == "ta" else "You're not on this course offering's teaching team.", "ta" if r == "ta" else "not-member")
 
     def check_write(self, path, old, new):
@@ -140,6 +144,8 @@ class Access:
             merged = with_marks(old, new)
             if merged is not None:
                 return merged
+        if r == "staff":
+            raise Refusal(403, "As staff you can look, but not change anything.", "ta")
         if r == "ta":
             raise Refusal(403, "As a TA you can enter marks, but not change evaluations, students, settings, exams or the course page. "
                                "Undo those changes (or ask an instructor), then save again.", "ta")
@@ -276,7 +282,7 @@ def add(owner, course, term):
     d = body()
     email, new_role = norm_email(text(d, "email")), text(d, "role", 20)
     if new_role not in ROLES:
-        raise Refusal(400, "Choose instructor or TA.")
+        raise Refusal(400, "Choose instructor, TA or staff.")
     if not _EMAIL.match(email):
         raise Refusal(400, "Enter an email address.")
     if email == o["email"] or db.one("SELECT 1 FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? AND u.email = ?", (o["id"], off, email)):
@@ -294,7 +300,7 @@ def add(owner, course, term):
     course_name = off.replace("/", " ").upper()
     emailed = mailer.send_later(email, f"Join the teaching team for {course_name} on Lectern",
                                 f"Hello,\n\n{who} ({g.user['email']}) has asked you to join the teaching team for {course_name} on Lectern, "
-                                f"as {'an instructor' if new_role == 'instructor' else 'a TA'}.\n\nTo accept, open this link within {JOIN_DAYS} days:\n\n{link}\n\n"
+                                f"as {A_ROLE[new_role]}.\n\nTo accept, open this link within {JOIN_DAYS} days:\n\n{link}\n\n"
                                 "If you weren't expecting this, ignore it: nothing happens unless you accept.\n")
     log(g.user["id"], "team-invite", f"{o['handle']}/{off} {email} {new_role}")
     # The link is shown only when it couldn't be emailed (so it can be sent another way).
@@ -309,7 +315,7 @@ def change_role(owner, course, term):
     d = body()
     uid, new_role = int(d.get("user") or 0), text(d, "role", 20)
     if new_role not in ROLES:
-        raise Refusal(400, "Choose instructor or TA.")
+        raise Refusal(400, "Choose instructor, TA or staff.")
     if db.run("UPDATE members SET role = ? WHERE owner_id = ? AND offering = ? AND user_id = ?", (new_role, o["id"], off, uid)).rowcount != 1:
         raise Refusal(404, "They're not on this team.")
     if new_role != "instructor":   # their waiting invitations stop working too

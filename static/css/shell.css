@@ -435,19 +435,6 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-row-acts .lt-switch { margin-left: 8px; }
 @media (prefers-reduced-motion: reduce) { .lt-switch-k, .lt-switch-k::after { transition: none; } }
 
-/* Emailing the class (the offering page) */
-.lt-mail-warn { color: var(--warn); font-weight: 600; }
-.lt-mail-log { margin-top: 14px; }
-.lt-mail-miss { max-height: 320px; overflow: auto; margin: 12px 0 0; }
-.lt-mail-from { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-3); }
+/* Text boxes in Lectern's forms */
 .lt-form textarea { font: 14px/1.5 var(--font-ui); padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; resize: vertical; }
 .lt-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
-.lt-mail-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
-.lt-mail-form .w { grid-column: 1 / -1; }
-@media (max-width: 520px) { .lt-mail-form { grid-template-columns: 1fr; } }
-.lt-part.lt-mail { flex-direction: column; align-items: stretch; }
-.lt-mail .lt-part-head { padding-bottom: 6px; }
-.lt-mail-body { padding: 0 18px 18px; }
-.lt-part.lt-mail .lt-mail-body > .lt-part-text { padding: 0; flex: none; }
-.lt-part.lt-mail .lt-mail-body > .lt-part-acts { padding: 14px 0 0; }
-.lt-part.lt-mail .lt-mail-body > .lt-note { margin: 12px 0 0; }

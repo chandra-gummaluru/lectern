@@ -3,7 +3,7 @@
    course page in tabs. Lectern's palette and type (shell.css),
    on the course page's paper.
    ============================================================ */
-:root {
+.hb {
   --paper: #fbfaf7; --card: #ffffff; --strip: #f6f5f2; --line: #e3e2de; --line-2: #cfd0d3;
   --ink: #1f2329; --ink-2: #4a4f57; --ink-3: #7a7f87;
   --accent: #a67c00; --accent-bg: #fdf3d6; --accent-line: #ecd48f;
@@ -15,7 +15,7 @@
   --r: 12px;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme="light"]) .hb {
     --paper: #17191d; --card: #1f2226; --strip: #25282d; --line: #2f3339; --line-2: #3d424a;
     --ink: #eceef1; --ink-2: #c3c7ce; --ink-3: #8d939c;
     --accent: #e2b84a; --accent-bg: #3a3017; --accent-line: #5a4a1e;
@@ -23,22 +23,24 @@
   }
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; }
-body { background: var(--paper); color: var(--ink); font: 15px/1.55 var(--font-ui); -webkit-text-size-adjust: 100%; }
-[hidden] { display: none !important; }
-a { color: var(--accent); text-underline-offset: 2px; }
-a:hover { text-decoration-thickness: 2px; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-code { font: 13px var(--font-mono); background: var(--strip); padding: 1px 5px; border-radius: 4px; }
+/* Everything is inside .hb (its colours too), so the builder can show the same thing inside Lectern. */
+body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.hb-page { background: #17191d; } }
+.hb, .hb * { box-sizing: border-box; }
+.hb { background: var(--paper); color: var(--ink); font: 15px/1.55 var(--font-ui); }
+.hb [hidden] { display: none !important; }
+.hb a { color: var(--accent); text-underline-offset: 2px; }
+.hb a:hover { text-decoration-thickness: 2px; }
+.hb :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.hb code { font: 13px var(--font-mono); background: var(--strip); padding: 1px 5px; border-radius: 4px; }
 
-.hb { min-height: 100vh; display: flex; flex-direction: column; }
+.hb-page .hb { min-height: 100vh; display: flex; flex-direction: column; }
 .hb-main, .hb-head-in, .hb-tabs-in { width: 100%; max-width: 1040px; margin: 0 auto; padding-left: 24px; padding-right: 24px; }
 
 /* ── Staff bar: who's looking, and seeing the page as a visitor does ── */
 .hb-staff { background: var(--dark); color: var(--dark-ink); font-size: 13px; }
 .hb-staff-in { max-width: 1040px; margin: 0 auto; padding: 8px 24px; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
-.hb-staff a { color: inherit; font-weight: 600; }
+.hb .hb-staff a { color: inherit; font-weight: 600; }
 .hb-staff .grow { flex: 1; }
 
 /* ── Header and tabs ── */
@@ -50,7 +52,7 @@ code { font: 13px var(--font-mono); background: var(--strip); padding: 1px 5px; 
 .hb-who { font-size: 13px; color: var(--ink-2); text-align: right; white-space: nowrap; padding-bottom: 4px; }
 .hb-who b { color: var(--ink); font-weight: 600; }
 .hb-role { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--accent-bg); color: var(--accent); font-weight: 600; font-size: 12px; }
-.hb-btn { font: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); text-decoration: none; cursor: pointer; }
+.hb .hb-btn { font: inherit; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); text-decoration: none; cursor: pointer; }
 .hb-btn:hover { background: var(--accent-bg); border-color: var(--accent); }
 .hb-btn svg { width: 16px; height: 16px; flex: none; }
 .hb-btn.primary { background: var(--ink); border-color: var(--ink); color: var(--paper); }
@@ -103,13 +105,13 @@ code { font: 13px var(--font-mono); background: var(--strip); padding: 1px 5px; 
 .hb-card h3 { margin: 2px 0 0; font-size: 16px; line-height: 1.3; }
 .hb-card p { margin: 0; color: var(--ink-2); font-size: 14px; }
 .hb-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.hb-file { display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--line-2); color: var(--ink); background: var(--card); }
-.hb-file:first-child { background: var(--ink); border-color: var(--ink); color: var(--paper); }
-.hb-file:hover { border-color: var(--accent); background: var(--accent-bg); color: var(--ink); }
+.hb a.hb-file { display: inline-flex; align-items: center; height: 30px; padding: 0 11px; border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; border: 1px solid var(--line-2); color: var(--ink); background: var(--card); }
+.hb a.hb-file:first-child { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.hb a.hb-file:hover { border-color: var(--accent); background: var(--accent-bg); color: var(--ink); }
 .hb-soon { font-size: 13px; color: var(--ink-3); margin-top: 8px; }
 .hb-card.test { background: var(--dark); border-color: var(--dark); color: var(--dark-ink); }
 .hb-card.test p, .hb-card.test .hb-card-top { color: inherit; opacity: .8; }
-.hb-card.test .hb-file { background: transparent; color: inherit; border-color: currentColor; }
+.hb .hb-card.test a.hb-file { background: transparent; color: inherit; border-color: currentColor; }
 .hb-card.nocl { background: repeating-linear-gradient(-45deg, var(--strip), var(--strip) 8px, transparent 8px, transparent 16px); color: var(--ink-3); justify-content: center; align-items: center; font-weight: 600; min-height: 80px; }
 
 .hb-pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; background: var(--strip); color: var(--ink-2); border: 1px solid var(--line); }

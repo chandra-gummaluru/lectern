@@ -98,17 +98,18 @@ Optional: `LECTERN_TIMEZONE` (request deadlines; default `America/Toronto`).
 
 Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course>/<term>/`: **Overview** (description, teaching team, meeting times and office hours), **This week** (the week's announcements, lectures, evaluations and each day's meetings; it opens here), **Lectures**, **Evaluations**, **Announcements**, **Policies** and **My accommodations**.
 
-- The Course Page Builder saves `course.json` (the page as data) beside `info.html`. The hub is built from `course.json`; `info.html` is still written, for downloading or pasting into Quercus.
-- Once an offering has a `course.json`, its published address (`/p/<handle>/<course>/<term>/` or `…/info.html`) leads to the hub, and `course.json` itself is never served from `/p/`. Pages saved before this need opening and saving once.
-- **Course hub tabs** (under the description in the builder): each tab is public or for signed-in people only. My accommodations is always signed-in only. A visitor's This week only shows what's on tabs they can see.
-- **Meeting Times & Office Hours** (a builder section): each is a weekly time (what, day, start, end, where, who), so This week puts it on its day.
+- **The Course Page Builder is the hub.** It shows the same header and tabs, drawn by the same code (`static/js/hub-view.js`), and you edit on them: Overview's text, tables and meeting times in place; click a lecture, a week, an announcement or an evaluation's **+ Files** to open it. Weeks and lectures drag to move. This week is a preview.
+- The page is saved as `course.json` (no more `info.html` or Copy HTML for Quercus). An older page (only `info.html`) opens as before and becomes a `course.json` when saved.
+- Its published address (`/p/<handle>/<course>/<term>/` or `…/info.html`) leads to the hub once it has a `course.json`, and `course.json` itself is never served from `/p/`.
+- **Each tab is public or signed-in only:** the globe or lock beside its name in the builder, or the line at the top of the tab. My accommodations is always signed-in only. A visitor's This week only shows what's on tabs they can see.
+- **Meeting Times & Office Hours** (on Overview): each is a weekly time (what, day, start, end, where, who), so This week puts it on its day.
+- **Announcements** are written on the Announcements tab, in a week (the current one unless you pick another).
 - Signed in means the offering's owner and teaching team for now (students sign in in a later step). Staff see a bar on the hub with **See it as a visitor** (`?as=public`).
 
-## Emailing the class
+## Student emails
 
 - **Every student has an email.** It's a built-in field in the gradebook (Settings → Students), at the domain set there (e.g. `mail.utoronto.ca`). The gradebook says who's missing one (or has one at another domain); click a name to set it on their page, or import the class list again with its email column.
-- **Email the Class** (on the offering's page, for its instructors): write a subject and a message, choose everyone or one section, and Lectern sends each student their own email (nobody sees the others' addresses), with replies going to the instructor who wrote it. It goes out in the background; the page shows how each one went. Up to 10 a course an hour.
-- **Each offering can have its own email settings** (Email Settings there): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails use them too.
+- **Each offering can have its own email settings** (no screen for them now that Email the Class is gone; the API is still there, `server/classmail.py`): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails use them too.
 
 ## Where things are
 

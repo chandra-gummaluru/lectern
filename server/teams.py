@@ -252,7 +252,7 @@ def offering_exists(owner_id, off):
     root = db.data_dir()
     c, t = off.split("/")
     return (os.path.isfile(os.path.join(root, "files", str(owner_id), "priv", c, t, "grades.json"))
-            or os.path.isfile(os.path.join(root, "files", str(owner_id), "pub", c, t, "info.html")))
+            or any(os.path.isfile(os.path.join(root, "files", str(owner_id), "pub", c, t, f)) for f in ("course.json", "info.html")))
 
 
 def new_accounts_allowed(email):

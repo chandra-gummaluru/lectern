@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
     <link rel="stylesheet" href="/static/css/hub.css">
 </head>
-<body>
+<body class="hb-page">
     <!-- The course hub: an offering's course page in tabs. hub.js fills it from the API below
          (only the tabs this viewer may see come back). -->
     <div class="hb" id="hb" data-api="{{ api }}">
@@ -30,6 +30,7 @@
         </main>
         <footer class="hb-foot">Lectern</footer>
     </div>
+    <script src="/static/js/hub-view.js"></script>
     <script src="/static/js/hub.js"></script>
 </body>
 </html>

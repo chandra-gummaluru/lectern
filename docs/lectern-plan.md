@@ -108,3 +108,4 @@ One web app at **lectern.changapp.net** that merges the Course Page Builder, Gra
 - New builder section: Meeting Times & Office Hours (structured weekly times) for This week's day-by-day list.
 - Evaluations come from the gradebook's scheme only (no hand-made Grading table fallback).
 - Next pieces: student/TA magic-link sign-in, accommodations in the hub, grades, discussions, notifications, end of term.
+- Oct 24 (later): the builder's editor is the hub itself (same header, tabs and drawing, hub-view.js) with editing hooks; announcements are written on the Announcements tab; info.html / Copy HTML for Quercus are gone (course.json is the page; older info.html pages open and save as course.json).

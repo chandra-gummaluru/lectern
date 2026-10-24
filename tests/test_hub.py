@@ -120,3 +120,13 @@ def test_junk_course_json(client, user, anon):
     p.commit({"csc258/f26/course.json": json.dumps({"page": {"title": "x", "sections": [{"type": "schedule", "weeks": [7, None, {"cards": "no"}]}, "junk"]}}).encode()}, "seed", p.head())
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
     assert j["data"]["lectures"]["weeks"][0]["cards"] == []
+
+
+def test_hidden_policies_stay_off_the_page(client, user, anon):
+    page = json.loads(json.dumps(SAMPLE["page"]))
+    pol = [s for s in page["sections"] if s["type"] == "policies"][0]
+    pol["blocks"] = [{"heading": "Late work", "body": "10% a day."}, {"heading": "Note to self", "body": "Secret", "hidden": True}]
+    publish(user, page)
+    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
+    assert [b["heading"] for b in j["data"]["policies"]["sections"][0]["blocks"]] == ["Late work"]
+    assert "Secret" not in json.dumps(j)

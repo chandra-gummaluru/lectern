@@ -1,8 +1,8 @@
 """The course hub: an offering's course page, served by Lectern itself, in tabs.
 
-The Course Page Builder saves two files in an offering's public area: info.html (the page as one
-HTML file, for downloading or pasting into Quercus) and course.json (the same page as data). The hub
-is built from course.json:
+The Course Page Builder saves the page as data, course.json, in an offering's public area (older pages
+are an info.html, which the builder opens and saves as course.json). The hub is built from course.json,
+and the builder shows it the same way (static/js/hub-view.js draws both):
 
   GET /c/<handle>/<course>/<term>/        the hub (a Lectern page, so it can know who's signed in)
   GET /api/hub/<handle>/<course>/<term>   what this viewer may see of it, tab by tab
@@ -100,7 +100,7 @@ def _files(fs):
 def _blocks(bs):
     out = []
     for b in _list(bs):
-        if not isinstance(b, dict):
+        if not isinstance(b, dict) or b.get("hidden"):   # a policy the instructor keeps off the page
             continue
         if isinstance(b.get("table"), dict):
             t = b["table"]

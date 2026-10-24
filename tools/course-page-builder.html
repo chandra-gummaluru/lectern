@@ -17,6 +17,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/hub.css">
+<script src="/static/js/hub-view.js"></script>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
    Canvas width. The page itself is always the light Canvas look; only the
@@ -492,6 +494,66 @@ tr.e-drop-after td { box-shadow: inset 0 -3px 0 #a67c00 !important; }
 .e-meet select { appearance: none; -webkit-appearance: none; padding-right: 28px; background: var(--field) var(--chevron) no-repeat right 8px center / 13px; cursor: pointer; }
 .e-meet input:focus, .e-meet select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .e-meet button.c.icon { width: 36px; height: 36px; }
+/* The editor is the course hub (hub.css, hub-view.js) with editing hooks. Like the course page always
+   was here, it stays light in both themes (the builder's chrome around it follows the theme). */
+#stage .hb { color-scheme: light; --bg: #e9e8e4; --bar: #ffffff; --ink: #1f2329; --ink-2: #4a4f57; --ink-3: #7a7f87; --line: #e3e2de; --line-2: #cfd0d3;
+  --field: #ffffff; --accent: #a67c00; --accent-bg: #fdf3d6; --accent-line: #ecd48f; --danger: #b42318; --danger-bg: #fdf0ee; --danger-line: #f3cdc7;
+  --warn: #9a5b06; --warn-bg: #fdf6e6; --warn-line: #efd9a7; --paper: #fbfaf7; --card: #ffffff; --strip: #f6f5f2; --dark: #1f2329; --dark-ink: #ffffff; --ok: #2f8f5b; }
+.stage.hbe-on { max-width: 1120px; padding-left: 0; padding-right: 0; box-shadow: none; overflow: visible; }
+.hbe { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin: 0; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
+.hbe-adds.sm { margin: 10px 0 0; }
+.hbe .hb-head-in { padding-top: 22px; }
+.hbe .hb-tabs { position: static; }
+.hbe .hb-main { padding-top: 22px; }
+.hbe .hb-sub .ed, .hbe .hb-title.ed { min-width: 2ch; display: inline-block; }
+.hbe .hb-title.ed { display: block; }
+.hbe-tab { position: relative; }
+.hbe-vis { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 2px; border-radius: 6px; color: var(--ink-3); cursor: pointer; }
+.hbe-vis svg { width: 13px !important; height: 13px !important; }
+.hbe-vis:hover { background: var(--accent-bg); color: var(--ink); }
+.hbe-vis.on { color: var(--accent); }
+.hbe-vis.fixed { cursor: default; }
+.hbe-vis.fixed:hover { background: none; color: var(--accent); }
+.hbe-visline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 18px; padding: 8px 12px; border-radius: 10px; background: var(--strip); color: var(--ink-2); font-size: 13.5px; }
+.hbe-visline svg { width: 14px; height: 14px; color: var(--ink-3); flex: none; }
+.hbe-visline.on svg { color: var(--accent); }
+.hbe-visline .grow { flex: 1; min-width: 200px; }
+.hbe-visline button.c, .hbe-bar button.c, .hbe-bar select { height: 30px; font-size: 13px; }
+.hbe-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -8px 0 18px; }
+.hbe-bar label { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--font-ui); color: var(--ink-2); }
+.hbe-bar select { border-radius: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); padding: 0 8px; font-family: var(--font-ui); }
+.hbe-preview { margin: 0 0 18px; padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--line-2); color: var(--ink-2); font-size: 13.5px; }
+/* Editable things: click to open them */
+.hb-ed { cursor: pointer; transition: border-color .12s, box-shadow .12s; }
+.hb-ed:hover, .hb-ed:focus-visible { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgb(201 154 6 / .14); outline: none; }
+.hb-card.hb-untitled h3 { color: var(--ink-3); font-style: italic; }
+.hbe-wname { all: unset; cursor: pointer; border-radius: 6px; padding: 0 4px; margin: 0 -4px; }
+.hbe-wname:hover, .hbe-wname:focus-visible { background: var(--accent-bg); }
+.hbe-addcard { font: 600 14px var(--font-ui); color: var(--accent) !important; background: transparent !important; border: 1.5px dashed var(--accent-line) !important; justify-content: center; align-items: center; min-height: 92px; cursor: pointer; }
+.hbe-addcard:hover { background: var(--accent-bg) !important; border-style: solid !important; }
+.hbe-adds { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 26px; }
+.hbe-add, .hbe-mini { font: 600 13px var(--font-ui); height: 32px; padding: 0 12px; border-radius: 7px; border: 1.5px dashed var(--accent-line); background: transparent; color: var(--accent); cursor: pointer; }
+.hbe-add:hover, .hbe-mini:hover { background: var(--accent-bg); border-style: solid; }
+.hbe-mini { height: 26px; padding: 0 9px; margin-top: 6px; font-size: 12px; display: inline-block; }
+.hbe-grip { width: 14px; height: 14px; color: var(--ink-3); cursor: grab; flex: none; align-self: center; }
+.hb-week[draggable="true"] .hb-week-h { cursor: grab; }
+.hbe-break { display: flex; align-items: center; gap: 10px; cursor: grab; }
+.hbe-break .ed { flex: 1; text-align: center; cursor: text; }
+.hbe-x { all: unset; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: var(--ink-3); cursor: pointer; }
+.hbe-x svg { width: 15px; height: 15px; }
+.hbe-x:hover { background: var(--danger-bg, #fdf0ee); color: var(--danger, #b42318); }
+.hbe .e-dragging { opacity: .45; }
+.hbe .e-drop-before { box-shadow: 0 -3px 0 var(--accent); }
+.hbe .e-drop-after { box-shadow: 0 3px 0 var(--accent); }
+.hbe .e-ldrop { outline: 2px dashed var(--accent); outline-offset: 2px; }
+/* Overview and Policies: the hub's sections, edited in place */
+.hbe-sec { margin: 0 0 26px; }
+.hbe-sec.e-sec-hid > :not(.hbe-sec-h) { opacity: .5; }
+.hbe-sec-h { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+.hbe-sec-h .hb-h3 { margin: 0 !important; flex: 1; min-width: 4ch; }
+.hbe-sec-h .e-secctl { display: flex; gap: 4px; align-items: center; }
+.hbe .hb-desc.ed { display: block; min-height: 1.5em; }
+.hbe .e-addsec { margin: 8px 0 0; display: flex; gap: 8px; flex-wrap: wrap; }
 /* Which course hub tabs people must sign in to see */
 .e-tabs { margin: 0 0 22px; padding: 12px 14px; border: 1px dashed #cfd0d3; border-radius: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .e-tabs-h { font: 600 13px var(--font-ui); color: #4a4f57; margin-right: 4px; }
@@ -747,7 +809,6 @@ span.arrow { color: var(--ink-3); }
   <input type="file" id="file" accept=".html,.htm,text/html" hidden>
   <span class="status" id="status"></span>
   <span class="spacer"></span>
-  <button type="button" id="copy" title="Copy the page's HTML, to paste into Quercus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>Copy HTML</button>
   <button type="button" class="primary" id="save" title="Save to GitHub or to this computer">Save</button>
 </header>
 <nav class="pathbar" id="pathbar" aria-label="Where you are"></nav>
@@ -766,8 +827,8 @@ span.arrow { color: var(--ink-3); }
 // exported elements are markers that let this builder open the page again.
 // ═════════════════════════════════════════════════════════════════════
 const S = {
-  page: "font-family: Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2329; background-color: #fdfcfa; padding: 44px 10% 32px 10%; border-radius: 10px;",
-  h2: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 48px; line-height: 1.05; letter-spacing: -0.02em; color: #1f2329; margin: 0 0 6px -1px;",
+  page: "font-family: var(--font-ui); color: var(--ink); background-color: var(--paper, #fbfaf7); padding: 32px 6% 32px 6%; border-radius: 14px; border: 1px solid var(--line);",
+  h2: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 40px; line-height: 1.05; letter-spacing: -0.02em; color: var(--ink); margin: 0 0 6px -1px;",
   sub: "font-size: 15px; font-weight: 500; color: #4a4f57; margin: 0 0 28px 0;",
   intro: "font-size: 15px; line-height: 1.6; color: #4a4f57; margin: -14px 0 26px 0;",
   sec: "background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 12px; margin: 0 0 14px 0;",
@@ -786,41 +847,41 @@ const S = {
   pill: "display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #b4b6ba; border-radius: 999px; background-color: #f6f5f2; font-size: 12px; font-weight: 600; line-height: 18px; color: #4a4f57;",
   pilldk: "display: inline-block; margin: 4px 0 0 8px; padding: 3px 11px; border: 1px solid #3f4146; border-radius: 999px; background-color: #5f6166; font-size: 12px; font-weight: 600; line-height: 18px; color: #ffffff;",
   wbreak: "margin: 0 0 18px 0; padding: 10px 14px; border: 1px dashed #b4b6ba; border-radius: 8px; text-align: center; font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #7a7f87;",
-  card: "display: inline-block; vertical-align: top; width: 306px; max-width: 100%; margin: 0 14px 14px 0; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;",
-  label: "background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;",
-  body: "padding: 16px 18px 10px 18px;",
-  h3: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0; min-height: 27px;",
-  p: "font-size: 14px; line-height: 1.55; color: #4a4f57; margin: 0 0 14px 0; min-height: 66px;",
-  btn: "display: inline-block; padding: 7px 16px; background-color: #ffffff; color: #1f2329; border: 1px solid #d4d5d8; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",   // every file button: Lectern's white button
-  btn2: "display: inline-block; padding: 7px 16px; background-color: #ffffff; color: #1f2329; border: 1px solid #d4d5d8; border-radius: 8px; font-size: 14px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",
-  soon: "display: inline-block; padding: 7px 16px; border: 1px dashed #b4b6ba; border-radius: 8px; color: #7a7f87; font-size: 14px; margin: 0 6px 6px 0;",
-  wide: "background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden; margin: 0 0 18px 0;",
+  card: "display: inline-block; vertical-align: top; width: 306px; max-width: 100%; margin: 0 12px 12px 0; background-color: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;",
+  label: "padding: 14px 16px 0 16px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);",
+  body: "padding: 4px 16px 16px 16px;",
+  h3: "font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--ink); margin: 2px 0 4px 0; min-height: 21px;",
+  p: "font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 8px 0;",
+  btn: "display: inline-flex; align-items: center; height: 30px; padding: 0 11px; background-color: var(--ink); color: var(--paper, #fff); border: 1px solid var(--ink); border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",   // every file button: Lectern's white button
+  btn2: "display: inline-flex; align-items: center; height: 30px; padding: 0 11px; background-color: var(--card, #fff); color: var(--ink); border: 1px solid var(--line-2, #cfd0d3); border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",
+  soon: "display: inline-block; font-size: 13px; color: var(--ink-3); margin: 4px 0 6px 0;",
+  wide: "background-color: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 0 0 14px 0;",
   tblwrap: "overflow-x: auto;",
-  ttable: "width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.5;",
-  tth: "padding: 11px 16px; text-align: left; font-size: 11.5px; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; color: #7a7f87; background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; white-space: nowrap;",
-  ttd: "padding: 13px 16px; vertical-align: top; color: #1f2329; border-top: 1px solid #ecedef;",
-  tdb: "padding: 13px 16px 13px 20px; vertical-align: top; color: #1f2329; font-weight: 600; border-top: 1px solid #ecedef;",
-  tgroup: "border-top: 1px solid #c9cbce;",
-  ttot: "padding: 13px 16px; font-weight: 700; color: #1f2329; border-top: 1px solid #b4b6ba; background-color: #fbfaf8;",
-  ttot1: "padding: 13px 16px 13px 20px; font-weight: 700; color: #1f2329; border-top: 1px solid #b4b6ba; background-color: #fbfaf8;",
-  h4: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 20px; line-height: 1.2; color: #1f2329; margin: 6px 0 6px 0;",
-  ul: "font-size: 15px; line-height: 1.65; color: #4a4f57; margin: 0 0 14px 0; padding-left: 20px;",
-  ptext: "font-size: 15px; line-height: 1.65; color: #4a4f57; margin: 0 0 12px 0;",
-  link: "color: #1f2329; text-decoration: underline;",
-  ph: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 20px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0;",
-  pblock: "margin: 0 0 18px 0; padding: 0 0 4px 0; border-bottom: 1px solid #ecedef;",
+  ttable: "width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5;",
+  tth: "padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); background-color: var(--strip, #f6f5f2); border-bottom: 1px solid var(--line); white-space: nowrap;",
+  ttd: "padding: 10px 14px; vertical-align: top; color: var(--ink); border-top: 1px solid var(--line);",
+  tdb: "padding: 10px 14px; vertical-align: top; color: var(--ink); font-weight: 600; border-top: 1px solid var(--line);",
+  tgroup: "border-top: 1px solid var(--line-2, #cfd0d3);",
+  ttot: "padding: 10px 14px; font-weight: 700; color: var(--ink); border-top: 1px solid var(--line); background-color: var(--strip, #f6f5f2);",
+  ttot1: "padding: 10px 14px; font-weight: 700; color: var(--ink); border-top: 1px solid var(--line); background-color: var(--strip, #f6f5f2);",
+  h4: "font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--ink); margin: 0 0 6px 0;",
+  ul: "font-size: 15px; line-height: 1.55; color: var(--ink); margin: 0 0 10px 0; padding-left: 22px;",
+  ptext: "font-size: 15px; line-height: 1.55; color: var(--ink); margin: 0 0 10px 0;",
+  link: "color: var(--accent); text-decoration: underline;",
+  ph: "font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--ink); margin: 0 0 6px 0;",
+  pblock: "margin: 0 0 22px 0;",
   code: "font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; color: #1f2329; background-color: #f1f0ec; border: 1px solid #e3e2dd; border-radius: 4px; padding: 1px 5px;",
   mark: "background-color: #fdeca6; color: #1f2329; padding: 0 3px; border-radius: 3px;",
   pre: "font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; color: #1f2329; background-color: #f6f5f2; border: 1px solid #dfe0e2; border-radius: 8px; padding: 10px 14px; margin: 0 0 12px 0; overflow-x: auto; white-space: pre;",
-  mh: "font-size: 15px; font-weight: 700; line-height: 1.4; color: #1f2329; margin: 6px 0 6px 0;",
+  mh: "font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--ink); margin: 14px 0 6px 0;",
   // The lecture row: hour slots, each a third of the row (so weeks line up all term); a week with more
   // than three hours scrolls sideways, with a soft fade and an arrow at the edge.
   lrow: "position: relative; margin: 0 0 4px 0;",
   lscroll: "overflow-x: auto; overflow-y: hidden;",
   ltrack: "white-space: nowrap; font-size: 0; line-height: 0;",
   lslot: "display: inline-block; vertical-align: top; box-sizing: border-box; padding: 0 14px 14px 0; white-space: normal; font-size: 14px; line-height: normal;",
-  lcard: "display: block; width: 100%; box-sizing: border-box; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;",
-  off: "box-sizing: border-box; padding: 22px 14px; border: 1px dashed #b4b6ba; border-radius: 10px; background-color: #f6f5f2; text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #7a7f87;",
+  lcard: "display: block; width: 100%; box-sizing: border-box; background-color: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;",
+  off: "box-sizing: border-box; padding: 22px 14px; border-radius: 12px; background: repeating-linear-gradient(-45deg, var(--strip, #f6f5f2), var(--strip, #f6f5f2) 8px, transparent 8px, transparent 16px); text-align: center; font-size: 14px; font-weight: 600; color: var(--ink-3);",
   lfade: "position: absolute; top: 0; right: 0; bottom: 14px; width: 72px; pointer-events: none; background: linear-gradient(to right, rgba(253, 252, 250, 0), #fdfcfa 75%); text-align: right;",
   larrow: "display: inline-block; margin: 40px 4px 0 0; width: 28px; height: 28px; border: 1px solid #dfe0e2; border-radius: 50%; background-color: #ffffff; color: #5f6166; font-size: 16px; line-height: 26px; text-align: center;",
   // The evaluations row, under the lectures: what's due or written this week (dark for tests).
@@ -840,13 +901,13 @@ const S = {
   reqby: "display: block; font-size: 12px; color: #7a7f87; margin: 0 0 6px 0;",
   reqoff: "display: block; font-size: 12.5px; color: #7a7f87; margin: 0 0 6px 0;",
   // The marking scheme, from the gradebook
-  tmem: "padding: 9px 16px 9px 34px; vertical-align: top; color: #4a4f57; border-top: 1px solid #f3f3f1; font-size: 14px;",
-  tmemd: "padding: 9px 16px; vertical-align: top; color: #7a7f87; border-top: 1px solid #f3f3f1; font-size: 14px;",
+  tmem: "padding: 9px 14px 9px 30px; vertical-align: top; color: var(--ink-2); border-top: 1px solid var(--line); font-size: 14px;",
+  tmemd: "padding: 9px 14px; vertical-align: top; color: var(--ink-3); border-top: 1px solid var(--line); font-size: 14px;",
   // Announcements reuse the lecture-card look (white card, grey label strip), at full width.
-  ann: "margin: 0 0 14px 0; background-color: #ffffff; border: 1px solid #b4b6ba; border-radius: 10px; overflow: hidden;",
-  annhead: "background-color: #f6f5f2; border-bottom: 1px solid #dfe0e2; padding: 8px 14px; font-size: 10px; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; color: #7a7f87;",
-  anndate: "float: right; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #7a7f87;",
-  annpad: "padding: 16px 18px 4px 18px;",
+  ann: "margin: 0 0 12px 0; background-color: var(--card, #fff); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; overflow: hidden;",
+  annhead: "padding: 14px 18px 0 18px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3);",
+  anndate: "float: right; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-3);",
+  annpad: "padding: 4px 18px 6px 18px;",
   // Older announcements: a footer strip inside the card (the browser's own ▸ marker shows it opens).
   annmore: "border-top: 1px solid #ecedef; background-color: #fbfaf8;",
   annsum: "display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; padding: 9px 14px 9px 18px; font-size: 13px; font-weight: 600; color: #4a4f57;",
@@ -854,7 +915,7 @@ const S = {
   annold: "border-top: 1px solid #ecedef; padding: 14px 18px 2px 18px; background-color: #ffffff;",
   annolddate: "font-size: 12px; font-weight: 600; color: #7a7f87; margin: 0 0 4px 0;",
   annoldtitle: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 19px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0;",
-  anntitle: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 22px; line-height: 1.2; color: #1f2329; margin: 0 0 8px 0;",
+  anntitle: "font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--ink); margin: 0 0 6px 0;",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1086,6 +1147,93 @@ function nextLabel(prev, fallback) {
 const isMajor = t => /midterm|final|exam|test|quiz|demo|project|due|presentation/i.test(t || "");
 
 // ═════════════════════════════════════════════════════════════════════
+// The editor: the course hub as students see it (hub-view.js draws each tab), with editing hooks.
+// Overview and Policies are edited in place; a lecture, week, announcement or an evaluation's files
+// open their own page. ui.tab is the tab showing; ui.week a week chosen on This week.
+// ═════════════════════════════════════════════════════════════════════
+const HV = () => window.HubView;
+const HUB_ALL = [["overview", "Overview"], ["week", "This week"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["announcements", "Announcements"], ["policies", "Policies"], ["accommodations", "My accommodations"]];
+const tabTitle = id => (HUB_ALL.find(t => t[0] === id) || HUB_ALL[0])[1];
+const OVERVIEW_TYPES = ["table", "sessions", "text", "meetings"];
+const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+function hubData() {
+  return { data: HV().fromPage(model, pageYear(model)), pages: gh.site ? `${gh.site}${encPath(courseDir())}/` : "" };
+}
+// The schedule's weeks, for choosing one: [{ path, label }], and the one that's on now.
+function weekChoices() {
+  const out = [];
+  model.sections.forEach((s, si) => { if (s.type === "schedule") s.weeks.forEach((w, wi) => { if (!w.isBreak) out.push({ path: `sections.${si}.weeks.${wi}`, label: [w.label || "Week", w.dates].filter(Boolean).join(" · ") }); }); });
+  let cur = out.length ? out[0].path : "";
+  try {
+    const D = hubData(), weeks = D.data.lectures.weeks;
+    if (weeks.some(w => !w.isBreak && w.start)) { const c = HV().currentWeek(weeks, HV().today()); cur = c.dated[c.k]._p; }
+  } catch (_) {}
+  return { out, cur };
+}
+function visLine(id) {
+  if (id === "accommodations") return `<div class="hbe-visline on">${HV().LOCK}<span class="grow">Only signed-in students see this tab, each their own requests.</span></div>`;
+  const sg = tabVis(model, id) === "signed-in";
+  return `<div class="hbe-visline${sg ? " on" : ""}">${sg ? HV().LOCK : GLOBE}<span class="grow">${sg ? "Only people in the course, signed in, see this tab." : "This tab is public: anyone with the link sees it."}</span><button type="button" class="c" data-act="tab-vis" data-v="${id}">${sg ? "Make it public" : "Make it signed-in only"}</button></div>`;
+}
+function hubSection(s, i, n, extra = "") {
+  const p = `sections.${i}`;
+  const eye = `<button type="button" class="c e-eye${s.hidden ? " off" : ""}" data-act="sec-vis" data-path="${p}" aria-pressed="${!!s.hidden}" title="${s.hidden ? "Hidden from students: click to show this section" : "Shown to students: click to hide this section"}">${s.hidden ? EYE_OFF : EYE}<span>${s.hidden ? "Hidden" : "Shown"}</span></button>`;
+  return `<section class="hbe-sec${s.hidden ? " e-sec-hid" : ""}"><div class="hbe-sec-h">${T(`${p}.title`, s.title, "h3", "", "Section title", "hb-h3", { plain: true })}<div class="e-secctl">${extra}${eye}${ctlMove("sections", i, n)}${ctlDel("sections", i, "section")}</div></div>
+    ${BODY[s.type](s, p)}</section>`;
+}
+const HUB_TAB = {
+  overview() {
+    const n = model.sections.length, has = model.sections.some(x => x.type === "meetings");
+    return `<h2 class="hb-h2">Overview</h2>${T("description", model.description, "p", "", "What the course is about: a sentence or two", "hb-desc")}
+      ${model.sections.map((s, i) => (OVERVIEW_TYPES.includes(s.type) ? hubSection(s, i, n) : "")).join("")}
+      <div class="e-addsec">${B("addsec", "sections", "+ Add a Section", "Add a section at the end of the Overview: a heading, then text and tables", 'data-kind="text"', "add")}${has ? "" : B("addsec", "sections", "+ Meeting Times & Office Hours", "Add the weekly meeting times and office hours", 'data-kind="meetings"', "add")}</div>`;
+  },
+  week(D) {
+    return `<p class="hbe-preview">A preview: this is This week as students see it. Click a lecture or an announcement to change it.</p>${HV().draw(D, "week", ui.week, { edit: true })}`;
+  },
+  lectures(D) {
+    if (!model.sections.some(x => x.type === "schedule")) return `<h2 class="hb-h2">Lectures</h2><p class="hb-empty">No weeks yet.</p><div class="e-addsec">${B("addsec", "sections", "+ Start the Weeks", "Add the term's weeks and their lectures", 'data-kind="schedule"', "add")}</div>`;
+    return HV().draw(D, "lectures", null, { edit: true });
+  },
+  evaluations(D) {
+    const bar = editGrades ? `<div class="hbe-bar"><button type="button" class="c" data-act="edit-grades" data-v="evals" title="Change the evaluations, weights and dates in the gradebook">${ICON_EDIT}Change in the Gradebook</button></div>` : "";
+    return HV().draw(D, "evaluations", null, { edit: true }).replace("</p>", `</p>${bar}`);
+  },
+  announcements(D) {
+    const { out, cur } = weekChoices();
+    const bar = out.length ? `<div class="hbe-bar"><button type="button" class="c add" data-act="ann-new">+ New Announcement</button><label>in<select id="ann-week" aria-label="Which week it's in">${out.map(w => `<option value="${esc(w.path)}"${w.path === cur ? " selected" : ""}>${esc(w.label)}</option>`).join("")}</select></label></div>` : `<p class="hb-empty">Add weeks on the Lectures tab first: each announcement is in a week.</p>`;
+    return HV().draw(D, "announcements", null, { edit: true }).replace("</p>", `</p>${bar}`);
+  },
+  policies() {
+    const n = model.sections.length, list = model.sections.map((s, i) => [s, i]).filter(([s]) => s.type === "policies");
+    const edit = editGrades ? `<button type="button" class="c" data-act="edit-grades" data-v="settings" title="Change the course rules in the gradebook's settings">${ICON_EDIT}Edit</button>` : "";
+    return `<h2 class="hb-h2">Policies</h2>${list.length ? list.map(([s, i]) => `${T(`sections.${i}.caption`, s.caption, "p", "", "A line under the heading", "hb-lede")}<div class="hbe-bar">${edit}<span class="e-help" style="margin: 0;">The gradebook's course rules, and your own. Each one can be shown or kept off the page.</span></div><div class="hb-panel">${policiesBody(s, `sections.${i}`)}</div>`).join("")
+      : `<p class="hb-empty">No policies yet.</p><div class="e-addsec">${B("addsec", "sections", "+ Add Policies", "Add the Policies: the gradebook's course rules, and your own", 'data-kind="policies"', "add")}</div>`}`;
+  },
+  accommodations(D) { return HV().draw(D, "accommodations"); },
+};
+function hubEditor() {
+  const tab = HUB_ALL.some(t => t[0] === ui.tab) ? ui.tab : "overview", m = model;
+  const tabs = HUB_ALL.map(([id, t]) => {
+    const sg = id === "accommodations" || tabVis(m, id) === "signed-in";
+    const vis = id === "accommodations" ? `<span class="hbe-vis on fixed" title="Always for signed-in students">${HV().LOCK}</span>`
+      : `<span class="hbe-vis${sg ? " on" : ""}" data-act="tab-vis" data-v="${id}" role="button" tabindex="0" title="${sg ? "Signed-in only: click to make this tab public" : "Public: click to make this tab for signed-in people only"}">${sg ? HV().LOCK : GLOBE}</span>`;
+    return `<span class="hb-tab hbe-tab" role="tab" tabindex="0" data-act="tab" data-v="${id}" aria-selected="${id === tab}">${esc(t)}${vis}</span>`;
+  }).join("");
+  EDIT = true;
+  let body;
+  try { body = HUB_TAB[tab](hubData()); } finally { EDIT = false; }
+  EDIT = true;
+  const head = `<header class="hb-head"><div class="hb-head-in"><div class="hb-titles">
+      <p class="hb-sub">${T("code", m.code, "span", "", "Course code", "", { plain: true })}<span class="e-dot"> · </span>${T("term", m.term, "span", "", "Term", "", { plain: true })}<span class="e-dot"> · </span>${T("school", m.school, "span", "", "School", "", { plain: true })}</p>
+      ${T("title", m.title, "h1", "", "Course title", "hb-title", { plain: true })}</div></div></header>`;
+  EDIT = false;
+  return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">${esc(tabTitle(tab))}</span></nav>
+    <div class="hb hbe">${head}<nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>
+    <main class="hb-main">${visLine(tab)}${body}</main></div>`;
+}
+
+// ═════════════════════════════════════════════════════════════════════
 // Rendering: one set of functions for Edit mode (editable, with controls)
 // and for the exported page.
 // ═════════════════════════════════════════════════════════════════════
@@ -1093,7 +1241,7 @@ let EDIT = false;
 
 // A text field: editable in Edit mode, rendered text in the export.
 function T(path, val, tag, style, ph, cls, opts = {}) {
-  if (EDIT) return `<${tag} style="${style}" class="ed" data-bind="${path}" data-ph="${esc(ph || "")}"${opts.item ? ' data-item="1"' : ""} contenteditable="plaintext-only" spellcheck="true">${esc(val)}</${tag}>`;
+  if (EDIT) return `<${tag} style="${style}" class="ed${cls ? ` ${cls}` : ""}" data-bind="${path}" data-ph="${esc(ph || "")}"${opts.item ? ' data-item="1"' : ""} contenteditable="plaintext-only" spellcheck="true">${esc(val)}</${tag}>`;
   return `<${tag} class="${cls}" style="${style}">${opts.plain ? esc(val) : rich(val)}</${tag}>`;
 }
 const ICON = {
@@ -1152,11 +1300,15 @@ function card(c, p, i, n) {
 // ── The builder's pages for a week and a card ────────────────────────
 // ui.page is "" for the course page, a week's path ("sections.0.weeks.3") or a
 // card's ("sections.0.weeks.3.cards.1"). The path at the top leads back.
-const parentPage = p => p.replace(/\.(cards|weeks|announcements)\.\d+$/, "").replace(/^sections\.\d+$/, "");
+const parentPage = p => /^evalFiles\./.test(p) ? "" : p.replace(/\.(cards|weeks|announcements)\.\d+$/, "").replace(/^sections\.\d+$/, "");
 function crumbsHTML(p) {
   const parts = p.split("."), steps = [];
-  const sec = getP(model, parts.slice(0, 2).join("."));
-  steps.push({ label: sec.title || "Section", to: "" });
+  steps.push({ label: HV() ? tabTitle(ui.tab) : (getP(model, parts.slice(0, 2).join(".")) || {}).title || "Section", to: "" });
+  if (parts[0] === "evalFiles") {
+    const e = ((model.scheme && model.scheme.evals) || []).find(x => x.id === parts[1]);
+    steps.push({ label: (e && e.name) || "Evaluation" });
+    return `<nav class="crumbs" aria-label="Where you are">${steps.map((x, k) => k < steps.length - 1 ? `<button type="button" data-act="open" data-path="${x.to}">${esc(x.label)}</button><span class="sep">›</span>` : `<span class="cur" aria-current="page">${esc(x.label)}</span>`).join("")}</nav>`;
+  }
   if (parts.length >= 4) { const w = getP(model, parts.slice(0, 4).join(".")); steps.push({ label: w.label || "Week", to: parts.slice(0, 4).join(".") }); }
   if (parts.length >= 6) { const x = getP(model, p); steps.push({ label: parts[4] === "announcements" ? (x.title || "Announcement") : (x.label || "Untitled") }); }
   return `<nav class="crumbs" aria-label="Where you are">${steps.map((x, k) => k < steps.length - 1
@@ -1171,7 +1323,7 @@ const GRIP_SVG = '<svg class="e-grip" viewBox="0 0 24 24" fill="currentColor" ar
 function weekPageHTML(p) {
   const w = getP(model, p), list = p.replace(/\.\d+$/, ""), i = Number(p.split(".").pop()), n = getP(model, list).length;
   if (!w.announcements) w.announcements = [];
-  return `<div class="cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
+  return `<div class="hb cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
     <div class="e-sub-top"><h1 class="e-sub-h">${esc(w.label || "Week")}</h1><span class="e-sub-acts">${ctlDel(list, i, "week")}</span></div>
     <section class="e-subcard">
       <div class="e-two"><label class="e-f">Name<input type="text" data-bindv="${p}.label" value="${esc(w.label)}" placeholder="e.g. Week 4" autocomplete="off"></label>
@@ -1217,7 +1369,7 @@ const fileRow = (list, j, f) => `<div class="e-file2">
 function cardPageHTML(p) {
   const c = getP(model, p), list = p.replace(/\.\d+$/, ""), i = Number(p.split(".").pop()), n = getP(model, list).length;
   const k = kindOf(c.label), known = KINDS.includes(k), w = getP(model, list.replace(/\.cards$/, ""));
-  return `<div class="cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
+  return `<div class="hb cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
     <div class="e-sub-top"><h1 class="e-sub-h">${esc(c.title || c.label || "Untitled")}</h1><span class="e-sub-acts">${ctlDel(list, i, "lecture")}</span></div>
     <section class="e-subcard">
       <div class="e-two"><label class="e-f">Type<select class="e-sel" id="ce-kind" data-card="${p}">${KINDS.map(x => `<option${x === k ? " selected" : ""}>${x}</option>`).join("")}<option value="__other"${known ? "" : " selected"}>Other…</option></select></label>
@@ -1246,17 +1398,18 @@ function goPage(path) {
 function refreshPageBits() {
   const tmp = document.createElement("div");
   EDIT = true; tmp.innerHTML = pageHTML(ui.page); EDIT = false;
-  [".crumbs", ".e-sub-h"].forEach(sel => { const a = stage.querySelector(sel), b = tmp.querySelector(sel); if (a && b) a.replaceWith(b); });
+  [".crumbs", ".e-sub-h"].forEach(sel => { const a = stage.querySelector(sel), b = tmp.querySelector(sel); if (a && b && a.outerHTML !== b.outerHTML) a.replaceWith(b); });   // unchanged stays: Lectern's path (drawn from .crumbs) keeps the button being clicked
 }
 // An announcement's page: its title and date, and the message in a rich-text box
 // (bold, italic, lists, links… shown as they'll look). It's saved as Markdown.
 function annPageHTML(p) {
   const a = getP(model, p), list = p.replace(/\.\d+$/, ""), i = Number(p.split(".").pop());
-  return `<div class="cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
+  return `<div class="hb cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
     <div class="e-sub-top"><h1 class="e-sub-h">${esc(a.title || "New announcement")}</h1><span class="e-sub-acts"><button type="button" class="c primary" data-act="ann-save" data-path="${p}" title="Save the course page with this announcement">${ICON_SAVE}Save</button>${ctlDel(list, i, "announcement")}</span></div>
     <section class="e-subcard">
       <div class="e-two"><label class="e-f">Title<input type="text" data-bindv="${p}.title" value="${esc(a.title)}" placeholder="e.g. Midterm room list posted" autocomplete="off"></label>
         <div class="e-f">Date<button type="button" class="when-btn${a.date ? "" : " empty"}" data-act="ann-when" data-path="${p}">${ICON_CAL}<span>${esc(a.date || "Choose a date")}</span></button></div></div>
+      <label class="e-f">Week<select class="e-sel" id="ae-week" data-ann="${p}">${weekChoices().out.map(w => `<option value="${esc(w.path)}"${p.startsWith(`${w.path}.`) ? " selected" : ""}>${esc(w.label)}</option>`).join("")}</select></label>
       <div class="e-f">Message
         <div class="e-rich-wrap">
           <div class="e-rich-tools" role="toolbar" aria-label="Formatting">${AE_TOOLS.map(t => t === "|" ? '<span class="ae-sep"></span>' : `<button type="button" data-fmt="${t[0]}" title="${t[2]}" aria-label="${t[2]}">${t[1]}</button>`).join("")}</div>
@@ -1372,7 +1525,19 @@ function richFormat(box, fmt, wrapEl) {
   }
   box.dispatchEvent(new Event("input", { bubbles: true }));
 }
-const pageHTML = p => (/\.cards\.\d+$/.test(p) ? cardPageHTML(p) : /\.announcements\.\d+$/.test(p) ? annPageHTML(p) : weekPageHTML(p));
+const pageHTML = p => (/^evalFiles\./.test(p) ? evalPageHTML(p) : /\.cards\.\d+$/.test(p) ? cardPageHTML(p) : /\.announcements\.\d+$/.test(p) ? annPageHTML(p) : weekPageHTML(p));
+// An evaluation's page: what it is (from the gradebook), and the files and links students get for it.
+function evalPageHTML(p) {
+  const id = p.split(".")[1], e = ((model.scheme && model.scheme.evals) || []).find(x => x.id === id) || { name: "Evaluation" };
+  if (!model.evalFiles[id]) model.evalFiles[id] = [];
+  return `<div class="hb cpb-page e-sub" style="${S.page}">${crumbsHTML(p)}
+    <div class="e-sub-top"><h1 class="e-sub-h">${esc(e.name)}</h1>${editGrades ? `<span class="e-sub-acts"><button type="button" class="c" data-act="edit-grades" data-v="evals">${ICON_EDIT}Change in the Gradebook</button></span>` : ""}</div>
+    <section class="e-subcard"><p class="e-help" style="margin: 0;">${esc(whenText(e, true) || "No date yet")}${e.accom && (e.accom.approval || e.accom.alternate) ? `. Students can request an accommodation${e.accom.by ? ` until ${esc(reqByText(e.accom))}` : ""}.` : ""} Its name, weight and date come from the gradebook.</p></section>
+    <section class="e-subcard"><h2>Files and Links</h2><p class="e-help">Each one is a button students click, on the Evaluations tab and in its week.</p>
+      ${model.evalFiles[id].map((f, j) => fileRow(`evalFiles.${id}`, j, f)).join("")}
+      ${B("add", `evalFiles.${id}`, "+ Add File or Link", `Add a file or link for ${e.name}`, 'data-kind="file"', "add")}</section>
+  </div>`;
+}
 
 
 function week(w, p, i, n) {
@@ -1976,7 +2141,6 @@ function renderPage(m, edit) {
     ${T("title", m.title, "h2", S.h2, "Course title", "", { plain: true })}
     <p style="${S.sub}">${T("code", m.code, "span", "", "Course code", "", { plain: true })}<span class="e-dot"> · </span>${T("term", m.term, "span", "", "Term", "", { plain: true })}<span class="e-dot"> · </span>${T("school", m.school, "span", "", "School", "", { plain: true })}</p>
     ${T("description", m.description, "p", S.intro, "Short course description", "")}
-    ${tabsPanel(m)}
   </div>`
     : `
   <div class="cpb-head" style="padding: 0 10px;">
@@ -2090,7 +2254,7 @@ function parsePage(html) {
 // ═════════════════════════════════════════════════════════════════════
 // State, undo and editing
 // ═════════════════════════════════════════════════════════════════════
-const ui = { mode: "edit", collapsed: new Set(), page: "" };
+const ui = { mode: "edit", collapsed: new Set(), page: "", tab: "overview", week: null };
 // GitHub connection and the page currently open from it (path = "csc108/f26/info.html", sha = its version).
 const gh = { repo: "", branch: "main", token: "", path: "", sha: null, last: "" };
 let model = BLANK_PAGE();
@@ -2108,7 +2272,7 @@ stage.addEventListener("focusin", ev => { const el = ev.target.closest && ev.tar
 // (and, if they're numbered Week 1, Week 2…, the name) of the place it lands in.
 let wdrag = null;
 stage.addEventListener("dragstart", ev => {
-  const it = ev.target.closest && ev.target.closest("[data-dl]"); if (!it || ev.target.closest(".ed")) return;
+  const it = ev.target.closest && ev.target.closest("[data-dl]"); if (!it || ev.target.closest(".ed") || ev.target.closest("[data-ldrag]")) return;
   wdrag = { list: it.dataset.dl, i: Number(it.dataset.di), el: it };
   ev.dataTransfer.effectAllowed = "move"; try { ev.dataTransfer.setData("text/plain", ""); } catch (_) {}
   requestAnimationFrame(() => it.classList.add("e-dragging"));
@@ -2205,8 +2369,9 @@ function render(focusPath) {
   if (ui.page && !getP(model, ui.page)) ui.page = parentPage(ui.page);
   if (ui.page && !getP(model, ui.page)) ui.page = "";
   if (ui.page) { EDIT = true; stage.innerHTML = pageHTML(ui.page); EDIT = false; if (stage.querySelector(".e-rich")) document.execCommand("defaultParagraphSeparator", false, "p"); }
-  else stage.innerHTML = renderPage(model, ui.mode === "edit");
+  else stage.innerHTML = HV() ? hubEditor() : renderPage(model, ui.mode === "edit");
   stage.classList.toggle("edit", ui.mode === "edit");
+  stage.classList.toggle("hbe-on", !ui.page && !!HV());
   stage.querySelectorAll("textarea.e-md").forEach(autosize);
   window.scrollTo(0, y);
   updateStatus();
@@ -2267,6 +2432,16 @@ stage.addEventListener("change", e => {
   change(() => relabel(p, e.target.value));
 });
 stage.addEventListener("keydown", e => { if (e.target.dataset && e.target.dataset.bindv && e.key === "Enter") { e.preventDefault(); e.target.blur(); } });
+// An announcement moved to another week: it goes to the end of that week's, and its page follows it.
+stage.addEventListener("change", e => {
+  if (e.target.id !== "ae-week") return;
+  const from = e.target.dataset.ann, to = e.target.value, a = getP(model, from);
+  if (!a || from.startsWith(`${to}.`)) return;
+  flushTyping();
+  let at = "";
+  change(() => { const src = getP(model, from.replace(/\.\d+$/, "")); src.splice(Number(from.split(".").pop()), 1); const w = getP(model, to); if (!w.announcements) w.announcements = []; w.announcements.push(a); at = `${to}.announcements.${w.announcements.length - 1}`; });
+  ui.page = at; render(); toast("Moved to another week.");
+});
 
 stage.addEventListener("paste", e => {
   if (!e.target.closest("[contenteditable]")) return;
@@ -2291,7 +2466,7 @@ stage.addEventListener("keydown", e => {
 });
 
 stage.addEventListener("keydown", e => {
-  const t = e.target.classList && (e.target.classList.contains("e-cardbtn") || e.target.classList.contains("e-weekrow")) ? e.target : null;
+  const t = e.target.classList && ["e-cardbtn", "e-weekrow", "hb-ed", "hbe-tab", "hbe-vis"].some(c => e.target.classList.contains(c)) ? e.target : null;
   if (t && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); act(t.dataset); }
 });
 // The rich-text box's buttons keep the selection (mousedown) and format it (click); Ctrl+K adds a link.
@@ -2308,6 +2483,9 @@ stage.addEventListener("keydown", e => {
 stage.addEventListener("click", e => {
   // In Edit mode links don't navigate, so the Download button text can be edited.
   if (ui.mode === "edit" && e.target.closest("a")) e.preventDefault();
+  const wk = e.target.closest(".hb-weeknav [data-week]");
+  if (wk) { e.preventDefault(); if (wk.dataset.week !== "") { ui.week = wk.dataset.week; render(); } return; }
+  if (e.target.closest(".ed")) return;   // typing in a title inside something that opens
   const btn = e.target.closest("[data-act]");
   if (btn) { e.preventDefault(); if (!btn.disabled) act(btn.dataset); }
 });
@@ -2391,6 +2569,17 @@ function act(d) {
       break;
     }
     case "edit-grades": if (editGrades) editGrades(d.v); break;
+    case "tab": flushTyping(); dropEmptyAnn(); ui.tab = d.v; ui.week = null; ui.page = ""; render(); window.scrollTo(0, 0); break;
+    case "ann-new": {   // in the week chosen beside the button; its page opens
+      const sel = stage.querySelector("#ann-week"), w = sel && getP(model, sel.value);
+      if (!w) break;
+      if (!w.announcements) w.announcements = [];
+      pageScroll[ui.page || "~"] = window.scrollY;
+      change(() => w.announcements.push({ title: "", date: nowStamp(), at: Date.now(), body: "" }));
+      goPage(`${sel.value}.announcements.${w.announcements.length - 1}`);
+      const t = stage.querySelector(`[data-bindv="${ui.page}.title"]`); if (t) t.focus();
+      break;
+    }
     case "tab-vis": change(() => { const t = { ...(model.tabs || {}) }; t[d.v] = tabVis(model, d.v) === "signed-in" ? "public" : "signed-in"; if (Object.values(t).every(v => v === "public")) delete model.tabs; else model.tabs = t; }); break;
     case "addsec": {   // at the end, open in the editor
       const k = d.kind;
@@ -2585,7 +2774,7 @@ function downloadPage() {
 }
 
 async function copyText(text) { try { await navigator.clipboard.writeText(text); return true; } catch (_) { return false; } }
-$("#copy").addEventListener("click", async () => {
+if ($("#copy")) $("#copy").addEventListener("click", async () => {
   flushTyping();
   const html = exportHTML();
   if (await copyText(html)) { if (!gh.path) { unsaved = false; updateStatus(); } toast("Copied. In Canvas, open the page's HTML editor (</>) and paste."); }
@@ -2598,10 +2787,11 @@ $("#copy").addEventListener("click", async () => {
 // republishes the site on its own.
 // ═════════════════════════════════════════════════════════════════════
 const GH_KEY = "course-page-builder.github";
-const PAGE_FILE = "info.html";
-// The same page as data, beside it: Lectern's course hub is built from this file.
-const DATA_FILE = "course.json";
-const dataPath = path => path.replace(/[^/]*$/, DATA_FILE);
+// The course page is its data: Lectern's course hub is built from course.json. Older pages are an
+// info.html (the page as HTML, for Quercus), which opens (read back into data) and saves as course.json.
+const PAGE_FILE = "course.json", OLD_FILE = "info.html";
+const isPageFile = n => n === PAGE_FILE || n === OLD_FILE;
+const oldPath = path => path.replace(/[^/]*$/, OLD_FILE);
 const pageData = () => JSON.stringify({ format: "lectern-course/1", page: model }, null, 1) + "\n";
 
 function ghLoad() {
@@ -2793,7 +2983,7 @@ async function listPages() {
       if (ch.kind !== "directory" || c.startsWith(".") || c.startsWith("_")) continue;
       for await (const [t, th] of ch.entries()) {
         if (th.kind !== "directory" || t.startsWith(".")) continue;
-        let has = false; try { await th.getFileHandle(PAGE_FILE); has = true; } catch (_) {}
+        let has = false; for (const n of [PAGE_FILE, OLD_FILE]) { try { await th.getFileHandle(n); has = true; break; } catch (_) {} }
         folders.set(`${c}/${t}`, has);
       }
     }
@@ -2803,7 +2993,7 @@ async function listPages() {
       const parts = t.path.split("/");
       if (parts.some(x => x.startsWith("."))) return;
       if (t.type === "tree" && parts.length === 2) folders.set(t.path, folders.get(t.path) || false);
-      if (t.type === "blob" && parts.length === 3 && parts[2] === PAGE_FILE) folders.set(parts.slice(0, 2).join("/"), true);
+      if (t.type === "blob" && parts.length === 3 && isPageFile(parts[2])) folders.set(parts.slice(0, 2).join("/"), true);
     });
   }
   const courses = {};
@@ -2834,9 +3024,8 @@ function repoDialog(mode) {
   const saveWord = src.mode === "local" ? "Save to folder" : "Save to GitHub";
   const m = modal(`<h2>${save ? "Save course page" : "New course page"}</h2><div id="pl-gh"></div><div id="pl-body"></div>
     <p class="err" id="pl-err"></p>
-    <div class="row">${save ? '<button type="button" class="gh-link pl-file" id="pl-file">Download a copy instead…</button>' : ""}<span class="spacer"></span><button type="button" id="pl-close">Cancel</button><button type="button" class="primary" id="pl-ok" disabled>${save ? saveWord : "Create page"}</button></div>`);
+    <div class="row"><span class="spacer"></span><button type="button" id="pl-close">Cancel</button><button type="button" class="primary" id="pl-ok" disabled>${save ? saveWord : "Create page"}</button></div>`);
   $("#pl-close", m).onclick = closeModal;
-  if (save) $("#pl-file", m).onclick = () => { closeModal(); downloadPage(); };
   const ok = $("#pl-ok", m), body = $("#pl-body", m), err = $("#pl-err", m);
 
   // Where the page goes: the folder or repository chosen on the start screen (changed there).
@@ -2957,20 +3146,26 @@ function repoDialog(mode) {
 const pullDialog = () => repoDialog("open");
 const saveDialog = () => repoDialog("save");
 
-// Read an info.html from the repo into editable data.
+// Read a course page (<course>/<term>/course.json) into editable data; an older page (info.html only)
+// is read back from its HTML, and then saving makes its course.json (sha null: it's new).
+async function readText(path) {
+  if (src.mode === "local") { const { text, version } = await readLocal(path); return { text, sha: version }; }
+  const f = await ghApi(`/repos/${gh.repo}/contents/${encPath(path)}?ref=${encodeURIComponent(gh.branch)}`);
+  return { text: b64decode(f.content), sha: f.sha };
+}
+const missing = e => (e && (e.status === 404 || e.name === "NotFoundError" || e.name === "TypeError"));
 async function fetchPage(path) {
-  let text, sha;
-  if (src.mode === "local") ({ text, version: sha } = await readLocal(path));
-  else { const f = await ghApi(`/repos/${gh.repo}/contents/${encPath(path)}?ref=${encodeURIComponent(gh.branch)}`); text = b64decode(f.content); sha = f.sha; }
-  try {
-    let data = null;
-    if (src.mode === "local") { try { data = (await readLocal(dataPath(path))).text; } catch (_) {} }
-    else { try { data = b64decode((await ghApi(`/repos/${gh.repo}/contents/${encPath(dataPath(path))}?ref=${encodeURIComponent(gh.branch)}`)).content); } catch (_) {} }
-    const d = data ? JSON.parse(data) : null;
-    if (d && d.page && Array.isArray(d.page.sections) && text.includes("cpb-page")) { fitAll(d.page); return { page: d.page, sha }; }
-  } catch (_) {}
-  try { return { page: parsePage(text), sha }; }
-  catch (_) { throw new GhError(0, `${path} wasn't made with this builder, so it can't be opened for editing.`); }
+  let got = null;
+  try { got = await readText(path); } catch (e) { if (!missing(e)) throw e; }
+  if (got) {
+    let d = null; try { d = JSON.parse(got.text); } catch (_) {}
+    if (!d || !d.page || !Array.isArray(d.page.sections)) throw new GhError(0, `${path} isn't a course page this builder can open.`);
+    fitAll(d.page);
+    return { page: d.page, sha: got.sha };
+  }
+  const old = await readText(oldPath(path));
+  try { return { page: parsePage(old.text), sha: null }; }
+  catch (_) { throw new GhError(0, `${oldPath(path)} wasn't made with this builder, so it can't be opened for editing.`); }
 }
 
 async function pullPage(folder, has, m, copyFrom) {
@@ -2985,7 +3180,7 @@ async function pullPage(folder, has, m, copyFrom) {
     }
     else page = BLANK_PAGE();
     if (unsaved) undoStack.push(JSON.stringify(model));
-    model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has; ensureMeetings(model); ui.collapsed.clear();
+    model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has || !sha; ensureMeetings(model); ui.collapsed.clear();
     closeModal(); render();
     toast(has ? `Opened ${path}` : copyFrom ? `Started ${path} from a copy of ${copyFrom}. Update it, then Save.` : `Started a blank page for ${path}. Save to create it.`);
   } catch (e) { ok.disabled = false; $("#pl-err", m).textContent = e.message; }
@@ -3112,10 +3307,8 @@ async function doSave(m, path, message, overwrite) {
       entries.push({ path: p, mode: "100644", type: "blob", sha: blob.sha });
     }
     step("Saving…");
-    const page = await ghApi(`${R}/git/blobs`, { method: "POST", body: JSON.stringify({ content: exportDoc(), encoding: "utf-8" }) });
+    const page = await ghApi(`${R}/git/blobs`, { method: "POST", body: JSON.stringify({ content: pageData(), encoding: "utf-8" }) });
     entries.push({ path, mode: "100644", type: "blob", sha: page.sha });
-    const data = await ghApi(`${R}/git/blobs`, { method: "POST", body: JSON.stringify({ content: pageData(), encoding: "utf-8" }) });
-    entries.push({ path: dataPath(path), mode: "100644", type: "blob", sha: data.sha });
     const tree = await ghApi(`${R}/git/trees`, { method: "POST", body: JSON.stringify({ base_tree: baseTree, tree: entries }) });
     const commit = await ghApi(`${R}/git/commits`, { method: "POST", body: JSON.stringify({ message, tree: tree.sha, parents: [head] }) });
     try { await ghApi(`${R}/git/refs/heads/${encodeURIComponent(gh.branch)}`, { method: "PATCH", body: JSON.stringify({ sha: commit.sha }) }); }
@@ -3149,8 +3342,7 @@ async function saveLocal(m, path, overwrite) {
     const ups = usedUploads();
     for (let k = 0; k < ups.length; k++) { ok.textContent = `Copying ${k + 1} of ${ups.length}…`; await writeLocal(ups[k][0], ups[k][1]); }
     ok.textContent = "Saving…";
-    await writeLocal(path, exportDoc());
-    await writeLocal(dataPath(path), pageData());
+    await writeLocal(path, pageData());
     gh.path = path; gh.sha = (await readLocal(path)).version; fileName = ""; unsaved = false;
     pending.clear();
     render();
@@ -3449,7 +3641,7 @@ if (lectern) {
       }
       else page = BLANK_PAGE();
       if (unsaved) undoStack.push(JSON.stringify(model));
-      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has; ensureMeetings(model); ui.collapsed.clear(); ui.page = "";
+      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ensureMeetings(model); ui.collapsed.clear(); ui.page = ""; ui.tab = "overview"; ui.week = null;   // no sha: new, or an older page (info.html) that saves as course.json
       leaveHome(); render();
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }
@@ -3465,8 +3657,8 @@ if (lectern) {
     },
     state: () => ({ path: gh.path, unsaved }),
     // Where it is (the course page, a week, a lecture…), and going back there: Lectern's Back and Forward.
-    where: () => ({ page: ui.page || "" }),
-    goto(l) { flushTyping(); dropEmptyAnn(); if (!l.page || getP(model, l.page)) goPage(l.page || ""); },
+    where: () => ({ page: ui.page || "", tab: ui.tab }),
+    goto(l) { flushTyping(); dropEmptyAnn(); if (l.tab) ui.tab = l.tab; if (!l.page || getP(model, l.page)) goPage(l.page || ""); },
     top() { flushTyping(); dropEmptyAnn(); goPage(""); },
     // The gradebook's marking scheme and evaluations (null: none, so keep what the page has). A change
     // to them changes the published page, so the page then needs saving.

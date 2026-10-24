@@ -13,7 +13,8 @@ below, which leaves out the tabs a viewer may not see.
 
 Tabs: each is public or for signed-in people only (course.json's "tabs", set in the builder; all
 public unless changed). My accommodations is always signed-in only. "Signed in" means someone with
-a part in this offering: its owner and teaching team now; students once they can sign in.
+a part in this offering: its owner and teaching team (Lectern accounts), and students on its class list
+signed in to this course page (students.py: email and a one-time code).
 
 Staff can add ?as=public to see the hub as a signed-out visitor does.
 """
@@ -346,8 +347,8 @@ def buckets(page, year=None, book_files=None, lectures=None, team=None, announce
                    "policies": _blocks(about.get("policies")), "rules": rules}
     else:
         about_b = {"description": _s(page.get("description")), "team": team or [],
-                   "sections": [x for x in (_section(s) for s in secs if s.get("type") in ("table", "sessions", "text", "meetings"))
-                                if x["type"] != "meetings" or x["items"] or x["blocks"]],
+                   # Only the page's own text: its contact and meeting-time tables are the teaching team's now.
+                   "sections": [x for x in (_section(s) for s in secs if s.get("type") == "text") if x["blocks"]],
                    "policies": [b for s in pol for b in _blocks(s.get("blocks"))], "rules": rules}
     return {
         "about": about_b,
@@ -414,6 +415,11 @@ def hub_api(handle, course, term):
     offering = f"{course}/{term}"
     u, _ = current()
     role = role_of(u["id"], o["id"], offering) if u else None
+    student = None
+    if not role:   # a student signed in to this course page (students.py)
+        from .students import student_of
+        student = student_of(o["id"], offering)
+        role = "student" if student else None
     preview = role in STAFF and request.args.get("as") == "public"
     signed = bool(role) and not preview
     vis = visibility(page)
@@ -434,9 +440,9 @@ def hub_api(handle, course, term):
         course={"title": _s(head.get("title"), 300) or _s(page.get("title"), 300), "code": _s(head.get("code"), 60) or _s(page.get("code"), 60),
                 "term": _s(head.get("term"), 100) or _s(page.get("term"), 100), "school": _s(head.get("school"), 200) or _s(page.get("school"), 200),
                 "offering": offering, "year": year},
-        viewer={"signedIn": signed, "role": None if preview else role, "name": u["name"] if u and signed else "",
+        viewer={"signedIn": signed, "role": None if preview else role, "name": student or (u["name"] if u and signed else ""),
                 "staff": role in STAFF, "preview": preview},
         tabs=tabs, data=data,
-        lectern=app_url(),
+        lectern=app_url(), signIn=f"/c/{o['handle']}/{offering}/sign-in",
         pages=f"{pages_base()}{o['handle']}/{offering}/",
     )

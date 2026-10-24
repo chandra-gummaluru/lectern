@@ -1,6 +1,7 @@
 /* A teaching team member's page (#/<course>/<term>/team/<user id>): what students see about them on the
-   course page's About tab. Their contact email and office, and their weekly times: the lecture sections
-   they teach, tutorials and labs they run, office hours, each with its section, day, time and room.
+   course page's About tab. Their contact email and office, and their activities: each a weekly lecture,
+   tutorial, lab or office hours, with its day, time and room, and its group (e.g. LEC0101): a group puts
+   several activities together, such as a section's Monday and Wednesday lectures.
 
    Kept in the offering's private files, <course>/<term>/team.json (the hub reads it, with the team itself):
 
@@ -15,7 +16,7 @@
 export const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["office", "Office hours"], ["other", "Other"]];
 export const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const uid = () => Math.random().toString(36).slice(2, 10);
-const SECTION_HINT = { lecture: "e.g. LEC0101", tutorial: "e.g. TUT0102", lab: "e.g. PRA0101", office: "Optional", other: "e.g. Review session" };
+const SECTION_HINT = { lecture: "e.g. LEC0101", tutorial: "e.g. TUT0102", lab: "e.g. PRA0101", office: "Optional", other: "e.g. Review sessions" };
 
 export function teamMemberPage(ctx, r) {
   const { $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, steps, api, owner, ROLE_NAME } = ctx;
@@ -66,12 +67,12 @@ export function teamMemberPage(ctx, r) {
         <div class="lw-two"><label>Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${esc(who.email)}"${dis}><small>For students. Blank: ${esc(who.email)}.</small></label>
           <label>Office<input type="text" id="tm-office" value="${esc(me.office || "")}" placeholder="e.g. BA 4010"${dis}></label></div>
       </div>
-      <h2 class="lw-h2">Sections and Times</h2>
-      <div class="lw-card"><p class="lt-part-text lw-help">The lecture sections they teach, the tutorials and labs they run, and their office hours: each one every week of the term. The course page puts them under their section, and This week on their days.</p>
-        <div class="tm-times">${times.length ? `<div class="tm-row tm-head"><span>What</span><span>Section</span><span>Day</span><span>Starts</span><span>Ends</span><span>Where</span><span></span></div>` : ""}
+      <h2 class="lw-h2">Activities</h2>
+      <div class="lw-card"><p class="lt-part-text lw-help">The lectures they teach, the tutorials and labs they run, and their office hours: each one every week of the term. Give activities the same group (e.g. LEC0101) to put them together, such as a section's Monday and Wednesday lectures. The course page shows each group with its times, and This week puts them on their days.</p>
+        <div class="tm-times">${times.length ? `<div class="tm-row tm-head"><span>What</span><span>Group</span><span>Day</span><span>Starts</span><span>Ends</span><span>Where</span><span></span></div>` : ""}
         ${times.map((x, i) => `<div class="tm-row" data-i="${i}">
           <select data-k="kind" aria-label="What"${dis}>${opt(KINDS, x.kind)}</select>
-          <input type="text" data-k="section" value="${esc(x.section || "")}" placeholder="${SECTION_HINT[x.kind] || ""}" aria-label="Section"${dis}>
+          <input type="text" data-k="section" value="${esc(x.section || "")}" placeholder="${SECTION_HINT[x.kind] || ""}" aria-label="Group"${dis}>
           <select data-k="day" aria-label="Day"${dis}>${opt(days, x.day)}</select>
           <input type="time" data-k="start" value="${esc(x.start || "")}" aria-label="Starts"${dis}>
           <input type="time" data-k="end" value="${esc(x.end || "")}" aria-label="Ends"${dis}>

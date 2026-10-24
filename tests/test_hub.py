@@ -40,8 +40,8 @@ def test_the_hub_page_and_its_api(client, user, anon):
     assert [t["id"] for t in j["tabs"]] == ["week", "announcements", "lectures", "evaluations", "about", "accommodations"]
     assert set(j["data"]) == {"week", "announcements", "lectures", "evaluations", "about"}
     assert j["viewer"] == {"signedIn": False, "role": None, "name": "", "staff": False, "preview": False}
-    meets = [s for s in j["data"]["about"]["sections"] if s["type"] == "meetings"][0]["items"]
-    assert any(m["kind"] == "office" and m["day"] == 1 for m in meets)
+    # The page's old contact and meeting-time tables aren't shown: the teaching team's sections and times are.
+    assert not [s for s in j["data"]["about"]["sections"] if s["type"] != "text"]
     weeks = j["data"]["week"]["weeks"]
     assert weeks[0]["start"] == "2026-09-07" and any(w["isBreak"] for w in weeks)
     assert j["data"]["announcements"]["items"][0]["title"] == "Welcome to CSC258!"

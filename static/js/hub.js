@@ -18,7 +18,7 @@ const tab = id => D.tabs.find(t => t.id === id);
 
 function lockedHTML(t) {
   return `<div class="hb-locked">${LOCK}<h2>${esc(t.title)}</h2><p>${t.id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p>
-    <a class="hb-btn primary" href="${esc(D.lectern)}">Sign in</a></div>`;
+    <a class="hb-btn primary" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`;
 }
 
 // ── The page ─────────────────────────────────────────────────────────
@@ -46,9 +46,12 @@ function header() {
   $("hb-sub").textContent = [c.code, c.term, c.school].filter(Boolean).join(" · ");
   $("hb-title").textContent = c.title || c.code || "Course page";
   const ROLE = { owner: "Instructor", instructor: "Instructor", ta: "TA", student: "Student" };
+  // Students sign in to this course page (its own sign-in: email and a code); the teaching team is signed in to Lectern.
   $("hb-who").innerHTML = v.signedIn
-    ? `Signed in as <b>${esc(v.name)}</b>${v.role ? `<span class="hb-role">${esc(ROLE[v.role] || v.role)}</span>` : ""}`
-    : `<a class="hb-btn" href="${esc(D.lectern)}">Sign in</a>`;
+    ? `Signed in as <b>${esc(v.name)}</b>${v.role ? `<span class="hb-role">${esc(ROLE[v.role] || v.role)}</span>` : ""}${v.role === "student" ? ` <button type="button" class="hb-si-out" id="hb-out">Sign out</button>` : ""}`
+    : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a>`;
+  const out = $("hb-out");
+  if (out) out.onclick = async () => { out.disabled = true; await fetch(`${root.dataset.api}/sign-out`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" } }).catch(() => {}); location.reload(); };
   const bar = $("hb-staff");
   if (v.staff) {
     const base = location.pathname;

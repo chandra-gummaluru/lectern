@@ -677,6 +677,10 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.team}<h2>Teaching Team</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
       </section>
+      <section class="lt-part lt-wide lt-team" id="lt-students">
+        <div class="lt-part-head">${ICON.user}<h2>Students</h2></div>
+        <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
+      </section>
     </div>
   </div>`);
   $("#lt-lectures").onclick = () => go({ page: "lectures", c, t });
@@ -694,6 +698,7 @@ function offeringPage(c, t) {
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
   teamPart(c, t);
+  studentsPart(c, t);
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
   if (o.exams.length) docLinks(c, t).then(links => {
     const linked = new Set(Object.values(links).map(d => d.folder)), loose = o.exams.filter(e => !linked.has(e)), el = $("#lt-loose");
@@ -706,6 +711,52 @@ function offeringPage(c, t) {
 // ── The teaching team: who else works on this offering, as instructor or TA ──
 // Instructors add people by email (someone without an account gets an invitation that makes one),
 // change roles and remove people; anyone can leave. The server enforces what each role may do.
+// ── Students: the class list for this course page (server/students.py) ──
+// Each student on it signs in to the course page itself, with their email and a code it emails them.
+async function studentsPart(c, t) {
+  const box = $("#lt-students .lt-team-body"), o = curOwner(), owner = o || S.user.handle;
+  const here = () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box);
+  const base = `/api/students/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
+  let d;
+  try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
+  if (!here()) return;
+  const lead = canEdit(c, t), when = x => new Date(x * 1000).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+  const stateOf = s => (s.last_in ? `Signed in ${when(s.last_in)}` : s.invited ? `Sent the link ${when(s.invited)}` : "Not signed in yet");
+  box.innerHTML = `<p class="lt-part-text">Students on this list can sign in to the course page, with their email and a code it emails them. Its link: <code>${esc(d.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
+    ${lead ? `<form class="lt-st-add" id="st-add" novalidate>
+      <textarea id="st-emails" rows="3" placeholder="Their emails: paste a list, one per line or separated by commas" aria-label="Students' emails"></textarea>
+      <div class="lt-st-row"><label class="lt-check"><input type="checkbox" id="st-invite"${d.email ? " checked" : " disabled"}> Email each one the course page's link</label><span class="grow"></span><button type="submit" class="lt-btn add">${ICON.plus}Add Students</button></div>
+      ${d.email ? "" : `<p class="lt-note">Email isn't set up on this server, so no links go out: share the link yourself.</p>`}</form><div id="st-msg"></div>` : ""}
+    ${d.students.length ? `<p class="lt-part-text lt-st-count">${d.students.length} student${d.students.length === 1 ? "" : "s"}${lead && d.email ? ` · <button type="button" class="lt-link" id="st-all">Email everyone the link</button>` : ""}</p>
+    <div class="lt-olist lt-st-list">${d.students.map(s => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(s.email)}</b><span>${esc(stateOf(s))}</span></div>
+      ${lead ? `<span class="lt-orow-r">${d.email ? `<button type="button" class="lt-link" data-st-invite="${esc(s.email)}">Email the link</button>` : ""}<button type="button" class="lt-link lt-del" data-st-remove="${esc(s.email)}">Remove</button></span>` : ""}</div>`).join("")}</div>`
+      : `<p class="lt-part-text lt-st-count">No students yet.</p>`}`;
+  const again = () => studentsPart(c, t);
+  $("#st-copy").onclick = async () => { try { await navigator.clipboard.writeText(d.link); toast("Copied the course page's link."); } catch (_) { toast(d.link); } };
+  if (!lead) return;
+  $("#st-add").onsubmit = async e => {
+    e.preventDefault();
+    const emails = $("#st-emails").value.trim(); if (!emails) return $("#st-emails").focus();
+    const btn = $("#st-add button[type=submit]"); btn.disabled = true;
+    try {
+      const r = await Auth.api(`${base}/add`, { emails, invite: $("#st-invite").checked });
+      toast(`Added ${r.added} student${r.added === 1 ? "" : "s"}${r.already ? ` (${r.already} already on the list)` : ""}${r.invited ? `; emailed ${r.invited} the link` : ""}.`);
+      await again();
+      if (r.bad.length && $("#st-msg")) $("#st-msg").innerHTML = `<p class="lt-note">Not emails, so not added: ${r.bad.map(esc).join(", ")}</p>`;
+    } catch (x) { toast(x.message); btn.disabled = false; }
+  };
+  const all = $("#st-all");
+  if (all) all.onclick = async () => {
+    if (!await confirmBox("Email everyone the link?", `Each of the ${d.students.length} students gets an email with the course page's link.`, "Email Them")) return;
+    try { const r = await Auth.api(`${base}/invite`, {}); toast(`Emailed ${r.invited} students the link.`); again(); } catch (x) { toast(x.message); }
+  };
+  box.querySelectorAll("[data-st-invite]").forEach(b => { b.onclick = async () => { try { await Auth.api(`${base}/invite`, { email: b.dataset.stInvite }); toast(`Emailed ${b.dataset.stInvite} the link.`); again(); } catch (x) { toast(x.message); } }; });
+  box.querySelectorAll("[data-st-remove]").forEach(b => { b.onclick = async () => {
+    if (!await confirmBox("Take them off the class list?", `${esc(b.dataset.stRemove)} won't be able to sign in to the course page any more (and is signed out now).`, "Remove")) return;
+    try { await Auth.api(`${base}/remove`, { email: b.dataset.stRemove }); again(); } catch (x) { toast(x.message); }
+  }; });
+}
+
 async function teamPart(c, t) {
   const box = $("#lt-team .lt-team-body"), o = curOwner(), owner = o || S.user.handle;
   const here = () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box);
@@ -720,7 +771,7 @@ async function teamPart(c, t) {
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
   box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams." : "The people who work on this offering."}</p>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
-        <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their sections, times and office hours, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
+        <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag">Owner</span>`
           : lead && p.id !== d.me ? `${roleSel(p)}<button type="button" class="lt-link lt-del" data-remove="${p.id}">Remove</button>`
           : `<span class="lt-tag${p.role === "ta" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>

@@ -182,3 +182,22 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
   .hb-who { text-align: left; white-space: normal; }
   .hb-main, .hb-head-in, .hb-tabs-in, .hb-staff-in { padding-left: 16px; padding-right: 16px; }
 }
+
+/* ── A course page's sign-in (hub-signin.html) ── */
+.hb-signin { min-height: 100vh; }
+.hb-si { max-width: 420px; margin: 0 auto; padding: 72px 20px 40px; }
+.hb-si .hb-title { margin: 2px 0 22px; }
+.hb-si-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 20px 22px; display: grid; gap: 12px; }
+.hb-si-card p { margin: 0; color: var(--ink-2); }
+.hb-si-card label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; }
+.hb-si-card input { font: 16px var(--font-ui); height: 42px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); }
+.hb-si-card input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .16); }
+.hb-si-card #si-c { letter-spacing: .3em; font-variant-numeric: tabular-nums; }
+.hb .hb-si-card .hb-btn { height: 40px; justify-content: center; }
+.hb-si-err { color: #b42318 !important; font-size: 13.5px; min-height: 0; }
+.hb-si-err:empty { display: none; }
+.hb-si-alt { text-align: center; }
+.hb-si-link { all: unset; cursor: pointer; color: var(--accent); font-size: 13.5px; text-decoration: underline; }
+.hb-si-back { margin-top: 18px; text-align: center; font-size: 14px; }
+.hb-si-out { all: unset; cursor: pointer; margin-left: 10px; font-size: 13px; color: var(--ink-3); text-decoration: underline; }
+.hb-si-out:hover { color: var(--ink); }

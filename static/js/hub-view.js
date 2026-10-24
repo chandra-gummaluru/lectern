@@ -145,8 +145,8 @@ function meetings() {
   return [...team, ...o.sections.filter(s => s.type === "meetings").flatMap(s => s.items || [])].filter(m => m.day);
 }
 
-// The teaching team, by section (Lectern → Teaching Team → each person): each lecture section, tutorial and
-// lab with its times and who runs it; then office hours; then how to reach each person.
+// The teaching team's activities (Lectern → Teaching Team → each person), by group: each group (a lecture
+// section, a tutorial, a lab…) with its times and who runs it; then office hours; then how to reach each person.
 const ROLE = { instructor: "Instructor", ta: "TA" };
 const when = x => [DAY3[x.day] || "", hhmm(x.start, x.end)].filter(Boolean).join(" ");
 function teamHTML(team) {
@@ -166,7 +166,7 @@ function teamHTML(team) {
       ${s.times.sort((a, b) => a.day - b.day || String(a.start).localeCompare(b.start)).map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
       <p class="hb-sec-who">${esc(s.who.join(", "))}</p></article>`).join("");
   const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => [p.name, `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), x.where]));
-  return `${cards ? `<h3 class="hb-h3">Sections</h3><div class="hb-grid">${cards}</div>` : ""}
+  return `${cards ? `<h3 class="hb-h3">Activities</h3><div class="hb-grid">${cards}</div>` : ""}
     ${oh.length ? `<h3 class="hb-h3">Office Hours</h3>${tableHTML(["Who", "When", "Where"], oh, null)}` : ""}
     <h3 class="hb-h3">Teaching Team</h3>${tableHTML(["Name", "Role", "Email", "Office"], team.map(p => [p.name, ROLE[p.role] || "", p.email, p.office]), null)}`;
 }
@@ -393,7 +393,7 @@ function fromPage(page, year, lectures, extra) {
   const ef = page.evalFiles || {};
   return {
     about: extra && extra.about ? aboutOf(extra.about, scheme, arr(extra.team))
-      : { description: str(page.description), team: arr(extra && extra.team), sections: secs.filter(([s]) => OVERVIEW.includes(s.type)).map(([s]) => overviewSection(s)).filter(x => x.type !== "meetings" || x.items.length || x.blocks.length),
+      : { description: str(page.description), team: arr(extra && extra.team), sections: secs.filter(([s]) => s.type === "text").map(([s]) => overviewSection(s)).filter(x => x.blocks.length),   // contact and meeting-time tables: the teaching team's now
           policies: pol.flatMap(s => blocksOf(s.blocks)), rules },
     lectures: { weeks, lists },
     announcements: { items: anns },

@@ -3180,7 +3180,7 @@ async function pullPage(folder, has, m, copyFrom) {
     }
     else page = BLANK_PAGE();
     if (unsaved) undoStack.push(JSON.stringify(model));
-    model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has || !sha; ensureMeetings(model); ui.collapsed.clear();
+    model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = ensureContact(model) || !has || !sha; ui.collapsed.clear();
     closeModal(); render();
     toast(has ? `Opened ${path}` : copyFrom ? `Started ${path} from a copy of ${copyFrom}. Update it, then Save.` : `Started a blank page for ${path}. Save to create it.`);
   } catch (e) { ok.disabled = false; $("#pl-err", m).textContent = e.message; }
@@ -3641,7 +3641,7 @@ if (lectern) {
       }
       else page = BLANK_PAGE();
       if (unsaved) undoStack.push(JSON.stringify(model));
-      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ensureMeetings(model); ui.collapsed.clear(); ui.page = ""; ui.tab = "week"; ui.week = null; ui.preview = null;   // no sha: new, or an older page (info.html) that saves as course.json
+      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ui.collapsed.clear(); ui.page = ""; ui.tab = "week"; ui.week = null; ui.preview = null;   // no sha: new, or an older page (info.html) that saves as course.json
       leaveHome(); render();
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }

@@ -84,7 +84,7 @@ export function aboutPage(ctx, r) {
     const d = st.data, dis = edit ? "" : " disabled";
     const shown = x => (x.id in d.rules ? !!d.rules[x.id] : !!x.show);
     pageHTML(`<div class="lt-in lt-lw lw-page ab-page">
-      <div class="lt-off-head"><div><h1>About</h1><p class="lt-lede">The course page's About tab: the course, its sections and teaching team, and the course-wide policies.</p></div>
+      <div class="lt-off-head"><div><h1>About</h1><p class="lt-lede">The course page's About tab: the course, its activities and teaching team, and the course-wide policies.</p></div>
         <div class="lt-off-acts">${edit ? `<span class="lw-status" id="ab-status"></span>` : ""}</div></div>
       ${edit ? "" : `<p class="lt-note">As a TA you can see this; the instructors change it.</p>`}
       <h2 class="lw-h2">The Course</h2>
@@ -95,8 +95,8 @@ export function aboutPage(ctx, r) {
           <label>School<input type="text" id="ab-school" value="${esc(d.school)}" placeholder="e.g. University of Toronto"${dis}></label></div>
         <label>Description<textarea id="ab-desc" rows="4" placeholder="What the course is about: a few sentences."${dis}>${esc(d.description)}</textarea></label>
       </div>
-      <h2 class="lw-h2">Sections, Times and the Teaching Team</h2>
-      <div class="lw-card"><p class="lt-part-text lw-help" style="padding-bottom: 0 !important;">These come from each person's page in the offering's Teaching Team: the lecture sections they teach, their tutorials, labs and office hours, and how to reach them.</p></div>
+      <h2 class="lw-h2">Activities and the Teaching Team</h2>
+      <div class="lw-card"><p class="lt-part-text lw-help" style="padding-bottom: 0 !important;">These come from each person's page in the offering's Teaching Team: the lectures they teach, their tutorials, labs and office hours (in groups such as LEC0101), and how to reach them.</p></div>
       <h2 class="lw-h2">More About the Course</h2>
       ${blocks("sections", "Add a Section", "e.g. Textbook")}
       <h2 class="lw-h2">Course Policies</h2>

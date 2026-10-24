@@ -149,6 +149,36 @@ CREATE TABLE IF NOT EXISTS resets (
   expires    REAL NOT NULL,
   used       REAL NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS course_students (  -- each offering's class list: who can sign in to its course page (students.py)
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  email     TEXT NOT NULL,
+  added     REAL NOT NULL,
+  added_by  INTEGER,
+  invited   REAL NOT NULL DEFAULT 0,
+  last_in   REAL NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner_id, offering, email)
+);
+CREATE TABLE IF NOT EXISTS student_codes (    -- a one-time code emailed to a student signing in (kept as a keyed hash)
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  email     TEXT NOT NULL,
+  code_mac  TEXT NOT NULL,
+  expires   REAL NOT NULL,
+  tries     INTEGER NOT NULL DEFAULT 0,
+  created   REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, email)
+);
+CREATE TABLE IF NOT EXISTS student_sessions ( -- a student signed in to one course page
+  id_hash   TEXT PRIMARY KEY,
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  email     TEXT NOT NULL,
+  created   REAL NOT NULL,
+  last_seen REAL NOT NULL,
+  expires   REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS student_sessions_who ON student_sessions(owner_id, offering, email);
 CREATE TABLE IF NOT EXISTS events (           -- a record of security events (sign-ins, changes)
   id      INTEGER PRIMARY KEY,
   user_id INTEGER,

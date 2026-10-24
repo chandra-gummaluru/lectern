@@ -1,7 +1,7 @@
 """The teaching team's details, set in Lectern, on the course page.
 
 The owner clicks themselves in the offering's Teaching Team, sets an office, a lecture section with two
-weekly times and office hours; it saves by itself (team.json in the private files). The hub's Overview
+weekly times and office hours; it saves by itself (team.json in the private files). The hub's About
 shows the section with its times and teacher, the office hours, and the team; This week has the times
 on their days. Asserts as it goes; screenshots in shots/.
 
@@ -58,7 +58,7 @@ def main():
         print("1 saved:", mine)
 
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/#overview"); v.wait_for_selector(".hb-main h2")
+        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".hb-main h2")
         sec = v.locator(".hb-sec").first
         expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Mon 10:00–11:00"); expect(sec).to_contain_text("Wed 10:00–11:00"); expect(sec).to_contain_text("Chandra Gummaluru")
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")

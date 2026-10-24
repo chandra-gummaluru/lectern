@@ -11,6 +11,7 @@ Module map:
 - pages.py      the page at / (splash + app), /api/config and the PWA manifest
 - tools.py      the three builders, split and scoped so they share one page
 - scope_css.py  prefixes a tool's CSS with its scope selector
+- students.py   each offering's class list, and students signing in to its course page (email + code)
 - hub.py        the course hub: an offering's course page in tabs, served from its course.json (/c/…)
 - accommodations.py  accommodation requests: the students' form and its API, instructors' decisions
 - classmail.py  emailing a class from Lectern, and each offering's own email settings
@@ -34,6 +35,7 @@ from .tools import tools_bp
 from .accommodations import accom_bp
 from .classmail import mail_bp
 from .hub import hub_bp
+from .students import students_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
@@ -44,3 +46,4 @@ app.register_blueprint(tools_bp)
 app.register_blueprint(accom_bp)
 app.register_blueprint(mail_bp)
 app.register_blueprint(hub_bp)
+app.register_blueprint(students_bp)

@@ -503,3 +503,13 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .ab-rule b { display: block; font-size: 14px; }
 .ab-rule span { font-size: 14px; color: var(--home-ink-2); }
 @media (max-width: 640px) { .lw-three { grid-template-columns: 1fr; } }
+
+/* ── Students: the class list (studentsPart) ── */
+.lt-st-add { display: grid; gap: 8px; margin: 12px 0 0; }
+.lt-st-add textarea { font: 14px/1.5 var(--font-ui); padding: 8px 11px; border-radius: 9px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); resize: vertical; }
+.lt-st-add textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.lt-st-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lt-st-row .grow { flex: 1; }
+.lt-st-count { margin-top: 14px !important; }
+.lt-st-list { max-height: 420px; overflow: auto; }
+#lt-students .lt-part-text code { font: 12.5px var(--font-mono); }

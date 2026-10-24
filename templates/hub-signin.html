@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sign in · {{ course }}</title>
+    <meta name="robots" content="noindex">
+    <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="/static/css/hub.css">
+</head>
+<body class="hb-page">
+    <!-- A student signing in to one course's page: their email (on the course's class list), then the code
+         Lectern emails them. See server/students.py. -->
+    <div class="hb hb-signin" id="si" data-api="{{ api }}" data-back="{{ back }}">
+        <main class="hb-si">
+            <p class="hb-sub">{{ course }}</p>
+            <h1 class="hb-title">Sign in</h1>
+            <form class="hb-si-card" id="si-email" novalidate>
+                <p>Enter the email your instructor added you with. We'll email you a code.</p>
+                <label>Email<input type="email" id="si-e" autocomplete="email" required autofocus></label>
+                <p class="hb-si-err" id="si-err1" role="alert"></p>
+                <button type="submit" class="hb-btn primary">Email Me a Code</button>
+            </form>
+            <form class="hb-si-card" id="si-code" novalidate hidden>
+                <p id="si-sent">If <b id="si-who"></b> is in this course, a code is on its way. It works for 10 minutes.</p>
+                <label>Code<input type="text" id="si-c" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" required></label>
+                <p class="hb-si-err" id="si-err2" role="alert"></p>
+                <button type="submit" class="hb-btn primary">Sign In</button>
+                <p class="hb-si-alt"><button type="button" class="hb-si-link" id="si-again">Use another email, or get a new code</button></p>
+            </form>
+            <p class="hb-si-back"><a href="{{ back }}">Back to the course page</a></p>
+        </main>
+    </div>
+    <script src="/static/js/hub-signin.js"></script>
+</body>
+</html>

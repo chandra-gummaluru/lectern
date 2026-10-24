@@ -38,7 +38,6 @@ function draw() {
   catch (e) { console.error(e); m.innerHTML = `<p class="hb-empty">Something went wrong showing this part of the page.</p>`; }
   const nowWk = t.id === "lectures" && m.querySelector(".hb-week.now");
   if (nowWk && !arg) requestAnimationFrame(() => scrollTo({ top: nowWk.getBoundingClientRect().top + scrollY - $("hb-tabs").offsetHeight - 16 }));
-  m.querySelectorAll("[data-week]").forEach(b => b.onclick = () => { if (b.dataset.week !== "") location.hash = `week/${b.dataset.week}`; });
   document.title = `${t.title} · ${D.course.code || D.course.title}`;
 }
 

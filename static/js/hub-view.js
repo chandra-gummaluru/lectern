@@ -177,8 +177,7 @@ const DRAW = {
     const cal = (data("week").weeks || []), dated = cal.filter(w => !w.isBreak && w.start);
     if (!dated.length) return `<h2 class="hb-h2">This week</h2><p class="hb-empty">The term's weeks don't have dates yet.${EDIT ? " Give them dates on the Lectures tab (open a week)." : ""}</p>`;
     const now = today();
-    let k = arg == null || arg === "" ? -1 : dated.findIndex(w => w.i === Number(arg)), note = "";
-    if (k < 0) ({ k, note } = currentWeek(cal, now));
+    const { k, note } = currentWeek(cal, now);   // always the week we're in (or, between weeks, the next)
     const w = dated[k], mon = mondayOf(w.start), next = dated[k + 1];
     const last = weekEnd(w, next);
     const inWeek = d => d && d >= mon && d <= last;
@@ -214,11 +213,8 @@ const DRAW = {
     }
     if (E) left += `<h3 class="hb-h3">Evaluations</h3>${evs.length ? `<div class="hb-grid">${evs.map(evalCard).join("")}</div>` : `<p class="hb-nothing">Nothing due this week.</p>`}`;
 
-    const prev = dated[k - 1];
     return `<div class="hb-weeknav">
-        <button type="button" class="hb-btn" data-week="${prev ? prev.i : ""}" aria-label="Previous week"${prev ? "" : " disabled"}>${PREV}</button>
-        <div class="grow"><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2><span class="d">${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}${mon <= now && now <= last ? " · this week" : ""}</span></div>
-        <button type="button" class="hb-btn" data-week="${next ? next.i : ""}" aria-label="Next week"${next ? "" : " disabled"}>${NEXT}</button>
+        <div class="grow"><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2><span class="d">${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</span></div>
       </div>${note ? `<p class="hb-note">${esc(note)}</p>` : ""}
       <div class="hb-cols"><div>${left || '<p class="hb-nothing">Nothing to show for this week.</p>'}</div>
         <div><h3 class="hb-h3">Day by day</h3><ul class="hb-days">${days.join("")}</ul></div></div>`;

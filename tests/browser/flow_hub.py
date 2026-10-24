@@ -1,8 +1,8 @@
 """The course hub, end to end against the real server.
 
 1. The owner opens the course page in Lectern: the editor is the hub (its header and tabs). On Overview
-   they add a weekly office hour; on Lectures they open a lecture and give it a title, and add a week;
-   on Announcements they write one in the current week; Lectures becomes signed-in only (its tab's lock).
+   they add a weekly office hour; on Announcements they write one in the current week; Lectures becomes
+   signed-in only (its tab's lock). (Lectures themselves are made in Lectern's Lectures part: flow_lectures.py.)
    Save writes course.json only (no info.html any more).
 2. An older page (info.html only) opens, and saving it makes its course.json.
 3. A visitor sees the hub with Lectures locked, the published address leads to the hub.
@@ -62,20 +62,8 @@ def main():
         # Lectures: signed-in only (the tab's lock), a lecture's title, a new week.
         me.click(C + ".hbe-tab[data-v=lectures]")
         me.click(C + ".hbe-tab[data-v=lectures] .hbe-vis")
-        expect(me.locator(C + ".hbe-visline")).to_contain_text("Only people in the course")
+        expect(me.locator(C + ".hbe-tab[data-v=lectures] .hbe-vis")).to_have_class("hbe-vis on")
         assert "Lectures" in me.inner_text("#lt-path")
-        me.locator(C + ".hb-week").nth(6).locator(".hb-card").first.click()
-        me.wait_for_selector(C + ".e-sub")
-        assert "Lectures" in me.inner_text("#lt-path"), me.inner_text("#lt-path")
-        me.fill(C + "[data-bindv$='.title']", "Adders and ALUs")
-        me.locator("#lt-path button", has_text="Lectures").click()
-        me.wait_for_selector(C + ".hbe")
-        expect(me.locator(C + ".hb-week").nth(6)).to_contain_text("Adders and ALUs")
-        weeks = me.locator(C + ".hb-week").count()
-        me.locator(C + ".hbe-add", has_text="+ Add Week").click()
-        me.wait_for_selector(C + ".e-sub")
-        me.locator("#lt-path button", has_text="Lectures").click()
-        assert me.locator(C + ".hb-week").count() == weeks + 1
         me.screenshot(path=f"{OUT}/161-editor-lectures.png")
 
         # Announcements: a new one, in the current week.
@@ -100,10 +88,9 @@ def main():
         meet = [s for s in saved["sections"] if s["type"] == "meetings"][0]["items"]
         assert meet[-1] == {"kind": "office", "label": "", "day": "2", "start": "15:00", "end": "16:00", "where": "BA 2270", "who": "Grace Hopper (TA)"}, meet[-1]
         sched = [s for s in saved["sections"] if s["type"] == "schedule"][0]["weeks"]
-        assert any(c["title"] == "Adders and ALUs" for w in sched for c in w.get("cards", []))
         assert any(a["title"] == "Midterm rooms posted" for w in sched if w.get("label") == "Week 7" for a in w.get("announcements", []))
         assert srv.text("pub", "csc258/f26/info.html") is None
-        print("1 saved course.json: tabs", saved["tabs"], "| meetings", len(meet), "| weeks", len(sched))
+        print("1 saved course.json: tabs", saved["tabs"], "| meetings", len(meet))
 
         # 2. An older page, info.html only: it opens, and saving makes course.json.
         me.evaluate("location.hash = '#/csc108/f26/course'")
@@ -125,7 +112,7 @@ def main():
         v.screenshot(path=f"{OUT}/164-hub-week-visitor.png", full_page=True)
         v.click(".hb-tab:has-text('Lectures')")
         expect(v.locator(".hb-locked h2")).to_have_text("Lectures")
-        assert "Adders and ALUs" not in v.content()
+        assert "lec03.pdf" not in v.content()
         v.click(".hb-tab:has-text('Overview')")
         expect(v.locator(".hb-main")).to_contain_text("Grace Hopper (TA)")
         print("3 visitor: lectures locked, overview has the new office hour")

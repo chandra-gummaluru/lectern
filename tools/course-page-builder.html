@@ -858,7 +858,7 @@ const S = {
   card: "display: inline-block; vertical-align: top; width: 306px; max-width: 100%; margin: 0 12px 12px 0; background-color: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;",
   label: "padding: 14px 16px 0 16px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3);",
   body: "padding: 4px 16px 16px 16px;",
-  h3: "font-size: 16px; font-weight: 600; line-height: 1.3; color: var(--ink); margin: 2px 0 4px 0; min-height: 21px;",
+  h3: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-size: 21px; font-weight: 500; line-height: 1.2; color: var(--ink); margin: 2px 0 4px 0; min-height: 25px;",
   p: "font-size: 14px; line-height: 1.5; color: var(--ink-2); margin: 0 0 8px 0;",
   btn: "display: inline-flex; align-items: center; height: 30px; padding: 0 11px; background-color: var(--ink); color: var(--paper, #fff); border: 1px solid var(--ink); border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",   // every file button: Lectern's white button
   btn2: "display: inline-flex; align-items: center; height: 30px; padding: 0 11px; background-color: var(--card, #fff); color: var(--ink); border: 1px solid var(--line-2, #cfd0d3); border-radius: 7px; font-size: 13px; font-weight: 600; text-decoration: none; margin: 0 6px 6px 0;",
@@ -923,7 +923,7 @@ const S = {
   annold: "border-top: 1px solid #ecedef; padding: 14px 18px 2px 18px; background-color: #ffffff;",
   annolddate: "font-size: 12px; font-weight: 600; color: #7a7f87; margin: 0 0 4px 0;",
   annoldtitle: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-weight: 500; font-size: 19px; line-height: 1.2; color: #1f2329; margin: 0 0 6px 0;",
-  anntitle: "font-size: 17px; font-weight: 700; line-height: 1.3; color: var(--ink); margin: 0 0 6px 0;",
+  anntitle: "font-family: 'EB Garamond', Garamond, Georgia, serif; font-size: 22px; font-weight: 500; line-height: 1.2; color: var(--ink); margin: 0 0 6px 0;",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -1164,8 +1164,10 @@ const HUB_ALL = [["overview", "Overview"], ["week", "This week"], ["lectures", "
 const tabTitle = id => (HUB_ALL.find(t => t[0] === id) || HUB_ALL[0])[1];
 const OVERVIEW_TYPES = ["table", "sessions", "text", "meetings"];
 const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+// The Lectures part's weeks (Lectern hands them over: setLectures), shown instead of the page's own.
+let lecturesPart = null;
 function hubData() {
-  return { data: HV().fromPage(model, pageYear(model)), pages: gh.site ? `${gh.site}${encPath(courseDir())}/` : "" };
+  return { data: HV().fromPage(model, pageYear(model), lecturesPart), pages: gh.site ? `${gh.site}${encPath(courseDir())}/` : "" };
 }
 // The schedule's weeks, for choosing one: [{ path, label }], and the one that's on now.
 function weekChoices() {
@@ -1197,15 +1199,13 @@ const HUB_TAB = {
       <div class="e-addsec">${B("addsec", "sections", "+ Add a Section", "Add a section at the end of the Overview: a heading, then text and tables", 'data-kind="text"', "add")}${has ? "" : B("addsec", "sections", "+ Meeting Times & Office Hours", "Add the weekly meeting times and office hours", 'data-kind="meetings"', "add")}</div>`;
   },
   week(D) {
-    return HV().draw(D, "week", ui.week, { edit: true });
+    return HV().draw(D, "week", ui.week);
   },
   lectures(D) {
-    if (!model.sections.some(x => x.type === "schedule")) return `<h2 class="hb-h2">Lectures</h2><p class="hb-empty">No weeks yet.</p><div class="e-addsec">${B("addsec", "sections", "+ Start the Weeks", "Add the term's weeks and their lectures", 'data-kind="schedule"', "add")}</div>`;
-    return HV().draw(D, "lectures", null, { edit: true });
+    return HV().draw(D, "lectures");   // made in Lectern's Lectures, not here
   },
   evaluations(D) {
-    const bar = editGrades ? `<div class="hbe-bar"><button type="button" class="c" data-act="edit-grades" data-v="evals" title="Change the evaluations, weights and dates in the gradebook">${ICON_EDIT}Change in the Gradebook</button></div>` : "";
-    return HV().draw(D, "evaluations", null, { edit: true }).replace("</p>", `</p>${bar}`);
+    return HV().draw(D, "evaluations");   // made in Lectern's Evaluations, not here
   },
   announcements(D) {
     const { out, cur } = weekChoices();
@@ -1366,8 +1366,8 @@ function weekPageHTML(p) {
             ${editRow(w, p)}</section>
     <section class="e-subcard"><div class="e-lhead"><h2>Evaluations</h2>${editGrades ? `<button type="button" class="c" data-act="edit-grades" title="Change the evaluations and their dates in the gradebook">${ICON_EDIT}Edit</button>` : ""}</div>
       ${weekEvals(p).map(e => `<div class="e-gev${e.type === "test" ? " dk" : ""}"><div class="e-gev-h"><b>${esc(e.name)}</b><span>${esc(whenText(e, true))}</span></div>${e.accom && (e.accom.approval || e.accom.alternate) ? `<p class="e-help">Students can request an accommodation${e.accom.by ? ` until ${esc(reqByText(e.accom))}` : ""}: the button shows on the page. Change it in the gradebook.</p>` : ""}
-        ${(model.evalFiles[e.id] || []).map((f, j) => fileRow(`evalFiles.${e.id}`, j, f)).join("")}
-        ${B("add", `evalFiles.${e.id}`, "+ Add File or Link", `Add a file or link for ${e.name}`, 'data-kind="file"', "add")}</div>`).join("")}
+        ${[...(e.files || []), ...(model.evalFiles[e.id] || [])].filter(f => f.url).length ? `<p class="e-help">${[...(e.files || []), ...(model.evalFiles[e.id] || [])].filter(f => f.url).map(f => esc(f.label || "File")).join(" · ")}</p>` : ""}</div>`).join("")}
+      ${weekEvals(p).length ? `<p class="e-help">Their files and links are added in Evaluations.</p>` : ""}
       ${w.deadlines.map((d, j) => `<div class="e-row2"><input type="text" data-bindv="${p}.deadlines.${j}" value="${esc(d)}" placeholder="e.g. Lab 3" aria-label="Deadline" autocomplete="off">${B("del", `${p}.deadlines`, svg("trash"), "Remove this deadline", `data-i="${j}" data-noun="deadline"`, "icon x")}</div>`).join("")}
       ${B("add", `${p}.deadlines`, "+ Add Deadline", "Add a deadline that isn't in the gradebook", 'data-kind="deadline"', "add")}</section>
   </div>`;
@@ -3687,6 +3687,7 @@ if (lectern) {
       return { error: $("#pl-err", m).textContent || "Couldn't save." };
     },
     state: () => ({ path: gh.path, unsaved }),
+    setLectures(l) { lecturesPart = l; if (!ui.page) render(); },
     // Where it is (the course page, a week, a lecture…), and going back there: Lectern's Back and Forward.
     where: () => ({ page: ui.page || "", tab: ui.tab }),
     goto(l) { flushTyping(); dropEmptyAnn(); if (l.tab) ui.tab = l.tab; if (!l.page || getP(model, l.page)) goPage(l.page || ""); },

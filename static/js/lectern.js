@@ -7,6 +7,7 @@
      #/csc258/f26          one offering: its course page, grades and exams
      #/csc258/f26/course   the Course Page Builder on csc258/f26/course.json (public repo)
      #/csc258/f26/grades   the Grade Builder on csc258/f26/grades.json (private repo)
+     #/csc258/f26/lectures   the weeks and their lectures (lectures.js), shown on the course page
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
      #/~ana/csc258/f26/…   the same, for an offering in someone else's files that you're on the teaching team of
      #/account             your account: password, two-factor sign-in, sessions
@@ -16,6 +17,7 @@
 import * as Auth from "./auth.js";
 import * as Store from "./store.js";
 import { accountPage } from "./account.js";
+import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -30,6 +32,9 @@ const encPath = p => p.split("/").map(encodeURIComponent).join("/");
 const svgI = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICON = {
   plus: svgI('<path d="M12 5v14M5 12h14"/>'),
+  up: svgI('<path d="m18 15-6-6-6 6"/>'),
+  down: svgI('<path d="m6 9 6 6 6-6"/>'),
+  lectures: svgI('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
   out: svgI('<path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'),
   folder: svgI('<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>', 1.8),
   page: svgI('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 13h3M8 16h6"/>', 1.8),
@@ -198,7 +203,7 @@ function listAll() {
     return map;
   })().catch(e => { S.listError = e; throw e; });
   // Pages that show the list draw again when it arrives (not a builder, and not your account page, which doesn't use it).
-  const redraw = () => { if (["home", "offering", "accom"].includes(S.route.page)) renderPage(); };
+  const redraw = () => { if (["home", "offering", "accom", "lectures"].includes(S.route.page)) renderPage(); };
   S.listing.then(redraw, redraw);
   return S.listing;
 }
@@ -218,6 +223,7 @@ function parseHash() {
     if (part) return { page: "tool", tool: "grades", part, c, t, o };
     if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e, o };
     if (tool === "accommodations") return { page: "accom", c, t, o };
+    if (tool === "lectures") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
     return { page: "offering", c, t, o };
   }
   if (p.length === 1 && p[0] === "account") return { page: "account" };
@@ -229,7 +235,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "lectures" ? `${at}/lectures${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -506,6 +512,8 @@ function renderPage() {
   if (r.page === "home") { renderPath([{ label: HOME_STEP.label }]); return homePage(); }
   if (r.page === "offering") { renderPath([HOME_STEP, { label: offeringLabel(r.c, r.t) }]); return offeringPage(r.c, r.t); }
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
+  if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic }, r);
   const ctx = { S, pageHTML, modal, toast, setUser: u => { S.user = u; renderBar(); } };
   if (r.page === "account") { renderPath([HOME_STEP, { label: "Your Account" }]); return accountPage(ctx); }
 }
@@ -619,6 +627,11 @@ function offeringPage(c, t) {
           : !edit ? "" : `${others.length ? `<button type="button" class="lt-btn primary" data-go="course" data-copy="${esc(others[0].c)}/${esc(others[0].t)}">Copy ${esc(others[0].t)}'s Page</button>` : ""}<button type="button" class="lt-btn${others.length ? "" : " primary"}" data-go="course"${loading ? " disabled" : ""}>Start a Blank Page</button>`}</div>
       </section>
       <section class="lt-part">
+        <div class="lt-part-head">${ICON.lectures}<h2>Lectures</h2></div>
+        <p class="lt-part-text">The weeks of the term and each week's lectures, tutorials and labs, with their files and links.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-lectures">${edit ? "Open Lectures" : "See Lectures"}</button></div>
+      </section>
+      <section class="lt-part">
         <div class="lt-part-head">${ICON.evals}<h2>Evaluations</h2></div>
         <p class="lt-part-text">${o.grades ? `The assignments, tests and exams: weights, dates, and what happens if one is missed.${edit ? " Build each one's exam or handout from here." : ""}` : "No evaluations for this term yet."}</p>
         <div id="lt-loose"></div>
@@ -640,6 +653,7 @@ function offeringPage(c, t) {
       </section>
     </div>
   </div>`);
+  $("#lt-lectures").onclick = () => go({ page: "lectures", c, t });
   const acc = $("#lt-accom");
   if (acc) acc.onclick = () => go({ page: "accom", c, t });
   if (acc && o.grades) readAccom(c, t).then(d => {
@@ -911,7 +925,9 @@ function schemeOf(b, from, requests = null) {
     if (!standard && !alternate) return {};
     return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
-  const brief = e => ({ id: e.id, name: e.name, short: e.short || "", type: e.type === "test" ? "test" : "assignment", date: e.date || "", time: e.time || "", ...accom(e) });
+  // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
+  const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
+  const brief = e => ({ id: e.id, name: e.name, short: e.short || "", type: e.type === "test" ? "test" : "assignment", date: e.date || "", time: e.time || "", ...accom(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -941,6 +957,20 @@ function schemeOf(b, from, requests = null) {
   // Every evaluation by its date for the course page, makeups too (each says what it's a makeup for).
   return { from, units, evals: (b.evals || []).map(e => ({ ...brief(e), ...(e.makeupFor ? { makeupFor: e.makeupFor } : {}) })), policies, ...(requests ? { requests } : {}) };
 }
+
+// An evaluation's file, uploaded from Evaluations: into the offering's public files (<course>/<term>/evaluations/),
+// under a name not taken yet. → its public address, for the course page's button.
+Lectern.uploadPublic = async (file, into = "evaluations") => {
+  const r = S.route; if (!r.c || !r.t) throw new Error("Open a course offering first.");
+  const repo = area(Store.PUB), folder = `${r.c}/${r.t}/${into === "lectures" ? "lectures" : "evaluations"}`;
+  const clean = String(file.name || "file").normalize("NFKD").replace(/[^\w.-]+/g, "-").replace(/^[-.]+|-+$/g, "") || "file";
+  const dot = clean.lastIndexOf("."), base = dot > 0 ? clean.slice(0, dot) : clean, ext = dot > 0 ? clean.slice(dot) : "";
+  const have = new Set((await Store.tree(repo)).map(x => x.path));
+  let name = clean, k = 2;
+  while (have.has(`${folder}/${name}`)) name = `${base}-${k++}${ext}`;
+  await Store.upload(repo, `${folder}/${name}`, file, `Upload ${name} (evaluation file)`);
+  return `${siteURL()}${encPath(`${folder}/${name}`)}`;
+};
 
 // Where the course page's Request Accommodation buttons go: Lectern's request form, for this course
 // offering, by your handle (the server finds your gradebook from it).
@@ -986,6 +1016,7 @@ async function crossLink(tool, r, t, opts) {
     if (tool === "course") {
       const b = await getBook(r.c, r.t).catch(() => null);
       t.api.setScheme(b ? schemeOf(b, `${r.c}/${r.t}/grades.json`, await requestsFor(r.c, r.t)) : null, { edit: v => go({ page: "tool", tool: "grades", part: v === "settings" ? "settings" : "evals", c: r.c, t: r.t }) });
+      if (t.api.setLectures) { let l = null; try { l = JSON.parse(await readPriv(`${r.c}/${r.t}/lectures.json`) || "null"); } catch (_) {} t.api.setLectures(l && Array.isArray(l.weeks) ? l : null); }
     }
     if (tool === "grades") t.api.setLinks(await docLinks(r.c, r.t));
   } catch (e) { console.warn("[Lectern] cross-link:", e); }

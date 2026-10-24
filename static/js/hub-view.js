@@ -120,7 +120,7 @@ function evalWhen(e) {
   return `${e.type === "test" ? "" : "Due "}${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" })}${e.time ? `, ${e.time}` : ""}`;
 }
 function evalCard(e) {
-  const ev = data("evaluations"), files = fileLinks(ev && ev.files[e.id]), p = EDIT ? `evalFiles.${e.id}` : "";
+  const ev = data("evaluations"), files = fileLinks(ev && ev.files[e.id]), p = "";
   return `<article class="hb-card${e.type === "test" ? " test" : ""}${edCls(p)}"${opens(p, "Add files and links for this evaluation")}><div class="hb-card-top"><span>${e.type === "test" ? "Test" : "Due"}</span><span>${esc(evalWhen(e).replace(/^Due /, ""))}</span></div>
     <h3>${esc(e.name)}</h3>${files ? `<div class="hb-files">${files}</div>` : ""}</article>`;
 }
@@ -242,7 +242,7 @@ const DRAW = {
     if (!E.units.length) return `<h2 class="hb-h2">Evaluations</h2><p class="hb-empty">The marking scheme will appear here.${EDIT ? " It comes from the gradebook: add evaluations there." : ""}</p>`;
     const files = e => fileLinks(E.files[e.id]);
     const note = e => [...(e.notes || []), e.accom && e.accom.standard && e.accom.approval ? "This applies only if you request it and it's approved." : ""].filter(Boolean).join(" ");
-    const edit = e => (EDIT ? `<button type="button" class="hbe-mini" data-act="open" data-path="evalFiles.${esc(e.id)}" title="Files and links for ${esc(e.name)}">${(E.files[e.id] || []).length ? "Edit files" : "+ Files"}</button>` : "");
+    const edit = () => "";
     // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
     const request = e => {
       const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
@@ -303,7 +303,31 @@ function overviewSection(s) {
   if (s.type === "meetings") o.items = arr(s.items).map(m => ({ ...m, day: Number(m.day) || 0 })).filter(m => m.day);
   return o;
 }
-function fromPage(page, year) {
+// Each evaluation's files: the gradebook's (Evaluations → its page), then any the course page itself had (older pages).
+function evalFilesOf(scheme, ef) {
+  const out = {};
+  arr(scheme.evals).forEach(e => { const fs = filesOf(e.files); if (fs.length) out[e.id] = fs; });
+  Object.entries(ef || {}).forEach(([k, v]) => { const have = new Set((out[k] || []).map(f => f.url)); const more = filesOf(v).filter(f => !have.has(f.url)); if (more.length) out[k] = [...(out[k] || []), ...more]; });
+  return out;
+}
+// The Lectures part's weeks (lectures.json), as the course page shows them.
+const MONTHS_ = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
+function rangeText(a, b) {
+  const x = fromIso(a), y = fromIso(b) || x; if (!x) return "";
+  const A = `${MONTHS_[x.getMonth()]} ${x.getDate()}`;
+  return +x === +y ? A : x.getMonth() === y.getMonth() ? `${A} – ${y.getDate()}` : `${A} – ${MONTHS_[y.getMonth()]} ${y.getDate()}`;
+}
+function partWeeks(lectures, year) {
+  return arr(lectures.weeks).filter(w => w && typeof w === "object").map((w, i) => {
+    if (w.isBreak) return { i, isBreak: true, label: str(w.text), cards: [], deadlines: [] };
+    const [start, end] = weekRange(w, year);
+    return { i, isBreak: false, label: str(w.label), dates: str(w.dates) || rangeText(start, end), start, end, topic: str(w.topic), deadlines: [], noClass: 0,
+      cards: arr(w.cards).map(c => ({ kind: str(c.kind), label: str(c.label), title: str(c.title), description: str(c.description), date: str(c.date), files: filesOf(c.files) })) };
+  });
+}
+// The week a day is in (the last week whose Monday is on or before it).
+const weekOfDay = (day, weeks) => { let f = null; weeks.forEach(w => { if (!w.isBreak && w.start && mondayOf(w.start) <= day) f = w; }); return f; };
+function fromPage(page, year, lectures) {
   const secs = arr(page.sections).map((s, si) => [s, si]).filter(([s]) => s && !s.hidden);
   const scheme = page.scheme || {}, weeks = [], anns = [], lists = [];
   secs.forEach(([s, si]) => {
@@ -323,6 +347,11 @@ function fromPage(page, year) {
       });
     });
   });
+  if (lectures && Array.isArray(lectures.weeks)) {   // the Lectures part's weeks; the announcements go to the week of their date
+    const part = partWeeks(lectures, year);
+    weeks.length = 0; weeks.push(...part); lists.length = 0;
+    anns.forEach(a => { const d = stampDay(a.date), w = (d && weekOfDay(d, weeks)) || weeks.find(x => !x.isBreak && x.label === a.week); a.wi = w ? w.i : -1; if (w) a.week = w.label; });
+  }
   const pol = secs.filter(([s]) => s.type === "policies").map(([s]) => s), rules = [];
   pol.forEach(s => arr(scheme.policies).forEach(x => { const show = s.show || {}; if (x.id in show ? show[x.id] : x.show) rules.push({ title: x.title, text: x.text }); }));
   const ef = page.evalFiles || {};
@@ -330,7 +359,7 @@ function fromPage(page, year) {
     overview: { description: str(page.description), sections: secs.filter(([s]) => OVERVIEW.includes(s.type)).map(([s]) => overviewSection(s)).filter(x => x.type !== "meetings" || x.items.length || x.blocks.length) },
     lectures: { weeks, lists },
     announcements: { items: anns },
-    evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: Object.fromEntries(Object.entries(ef).map(([k, v]) => [k, filesOf(v)])),
+    evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: evalFilesOf(scheme, ef),
       request: scheme.requests && scheme.requests.url ? { url: scheme.requests.url, r: scheme.requests.repo, o: scheme.requests.offering } : null },
     policies: { sections: pol.map(s => ({ title: str(s.title), caption: str(s.caption), blocks: blocksOf(s.blocks) })), rules },
     week: { weeks: weeks.map(w => ({ i: w.i, label: w.label, dates: w.dates || "", start: w.start || "", end: w.end || "", isBreak: w.isBreak })) },

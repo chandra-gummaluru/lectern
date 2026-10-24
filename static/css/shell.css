@@ -220,7 +220,7 @@ html.lt-has-session #splash { display: none; }
 @media (prefers-reduced-motion: reduce) { .lt-card { transition: none; } .lt-card.go:hover { transform: none; } }
 
 /* A course offering: its three parts side by side */
-.lt-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 30px; }
+.lt-three { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 30px; }
 @media (max-width: 900px) { .lt-three { grid-template-columns: 1fr; } }
 .lt-part { display: flex; flex-direction: column; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); overflow: hidden; }
 .lt-part-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 6px; }
@@ -438,3 +438,37 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* Text boxes in Lectern's forms */
 .lt-form textarea { font: 14px/1.5 var(--font-ui); padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; resize: vertical; }
 .lt-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+
+/* ── Lectures (lectures.js): weeks like Evaluations' groups, a page for each week and lecture ── */
+.lt-lw .lt-off-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lw-status { font-size: 13px; color: var(--home-ink-3); min-width: 60px; text-align: right; }
+.lw-status.bad { color: var(--danger); font-weight: 600; }
+.lw-list { display: grid; gap: 14px; margin-top: 26px; }
+.lw-week { border: 1px solid #ecd48f; background: #fbf7ea; border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; }
+.lw-week.lw-week-in { cursor: default; }
+.lw-week-h { display: flex; align-items: flex-start; gap: 10px; padding: 2px 6px 10px; }
+.lw-week-h .grow, .lw-lec .grow { flex: 1; min-width: 0; }
+.lw-week-h h2 { margin: 0; font: 500 24px/1.15 var(--font-serif); color: var(--home-ink); }
+.lw-week-h p, .lw-lec p { margin: 3px 0 0; font-size: 14px; color: var(--home-ink-2); }
+.lw-lec { display: flex; align-items: center; gap: 10px; background: var(--home-card); border: 1px solid var(--home-line-2); border-radius: 10px; padding: 11px 16px; margin: 0 0 8px; cursor: pointer; }
+.lw-lec:hover, .lw-lec:focus-visible, .lw-week:hover > .lw-week-h h2 { border-color: var(--home-ink-3); }
+.lw-lec h3 { margin: 0; font: 500 19px/1.2 var(--font-serif); color: var(--home-ink); }
+.lw-add { margin: 2px 0 2px; }
+.lw-adds { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.lw-move { display: inline-flex; gap: 4px; }
+.lt-btn.lw-ic { width: 34px; height: 34px; padding: 0; }
+.lw-break { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px dashed var(--home-line-2); border-radius: 12px; background: var(--home-strip); }
+.lw-break b { flex: 1; text-align: center; color: var(--home-ink-2); }
+.lw-break input { flex: 1; font: 600 14px var(--font-ui); text-align: center; border: 0; background: transparent; color: var(--home-ink-2); height: 34px; }
+.lw-break input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent); border-radius: 7px; background: var(--home-card); }
+.lw-page { max-width: 880px; }
+.lw-card { background: var(--home-card); border: 1px solid var(--home-line-2); border-radius: 12px; padding: 18px 20px; margin: 22px 0 0; }
+.lw-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lw-h2 { font: 600 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--home-ink-3); margin: 30px 0 0; }
+.lw-page .lw-week-in { margin-top: 12px; }
+.lw-help { padding: 0 0 10px !important; }
+.lw-file { display: grid; grid-template-columns: 180px 1fr 34px; gap: 8px; align-items: center; margin: 0 0 8px; }
+.lw-file input, .lt-form input[type=date], .lt-form input[type=time], .lt-form input[type=url] { font: 14px var(--font-ui); height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lw-week { background: #26231a; border-color: #4a3f22; } }
+@media (max-width: 900px) { .lt-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .lw-two, .lw-file, .lt-three { grid-template-columns: 1fr; } }

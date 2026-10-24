@@ -136,3 +136,34 @@ def test_evaluations_say_where_to_request_accommodations(client, user, anon):
     publish(user)
     rq = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["evaluations"]["request"]
     assert rq["url"].endswith("/request") and rq["r"] == "chandra" and rq["o"] == "csc258/f26"
+
+
+def test_evaluation_files_come_from_the_gradebook(client, user, anon):
+    page = json.loads(json.dumps(SAMPLE["page"]))
+    page["evalFiles"] = {"mt": [{"label": "Old practice", "url": "https://example.edu/old.pdf"}]}
+    publish(user, page)
+    book = {"evals": [{"id": "mt", "name": "Midterm", "files": [{"label": "Practice", "url": "https://example.edu/mt.pdf"}, {"label": "Empty", "url": ""}]},
+                      {"id": "a1", "name": "A1"}], "students": [{"num": "1", "first": "Secret", "last": "Student"}], "marks": {"1": {"mt": {"pts": 3}}}}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/grades.json": json.dumps(book).encode()}, "seed", r.head())
+    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
+    assert j["data"]["evaluations"]["files"] == {"mt": [{"label": "Practice", "url": "https://example.edu/mt.pdf"}, {"label": "Old practice", "url": "https://example.edu/old.pdf"}]}
+    assert "Secret" not in json.dumps(j)
+
+
+def test_lectures_come_from_the_lectures_part(client, user, anon):
+    publish(user)
+    lec = {"format": "lectern-lectures/1", "weeks": [
+        {"id": "a", "label": "Week 1", "start": "2026-09-07", "end": "2026-09-11", "topic": "Gates",
+         "cards": [{"id": "x", "kind": "lecture", "label": "Lecture 01", "title": "Transistors", "files": [{"label": "Slides", "url": "https://example.edu/1.pdf"}]}]},
+        {"id": "b", "isBreak": True, "text": "Reading Week"},
+        {"id": "c", "label": "Week 2", "start": "2026-09-14", "end": "2026-09-18", "cards": []}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/lectures.json": json.dumps(lec).encode()}, "seed", r.head())
+    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
+    weeks = j["data"]["lectures"]["weeks"]
+    assert [w["label"] for w in weeks] == ["Week 1", "Reading Week", "Week 2"]
+    assert weeks[0]["dates"] == "Sept 7 – 11" and weeks[0]["cards"][0]["title"] == "Transistors"
+    # The course page's announcement (Sep 7) lands in the week its date is in.
+    ann = j["data"]["announcements"]["items"][0]
+    assert ann["title"] == "Welcome to CSC258!" and ann["wi"] == 0 and ann["week"] == "Week 1"
+    # Nothing else of the private files: lectures.json isn't served anywhere public.
+    assert anon.get("/p/chandra/csc258/f26/lectures.json").status_code == 404

@@ -19,7 +19,7 @@ Staff can add ?as=public to see the hub as a signed-out visitor does.
 """
 import json
 import re
-from datetime import date
+from datetime import date, timedelta
 
 from flask import Blueprint, abort, jsonify, redirect, render_template, request
 
@@ -69,6 +69,31 @@ def page_data(owner_id, course, term):
         return None
     page = d.get("page") if isinstance(d, dict) else None
     return page if isinstance(page, dict) and isinstance(page.get("sections"), list) else None
+
+
+def gradebook_files(owner_id, course, term):
+    """{evaluation id: [files]}: the files and links each evaluation has in the gradebook (Evaluations → its page).
+    They're public (they go on the course page); nothing else of the gradebook is read."""
+    raw = Repo(owner_id, "priv").read(f"{course}/{term}/grades.json")
+    try:
+        book = json.loads(raw.decode("utf-8")) if raw else {}
+    except (ValueError, UnicodeDecodeError):
+        return {}
+    out = {}
+    for e in _list(book.get("evals") if isinstance(book, dict) else None):
+        if isinstance(e, dict) and isinstance(e.get("id"), str) and _files(e.get("files")):
+            out[e["id"]] = _files(e.get("files"))
+    return out
+
+
+def lectures_of(owner_id, course, term):
+    """The Lectures part's weeks (lectures.js): <course>/<term>/lectures.json in the private files, or None."""
+    raw = Repo(owner_id, "priv").read(f"{course}/{term}/lectures.json")
+    try:
+        d = json.loads(raw.decode("utf-8")) if raw else None
+    except (ValueError, UnicodeDecodeError):
+        return None
+    return d if isinstance(d, dict) and isinstance(d.get("weeks"), list) else None
 
 
 def has_hub(owner_id, course, term):
@@ -165,7 +190,7 @@ def week_range(w, year):
 
 
 def _week(w):
-    cards = [{"label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
+    cards = [{"kind": _s(c.get("kind"), 20), "label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
               "date": _s(c.get("date"), 60), "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
               "files": _files(c.get("files"))}
              for c in _list(w.get("cards")) if isinstance(c, dict)]
@@ -177,27 +202,74 @@ def _week(w):
             "noClass": len(_list(w.get("off"))), "cards": cards}
 
 
-def buckets(page, year=None):
-    """Everything the page says, sorted into its tabs (all of them: the caller leaves out what a viewer can't see)."""
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"]
+_STAMP = re.compile(r"([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})")
+
+
+def range_text(start, end):
+    """"Sept 8 – 12", "Sept 28 – Oct 2" (as the builder writes a week's dates)."""
+    try:
+        a = date.fromisoformat(start)
+        b = date.fromisoformat(end) if end else a
+    except ValueError:
+        return ""
+    A = f"{_MONTHS[a.month - 1]} {a.day}"
+    if a == b:
+        return A
+    return f"{A} – {b.day}" if a.month == b.month else f"{A} – {_MONTHS[b.month - 1]} {b.day}"
+
+
+def _stamp_day(t):
+    """"Oct 18, 2026, 15:42" → the ISO day, or ""."""
+    m = _STAMP.search(t or "")
+    if not m or m.group(1).lower() not in _MON:
+        return ""
+    try:
+        return date(int(m.group(3)), _MON[m.group(1).lower()], int(m.group(2))).isoformat()
+    except ValueError:
+        return ""
+
+
+def _week_of(day, weeks):
+    """The week a day is in: Monday of a week's first day to the day before the next week starts."""
+    dated = [w for w in weeks if not w["isBreak"] and w.get("start")]
+    found = None
+    for j, w in enumerate(dated):
+        mon = date.fromisoformat(w["start"]) - timedelta(days=date.fromisoformat(w["start"]).weekday())
+        if mon.isoformat() <= day:
+            found = w
+    return found
+
+
+def buckets(page, year=None, book_files=None, lectures=None):
+    """Everything the page says, sorted into its tabs (all of them: the caller leaves out what a viewer can't see).
+    lectures: the Lectures part's weeks (lectures.json), when there is one; else the course page's own."""
     secs = [s for s in _list(page.get("sections")) if isinstance(s, dict) and not s.get("hidden")]
     scheme = page.get("scheme") if isinstance(page.get("scheme"), dict) else {}
-    weeks, anns = [], []
+    weeks, anns, own = [], [], []
     for s in secs:
-        if s.get("type") != "schedule":
+        if s.get("type") == "schedule":
+            own += [w for w in _list(s.get("weeks")) if isinstance(w, dict)]
+    for w in (_list(lectures.get("weeks")) if isinstance(lectures, dict) else own):
+        if not isinstance(w, dict):
             continue
-        for w in _list(s.get("weeks")):
-            if not isinstance(w, dict):
-                continue
-            wk = _week(w)
-            if not wk["isBreak"]:
-                wk["start"], wk["end"] = week_range(w, year)
-            wk["i"] = len(weeks)
-            weeks.append(wk)
-            for a in _list(w.get("announcements")):
-                if isinstance(a, dict) and (_s(a.get("title")).strip() or _s(a.get("body")).strip()):
-                    anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60),
-                                 "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
-                                 "week": _s(w.get("label"), 200), "wi": wk["i"]})
+        wk = _week(w)
+        if not wk["isBreak"]:
+            wk["start"], wk["end"] = week_range(w, year)
+            wk["dates"] = wk["dates"] or range_text(wk["start"], wk["end"])
+        wk["i"] = len(weeks)
+        weeks.append(wk)
+    # Announcements (still the course page's): each in the week its date is in, else the week it was written in.
+    for w in own:
+        for a in _list(w.get("announcements")):
+            if isinstance(a, dict) and (_s(a.get("title")).strip() or _s(a.get("body")).strip()):
+                day = _stamp_day(_s(a.get("date"), 60))
+                wk = _week_of(day, weeks) if day else None
+                if not wk:
+                    wk = next((x for x in weeks if not x["isBreak"] and x["label"] == _s(w.get("label"), 200)), None)
+                anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60),
+                             "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
+                             "week": wk["label"] if wk else _s(w.get("label"), 200), "wi": wk["i"] if wk else -1})
     rules = []
     pol = [s for s in secs if s.get("type") == "policies"]
     for s in pol:
@@ -217,7 +289,8 @@ def buckets(page, year=None):
         "evaluations": {
             "units": _list(scheme.get("units")),
             "evals": _list(scheme.get("evals")),
-            "files": {k: _files(v) for k, v in ef.items() if isinstance(k, str)},
+            # The gradebook's files first (where they're added now), then any the course page itself had.
+            "files": _merge_files(book_files or {}, {k: _files(v) for k, v in ef.items() if isinstance(k, str)}),
         },
         "policies": {
             "sections": [{"title": _s(s.get("title"), 300), "caption": _s(s.get("caption"), 500), "blocks": _blocks(s.get("blocks"))} for s in pol],
@@ -228,6 +301,14 @@ def buckets(page, year=None):
         "week": {"weeks": [{k: wk.get(k, "") for k in ("i", "label", "dates", "start", "end", "isBreak")} for wk in weeks]},
         "accommodations": {},
     }
+
+
+def _merge_files(a, b):
+    out = {k: list(v) for k, v in a.items()}
+    for k, v in b.items():
+        have = {f["url"] for f in out.get(k, [])}
+        out[k] = out.get(k, []) + [f for f in v if f["url"] not in have]
+    return {k: v for k, v in out.items() if v}
 
 
 def year_of(page, term):
@@ -274,7 +355,7 @@ def hub_api(handle, course, term):
     signed = bool(role) and not preview
     vis = visibility(page)
     year = year_of(page, term)
-    all_b = buckets(page, year)
+    all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term))
     tabs, data = [], {}
     for tid, title in TABS:
         open_ = vis[tid] == "public" or signed

@@ -782,6 +782,12 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ed-help { margin: 0 0 10px; font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
 /* an evaluation's accommodations */
 .ed-grid.acm-by { grid-template-columns: minmax(0, 320px); margin: 12px 0 8px; }
+/* An evaluation's files and links (shown with it on the course page) */
+.ef-row { display: grid; grid-template-columns: 170px 1fr 36px; gap: 8px; align-items: center; margin: 0 0 8px; }
+.ef-row input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 14px var(--font-ui); }
+.ef-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.ef-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 6px; }
+@media (max-width: 560px) { .ef-row { grid-template-columns: 1fr 36px; } .ef-row input[data-ed="ef-url"] { grid-column: 1; } }
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
 .acm-tick input { grid-row: span 2; align-self: start; margin-top: 2px; }
 .acm-tick b { font-weight: 600; }
@@ -2926,7 +2932,17 @@ function drawEvalEditor() {
     ${g ? `<p class="ed-help">It counts as zero, so it's usually one of the lowest, which ${esc(g.name)} doesn't count.</p>` : `
     ${policyHTML(e, p, num(e.weight), "")}`}`}
     ${accomHTML(e)}
+    ${filesHTML(e)}
 `;
+}
+// What students get for it: files and links, each a button on the course page (Evaluations and This week).
+// An uploaded file goes into the offering's public files (Lectern.uploadPublic); a link is any address.
+function filesHTML(e) {
+  const fs = e.files || [];
+  return `<h3 class="ed-sec">Files and Links</h3>
+    <p class="ed-help">Each one is a button students click on the course page, with this evaluation.</p>
+    ${fs.map((f, i) => `<div class="ef-row"><input type="text" data-ed="ef-label" data-i="${i}" value="${esc(f.label || "")}" placeholder="Button text, e.g. Handout" aria-label="Button text" autocomplete="off"><input type="url" data-ed="ef-url" data-i="${i}" value="${esc(f.url || "")}" placeholder="https://…" aria-label="Link" autocomplete="off"><button type="button" class="ic trash" data-ed="ef-del" data-i="${i}" title="Remove it" aria-label="Remove it">${svg("trash")}</button></div>`).join("")}
+    <div class="ef-acts">${HOSTED && window.Lectern.uploadPublic ? `<button type="button" class="btn" data-ed="ef-up">${svg("plus")}Upload a File</button><input type="file" id="ef-file" hidden>` : ""}<button type="button" class="btn" data-ed="ef-add">${svg("plus")}Add a Link</button></div>`;
 }
 // Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
 // where its weight moves. It can apply only to students who ask (and you approve); students can also ask for
@@ -3031,6 +3047,10 @@ document.addEventListener("input", ev => {
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.type === "checkbox") return;   // ticks are handled on "change"
   if (t.dataset.ed === "nt-text") return;   // a note being written: added with Add note
+  if (t.dataset.ed === "ef-label" || t.dataset.ed === "ef-url") {   // an evaluation's file or link, typed
+    const e = evalById(m.dataset.eval), f = e && (e.files || [])[+t.dataset.i]; if (!f) return;
+    noteTyping(); f[t.dataset.ed === "ef-label" ? "label" : "url"] = t.value.trim(); unsaved = true; refreshSoon(); return;
+  }
   if (t.dataset.ed === "gacc-weight") { const g = model.groups.find(x => x.id === m.dataset.acc.slice(2)); noteTyping(); setGroupOverride(m.dataset.student, g, { weight: t.value === "" ? null : num(t.value) }); unsaved = true; refreshSoon(); return; }
   if (t.dataset.ed === "share" || t.dataset.ed === "acc-share") {   // a makeup's or a shift's part, typed in % of the course
     const acc = t.dataset.ed === "acc-share", e = evalById(acc ? m.dataset.acc : m.dataset.eval); noteTyping();
@@ -3117,6 +3137,21 @@ document.addEventListener("click", ev => {
   });
   if (a === "when") return openWhen(b, e);
   if (a === "acm-when") return openWhen(b, acmWhen(e));
+  if (a === "ef-add") { change(() => { e.files = [...(e.files || []), { label: (e.files || []).length ? "" : e.type === "test" ? "Practice" : "Handout", url: "" }]; }); const ins = $$('[data-ed="ef-url"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
+  if (a === "ef-del") { change(() => { e.files.splice(+b.dataset.i, 1); if (!e.files.length) delete e.files; }); return; }
+  if (a === "ef-up") {   // choose a file; it's uploaded straight away (to the public files), then listed here
+    const inp = $("#ef-file", m); if (!inp) return;
+    inp.onchange = async () => {
+      const file = inp.files && inp.files[0]; inp.value = ""; if (!file) return;
+      b.disabled = true; const was = b.innerHTML; b.textContent = `Uploading ${file.name}…`;
+      try {
+        const url = await window.Lectern.uploadPublic(file);
+        change(() => { e.files = [...(e.files || []), { label: file.name.replace(/\.[^.]+$/, ""), url }]; });
+        toast(`Uploaded ${file.name}. Save the gradebook to put it on the course page.`);
+      } catch (x) { toast(x.message || `Couldn't upload ${file.name}.`); b.disabled = false; b.innerHTML = was; }
+    };
+    return inp.click();
+  }
   if (a === "nt-add" || a === "nt-del") {   // the student's notes: add one (dated now), or delete one
     const s = model.students.find(x => x.num === m.dataset.student), ns = noteList(s.notes);
     if (a === "nt-add") { const ta = $('[data-ed="nt-text"]', m), v = ta.value.trim(); if (!v) return ta.focus(); ns.push({ at: noteStamp(), text: v }); }

@@ -522,7 +522,15 @@ tr.e-drop-after td { box-shadow: inset 0 -3px 0 #a67c00 !important; }
 .hbe-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: -8px 0 18px; }
 .hbe-bar label { display: inline-flex; align-items: center; gap: 6px; font: 600 13px var(--font-ui); color: var(--ink-2); }
 .hbe-bar select { border-radius: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); padding: 0 8px; font-family: var(--font-ui); }
-.hbe-preview { margin: 0 0 18px; padding: 8px 12px; border-radius: 10px; border: 1px dashed var(--line-2); color: var(--ink-2); font-size: 13.5px; }
+/* Preview: the hub as it'll be, with a bar to switch who's looking and to go back */
+.hbe-pvbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 24px; background: var(--dark); color: var(--dark-ink); font-size: 13.5px; }
+.hbe-pvbar .grow { flex: 1; min-width: 220px; }
+.hbe-pvbar button.c { height: 30px; font-size: 13px; }
+.hbe-seg { display: inline-flex; border: 1px solid rgb(255 255 255 / .35); border-radius: 8px; padding: 2px; gap: 2px; }
+.hbe-seg button.c { all: unset; font: 600 13px var(--font-ui); padding: 4px 10px; border-radius: 6px; cursor: pointer; color: inherit; }
+.hbe-seg button.c.on { background: var(--dark-ink); color: var(--dark); }
+.hbe .hb-who button.c { display: inline-flex; align-items: center; gap: 6px; height: 34px; }
+.hbe .hb-who button.c svg { width: 16px; height: 16px; }
 /* Editable things: click to open them */
 .hb-ed { cursor: pointer; transition: border-color .12s, box-shadow .12s; }
 .hb-ed:hover, .hb-ed:focus-visible { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgb(201 154 6 / .14); outline: none; }
@@ -1189,7 +1197,7 @@ const HUB_TAB = {
       <div class="e-addsec">${B("addsec", "sections", "+ Add a Section", "Add a section at the end of the Overview: a heading, then text and tables", 'data-kind="text"', "add")}${has ? "" : B("addsec", "sections", "+ Meeting Times & Office Hours", "Add the weekly meeting times and office hours", 'data-kind="meetings"', "add")}</div>`;
   },
   week(D) {
-    return `<p class="hbe-preview">A preview: this is This week as students see it. Click a lecture or an announcement to change it.</p>${HV().draw(D, "week", ui.week, { edit: true })}`;
+    return HV().draw(D, "week", ui.week, { edit: true });
   },
   lectures(D) {
     if (!model.sections.some(x => x.type === "schedule")) return `<h2 class="hb-h2">Lectures</h2><p class="hb-empty">No weeks yet.</p><div class="e-addsec">${B("addsec", "sections", "+ Start the Weeks", "Add the term's weeks and their lectures", 'data-kind="schedule"', "add")}</div>`;
@@ -1212,8 +1220,28 @@ const HUB_TAB = {
   },
   accommodations(D) { return HV().draw(D, "accommodations"); },
 };
+// Preview: the course hub exactly as it'll look, before saving: for people signed in to the course
+// ("in"), or for a visitor who isn't ("out": signed-in tabs locked, This week without them).
+function hubPreview(tab) {
+  const D = hubData(), out = ui.preview === "out";
+  const locked = id => out && (id === "accommodations" || tabVis(model, id) === "signed-in");
+  if (out) HUB_ALL.forEach(([id]) => { if (locked(id)) delete D.data[id]; });
+  const tabs = HUB_ALL.map(([id, t]) => `<span class="hb-tab hbe-tab" role="tab" tabindex="0" data-act="tab" data-v="${id}" aria-selected="${id === tab}">${esc(t)}${locked(id) ? HV().LOCK : ""}</span>`).join("");
+  const body = locked(tab)
+    ? `<div class="hb-locked">${HV().LOCK}<h2>${esc(tabTitle(tab))}</h2><p>${tab === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p><span class="hb-btn primary">Sign in</span></div>`
+    : HV().draw(D, tab, ui.week);
+  const m = model, sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
+  const seg = [["in", "Signed in"], ["out", "Visitor"]].map(([v, t]) => `<button type="button" class="c${ui.preview === v ? " on" : ""}" data-act="preview-as" data-v="${v}" aria-pressed="${ui.preview === v}">${t}</button>`).join("");
+  return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">Preview</span></nav>
+    <div class="hb hbe hbe-pv"><div class="hbe-pvbar"><span class="grow"><b>Preview</b> · what ${out ? "a visitor who isn't signed in" : "people signed in to the course"} will see once you save.</span><span class="hbe-seg" role="group" aria-label="See it as">${seg}</span><button type="button" class="c primary" data-act="preview">Back to Editing</button></div>
+    <header class="hb-head"><div class="hb-head-in"><div class="hb-titles"><p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc(m.title || m.code || "Course page")}</h1></div>
+      <div class="hb-who">${out ? `<span class="hb-btn">Sign in</span>` : ""}</div></div></header>
+    <nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>
+    <main class="hb-main">${body}</main></div>`;
+}
 function hubEditor() {
   const tab = HUB_ALL.some(t => t[0] === ui.tab) ? ui.tab : "overview", m = model;
+  if (ui.preview) return hubPreview(tab);
   const tabs = HUB_ALL.map(([id, t]) => {
     const sg = id === "accommodations" || tabVis(m, id) === "signed-in";
     const vis = id === "accommodations" ? `<span class="hbe-vis on fixed" title="Always for signed-in students">${HV().LOCK}</span>`
@@ -1226,7 +1254,8 @@ function hubEditor() {
   EDIT = true;
   const head = `<header class="hb-head"><div class="hb-head-in"><div class="hb-titles">
       <p class="hb-sub">${T("code", m.code, "span", "", "Course code", "", { plain: true })}<span class="e-dot"> · </span>${T("term", m.term, "span", "", "Term", "", { plain: true })}<span class="e-dot"> · </span>${T("school", m.school, "span", "", "School", "", { plain: true })}</p>
-      ${T("title", m.title, "h1", "", "Course title", "hb-title", { plain: true })}</div></div></header>`;
+      ${T("title", m.title, "h1", "", "Course title", "hb-title", { plain: true })}</div>
+      <div class="hb-who"><button type="button" class="c" data-act="preview" title="See the course page as students will, before you save">${EYE}Preview</button></div></div></header>`;
   EDIT = false;
   return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">${esc(tabTitle(tab))}</span></nav>
     <div class="hb hbe">${head}<nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>
@@ -2254,7 +2283,7 @@ function parsePage(html) {
 // ═════════════════════════════════════════════════════════════════════
 // State, undo and editing
 // ═════════════════════════════════════════════════════════════════════
-const ui = { mode: "edit", collapsed: new Set(), page: "", tab: "overview", week: null };
+const ui = { mode: "edit", collapsed: new Set(), page: "", tab: "overview", week: null, preview: null };
 // GitHub connection and the page currently open from it (path = "csc108/f26/info.html", sha = its version).
 const gh = { repo: "", branch: "main", token: "", path: "", sha: null, last: "" };
 let model = BLANK_PAGE();
@@ -2482,7 +2511,7 @@ stage.addEventListener("keydown", e => {
 });
 stage.addEventListener("click", e => {
   // In Edit mode links don't navigate, so the Download button text can be edited.
-  if (ui.mode === "edit" && e.target.closest("a")) e.preventDefault();
+  if (ui.mode === "edit" && !ui.preview && e.target.closest("a")) e.preventDefault();   // in Preview, links open
   const wk = e.target.closest(".hb-weeknav [data-week]");
   if (wk) { e.preventDefault(); if (wk.dataset.week !== "") { ui.week = wk.dataset.week; render(); } return; }
   if (e.target.closest(".ed")) return;   // typing in a title inside something that opens
@@ -2569,6 +2598,8 @@ function act(d) {
       break;
     }
     case "edit-grades": if (editGrades) editGrades(d.v); break;
+    case "preview": flushTyping(); dropEmptyAnn(); ui.preview = ui.preview ? null : "in"; ui.week = null; render(); window.scrollTo(0, 0); break;
+    case "preview-as": ui.preview = d.v; render(); break;
     case "tab": flushTyping(); dropEmptyAnn(); ui.tab = d.v; ui.week = null; ui.page = ""; render(); window.scrollTo(0, 0); break;
     case "ann-new": {   // in the week chosen beside the button; its page opens
       const sel = stage.querySelector("#ann-week"), w = sel && getP(model, sel.value);
@@ -3641,7 +3672,7 @@ if (lectern) {
       }
       else page = BLANK_PAGE();
       if (unsaved) undoStack.push(JSON.stringify(model));
-      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ensureMeetings(model); ui.collapsed.clear(); ui.page = ""; ui.tab = "overview"; ui.week = null;   // no sha: new, or an older page (info.html) that saves as course.json
+      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ensureMeetings(model); ui.collapsed.clear(); ui.page = ""; ui.tab = "overview"; ui.week = null; ui.preview = null;   // no sha: new, or an older page (info.html) that saves as course.json
       leaveHome(); render();
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }

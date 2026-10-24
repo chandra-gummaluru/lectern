@@ -150,8 +150,7 @@ function currentWeek(cal, now) {
   const dated = cal.filter(w => !w.isBreak && w.start);
   let k = 0, note = "";
   dated.forEach((w, j) => { if (mondayOf(w.start) <= now) k = j; });
-  if (now < mondayOf(dated[0].start)) note = `The term starts ${fmt(dated[0].start, { weekday: "long", month: "long", day: "numeric" })}. Here's the first week.`;
-  else if (dated[k + 1] && now > weekEnd(dated[k], dated[k + 1])) {
+  if (now >= mondayOf(dated[0].start) && dated[k + 1] && now > weekEnd(dated[k], dated[k + 1])) {   // (before the term: the first week, no note)
     const gap = cal.find(b => b.isBreak && b.i > dated[k].i && b.i < dated[k + 1].i);
     k++;
     note = gap && now < mondayOf(dated[k].start) ? `${gap.label || "A break"}: no classes this week. Here's what's coming up.` : "";
@@ -191,12 +190,11 @@ const DRAW = {
 
     // The days: meetings (every week, on their day), evaluations and dated lectures.
     const days = [];
-    for (let d = mon; d <= last; d = addDays(d, 1)) {
+    for (let d = mon; d <= addDays(mon, 6); d = addDays(d, 1)) {   // Monday to Sunday, every day
       const dow = (fromIso(d).getDay() + 6) % 7 + 1, items = [];
       ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev"><span class="tm">${esc(hhmm(m.start, m.end))}</span><span class="k">${esc(meetingName(m))}${meetingSub(m) ? ` ${esc(meetingSub(m))}` : ""}</span>${esc(m.who)}${m.where ? ` <span class="wh">${m.who ? "· " : ""}${esc(m.where)}</span>` : ""}</div>` }));
       evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due"><span class="tm">${esc(e.time || "")}</span><span class="k">${e.type === "test" ? "Test" : "Due"}</span>${esc(e.name)}</div>` }));
       (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => items.push({ t: (/(\d\d:\d\d)/.exec(c.date) || [])[1] || "", h: `<div class="hb-ev"><span class="tm">${esc((/(\d\d:\d\d)/.exec(c.date) || [])[1] || "")}</span><span class="k">${esc(c.label)}</span>${esc(c.title)}</div>` }));
-      if (!items.length && dow > 5) continue;
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
       days.push(`<li${d === now ? ' class="today"' : ""}><div class="dd">${DAY3[dow]}<b>${fromIso(d).getDate()}</b></div><div>${items.map(x => x.h).join("") || '<span class="hb-nothing">—</span>'}</div></li>`);
     }
@@ -213,7 +211,6 @@ const DRAW = {
     if (lw) {
       left += `<h3 class="hb-h3">Lectures</h3>`;
       left += lw.cards.length || lw.noClass ? `<div class="hb-grid">${lw.cards.map(c => lectureCard(c)).join("")}${lw.noClass ? `<div class="hb-card nocl">No class${lw.noClass > 1 ? ` (${lw.noClass} hours)` : ""}</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`;
-      if (lw.deadlines.length) left += `<div class="hb-pills" style="margin-top:12px">${lw.deadlines.map(d => `<span class="hb-pill">${esc(d)}</span>`).join("")}</div>`;
     }
     if (E) left += `<h3 class="hb-h3">Evaluations</h3>${evs.length ? `<div class="hb-grid">${evs.map(evalCard).join("")}</div>` : `<p class="hb-nothing">Nothing due this week.</p>`}`;
 
@@ -247,7 +244,7 @@ const DRAW = {
       const name = EDIT ? `<button type="button" class="hbe-wname" data-act="open" data-path="${esc(w._p)}" title="Edit this week: its dates, topic, hours, deadlines and announcements">${esc(w.label || "Week")}</button>` : esc(w.label);
       const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("");
       const add = EDIT ? `<div class="hbe-adds sm"><button type="button" class="hbe-add" data-act="lec-add" data-path="${esc(w._p)}" data-lfree="${esc(w._p)}" title="Add a lecture at the end of this week (or drop a lecture here to move it to the end)">+ Add Lecture</button></div>` : "";
-      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}<h3${w.i === cur ? ` data-now="${mondayOf(w.start) <= now ? "This week" : "Up next"}"` : ""}>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}</div>
+      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}<h3${w.i === cur && mondayOf(w.start) <= now ? ' data-now="This week"' : ""}>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}</div>
         ${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`}${add}</section>${tail}`;
     }).join("");
   },
@@ -300,6 +297,17 @@ function draw(d, tab, arg, opts = {}) {
 const str = x => (typeof x === "string" ? x : "");
 const arr = x => (Array.isArray(x) ? x : []);
 const filesOf = fs => arr(fs).filter(f => f && str(f.url).trim()).map(f => ({ label: str(f.label), url: str(f.url) }));
+// Overview's sections as students see them (server/hub.py's _section): empty rows and hidden blocks left out.
+const OVERVIEW = ["table", "sessions", "text", "meetings"];
+const blocksOf = bs => arr(bs).filter(b => b && !b.hidden && (b.table || str(b.heading).trim() || str(b.body).trim()))
+  .map(b => (b.table ? { heading: str(b.heading), table: { columns: arr(b.table.columns), rows: arr(b.table.rows), footer: arr(b.table.footer).length ? b.table.footer : null } } : { heading: str(b.heading), body: str(b.body) }));
+function overviewSection(s) {
+  const o = { type: s.type, title: str(s.title), blocks: blocksOf(s.blocks) };
+  if (s.type === "table") Object.assign(o, { columns: arr(s.columns), rows: arr(s.rows).filter(r => arr(r).some(c => str(c).trim())), footer: arr(s.footer).length ? s.footer : null });
+  if (s.type === "sessions") Object.assign(o, { headers: arr(s.headers), groups: arr(s.groups).map(g => ({ name: str(g.name), extra: str(g.extra), slots: arr(g.slots) })) });
+  if (s.type === "meetings") o.items = arr(s.items).map(m => ({ ...m, day: Number(m.day) || 0 })).filter(m => m.day);
+  return o;
+}
 function fromPage(page, year) {
   const secs = arr(page.sections).map((s, si) => [s, si]).filter(([s]) => s && !s.hidden);
   const scheme = page.scheme || {}, weeks = [], anns = [], lists = [];
@@ -324,11 +332,11 @@ function fromPage(page, year) {
   pol.forEach(s => arr(scheme.policies).forEach(x => { const show = s.show || {}; if (x.id in show ? show[x.id] : x.show) rules.push({ title: x.title, text: x.text }); }));
   const ef = page.evalFiles || {};
   return {
-    overview: { description: str(page.description), sections: secs.filter(([s]) => s.type === "meetings").map(([s]) => ({ type: "meetings", title: str(s.title), items: arr(s.items).map(m => ({ ...m, day: Number(m.day) || 0 })).filter(m => m.day), blocks: [] })) },
+    overview: { description: str(page.description), sections: secs.filter(([s]) => OVERVIEW.includes(s.type)).map(([s]) => overviewSection(s)).filter(x => x.type !== "meetings" || x.items.length || x.blocks.length) },
     lectures: { weeks, lists },
     announcements: { items: anns },
     evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: Object.fromEntries(Object.entries(ef).map(([k, v]) => [k, filesOf(v)])) },
-    policies: { sections: pol.map(s => ({ title: str(s.title), caption: str(s.caption), blocks: arr(s.blocks).filter(b => !b.hidden) })), rules },
+    policies: { sections: pol.map(s => ({ title: str(s.title), caption: str(s.caption), blocks: blocksOf(s.blocks) })), rules },
     week: { weeks: weeks.map(w => ({ i: w.i, label: w.label, dates: w.dates || "", start: w.start || "", end: w.end || "", isBreak: w.isBreak })) },
     accommodations: {},
   };

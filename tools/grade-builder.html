@@ -1329,6 +1329,9 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .set-card { margin: 0 0 14px; padding: 18px 20px 16px; background: #fff; border: 1px solid #b4b6ba; border-radius: 10px; font-family: var(--font-ui); }
 .set-card h2 { margin: 0 0 4px; font: 500 22px/1.2 "EB Garamond", Garamond, Georgia, serif; color: #1f2329; }
 .set-help { margin: 0 0 12px; font-size: 13.5px; color: #7a7f87; line-height: 1.5; }
+.set-show { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #eceef1; font-size: 13.5px; color: #4a4f57; cursor: pointer; }
+.set-show input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent, #1f5fbf); }
+.st-mail-ro { margin: 4px 0 14px; }
 .set-help b { color: #1f2329; }
 .set-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid #ecedef; font-size: 14px; color: #4a4f57; }
 .set-row:first-of-type { border-top: 0; }
@@ -1921,7 +1924,9 @@ function normalizeBook(x) {
   b.policies = { round: Object.assign({ step: 0, dir: "nearest" }, P.round || {}, [1, 5, 10].includes(num((P.round || {}).step)) ? {} : { step: 0 }),   // 1, 5 or 10, or not rounded
     buckets: (P.buckets || []).map(x => ({ id: x.id || uid(), from: num(x.from), to: num(x.to), value: num(x.value) })),
     // A rule: if [an evaluation] [is below X% | isn't submitted | is deferred], the grade is [capped at | set to] X% or a special grade.
-    autofail: (P.autofail || []).map(x => ({ id: x.id || uid(), target: x.target || "", when: ["missed", "deferred"].includes(x.when) ? x.when : "below", below: num(x.below), effect: ["set", "code"].includes(x.effect) ? x.effect : "cap", value: num(x.value), code: x.code || "IPR" })) };
+    autofail: (P.autofail || []).map(x => ({ id: x.id || uid(), target: x.target || "", when: ["missed", "deferred"].includes(x.when) ? x.when : "below", below: num(x.below), effect: ["set", "code"].includes(x.effect) ? x.effect : "cap", value: num(x.value), code: x.code || "IPR" })),
+    // Which of them the course page's About tab shows (the rules do unless turned off; ranges and rounding don't unless turned on).
+    show: { ranges: !!(P.show || {}).ranges, round: !!(P.show || {}).round, rules: (P.show || {}).rules !== false } };
   // A grade set by hand for one student: a percentage or a special grade, with why.
   b.finals = b.finals && typeof b.finals === "object" ? b.finals : {};
   return b;
@@ -1946,6 +1951,7 @@ function emailNoticeHTML() {
   const bad = enrolled().filter(emailProblem);
   if (!bad.length) return "";
   const names = bad.slice(0, 8).map(s => `<button type="button" class="link" data-act="ed-student" data-num="${esc(s.num)}">${esc(s.name || s.num)}</button>`).join("; ") + (bad.length > 8 ? `; and ${bad.length - 8} more` : "");
+  if (HOSTED) return notice(`<b>${bad.length} student${bad.length === 1 ? " doesn't" : "s don't"} have ${emailDomain() ? `an @${esc(emailDomain())}` : "an"} email</b>, so they can't sign in to the course page: ${bad.slice(0, 8).map(s => esc(s.name || s.num)).join("; ")}${bad.length > 8 ? `; and ${bad.length - 8} more` : ""}. Set their emails in the course offering's Students card.`);
   return notice(`<b>${bad.length} student${bad.length === 1 ? " doesn't" : "s don't"} have ${emailDomain() ? `an @${esc(emailDomain())}` : "an"} email</b>, so Lectern can't email ${bad.length === 1 ? "them" : "them"}: ${names}. Click a name to set it, or import the class list again with its email column.${emailDomain() ? "" : " Set the email domain in Settings."}`);
 }
 const emailProblemText = p => p === "none" ? "No email" : p === "bad" ? "Email isn't an address" : p === "domain" ? `Email isn't @${emailDomain()}` : "";
@@ -2602,7 +2608,6 @@ function gridHTML() {
       <td class="c-grade" data-grade="${esc(s.num)}">${gradeCell(s.num)}</td></tr>`;
   }).join("");
   return `<div class="page-in xwide"><div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>
-      ${tabs ? `<button type="button" class="btn" data-act="imp-roster">${svg("upload")}Import a Class List</button><button type="button" class="btn" data-act="st-add">${svg("plus")}Add a Student</button>` : ""}
       <button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>
       <span class="legend"><i class="lg missed"></i>zero <i class="lg rw"></i>weight moved <i class="lg mu"></i>made up <i class="lg dr"></i>not counted <i class="lg ov"></i>accommodation</span></div>
     <div class="stools"><input class="gfind" id="gfind" type="search" placeholder="Find a student" value="${esc(ui.find)}" aria-label="Find a student">
@@ -2658,13 +2663,13 @@ function focusHTML() {
     if (ui.fxPct) return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="fx-pct fx-pcell" data-pct="${esc(st.num)}">${fxPct(st.num, e) || '<span class="none">—</span>'}</td></tr>`;
     return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="c-cell ${cellClass(st.num, e, r)}${unused ? " mk-unused" : ""}"><input class="mk" data-s="${esc(st.num)}" data-e="${esc(e.id)}" value="${esc(cellView(m, r))}" inputmode="decimal" spellcheck="false" autocomplete="off" aria-label="${esc(st.name || st.num)}, ${esc(shortName(e))}"${unused ? ' readonly tabindex="-1"' : ""}>${statusOf(m) ? statusIco(statusOf(m)) : ""}${unused ? "" : `<button type="button" class="mk-st" data-act="cell-st" data-s="${esc(st.num)}" data-e="${esc(e.id)}" tabindex="-1" title="Not submitted, excused, deferred…" aria-label="Status">${svg("caret")}</button>`}</td></tr>`;
   }).join("");
-  const acts = `<button type="button" class="btn" data-act="imp-roster">${svg("upload")}Import a Class List</button><button type="button" class="btn" data-act="st-add">${svg("plus")}Add a Student</button>
+  const acts = `${HOSTED ? "" : `<button type="button" class="btn" data-act="imp-roster">${svg("upload")}Import a Class List</button><button type="button" class="btn" data-act="st-add">${svg("plus")}Add a Student</button>`}
       ${evs.length && model.students.length ? `<button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>` : ""}`;
   const headBar = `<div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>${acts}</div>`;
   if (!evs.length || !model.students.length) return `<div class="page-in wide">${headBar}
     ${emailNoticeHTML()}
     ${!evs.length ? `<div class="ep-empty">No evaluations yet. Add the course's assignments, tests and exams in <button type="button" class="link" data-act="go-evals">Evaluations</button>.</div>` : ""}
-    ${!model.students.length ? `<div class="ep-empty">No students yet. Import a class list from Quercus or ACORN, or add students one at a time.</div>` : ""}</div>`;
+    ${!model.students.length ? `<div class="ep-empty">No students yet. ${HOSTED ? "Add them in the course offering's Students card (one at a time, or from a class list)." : "Import a class list from Quercus or ACORN, or add students one at a time."}</div>` : ""}</div>`;
   return `<div class="page-in xwide"><div class="pg-head"><div class="pg-title"><h1>Grades</h1></div></div>
     ${emailNoticeHTML()}
     <div class="fx-wrap">
@@ -2772,6 +2777,7 @@ stage.addEventListener("change", e => {
   const t = e.target;
   if (t.dataset.pol && t.tagName === "SELECT") { const row = t.closest("[data-fail]"), x = model.policies.autofail.find(y => y.id === row.dataset.fail); if (x) change(() => { x[t.dataset.pol] = t.value; }); return; }
   if (t.id === "gdrop") { ui.showDropped = t.checked; return render(); }
+  if (t.dataset && t.dataset.pshow) return change(() => { model.policies.show = Object.assign({}, model.policies.show, { [t.dataset.pshow]: t.checked }); });
 
 });
 // Moving around the grid like a spreadsheet.
@@ -3436,9 +3442,10 @@ function settingsHTML() {
   const segR = (k, opts, cur) => `<div class="seg2">${opts.map(([v2, l]) => `<button type="button" data-act="pol-${k}" data-v="${v2}" aria-pressed="${String(cur) === String(v2)}">${l}</button>`).join("")}</div>`;
   const overlaps = P.buckets.filter((x, i) => P.buckets.some((y, j) => j !== i && num(x.from) <= num(y.to) && num(y.from) <= num(x.to)));
   const targets = [...counted().filter(e => !groupOf(e)).map(e => [e.id, e.name]), ...(model.groups || []).map(g => [`g:${g.id}`, `${g.name} (group)`]), ...counted().filter(e => groupOf(e)).map(e => [e.id, e.name])];
-  const F = model.fields;
-  return `<div class="page-in st-page"><div class="pg-head"><h1>Settings</h1></div>
-    <section class="set-card"><h2>Students</h2><p class="set-help">Each student is identified by one field. It must be unique, and it's how students are matched in class lists and mark files. Every student needs an email, at the domain you set (Lectern emails the class with them). A field called Section lets you filter students by section.</p>
+  const F = model.fields, sh = P.show || {};
+  const showBox = (k, on, what) => `<label class="set-show"><input type="checkbox" data-pshow="${k}"${on ? " checked" : ""}> Show ${what} on the course page (its About tab)</label>`;
+  return `<div class="page-in st-page"><div class="pg-head"><h1>${HOSTED ? "Grade Settings" : "Settings"}</h1></div>
+    ${HOSTED ? "" : `<section class="set-card"><h2>Students</h2><p class="set-help">Each student is identified by one field. It must be unique, and it's how students are matched in class lists and mark files. Every student needs an email, at the domain you set (Lectern emails the class with them). A field called Section lets you filter students by section.</p>
       <div class="fld-row"><span class="fld-k">Identifier</span><input type="text" data-fl="idLabel" value="${esc(F.idLabel)}" placeholder="Student Identifier" aria-label="The identifier's name"></div>
       <div class="fld-row"><span class="fld-k">Name</span><span class="fld-fixed">First Name</span><span class="fld-fixed">Last Name</span></div>
       <div class="fld-row"><span class="fld-k">Email</span><span class="fld-at">Required for every student, at @</span><input type="text" data-fl="emailDomain" value="${esc(F.emailDomain || "")}" placeholder="mail.utoronto.ca" aria-label="The email domain every student's email must be at" spellcheck="false"></div>
@@ -3446,23 +3453,23 @@ function settingsHTML() {
         <span class="spacer"></span><button type="button" class="ic trash" data-act="fld-del" data-id="${esc(f.id)}" title="Delete this field (and its values)" aria-label="Delete this field">${svg("trash")}</button></div>`).join("")}
       <button type="button" class="add-mk" data-act="fld-add">${svg("plus")}Add a Field</button>
 </section>
-    <h3 class="set-sub">Course Grades</h3>
+    <h3 class="set-sub">Course Grades</h3>`}
     <p class="pg-lede">Course-wide rules, applied in this order: ranges, then rounding, then the rules.</p>
     <section class="set-card"><h2>1 · Ranges</h2><p class="set-help">Grades in a range become a set grade, e.g. 48 to 49.9 becomes 50.</p>
       ${P.buckets.map(x => `<div class="set-row" data-bucket="${esc(x.id)}">From <input type="number" class="num" step="any" data-pol="from" value="${esc(x.from)}">% to <input type="number" class="num" step="any" data-pol="to" value="${esc(x.to)}">% ${ARROW()} becomes <input type="number" class="num" step="any" data-pol="value" value="${esc(x.value)}">%
         <span class="spacer"></span><button type="button" class="ic trash" data-act="pol-bdel" data-id="${esc(x.id)}" title="Delete this range" aria-label="Delete this range">${svg("trash")}</button></div>`).join("")}
       ${overlaps.length ? notice("<b>Some ranges overlap.</b> A grade in two ranges uses the first one.") : ""}
-      <button type="button" class="add-mk" data-act="pol-badd">${svg("plus")}Add a Range</button></section>
+      <button type="button" class="add-mk" data-act="pol-badd">${svg("plus")}Add a Range</button>${P.buckets.length ? showBox("ranges", sh.ranges, "the ranges") : ""}</section>
     <section class="set-card"><h2>2 · Rounding</h2>
       <div class="set-line"><span class="set-l">Round to</span>${segR("step", [[0, "Don't Round"], [1, "1"], [5, "5"], [10, "10"]], R.step)}</div>
       ${num(R.step) > 0 ? `<div class="set-line"><span class="set-l">Direction</span>${segR("dir", [["nearest", "Nearest"], ["up", "Always Up"], ["down", "Always Down"]], R.dir)}</div>
-      <p class="set-help">For example, ${fmtNum(ex)}% ${ARROW()} <b>${fmtNum(roundGrade(ex, R))}%</b></p>` : ""}</section>
+      <p class="set-help">For example, ${fmtNum(ex)}% ${ARROW()} <b>${fmtNum(roundGrade(ex, R))}%</b></p>${showBox("round", sh.round, "the rounding")}` : ""}</section>
     <section class="set-card"><h2>3 · Rules</h2><p class="set-help">If a student is below a mark on an evaluation, or doesn't submit it, or has it deferred, their course grade is capped, set, or becomes a special grade like IPR (in progress). For "is below", not submitted counts as 0 (unless a makeup counts); excused, deferred or not-yet-marked work doesn't trigger it. A grade set by hand on a student's page always wins.</p>
       ${P.autofail.map(a => `<div class="set-row" data-fail="${esc(a.id)}">If <select data-pol="target"><option value="">Choose…</option>${targets.filter(([v2]) => a.when === "below" || !v2.startsWith("g:")).map(([v2, l]) => `<option value="${esc(v2)}"${a.target === v2 ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
         <select data-pol="when"><option value="below"${a.when === "below" ? " selected" : ""}>is below</option><option value="missed"${a.when === "missed" ? " selected" : ""}>isn't submitted</option><option value="deferred"${a.when === "deferred" ? " selected" : ""}>is deferred</option></select>${a.when === "below" ? `<input type="number" class="num" step="any" data-pol="below" value="${esc(a.below)}">%` : ""}, the grade is
         <select data-pol="effect"><option value="cap"${a.effect === "cap" ? " selected" : ""}>capped at</option><option value="set"${a.effect === "set" ? " selected" : ""}>set to</option><option value="code"${a.effect === "code" ? " selected" : ""}>a special grade:</option></select>${a.effect === "code" ? `<select data-pol="code">${CODES.map(([c2, l]) => `<option value="${c2}"${a.code === c2 ? " selected" : ""}>${c2} (${esc(l)})</option>`).join("")}</select>` : `<input type="number" class="num" step="any" data-pol="value" value="${esc(a.value)}">%`}
         <span class="spacer"></span><button type="button" class="ic trash" data-act="pol-fdel" data-id="${esc(a.id)}" title="Delete this rule" aria-label="Delete this rule">${svg("trash")}</button></div>`).join("")}
-      <button type="button" class="add-mk" data-act="pol-fadd">${svg("plus")}Add a Rule</button></section>
+      <button type="button" class="add-mk" data-act="pol-fadd">${svg("plus")}Add a Rule</button>${P.autofail.length ? showBox("rules", sh.rules !== false, "these rules") : ""}</section>
   </div>`;
 }
 
@@ -3624,8 +3631,9 @@ function drawStudentEditor() {
   const info = [`${esc(idLabel())} ${esc(s.num)}`, ...customFields().filter(f => f.id !== "email" && fieldVal(s, f.id)).map(f => `${esc(f.label)} ${esc(fieldVal(s, f.id))}`)].join(" · ");
   const ep = emailProblem(s);
   const nOwn = counted().filter(x => !groupOf(x) && overrideOf(s.num, x.id)).length + (model.groups || []).filter(g => groupOverride(s.num, g)).length;
-  $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}</small></div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span></div>
-    <div class="st-mail"><label><span>Email</span><input type="email" data-ed="email" value="${esc(fieldVal(s, "email"))}" placeholder="${emailDomain() ? `name@${esc(emailDomain())}` : "name@example.com"}" spellcheck="false" autocomplete="off"></label>${ep ? `<span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}</small></div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}${HOSTED ? "" : `<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span>`}</div>
+    ${HOSTED ? `<p class="ed-help st-mail-ro">${fieldVal(s, "email") ? esc(fieldVal(s, "email")) : "No email"}${ep && fieldVal(s, "email") ? ` · <span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""} · Their details are in the course offering's Students card.</p>`
+      : `<div class="st-mail"><label><span>Email</span><input type="email" data-ed="email" value="${esc(fieldVal(s, "email"))}" placeholder="${emailDomain() ? `name@${esc(emailDomain())}` : "name@example.com"}" spellcheck="false" autocomplete="off"></label>${ep ? `<span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</div>`}
     <h3 class="ed-sec">Course Grade</h3>
     ${finalGradeHTML(s)}
     <h3 class="ed-sec">Accommodations</h3>
@@ -4221,10 +4229,11 @@ if (lectern) {
     state: () => ({ path: gh.path, unsaved, view: ui.view }),
     // Which part of it Lectern shows: "evals" (Evaluations), "book" (the Gradebook: Grades and Students) or "settings".
     section(part) {
-      const T = { evals: ["evals"], book: ["grades"], settings: ["settings"] }[part];
+      const T = { evals: ["evals"], book: ["grades", "settings"], settings: ["grades", "settings"] }[part];
       if (!T) return;
       const same = tabs && tabs.join() === T.join();
       tabs = T;
+      if (part === "settings" && ui.view !== "settings") { ui.view = "settings"; ui.evalEd = ui.groupEd = ui.student = ui.stAcc = ""; ui.cell = null; return render(); }
       if (!T.includes(ui.view) && !(part === "book" && ui.view === "students" && ui.student)) { ui.view = T[0]; ui.evalEd = ui.groupEd = ui.student = ui.stAcc = ""; ui.cell = null; }
       else if (same) return;
       render();

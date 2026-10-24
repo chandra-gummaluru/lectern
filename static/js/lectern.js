@@ -8,7 +8,6 @@
      #/csc258/f26/course   the Course Page Builder on csc258/f26/course.json (public repo)
      #/csc258/f26/grades   the Grade Builder on csc258/f26/grades.json (private repo)
      #/csc258/f26/lectures   the weeks and their lectures (lectures.js), shown on the course page
-     #/csc258/f26/about      the course page's About: description, sections, policies (about.js)
      #/csc258/f26/announcements   announcements (announcements.js), each in its week on the course page
      #/csc258/f26/team/12    a teaching team member: their sections, times and office hours (team.js)
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
@@ -23,7 +22,7 @@ import { accountPage } from "./account.js";
 import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
-import { aboutPage } from "./about.js";
+import { studentsCard } from "./students.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -209,7 +208,7 @@ function listAll() {
     return map;
   })().catch(e => { S.listError = e; throw e; });
   // Pages that show the list draw again when it arrives (not a builder, and not your account page, which doesn't use it).
-  const redraw = () => { if (["home", "offering", "accom", "lectures", "team", "announcements", "about"].includes(S.route.page)) renderPage(); };
+  const redraw = () => { if (["home", "offering", "accom", "lectures", "team", "announcements"].includes(S.route.page)) renderPage(); };
   S.listing.then(redraw, redraw);
   return S.listing;
 }
@@ -232,19 +231,18 @@ function parseHash() {
     if (tool === "lectures") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
     if (tool === "team" && e) return { page: "team", c, t, o, p: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
-    if (tool === "about") return { page: "about", c, t, o };
     return { page: "offering", c, t, o };
   }
   if (p.length === 1 && p[0] === "account") return { page: "account" };
   return { page: "home" };
 }
-const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Settings" } };
+const PARTS = { evals: { slug: "evaluations", title: "Evaluations" }, book: { slug: "gradebook", title: "Gradebook" }, settings: { slug: "settings", title: "Grade Settings" } };
 const partOf = view => view === "evals" ? "evals" : view === "settings" ? "settings" : "book";
 const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "about" ? `${at}/about` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/lectures${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/lectures${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -403,6 +401,7 @@ async function saveAll() {
       }
       if (r.ok && ta) await reopenAfterTA(t, u.path);   // show what was kept: the gradebook as saved
       if (r.ok) done.push(u); else failed.push({ u, error: r.error || "Couldn't save." });
+      if (r.ok && u.name === "grades" && !ta) await syncScheme(p[0], p[1], t.owner || "").catch(e => console.warn("[Lectern] marking scheme:", e));
     }
   } finally {
     saving = false; savingText = ""; renderBar();
@@ -523,9 +522,6 @@ function renderPage() {
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic }, r);
-  if (r.page === "about") return aboutPage({ $, esc, pageHTML, toast, Store, area, canEdit, ICON, renderPath, route: () => S.route, termName,
-    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s),
-    gradebookRules: async (c, t) => { const b = await getBook(c, t); return b ? schemeOf(b, "").policies : []; } }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s) }, r);
   if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
@@ -592,9 +588,10 @@ function homePage() {
 function newOfferingDialog() {
   const now = new Date(), y = now.getFullYear() % 100, mo = now.getMonth();
   const season = mo >= 8 ? "f" : mo >= 4 ? "s" : "w";
-  modal(`<h2>New Course Offering</h2><p>A course in one term. Its folder, e.g. <code>csc258/f26</code>, is made when you first save its course page, gradebook or an exam.</p>
+  modal(`<h2>New Course Offering</h2><p>A course in one term, in its own folder, e.g. <code>csc258/f26</code>.</p>
     <div class="lt-form">
       <label>Course<input type="text" id="no-c" placeholder="csc258" spellcheck="false" autocomplete="off"><small>Lower case, as in the folder name.</small></label>
+      <label>Title<input type="text" id="no-title" placeholder="e.g. Computer Organization" autocomplete="off"><small>On the course page, with the course code, term and ${esc(INSTITUTION())}.</small></label>
       <div class="two">
         <label>Term<select id="no-s"><option value="f">Fall</option><option value="w">Winter</option><option value="s">Summer</option></select></label>
         <label>Year<input type="text" id="no-y" value="20${String(y).padStart(2, "0")}" inputmode="numeric" autocomplete="off"></label>
@@ -604,44 +601,83 @@ function newOfferingDialog() {
     <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Continue</button></div>`, (m, close) => {
     m.querySelector("#no-s").value = season;
     m.querySelector("[data-no]").onclick = close;
-    const ok = () => {
+    const ok = async () => {
       const c = m.querySelector("#no-c").value.trim().toLowerCase().replace(/\s+/g, "");
       const yy = /^(?:20)?(\d{2})$/.exec(m.querySelector("#no-y").value.trim());
+      const title = m.querySelector("#no-title").value.trim();
       const err = m.querySelector("#no-err");
       if (!slugOK(c)) { err.textContent = "Enter the course as letters and numbers, e.g. csc258."; return; }
+      if (!title) { err.textContent = "Enter the course's title, e.g. Computer Organization."; return m.querySelector("#no-title").focus(); }
       if (!yy) { err.textContent = "Enter the year, e.g. 2026."; return; }
+      const t = `${m.querySelector("#no-s").value}${yy[1]}`;
+      const path = `${c}/${t}/about.json`, repo = area(Store.PRIV, "");
+      m.querySelector("[data-ok]").disabled = true;
+      try {   // its folder starts with its title (about.json): an offering that's there already keeps its own
+        if (!await Store.readFile(repo, path)) await Store.writeText(repo, path, JSON.stringify({ format: "lectern-about/2", title, description: "" }, null, 1) + "\n", `New course offering ${c} ${t}`, null);
+      } catch (e) { err.textContent = `Couldn't make it. ${e.message}`; m.querySelector("[data-ok]").disabled = false; return; }
       close();
-      go({ page: "offering", c, t: `${m.querySelector("#no-s").value}${yy[1]}`, o: "" });
+      aboutCache.delete(`/${c}/${t}`);
+      await listAll().catch(() => null);
+      go({ page: "offering", c, t, o: "" });
     };
     m.querySelector("[data-ok]").onclick = ok;
     m.querySelectorAll("input").forEach(i => i.addEventListener("keydown", e => { if (e.key === "Enter") ok(); }));
   });
 }
 
+// The offering's title and description (about.json in its private files): the title is asked for when it's
+// made, and both are changed on its page, under its code. An older offering without one starts from its
+// course page's (course.json), and has one from the first change.
+const aboutCache = new Map();   // "<owner>/<c>/<t>" → { data, sha }
+async function readAbout(c, t, o = curOwner()) {
+  const k = `${o}/${c}/${t}`;
+  if (aboutCache.has(k)) return aboutCache.get(k);
+  const f = await Store.readFile(area(Store.PRIV, o), `${c}/${t}/about.json`);
+  let data = null; try { data = f ? JSON.parse(f.text) : null; } catch (_) {}
+  if (!data || typeof data !== "object") {
+    let page = null; try { page = JSON.parse(await Store.readText(area(Store.PUB, o), `${c}/${t}/course.json`) || "null"); page = page && page.page; } catch (_) {}
+    data = { format: "lectern-about/2", title: (page && page.title) || "", description: (page && page.description) || "" };
+  }
+  const v = { data: { format: "lectern-about/2", title: String(data.title || ""), description: String(data.description || "") }, sha: f ? f.sha : null };
+  aboutCache.set(k, v);
+  return v;
+}
+let aboutTimer = 0, aboutSaving = null, aboutAgain = null;
+function saveAboutSoon(c, t, o, v) {
+  const el = $("#lt-about-st"); if (el) { el.textContent = "Saving…"; el.classList.remove("bad"); }
+  clearTimeout(aboutTimer);
+  aboutTimer = setTimeout(async function save() {
+    if (aboutSaving) { aboutAgain = save; return; }
+    aboutSaving = (async () => {
+      const st = () => $("#lt-about-st");
+      try {
+        v.sha = await Store.writeText(area(Store.PRIV, o), `${c}/${t}/about.json`, JSON.stringify(v.data, null, 1) + "\n", "Title and description", v.sha);
+        if (st()) st().textContent = "Saved";
+      } catch (e) {
+        if (st()) { st().textContent = "Not saved"; st().classList.add("bad"); }
+        toast(e.conflict ? "The title or description changed somewhere else. Reload to see it; your last change wasn't saved." : `Couldn't save. ${e.message}`);
+      } finally { aboutSaving = null; if (aboutAgain) { const f = aboutAgain; aboutAgain = null; f(); } }
+    })();
+  }, 600);
+}
+const INSTITUTION = () => ($(".sp-inst") && $(".sp-inst").textContent.trim()) || "";
+
 function offeringPage(c, t) {
   const o = offering(c, t), loading = !S.offerings && !S.listError;
   const role = roleIn(c, t), edit = role === "owner" || role === "instructor", ta = role === "ta", own = !curOwner();
-  // Another term of the same course (in the same files) with a course page: a new page can start from a copy of the newest.
-  const others = S.offerings ? [...S.offerings.values()].filter(x => x.o === curOwner() && x.c === c && x.t !== t && x.page).sort((a, b) => termOrder(a.t, b.t)) : [];
-  const live = o.page ? liveURL(c, t) : "";
   const book = path => ` data-part="${path}"${!o.grades && loading ? " disabled" : ""}`;
   pageHTML(`<div class="lt-in">
     <div class="lt-off-head">
-      <div><h1>${esc(c.toUpperCase())}</h1><p class="lt-term-line">${esc(termName(t))}</p>
+      <div class="lt-off-id"><h1>${esc(c.toUpperCase())}</h1>
+        <p class="lt-term-line">${esc(termName(t))}</p>
         ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${role === "ta" ? "a TA" : "an instructor"}</p>` : ""}</div>
-      <div class="lt-off-acts">${edit ? `<button type="button" class="lt-btn" data-part="settings"${!o.grades && loading ? " disabled" : ""} title="The course's settings: student fields, and the rules for course grades (ranges, rounding, automatic fail)">${ICON.gear}Settings</button><button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
+      <div class="lt-off-acts"><button type="button" class="lt-btn primary" id="lt-view-page" title="The course page: a preview, and which tabs are only for people signed in">${ICON.page}View Course Page</button>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
+    <div class="lt-about" id="lt-about"><p class="lt-about-title">&nbsp;</p></div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
     ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook, and look at the evaluations and exams. Changes to anything else (weights, students, settings, exams, the course page) are for the instructors: Lectern won't save them.</p>` : ""}
-    <div class="lt-three">
-      <section class="lt-part">
-        <div class="lt-part-head">${ICON.page}<h2>Course Page</h2></div>
-        <p class="lt-part-text">${o.page ? `What students see, put together from the parts below. Preview it, and choose which tabs are only for people signed in.` : `No course page for this term yet.${edit && others.length ? ` Start from <code>${esc(others[0].c)}/${esc(others[0].t)}</code>'s page (without its announcements), or from a blank page.` : ""}`}</p>
-        <div class="lt-part-acts">${o.page
-          ? `${edit ? `<button type="button" class="lt-btn primary" data-go="course">Open Course Page</button>` : ""}${live ? `<a class="lt-btn${edit ? "" : " primary"}" href="${esc(live)}" target="_blank" rel="noopener">Live page ${ICON.out}</a>` : ""}`
-          : !edit ? "" : `${others.length ? `<button type="button" class="lt-btn primary" data-go="course" data-copy="${esc(others[0].c)}/${esc(others[0].t)}">Copy ${esc(others[0].t)}'s Page</button>` : ""}<button type="button" class="lt-btn${others.length ? "" : " primary"}" data-go="course"${loading ? " disabled" : ""}>Start a Blank Page</button>`}</div>
-      </section>
+    <div class="lt-three lt-four">
       <section class="lt-part">
         <div class="lt-part-head">${ICON.lectures}<h2>Lectures</h2></div>
         <p class="lt-part-text">The weeks of the term and each week's lectures, tutorials and labs, with their files and links.</p>
@@ -653,20 +689,15 @@ function offeringPage(c, t) {
         <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-anns">${edit ? "Open Announcements" : "See Announcements"}</button></div>
       </section>
       <section class="lt-part">
-        <div class="lt-part-head">${ICON.doc}<h2>About</h2></div>
-        <p class="lt-part-text">The course's title and description, sections of your own, and the course-wide policies.</p>
-        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-about">${edit ? "Open About" : "See About"}</button></div>
-      </section>
-      <section class="lt-part">
         <div class="lt-part-head">${ICON.evals}<h2>Evaluations</h2></div>
-        <p class="lt-part-text">${o.grades ? `The assignments, tests and exams: weights, dates, and what happens if one is missed.${edit ? " Build each one's exam or handout from here." : ""}` : "No evaluations for this term yet."}</p>
+        <p class="lt-part-text">${o.grades ? `The assignments, tests and exams: weights, dates, files, and what happens if one is missed.${edit ? " Build each one's exam or handout from here." : ""}` : "No evaluations for this term yet."}</p>
         <div id="lt-loose"></div>
         <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${edit ? " primary" : ""}"${book("evals")}>${o.grades ? (edit ? "Open Evaluations" : "See Evaluations") : "Add Evaluations"}</button>` : ""}</div>
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.grades}<h2>Gradebook</h2></div>
-        <p class="lt-part-text">${o.grades ? (edit ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation).` : "Enter marks, and see every student's grade.") : "No gradebook for this term yet: it starts with the evaluations."}</p>
-        <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button>` : ""}</div>
+        <p class="lt-part-text">${o.grades ? (edit ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation). Its settings: grade ranges, rounding and course rules.` : "Enter marks, and see every student's grade.") : "No gradebook for this term yet: it starts with the evaluations, or the students."}</p>
+        <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button>` : ""}${o.grades && edit ? `<button type="button" class="lt-btn"${book("settings")} title="Grade ranges, rounding and course rules">${ICON.gear}Grade Settings</button>` : ""}</div>
       </section>
       ${edit ? `<section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>
@@ -683,9 +714,9 @@ function offeringPage(c, t) {
       </section>
     </div>
   </div>`);
+  $("#lt-view-page").onclick = () => go({ page: "tool", tool: "course", c, t });
   $("#lt-lectures").onclick = () => go({ page: "lectures", c, t });
   $("#lt-anns").onclick = () => go({ page: "announcements", c, t });
-  $("#lt-about").onclick = () => go({ page: "about", c, t });
   const acc = $("#lt-accom");
   if (acc) acc.onclick = () => go({ page: "accom", c, t });
   if (acc && o.grades) readAccom(c, t).then(d => {
@@ -694,9 +725,9 @@ function offeringPage(c, t) {
     el.innerHTML = `<b>${n} request${n === 1 ? "" : "s"} waiting</b> for a decision. Approve or reject each one; the student gets an email.`;
     $("#lt-accom").classList.add("primary");
   }).catch(() => {});
-  $("#lt-page").querySelectorAll("[data-go]").forEach(b => { b.onclick = () => go({ page: "tool", tool: b.dataset.go, c, t }, b.dataset.copy ? { copyFrom: b.dataset.copy } : null); });
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
+  aboutPart(c, t, edit);
   teamPart(c, t);
   studentsPart(c, t);
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
@@ -708,53 +739,42 @@ function offeringPage(c, t) {
   }).catch(() => {});
 }
 
+// Under the code: the title and the description, changed right there (they save by themselves).
+async function aboutPart(c, t, edit) {
+  const o = curOwner(), box = $("#lt-about");
+  const here = () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box);
+  let v;
+  try { v = await readAbout(c, t, o); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">Couldn't read the title and description. ${esc(e.message)}</p>`; return; }
+  if (!here()) return;
+  const d = v.data;
+  if (!edit) {
+    box.innerHTML = `<p class="lt-about-title">${esc(d.title) || "<i>No title yet</i>"}</p>${d.description ? `<div class="lt-about-desc">${window.HubView.markdown(d.description)}</div>` : ""}`;
+    return;
+  }
+  box.innerHTML = `<input type="text" class="lt-about-title lt-about-in" id="lt-title" value="${esc(d.title)}" placeholder="The course's title" aria-label="The course's title">
+    <textarea class="lt-about-desc lt-about-in" id="lt-desc" rows="2" placeholder="Add a description: what the course is about, in a few sentences. Students see it on the course page's About tab." aria-label="The course's description">${esc(d.description)}</textarea>
+    <span class="lt-about-st" id="lt-about-st" aria-live="polite"></span>`;
+  const ta = $("#lt-desc"), fit = () => { ta.style.height = "auto"; ta.style.height = `${ta.scrollHeight + 2}px`; };
+  fit();
+  $("#lt-title").oninput = e => { d.title = e.target.value.trim(); saveAboutSoon(c, t, o, v); };
+  ta.oninput = () => { d.description = ta.value; fit(); saveAboutSoon(c, t, o, v); };
+}
+
 // ── The teaching team: who else works on this offering, as instructor or TA ──
 // Instructors add people by email (someone without an account gets an invitation that makes one),
 // change roles and remove people; anyone can leave. The server enforces what each role may do.
-// ── Students: the class list for this course page (server/students.py) ──
-// Each student on it signs in to the course page itself, with their email and a code it emails them.
-async function studentsPart(c, t) {
+// ── Students: the class list (students.js): the gradebook's students, who can sign in to the course page ──
+function gradebookOf(c, t, o = curOwner()) {
+  const g = Lectern.tools.grades;
+  return g && g.api && g.api.state().path === `${c}/${t}/grades.json` && (g.owner || "") === o ? g : null;
+}
+function studentsPart(c, t) {
   const box = $("#lt-students .lt-team-body"), o = curOwner(), owner = o || S.user.handle;
-  const here = () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box);
-  const base = `/api/students/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
-  let d;
-  try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
-  if (!here()) return;
-  const lead = canEdit(c, t), when = x => new Date(x * 1000).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
-  const stateOf = s => (s.last_in ? `Signed in ${when(s.last_in)}` : s.invited ? `Sent the link ${when(s.invited)}` : "Not signed in yet");
-  box.innerHTML = `<p class="lt-part-text">Students on this list can sign in to the course page, with their email and a code it emails them. Its link: <code>${esc(d.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
-    ${lead ? `<form class="lt-st-add" id="st-add" novalidate>
-      <textarea id="st-emails" rows="3" placeholder="Their emails: paste a list, one per line or separated by commas" aria-label="Students' emails"></textarea>
-      <div class="lt-st-row"><label class="lt-check"><input type="checkbox" id="st-invite"${d.email ? " checked" : " disabled"}> Email each one the course page's link</label><span class="grow"></span><button type="submit" class="lt-btn add">${ICON.plus}Add Students</button></div>
-      ${d.email ? "" : `<p class="lt-note">Email isn't set up on this server, so no links go out: share the link yourself.</p>`}</form><div id="st-msg"></div>` : ""}
-    ${d.students.length ? `<p class="lt-part-text lt-st-count">${d.students.length} student${d.students.length === 1 ? "" : "s"}${lead && d.email ? ` · <button type="button" class="lt-link" id="st-all">Email everyone the link</button>` : ""}</p>
-    <div class="lt-olist lt-st-list">${d.students.map(s => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(s.email)}</b><span>${esc(stateOf(s))}</span></div>
-      ${lead ? `<span class="lt-orow-r">${d.email ? `<button type="button" class="lt-link" data-st-invite="${esc(s.email)}">Email the link</button>` : ""}<button type="button" class="lt-link lt-del" data-st-remove="${esc(s.email)}">Remove</button></span>` : ""}</div>`).join("")}</div>`
-      : `<p class="lt-part-text lt-st-count">No students yet.</p>`}`;
-  const again = () => studentsPart(c, t);
-  $("#st-copy").onclick = async () => { try { await navigator.clipboard.writeText(d.link); toast("Copied the course page's link."); } catch (_) { toast(d.link); } };
-  if (!lead) return;
-  $("#st-add").onsubmit = async e => {
-    e.preventDefault();
-    const emails = $("#st-emails").value.trim(); if (!emails) return $("#st-emails").focus();
-    const btn = $("#st-add button[type=submit]"); btn.disabled = true;
-    try {
-      const r = await Auth.api(`${base}/add`, { emails, invite: $("#st-invite").checked });
-      toast(`Added ${r.added} student${r.added === 1 ? "" : "s"}${r.already ? ` (${r.already} already on the list)` : ""}${r.invited ? `; emailed ${r.invited} the link` : ""}.`);
-      await again();
-      if (r.bad.length && $("#st-msg")) $("#st-msg").innerHTML = `<p class="lt-note">Not emails, so not added: ${r.bad.map(esc).join(", ")}</p>`;
-    } catch (x) { toast(x.message); btn.disabled = false; }
-  };
-  const all = $("#st-all");
-  if (all) all.onclick = async () => {
-    if (!await confirmBox("Email everyone the link?", `Each of the ${d.students.length} students gets an email with the course page's link.`, "Email Them")) return;
-    try { const r = await Auth.api(`${base}/invite`, {}); toast(`Emailed ${r.invited} students the link.`); again(); } catch (x) { toast(x.message); }
-  };
-  box.querySelectorAll("[data-st-invite]").forEach(b => { b.onclick = async () => { try { await Auth.api(`${base}/invite`, { email: b.dataset.stInvite }); toast(`Emailed ${b.dataset.stInvite} the link.`); again(); } catch (x) { toast(x.message); } }; });
-  box.querySelectorAll("[data-st-remove]").forEach(b => { b.onclick = async () => {
-    if (!await confirmBox("Take them off the class list?", `${esc(b.dataset.stRemove)} won't be able to sign in to the course page any more (and is signed out now).`, "Remove")) return;
-    try { await Auth.api(`${base}/remove`, { email: b.dataset.stRemove }); again(); } catch (x) { toast(x.message); }
-  }; });
+  return studentsCard({ box, esc, toast, modal, confirmBox, Store, area: a => area(a, o), api: Auth.api, owner, lead: canEdit(c, t), ICON, termName,
+    here: () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box),
+    gradebook: () => gradebookOf(c, t, o),
+    // The file changed: an open gradebook reads it again when it next shows; a new one is on Home.
+    changedBook: made => { const g = gradebookOf(c, t, o); if (g) g.stale = true; if (made) listAll().catch(() => null); } }, c, t);
 }
 
 async function teamPart(c, t) {
@@ -977,10 +997,27 @@ const readPriv = (path, o = curOwner()) => Store.readText(area(Store.PRIV, o), p
 // saved count too), else the file in the private repository.
 async function getBook(c, t) {
   const g = Lectern.tools.grades, path = `${c}/${t}/grades.json`;
-  if (g && g.api && g.api.state().path === path) return g.api.book();
+  if (g && g.api && g.api.state().path === path && !g.stale) return g.api.book();
   if (!offering(c, t).grades) return null;
   const text = await readPriv(path);
   try { return text ? JSON.parse(text) : null; } catch (_) { return null; }
+}
+
+// The course page shows the gradebook's evaluations and course rules from its course.json: once the gradebook
+// is saved, they go there too, so nothing waits for the course page to be saved. (An open course page with
+// changes not saved yet gets them when it's shown, and saves them itself.)
+async function syncScheme(c, t, o) {
+  const path = `${c}/${t}/course.json`, repo = area(Store.PUB, o), cp = Lectern.tools.course;
+  const open = cp && cp.api && cp.api.state().path === path && (cp.owner || "") === o;
+  if (open && cp.api.state().unsaved) return;
+  const f = await Store.readFile(repo, path); if (!f) return;
+  const d = JSON.parse(f.text), g = Lectern.tools.grades;
+  if (!d || !d.page || !g || !g.api) return;
+  const sc = schemeOf(g.api.book(), `${c}/${t}/grades.json`, S.user ? { url: `${await lecternURL()}request`, repo: o || S.user.handle, offering: `${c}/${t}` } : null);
+  if (JSON.stringify(d.page.scheme) === JSON.stringify(sc)) return;
+  d.page.scheme = sc;
+  await Store.writeText(repo, path, JSON.stringify(d, null, 1) + "\n", `Update ${c} ${t} marking scheme`, f.sha);
+  if (open) cp.stale = true;   // it opens again, from the file
 }
 
 // What the course page shows from a gradebook: each evaluation and group with its weight, date and rules.
@@ -1018,9 +1055,9 @@ function schemeOf(b, from, requests = null) {
       units.push({ kind: "group", id: g.id, name: g.name, weight: num(g.weight), keep: Math.min(num(g.keep) || 1, mem.length || 1), count: mem.length, members: mem.map(m => ({ ...brief(m), notes: [] })) });
     } else units.push({ kind: "eval", ...brief(e), weight: num(e.weight), notes: notes(e) });
   });
-  // The course rules (Grades → Settings), worded for students. Automatic fail shows by default;
-  // rounding and grade ranges don't (the course page chooses).
-  const P = b.policies || {}, policies = [], pc = x => `${fmtW(x)}%`;
+  // The course rules (the gradebook's Settings), worded for students, each saying whether the course page shows it
+  // (its Settings choose: the rules do unless turned off; rounding and grade ranges don't unless turned on).
+  const P = b.policies || {}, policies = [], pc = x => `${fmtW(x)}%`, SH = P.show || {};
   const target = t => t.startsWith("g:") ? ((groups.find(g => g.id === t.slice(2)) || {}).name ? `your average on ${groups.find(g => g.id === t.slice(2)).name}` : "") : ((b.evals || []).find(e => e.id === t) || {}).name ? `your mark on ${(b.evals || []).find(e => e.id === t).name}` : "";
   const CODE = { IPR: "IPR (in progress)", SDF: "SDF (standing deferred)", INC: "INC (incomplete)", NGA: "NGA (no grade available)", GWR: "GWR (grade withheld pending review)", AII: "AII (academic integrity issue)", WDR: "WDR (withdrawn)" };
   (P.autofail || []).forEach(a => {
@@ -1029,11 +1066,11 @@ function schemeOf(b, from, requests = null) {
     if (!w) return;
     const cond = a.when === "missed" ? `If ${w}` : a.when === "deferred" ? `If ${ev.name} is deferred for you` : `If ${w} is below ${pc(a.below)}`;
     const res = a.effect === "code" ? `your course grade is ${CODE[a.code] || a.code}` : `your course grade is ${a.effect === "set" ? "set to" : "at most"} ${pc(a.value)}`;
-    policies.push({ id: `fail:${a.id}`, kind: "autofail", title: a.effect === "code" || (a.when || "below") !== "below" ? "Course Grade Rules" : "Automatic Fail", show: true, text: `${cond}, ${res}.` });
+    policies.push({ id: `fail:${a.id}`, kind: "autofail", title: a.effect === "code" || (a.when || "below") !== "below" ? "Course Grade Rules" : "Automatic Fail", show: SH.rules !== false, text: `${cond}, ${res}.` });
   });
   const R = P.round || {};
-  if (num(R.step) > 0) policies.push({ id: "round", kind: "round", title: "Rounding", show: false, text: R.dir === "up" ? `Course grades are rounded up to ${num(R.step) === 1 ? "a whole percent" : `a multiple of ${pc(R.step)}`}.` : R.dir === "down" ? `Course grades are rounded down to ${num(R.step) === 1 ? "a whole percent" : `a multiple of ${pc(R.step)}`}.` : `Course grades are rounded to the nearest ${num(R.step) === 1 ? "whole percent" : pc(R.step)}.` });
-  (P.buckets || []).forEach(x => policies.push({ id: `range:${x.id}`, kind: "range", title: "Grade Adjustments", show: false, text: `A course grade from ${pc(x.from)} to ${pc(x.to)} becomes ${pc(x.value)}.` }));
+  if (num(R.step) > 0) policies.push({ id: "round", kind: "round", title: "Rounding", show: !!SH.round, text: R.dir === "up" ? `Course grades are rounded up to ${num(R.step) === 1 ? "a whole percent" : `a multiple of ${pc(R.step)}`}.` : R.dir === "down" ? `Course grades are rounded down to ${num(R.step) === 1 ? "a whole percent" : `a multiple of ${pc(R.step)}`}.` : `Course grades are rounded to the nearest ${num(R.step) === 1 ? "whole percent" : pc(R.step)}.` });
+  (P.buckets || []).forEach(x => policies.push({ id: `range:${x.id}`, kind: "range", title: "Grade Adjustments", show: !!SH.ranges, text: `A course grade from ${pc(x.from)} to ${pc(x.to)} becomes ${pc(x.value)}.` }));
   // Every evaluation by its date for the course page, makeups too (each says what it's a makeup for).
   return { from, units, evals: (b.evals || []).map(e => ({ ...brief(e), ...(e.makeupFor ? { makeupFor: e.makeupFor } : {}) })), policies, ...(requests ? { requests } : {}) };
 }
@@ -1110,7 +1147,7 @@ async function crossLink(tool, r, t, opts) {
       const b = await getBook(r.c, r.t).catch(() => null);
       t.api.setScheme(b ? schemeOf(b, `${r.c}/${r.t}/grades.json`, await requestsFor(r.c, r.t)) : null, { edit: v => go({ page: "tool", tool: "grades", part: v === "settings" ? "settings" : "evals", c: r.c, t: r.t }) });
       if (t.api.setTeam) t.api.setTeam(await teamFor(r.c, r.t).catch(() => null));
-      if (t.api.setAbout) { let a = null; try { a = JSON.parse(await readPriv(`${r.c}/${r.t}/about.json`) || "null"); } catch (_) {} t.api.setAbout(a && typeof a === "object" ? a : null); }
+      if (t.api.setAbout) { aboutCache.delete(`${curOwner()}/${r.c}/${r.t}`); const a = await readAbout(r.c, r.t).catch(() => null); t.api.setAbout({ ...(a ? a.data : {}), code: r.c.toUpperCase(), term: termName(r.t), school: INSTITUTION() }); }
       if (t.api.setAnnouncements) { let a = null; try { a = JSON.parse(await readPriv(`${r.c}/${r.t}/announcements.json`) || "null"); } catch (_) {} t.api.setAnnouncements(a && Array.isArray(a.items) ? a.items : null); }
       if (t.api.setLectures) { let l = null; try { l = JSON.parse(await readPriv(`${r.c}/${r.t}/lectures.json`) || "null"); } catch (_) {} t.api.setLectures(l && Array.isArray(l.weeks) ? l : null); }
     }
@@ -1199,7 +1236,7 @@ async function openTool(r, my) {
   const target = `${folder}/${TOOLS[tool].file}`;
   let t = Lectern.tools[tool] && Lectern.tools[tool].api ? Lectern.tools[tool] : null;
   // Already showing that file: just show the builder again.
-  if (!(t && t.api.state().path === target && (t.owner || "") === curOwner())) {
+  if (!(t && t.api.state().path === target && (t.owner || "") === curOwner() && !t.stale)) {
     showPageChrome();
     renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: tool === "exams" ? r.e : TOOLS[tool].title }]);
     pageHTML(`<div class="lt-loading">Opening ${esc(target)}…</div>`);
@@ -1223,6 +1260,7 @@ async function openTool(r, my) {
       const o = offering(r.c, r.t);
       const has = tool === "course" ? o.page : tool === "grades" ? o.grades : o.exams.includes(r.e);
       await t.api.open(folder, has, opts && opts.copyFrom, opts && opts.title, opts || {});
+      t.stale = false;
       t.taBase = tool === "grades" && roleIn(r.c, r.t) === "ta" && t.api.book ? noMarks(t.api.book()) : "";
       const where = "in Lectern";
       if (!has) toast(tool === "course" ? `Started ${target}. Save to create it.` : tool === "grades" ? `New gradebook for ${r.c}/${r.t}. Save to put it ${where}.`

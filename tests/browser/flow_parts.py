@@ -1,12 +1,13 @@
-"""Announcements and About, made in Lectern, on the course page; the course page itself is a preview
-with each tab's visibility.
+"""Announcements and the offering's title and description, made in Lectern, on the course page; the course
+page itself is a preview with each tab's visibility.
 
 1. Announcements: it starts from the course page's own; a new one, dated in Week 7, saves by itself;
    the hub shows it in Announcements and in that week.
-2. About: the description changes, a section and a policy are added; the hub's About shows them, and
-   the gradebook-free page still works.
-3. The course page (Lectern): the new tabs (This week first, About), nothing to edit, Lectures made
+2. The offering's page: no About or Course Page cards, and no Settings; its title and description are
+   changed under its code and save by themselves; the hub's header and About show them.
+3. View Course Page (Lectern): the new tabs (This week first, About), nothing to edit, Lectures made
    signed-in only with its lock, saved; a visitor sees Lectures locked. Preview shows the visitor's view.
+4. A new offering asks for its title, and starts with it.
 Asserts as it goes; screenshots in shots/.
 
 Run:  python tests/browser/flow_parts.py
@@ -52,23 +53,20 @@ def main():
         assert [a["title"] for a in items] == ["Welcome to CSC258!", "Midterm rooms posted"] and items[1]["date"] == "Oct 27, 2026, 09:30", items
         print("1 announcements:", [a["title"] for a in items])
 
-        # 2. About
+        # 2. The offering's page: title and description under the code
         me.locator("#lt-path button", has_text="csc258 / f26").click()
-        me.click("#lt-about"); me.wait_for_selector("#ab-desc")
-        expect(me.locator("#ab-title")).to_have_value("Computer Organization")
-        me.fill("#ab-desc", "From transistors to processors.")
-        me.click("[data-add=sections]")
-        me.locator('.ab-block[data-k=sections] [data-f=heading]').last.fill("Textbook")
-        me.locator('.ab-block[data-k=sections] [data-f=body]').last.fill("Patt & Patel, *Introduction to Computing Systems*.")
-        me.click("[data-add=policies]")
-        me.locator('.ab-block[data-k=policies] [data-f=heading]').last.fill("Late work")
-        me.locator('.ab-block[data-k=policies] [data-f=body]').last.fill("Not accepted.")
+        me.wait_for_selector("#lt-desc")
+        assert not me.query_selector("#lt-about-open, [data-go=course], [data-part=settings].lt-off-acts, .lt-off-acts [data-part]"), "old cards or Settings are still there"
+        assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Lectures", "Announcements", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
+        expect(me.locator("#lt-title")).to_have_value("Computer Organization")
+        me.fill("#lt-title", "Computer Organization and Design")
+        me.fill("#lt-desc", "From transistors to processors.")
         me.wait_for_timeout(1500)
-        expect(me.locator("#ab-status")).to_have_text("Saved")
-        me.screenshot(path=f"{OUT}/202-about.png", full_page=True)
+        expect(me.locator("#lt-about-st")).to_have_text("Saved")
+        me.screenshot(path=f"{OUT}/202-offering-about.png")
         ab = json.loads(srv.text("priv", "csc258/f26/about.json"))
-        assert ab["description"] == "From transistors to processors." and ab["sections"][-1]["heading"] == "Textbook" and ab["policies"][-1]["heading"] == "Late work"
-        print("2 about saved")
+        assert ab["title"] == "Computer Organization and Design" and ab["description"] == "From transistors to processors.", ab
+        print("2 title and description saved")
 
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
         v.goto(srv.base + "c/chandra/csc258/f26/"); v.wait_for_selector(".hb-tab")
@@ -78,20 +76,20 @@ def main():
         expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # Oct 27 is in Week 7, this week
         v.click(".hb-tab:has-text('About')")
         expect(v.locator(".hb-main")).to_contain_text("From transistors to processors.")
-        expect(v.locator(".hb-main")).to_contain_text("Textbook")
-        expect(v.locator(".hb-main")).to_contain_text("Not accepted.")
+        expect(v.locator(".hb-title")).to_have_text("Computer Organization and Design")
+        expect(v.locator(".hb-sub")).to_contain_text("CSC258")
         v.screenshot(path=f"{OUT}/203-hub-about.png", full_page=True)
         print("3 the hub shows them")
 
         # 3. The course page: a preview, with each tab's visibility.
-        me.locator("#lt-path button", has_text="csc258 / f26").click()
-        me.click("[data-go=course]"); me.wait_for_selector(C + ".hbe")
+        me.click("#lt-view-page"); me.wait_for_selector(C + ".hbe")
+        expect(me.locator(C + ".hb-title")).to_have_text("Computer Organization and Design")
         tabs = me.eval_on_selector_all(C + ".hbe-tab", "els => els.map(e => e.textContent.trim())")
         assert tabs == ["This week", "Announcements", "Lectures", "Evaluations", "About", "My accommodations"], tabs
         for tb in ["week", "announcements", "lectures", "evaluations", "about"]:
             me.click(C + f".hbe-tab[data-v={tb}]")
             assert not me.query_selector(C + ".hb-main [data-act], " + C + ".hb-main .ed"), f"{tb} has editing in it"
-        expect(me.locator(C + ".hb-main")).to_contain_text("Textbook")
+        expect(me.locator(C + ".hb-main")).to_contain_text("From transistors to processors.")
         me.click(C + ".hbe-tab[data-v=lectures] .hbe-vis")
         me.click(C + "[data-act=preview]")
         me.click(C + ".hbe-tab[data-v=lectures]")
@@ -103,6 +101,18 @@ def main():
         v.goto(srv.base + "c/chandra/csc258/f26/#lectures"); v.reload(); v.wait_for_selector(".hb-tab")
         expect(v.locator(".hb-locked h2")).to_have_text("Lectures")
         print("4 course page: view only, tabs' visibility saved")
+
+        # 4. A new offering: its title first.
+        me.click("#lt-home"); me.wait_for_selector("#lt-new"); me.click("#lt-new")
+        me.fill("#no-c", "csc369"); me.click(".lt-modal [data-ok]")
+        expect(me.locator("#no-err")).to_contain_text("title")
+        me.fill("#no-title", "Operating Systems"); me.click(".lt-modal [data-ok]")
+        me.wait_for_selector("#lt-title")
+        expect(me.locator("#lt-title")).to_have_value("Operating Systems")
+        t = me.evaluate("location.hash").split("/")[-1]
+        assert json.loads(srv.text("priv", f"csc369/{t}/about.json"))["title"] == "Operating Systems"
+        me.screenshot(path=f"{OUT}/205-new-offering.png")
+        print("5 new offering made with its title:", t)
         b.close()
     print("\n".join(errors) or "no page errors")
     assert not errors

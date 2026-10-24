@@ -86,9 +86,9 @@ Two people saving the same gradebook at once: the second is told it changed and 
 
 ## Accommodation requests
 
-In **Evaluations**, each evaluation has an **Accommodations** section. Its standard accommodation is its own policy for missed work (its makeups, and where its weight moves), so there's nothing to type. Choose **Students must request the standard accommodation** (it then applies only once you approve), **Students can request an alternate accommodation**, and a **Request By** date and time (the same calendar as the evaluation's date). With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). Open the course page in Lectern and save it after changing these.
+In **Evaluations**, each evaluation has an **Accommodations** section. Its standard accommodation is its own policy for missed work (its makeups, and where its weight moves), so there's nothing to type. Choose **Students must request the standard accommodation** (it then applies only once you approve), **Students can request an alternate accommodation**, and a **Request By** date and time (the same calendar as the evaluation's date). With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). The course page has them once the gradebook is saved.
 
-The button opens a form on Lectern's server (`/request?r=<your handle>&o=<course>/<term>&e=<evaluation>`). The student gives their email, identifier, first and last name; all four must match the gradebook (so the class list needs an **Email** field: Settings → fields). Then they ask for the standard accommodation or describe an alternate one, and get a receipt by email. After the request-by time, the form and the course page say the deadline has passed.
+The button opens a form on Lectern's server (`/request?r=<your handle>&o=<course>/<term>&e=<evaluation>`). The student gives their email, identifier, first and last name; all four must match the class list (the offering's Students card). Then they ask for the standard accommodation or describe an alternate one, and get a receipt by email. After the request-by time, the form and the course page say the deadline has passed.
 
 Requests go in your private files, `csc258/f26/accommodations.json`. The offering's **Accommodations** page lists them; **Approve** or **Reject** (with an optional note) saves the decision and emails the student. A student who needs something else makes another request (up to 10 per evaluation).
 
@@ -96,20 +96,20 @@ Optional: `LECTERN_TIMEZONE` (request deadlines; default `America/Toronto`).
 
 ## The course hub
 
-Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course>/<term>/`: **Overview** (description, teaching team, meeting times and office hours), **This week** (the week's announcements, lectures, evaluations and each day's meetings; it opens here), **Lectures**, **Evaluations**, **Announcements**, **Policies** and **My accommodations**.
+Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course>/<term>/`: **This week** (it opens here), **Announcements**, **Lectures**, **Evaluations**, **About** and **My accommodations**.
 
-- **The Course Page Builder is the hub.** It shows the same header and tabs, drawn by the same code (`static/js/hub-view.js`), and you edit on them: Overview's text, tables and meeting times in place; click a lecture, a week, an announcement or an evaluation's **+ Files** to open it. Weeks and lectures drag to move. This week is a preview.
-- The page is saved as `course.json` (no more `info.html` or Copy HTML for Quercus). An older page (only `info.html`) opens as before and becomes a `course.json` when saved.
-- Its published address (`/p/<handle>/<course>/<term>/` or `…/info.html`) leads to the hub once it has a `course.json`, and `course.json` itself is never served from `/p/`.
-- **Each tab is public or signed-in only:** the globe or lock beside its name in the builder, or the line at the top of the tab. My accommodations is always signed-in only. A visitor's This week only shows what's on tabs they can see.
-- **Meeting Times & Office Hours** (on Overview): each is a weekly time (what, day, start, end, where, who), so This week puts it on its day.
-- **Announcements** are written on the Announcements tab, in a week (the current one unless you pick another).
-- Signed in means the offering's owner and teaching team for now (students sign in in a later step). Staff see a bar on the hub with **See it as a visitor** (`?as=public`).
+- **Nothing is made on the course page itself.** Each part of it comes from a part of the offering in Lectern, read live: Lectures (`lectures.json`), Announcements (`announcements.json`, each in the week of its date), Evaluations (the gradebook: weights, dates, files and links), the Teaching Team (each person's activities, office hours and contact details: `team.json`), and the title and description (`about.json`), which are under the course code on the offering's page. The code, term and school are the offering's (its folder, and `LECTERN_INSTITUTION`). About shows the description, the teaching team, and the gradebook's course rules that its **Grade Settings** choose to show.
+- **View Course Page** (the offering's page, top right) opens it in Lectern: a preview (**Preview** shows a visitor's view), a link to the live page, and **each tab public or signed-in only** (the globe or lock beside its name; save to keep it). My accommodations is always signed-in only. A visitor's This week only shows what's on tabs they can see.
+- It's saved as `course.json` (an older page, only `info.html`, opens and becomes one when saved). Its published address (`/p/<handle>/<course>/<term>/` or `…/info.html`) leads to the hub once it has a `course.json`, and `course.json` itself is never served from `/p/`.
+- **Signed in** means the offering's owner and teaching team (their Lectern accounts), and its students: each signs in to that course's page with their email and a one-time code it emails them (the course page's own **Sign in**, `/c/<handle>/<course>/<term>/sign-in`). That needs email set up on the server. Staff see a bar on the hub with **See it as a visitor** (`?as=public`).
 
-## Student emails
+## Students
 
-- **Every student has an email.** It's a built-in field in the gradebook (Settings → Students), at the domain set there (e.g. `mail.utoronto.ca`). The gradebook says who's missing one (or has one at another domain); click a name to set it on their page, or import the class list again with its email column.
-- **Each offering can have its own email settings** (no screen for them now that Email the Class is gone; the API is still there, `server/classmail.py`): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails use them too.
+- **The offering's Students card is the class list**, under the Teaching Team on its page: add students one at a time or import a class list (a CSV from Quercus or ACORN), drop or remove them, and email them the course page's link. It's the gradebook's students (`grades.json`): the gradebook shows them for marks, but students are added and changed only here. A student with marks or notes is dropped (kept), not deleted.
+- **What each student has** (the identifier's name, the email domain, and any other fields such as UTORid) is set in the card before the first student is added, and fixed from then on.
+- **Every student has an email**, at the domain set there (e.g. `mail.utoronto.ca`): it's how they sign in. The card and the gradebook say who's missing one.
+- Each enrolled student (not dropped) with an email can sign in; the card shows who has, and who's been sent the link.
+- **Each offering can have its own email settings** (no screen for them now that Email the Class is gone; the API is still there, `server/classmail.py`): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails and sign-in codes use them too.
 
 ## Where things are
 

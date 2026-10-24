@@ -19,6 +19,7 @@ signed in to this course page (students.py: email and a one-time code).
 Staff can add ?as=public to see the hub as a signed-out visitor does.
 """
 import json
+import os
 import re
 from datetime import date, timedelta
 
@@ -97,7 +98,8 @@ def announcements_of(owner_id, course, term):
 
 
 def about_of(owner_id, course, term):
-    """The About part's (about.js): <course>/<term>/about.json, or None."""
+    """The offering's title and description (Lectern → the offering: the title is asked for when it's made,
+    and the description is under its code): <course>/<term>/about.json, or None."""
     raw = Repo(owner_id, "priv").read(f"{course}/{term}/about.json")
     try:
         d = json.loads(raw.decode("utf-8")) if raw else None
@@ -152,6 +154,16 @@ def team_of(owner_id, course, term):
     return out
 
 
+def term_name(term):
+    """f26 → Fall 2026 (as Lectern names terms)."""
+    m = re.match(r"^([wsf])(\d\d)$", term or "", re.I)
+    return f"{dict(w='Winter', s='Summer', f='Fall')[m.group(1).lower()]} 20{m.group(2)}" if m else term
+
+
+def institution():
+    return os.environ.get("LECTERN_INSTITUTION", "University of Toronto")
+
+
 def has_hub(owner_id, course, term):
     return Repo(owner_id, "pub").stat(f"{course}/{term}/{PAGE_DATA}") is not None
 
@@ -179,50 +191,6 @@ def _list(x):
 def _files(fs):
     return [{"label": _s(f.get("label"), 200), "url": _s(f.get("url"), 2000)}
             for f in _list(fs) if isinstance(f, dict) and _s(f.get("url")).strip()]
-
-
-def _blocks(bs):
-    out = []
-    for b in _list(bs):
-        if not isinstance(b, dict) or b.get("hidden"):   # a policy the instructor keeps off the page
-            continue
-        if isinstance(b.get("table"), dict):
-            t = b["table"]
-            out.append({"heading": _s(b.get("heading"), 300), "table": {
-                "columns": [_s(c, 300) for c in _list(t.get("columns"))],
-                "rows": [[_s(c, 4000) for c in _list(r)] for r in _list(t.get("rows"))],
-                "footer": [_s(c, 300) for c in _list(t.get("footer"))] or None}})
-        elif _s(b.get("heading")).strip() or _s(b.get("body")).strip():
-            out.append({"heading": _s(b.get("heading"), 300), "body": _s(b.get("body"))})
-    return out
-
-
-def _meeting(m):
-    day = m.get("day")
-    if isinstance(day, str) and day.isdigit():
-        day = int(day)
-    return {"kind": _s(m.get("kind"), 20) or "other", "label": _s(m.get("label"), 200), "who": _s(m.get("who"), 300),
-            "day": day if isinstance(day, int) and 1 <= day <= 7 else 0,
-            "start": _s(m.get("start"), 5), "end": _s(m.get("end"), 5), "where": _s(m.get("where"), 300)}
-
-
-def _section(s):
-    """An Overview section, as students see it."""
-    base = {"type": s.get("type"), "title": _s(s.get("title"), 300), "caption": _s(s.get("caption"), 500)}
-    t = s.get("type")
-    if t == "table":
-        base.update(columns=[_s(c, 300) for c in _list(s.get("columns"))],
-                    rows=[[_s(c, 4000) for c in _list(r)] for r in _list(s.get("rows")) if any(_s(c).strip() for c in _list(r))],
-                    footer=[_s(c, 300) for c in _list(s.get("footer"))] or None)
-    elif t == "sessions":
-        base.update(headers=[_s(h, 300) for h in _list(s.get("headers"))],
-                    groups=[{"name": _s(g.get("name"), 300), "extra": _s(g.get("extra"), 2000),
-                             "slots": [{"a": _s(x.get("a"), 500), "b": _s(x.get("b"), 500)} for x in _list(g.get("slots")) if isinstance(x, dict)]}
-                            for g in _list(s.get("groups")) if isinstance(g, dict)])
-    elif t == "meetings":
-        base.update(items=[x for x in (_meeting(m) for m in _list(s.get("items")) if isinstance(m, dict)) if x["day"]])
-    base["blocks"] = _blocks(s.get("blocks"))
-    return base
 
 
 _MON = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
@@ -330,26 +298,11 @@ def buckets(page, year=None, book_files=None, lectures=None, team=None, announce
             anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60),
                          "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
                          "week": wk["label"] if wk else _s(w.get("label"), 200), "wi": wk["i"] if wk else -1})
-    rules = []
-    pol = [s for s in secs if s.get("type") == "policies"]
-    for s in pol:
-        show = s.get("show") if isinstance(s.get("show"), dict) else {}
-        for x in _list(scheme.get("policies")):
-            if isinstance(x, dict) and (bool(show[x["id"]]) if x.get("id") in show else bool(x.get("show"))):
-                rules.append({"title": _s(x.get("title"), 200), "text": _s(x.get("text"), 2000)})
+    # The gradebook's course rules (its Settings choose which the course page shows).
+    rules = [{"title": _s(x.get("title"), 200), "text": _s(x.get("text"), 2000)} for x in _list(scheme.get("policies")) if isinstance(x, dict) and x.get("show")]
     ef = page.get("evalFiles") if isinstance(page.get("evalFiles"), dict) else {}
-    if isinstance(about, dict):   # the About part's (about.json): its own sections and policies, and which gradebook rules show
-        show = about.get("rules") if isinstance(about.get("rules"), dict) else {}
-        rules = [{"title": _s(x.get("title"), 200), "text": _s(x.get("text"), 2000)} for x in _list(scheme.get("policies"))
-                 if isinstance(x, dict) and (bool(show[x["id"]]) if x.get("id") in show else bool(x.get("show")))]
-        about_b = {"description": _s(about.get("description")), "team": team or [],
-                   "sections": [{"type": "text", "title": "", "caption": "", "blocks": _blocks([b])} for b in _list(about.get("sections")) if _blocks([b])],
-                   "policies": _blocks(about.get("policies")), "rules": rules}
-    else:
-        about_b = {"description": _s(page.get("description")), "team": team or [],
-                   # Only the page's own text: its contact and meeting-time tables are the teaching team's now.
-                   "sections": [x for x in (_section(s) for s in secs if s.get("type") == "text") if x["blocks"]],
-                   "policies": [b for s in pol for b in _blocks(s.get("blocks"))], "rules": rules}
+    desc = about.get("description") if isinstance(about, dict) and isinstance(about.get("description"), str) else page.get("description")
+    about_b = {"description": _s(desc), "team": team or [], "sections": [], "policies": [], "rules": rules}
     return {
         "about": about_b,
         "lectures": {"weeks": weeks},
@@ -397,7 +350,8 @@ def hub_page(handle, course, term):
     o, page = _offering_or_404(handle, course, term)
     if not page:
         abort(404)
-    return render_template("hub.html", title=_s(page.get("title"), 300) or f"{course.upper()} {term}",
+    a = about_of(o["id"], course, term) or {}
+    return render_template("hub.html", title=_s(a.get("title"), 300) or _s(page.get("title"), 300) or f"{course.upper()} {term}",
                            api=f"/api/hub/{o['handle']}/{course}/{term}")
 
 
@@ -427,7 +381,7 @@ def hub_api(handle, course, term):
     about = about_of(o["id"], course, term)
     all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term), team_of(o["id"], course, term),
                     announcements_of(o["id"], course, term), about)
-    head = about if about else page
+    head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:
         open_ = vis[tid] == "public" or signed
@@ -437,8 +391,9 @@ def hub_api(handle, course, term):
     if "evaluations" in data:   # where an evaluation's Request Accommodation button goes (accommodations.py's form)
         data["evaluations"]["request"] = {"url": f"{app_url()}request", "r": o["handle"], "o": offering}
     return jsonify(
-        course={"title": _s(head.get("title"), 300) or _s(page.get("title"), 300), "code": _s(head.get("code"), 60) or _s(page.get("code"), 60),
-                "term": _s(head.get("term"), 100) or _s(page.get("term"), 100), "school": _s(head.get("school"), 200) or _s(page.get("school"), 200),
+        # The code, term and school are the offering's (its folder, and this Lectern's institution); the title is the one it was given.
+        course={"title": _s(head.get("title"), 300) or _s(page.get("title"), 300), "code": course.upper(),
+                "term": term_name(term), "school": institution(),
                 "offering": offering, "year": year},
         viewer={"signedIn": signed, "role": None if preview else role, "name": student or (u["name"] if u and signed else ""),
                 "staff": role in STAFF, "preview": preview},

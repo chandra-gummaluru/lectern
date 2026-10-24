@@ -122,14 +122,17 @@ def test_junk_course_json(client, user, anon):
     assert j["data"]["lectures"]["weeks"][0]["cards"] == []
 
 
-def test_hidden_policies_stay_off_the_page(client, user, anon):
+def test_about_has_the_description_team_and_the_gradebooks_rules(client, user, anon):
     page = json.loads(json.dumps(SAMPLE["page"]))
-    pol = [s for s in page["sections"] if s["type"] == "policies"][0]
-    pol["blocks"] = [{"heading": "Late work", "body": "10% a day."}, {"heading": "Note to self", "body": "Secret", "hidden": True}]
+    pol = [x for x in page["sections"] if x["type"] == "policies"][0]
+    pol["blocks"] = [{"heading": "Note to self", "body": "Secret"}]
+    page["scheme"] = dict(page.get("scheme") or {}, policies=[{"id": "fail:1", "title": "Automatic Fail", "text": "Below 40% on the exam: at most 47%.", "show": True},
+                                                            {"id": "round", "title": "Rounding", "text": "Rounded up.", "show": False}])
     publish(user, page)
-    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
-    assert [b["heading"] for b in j["data"]["about"]["policies"]] == ["Late work"]
-    assert "Secret" not in json.dumps(j)
+    a = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["about"]
+    assert a["rules"] == [{"title": "Automatic Fail", "text": "Below 40% on the exam: at most 47%."}]
+    # The page's own sections and policies aren't shown any more: only the description, the team and the rules.
+    assert a["sections"] == [] and a["policies"] == [] and "Secret" not in json.dumps(a)
 
 
 def test_evaluations_say_where_to_request_accommodations(client, user, anon):
@@ -192,14 +195,14 @@ def test_announcements_come_from_the_announcements_part(client, user, anon):
     assert [(a["title"], a["week"]) for a in got] == [("Midterm rooms", "Week 7")]   # Oct 28 is in Week 7; the course page's own aren't shown
 
 
-def test_about_from_the_about_part(client, user, anon):
+def test_the_offerings_title_and_description(client, user, anon):
     publish(user, with_tabs(overview="signed-in"))
-    about = {"title": "Computer Organization!", "description": "Gates to CPUs.", "sections": [{"id": "t", "heading": "Textbook", "body": "Patt & Patel"}],
-             "policies": [{"id": "p", "heading": "Late work", "body": "No."}, {"id": "q", "heading": "Hidden", "body": "x", "hidden": True}]}
+    about = {"format": "lectern-about/2", "title": "Computer Organization!", "description": "Gates to CPUs."}
     r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/about.json": json.dumps(about).encode()}, "seed", r.head())
     j = client.get("/api/hub/chandra/csc258/f26").get_json()
-    a = j["data"]["about"]
-    assert j["course"]["title"] == "Computer Organization!" and a["description"] == "Gates to CPUs."
-    assert [b["heading"] for s in a["sections"] for b in s["blocks"]] == ["Textbook"] and [b["heading"] for b in a["policies"]] == ["Late work"]
+    assert j["data"]["about"]["description"] == "Gates to CPUs."
+    # The title is the offering's; the code, term and school come from the offering and this Lectern.
+    assert j["course"]["title"] == "Computer Organization!" and j["course"]["code"] == "CSC258" and j["course"]["term"] == "Fall 2026"
+    assert j["course"]["school"] == "University of Toronto"
     # Overview's old setting carries over to About: signed-in only.
     assert "about" not in anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]

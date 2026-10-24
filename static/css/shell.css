@@ -494,22 +494,50 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .an-body p { margin: 0 0 8px; } .an-body > div > :last-child { margin-bottom: 0; }
 .lt-form textarea#an-body { min-height: 180px; }
 
-/* ── About (about.js) ── */
-.lw-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.ab-block { margin-top: 12px; }
-.ab-block-h { display: flex; align-items: flex-end; gap: 10px; }
-.ab-block-h .grow { flex: 1; }
-.ab-rule { display: grid !important; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--home-line); font-weight: 400 !important; cursor: pointer; }
-.ab-rule b { display: block; font-size: 14px; }
-.ab-rule span { font-size: 14px; color: var(--home-ink-2); }
-@media (max-width: 640px) { .lw-three { grid-template-columns: 1fr; } }
+/* ── The offering's title and description, under its code (aboutPart) ── */
+.lt-about { position: relative; max-width: 760px; margin: 18px 0 0; }
+.lt-about-title { display: block; margin: 0; font: 500 24px/1.25 var(--font-serif); color: var(--home-ink); }
+.lt-about-desc { display: block; margin: 6px 0 0; font: 15px/1.55 var(--font-ui); color: var(--home-ink-2); }
+.lt-about-desc p { margin: 0 0 8px; }
+.lt-about-in { width: 100%; box-sizing: border-box; padding: 4px 8px; margin-left: -9px; border: 1px solid transparent; border-radius: 8px; background: transparent; resize: none; overflow: hidden; }
+.lt-about-in:hover { border-color: var(--home-line-2); }
+.lt-about-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); background: var(--home-card); }
+.lt-about-in::placeholder { color: var(--home-ink-3); font-style: italic; }
+.lt-about-st { position: absolute; right: 0; bottom: -20px; font-size: 12px; color: var(--home-ink-3); }
+.lt-about-st.bad { color: var(--danger); }
+/* The four parts: two by two */
+.lt-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-/* ── Students: the class list (studentsPart) ── */
-.lt-st-add { display: grid; gap: 8px; margin: 12px 0 0; }
-.lt-st-add textarea { font: 14px/1.5 var(--font-ui); padding: 8px 11px; border-radius: 9px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); resize: vertical; }
-.lt-st-add textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
-.lt-st-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.lt-st-row .grow { flex: 1; }
-.lt-st-count { margin-top: 14px !important; }
-.lt-st-list { max-height: 420px; overflow: auto; }
+/* ── Students: the class list (students.js) ── */
+.lt-st-note { margin: 12px 0 0 !important; }
+.lt-st-fields { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--home-line-2); border-radius: 10px; background: var(--home-strip); }
+.lt-st-h { margin: 0 0 10px; font: 600 14px var(--font-ui); color: var(--home-ink); }
+.lt-st-h span { display: block; margin-top: 2px; font-weight: 400; font-size: 12.5px; color: var(--home-ink-3); }
+.lt-st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.lt-st-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.lt-st-chip { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--home-line-2); background: var(--home-card); font: 600 12.5px var(--font-ui); color: var(--home-ink); }
+.lt-st-chip.fixed { color: var(--home-ink-3); font-weight: 500; }
+.lt-st-chip button { all: unset; cursor: pointer; padding: 0 2px; font-size: 15px; line-height: 1; color: var(--home-ink-3); }
+.lt-st-chip button:hover { color: var(--danger); }
+.lt-st-newf { display: inline-flex; gap: 6px; }
+.lt-st-newf input { height: 30px; width: 200px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); font: 13px var(--font-ui); box-sizing: border-box; }
+.lt-st-newf input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.lt-st-newf .lt-btn { height: 30px; }
+.lt-st-fixed { margin-top: 12px !important; font-size: 13px !important; color: var(--home-ink-3) !important; }
+.lt-st-fixed b { color: var(--home-ink-2); font-weight: 600; }
+.lt-st-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.lt-st-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+.lt-st-bar .lt-st-count { flex: 1; margin: 0 !important; padding: 0 !important; }
+.lt-st-find { height: 34px; width: 240px; max-width: 100%; padding: 0 11px; border-radius: 9px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); font: 13.5px var(--font-ui); box-sizing: border-box; }
+.lt-st-find:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.lt-st-list { max-height: 460px; overflow: auto; margin-top: 10px; }
+.lt-st-list .lt-orow-r { display: inline-flex; align-items: center; gap: 12px; }
+.lt-st-list .lt-user-who em { font-style: normal; }
+.lt-st-dropped .lt-user-who b { color: var(--home-ink-3); text-decoration: line-through; }
+.lt-st-drop { display: grid; place-items: center; gap: 4px; padding: 26px; border: 1.5px dashed var(--line); border-radius: 10px; cursor: pointer; text-align: center; color: var(--ink-2); font-size: 13.5px; margin: 6px 0 0; }
+.lt-st-drop:hover { border-color: var(--accent); }
+.lt-st-file { margin: 6px 0 12px; font-size: 13.5px; }
+.lt-st-map { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.lt-st-sum { padding: 0 !important; margin-top: 12px !important; }
+@media (max-width: 640px) { .lt-st-grid, .lt-st-map, .lt-four { grid-template-columns: 1fr; } }
 #lt-students .lt-part-text code { font: 12.5px var(--font-mono); }

@@ -149,7 +149,7 @@ CREATE TABLE IF NOT EXISTS resets (
   expires    REAL NOT NULL,
   used       REAL NOT NULL DEFAULT 0
 );
-CREATE TABLE IF NOT EXISTS course_students (  -- each offering's class list: who can sign in to its course page (students.py)
+CREATE TABLE IF NOT EXISTS course_students (  -- when each student was sent the course page's link and last signed in (students.py; the class list is the gradebook's)
   owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   offering  TEXT NOT NULL,
   email     TEXT NOT NULL,

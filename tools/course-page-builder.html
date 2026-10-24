@@ -529,8 +529,9 @@ tr.e-drop-after td { box-shadow: inset 0 -3px 0 #a67c00 !important; }
 .hbe-seg { display: inline-flex; border: 1px solid rgb(255 255 255 / .35); border-radius: 8px; padding: 2px; gap: 2px; }
 .hbe-seg button.c { all: unset; font: 600 13px var(--font-ui); padding: 4px 10px; border-radius: 6px; cursor: pointer; color: inherit; }
 .hbe-seg button.c.on { background: var(--dark-ink); color: var(--dark); }
-.hbe .hb-who button.c { display: inline-flex; align-items: center; gap: 6px; height: 34px; }
-.hbe .hb-who button.c svg { width: 16px; height: 16px; }
+.hbe .hb-who { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.hbe .hb-who .c { display: inline-flex; align-items: center; gap: 6px; height: 34px; box-sizing: border-box; border-radius: var(--ctl-r, 8px); font: 600 13px/1 var(--font-ui); text-decoration: none; color: inherit; }
+.hbe .hb-who .c svg { width: 16px; height: 16px; }
 /* Editable things: click to open them */
 .hb-ed { cursor: pointer; transition: border-color .12s, box-shadow .12s; }
 .hb-ed:hover, .hb-ed:focus-visible { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgb(201 154 6 / .14); outline: none; }
@@ -1225,7 +1226,7 @@ function hubEditor() {
   const sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
   const head = `<header class="hb-head"><div class="hb-head-in"><div class="hb-titles">
       <p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc(m.title || m.code || "Course page")}</h1></div>
-      <div class="hb-who"><button type="button" class="c" data-act="preview" title="See the course page as a visitor who isn't signed in sees it">${EYE}Preview</button></div></div></header>`;
+      <div class="hb-who"><button type="button" class="c" data-act="preview" title="See the course page as a visitor who isn't signed in sees it">${EYE}Preview</button>${gh.sha && hubData().pages ? `<a class="c" href="${esc(hubData().pages)}" target="_blank" rel="noopener" title="The course page as students see it">Live page ${HICON.out}</a>` : ""}</div></div></header>`;
   return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">${esc(tabTitle(tab))}</span></nav>
     <div class="hb hbe">${head}<nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>
     <main class="hb-main">${body}</main></div>`;

@@ -25,7 +25,8 @@ def index():
 @pages_bp.get('/api/config')
 def config():
     """Public settings: where the app and the published pages live, and whether email goes out."""
-    return jsonify(app_url=app_url(), pages=pages_base(), email=mailer.configured())
+    return jsonify(app_url=app_url(), pages=pages_base(), email=mailer.configured(),
+                   institution=os.environ.get('LECTERN_INSTITUTION', 'University of Toronto'))
 
 
 @pages_bp.route('/manifest.json')

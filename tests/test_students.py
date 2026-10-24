@@ -1,4 +1,4 @@
-"""Students: each offering's class list, and signing in to its course page with an emailed code."""
+"""Students: each offering's class list (the gradebook's students), and signing in to its course page with an emailed code."""
 import json
 import re
 
@@ -19,6 +19,15 @@ def course(client, user):
     return user
 
 
+def enrol(user, *emails, dropped=(), more=()):
+    """The gradebook's students (the offering's Students card writes them)."""
+    st = [{"num": str(1000 + i), "first": e.split("@")[0], "last": "S", "f": {"email": e}} for i, e in enumerate(emails)]
+    st += [{"num": str(2000 + i), "first": e.split("@")[0], "last": "D", "f": {"email": e}, "dropped": True} for i, e in enumerate(dropped)]
+    st += list(more)
+    r = store.Repo(user["id"], "priv")
+    r.commit({"csc258/f26/grades.json": json.dumps({"format": "grade-builder/1", "students": st, "evals": [], "marks": {}}).encode()}, "seed", r.head())
+
+
 def code_for(email):
     m = [x for x in mailer.sent if x["to"] == email and "code" in x["subject"]]
     return re.search(r"\b(\d{6})\b", m[-1]["body"]).group(1)
@@ -31,27 +40,40 @@ def sign_in(c, email):
     return r
 
 
-def test_instructors_keep_the_class_list(client, course):
-    r = client.post(f"{API}/add", json={"emails": "Maya@Mail.Utoronto.ca, ben@mail.utoronto.ca\nnot-an-email; maya@mail.utoronto.ca", "invite": True}, headers=H)
-    assert r.get_json()["added"] == 2 and r.get_json()["bad"] == ["not-an-email"]
-    lst = client.get(API).get_json()
-    assert [s["email"] for s in lst["students"]] == ["ben@mail.utoronto.ca", "maya@mail.utoronto.ca"]
-    assert lst["link"].endswith("/c/chandra/csc258/f26/")
+def test_the_class_list_is_the_gradebooks(client, course):
+    enrol(course, "Maya@Mail.Utoronto.ca", "ben@mail.utoronto.ca", dropped=["gone@mail.utoronto.ca"],
+          more=[{"num": "9", "first": "No", "last": "Email", "f": {}}])
+    r = client.post(f"{API}/invite", json={}, headers=H)
+    assert r.status_code == 200
+    to = {m["to"] for m in mailer.sent}
+    assert {"maya@mail.utoronto.ca", "ben@mail.utoronto.ca"} <= to and "gone@mail.utoronto.ca" not in to
     invite = [m for m in mailer.sent if m["to"] == "maya@mail.utoronto.ca"][-1]
     assert "/c/chandra/csc258/f26/" in invite["body"]
+    lst = client.get(API).get_json()
+    assert lst["link"].endswith("/c/chandra/csc258/f26/")
+    # Only someone on it: not a dropped student, or a stranger.
+    assert client.post(f"{API}/invite", json={"email": "gone@mail.utoronto.ca"}, headers=H).status_code == 404
 
 
-def test_tas_see_it_but_cant_change_it(client, course):
+def test_tas_see_it_but_cant_send_links(client, course):
+    enrol(course, "maya@mail.utoronto.ca")
     ta, _ = member("alan@utoronto.ca", "alan")
     add(client, "alan@utoronto.ca", "ta", who=ta)
     assert ta.get(API).status_code == 200
-    assert ta.post(f"{API}/add", json={"emails": "x@y.ca"}, headers=H).status_code == 403
+    assert ta.post(f"{API}/invite", json={}, headers=H).status_code == 403
     other, _ = member("eve@utoronto.ca", "eve")
     assert other.get(API).status_code == 403
 
 
+def test_dropped_students_cant_sign_in(client, course):
+    enrol(course, "maya@mail.utoronto.ca", dropped=["gone@mail.utoronto.ca"])
+    st = app.test_client()
+    st.post(f"{HUB}/code", json={"email": "gone@mail.utoronto.ca"}, headers=H)
+    assert not [m for m in mailer.sent if m["to"] == "gone@mail.utoronto.ca"]
+
+
 def test_a_student_signs_in_with_a_code(client, course):
-    client.post(f"{API}/add", json={"emails": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, "maya@mail.utoronto.ca")
     st = app.test_client()
     before = st.get(HUB).get_json()
     assert "lectures" not in before["data"] and before["signIn"] == "/c/chandra/csc258/f26/sign-in"
@@ -59,6 +81,7 @@ def test_a_student_signs_in_with_a_code(client, course):
     sign_in(st, "maya@mail.utoronto.ca")
     j = st.get(HUB).get_json()
     assert j["viewer"]["signedIn"] and j["viewer"]["role"] == "student" and j["viewer"]["name"] == "maya@mail.utoronto.ca"
+    assert client.get(API).get_json()["state"]["maya@mail.utoronto.ca"]["last_in"] > 0
     assert "lectures" in j["data"] and "accommodations" in j["data"]
     # Not a Lectern session: nothing of Lectern opens.
     assert st.get("/api/auth/me").get_json().get("user") is None
@@ -69,7 +92,7 @@ def test_a_student_signs_in_with_a_code(client, course):
 
 
 def test_the_answer_never_says_whos_in_the_course(client, course):
-    client.post(f"{API}/add", json={"emails": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, "maya@mail.utoronto.ca")
     st = app.test_client()
     a = st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
     b = st.post(f"{HUB}/code", json={"email": "stranger@mail.utoronto.ca"}, headers=H)
@@ -78,7 +101,7 @@ def test_the_answer_never_says_whos_in_the_course(client, course):
 
 
 def test_codes_are_one_use_expire_and_stop_after_wrong_tries(client, course, monkeypatch):
-    client.post(f"{API}/add", json={"emails": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, "maya@mail.utoronto.ca")
     st = app.test_client()
     st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
     good = code_for("maya@mail.utoronto.ca")
@@ -99,7 +122,7 @@ def test_codes_are_one_use_expire_and_stop_after_wrong_tries(client, course, mon
 
 
 def test_a_student_session_is_for_that_course_only(client, course):
-    client.post(f"{API}/add", json={"emails": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, "maya@mail.utoronto.ca")
     publish(course, None, path="csc108/f26")
     st = app.test_client()
     sign_in(st, "maya@mail.utoronto.ca")
@@ -107,17 +130,17 @@ def test_a_student_session_is_for_that_course_only(client, course):
 
 
 def test_taken_off_the_list_signs_them_out(client, course):
-    client.post(f"{API}/add", json={"emails": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, "maya@mail.utoronto.ca")
     st = app.test_client()
     sign_in(st, "maya@mail.utoronto.ca")
-    client.post(f"{API}/remove", json={"email": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, dropped=["maya@mail.utoronto.ca"])   # dropped in the Students card
     assert not st.get(HUB).get_json()["viewer"]["signedIn"]
     st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
     assert not [m for m in mailer.sent if m["to"] == "maya@mail.utoronto.ca" and "code" in m["subject"]][1:]
 
 
 def test_asking_for_codes_is_rate_limited(client, course):
-    client.post(f"{API}/add", json={"emails": "maya@mail.utoronto.ca"}, headers=H)
+    enrol(course, "maya@mail.utoronto.ca")
     st = app.test_client()
     codes = [st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H).status_code for _ in range(8)]
     assert codes[:5] == [200] * 5 and 429 in codes[5:]

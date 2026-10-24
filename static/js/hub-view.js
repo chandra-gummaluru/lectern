@@ -315,17 +315,6 @@ function draw(d, tab, arg, opts = {}) {
 const str = x => (typeof x === "string" ? x : "");
 const arr = x => (Array.isArray(x) ? x : []);
 const filesOf = fs => arr(fs).filter(f => f && str(f.url).trim()).map(f => ({ label: str(f.label), url: str(f.url) }));
-// Overview's sections as students see them (server/hub.py's _section): empty rows and hidden blocks left out.
-const OVERVIEW = ["table", "sessions", "text", "meetings"];
-const blocksOf = bs => arr(bs).filter(b => b && !b.hidden && (b.table || str(b.heading).trim() || str(b.body).trim()))
-  .map(b => (b.table ? { heading: str(b.heading), table: { columns: arr(b.table.columns), rows: arr(b.table.rows), footer: arr(b.table.footer).length ? b.table.footer : null } } : { heading: str(b.heading), body: str(b.body) }));
-function overviewSection(s) {
-  const o = { type: s.type, title: str(s.title), blocks: blocksOf(s.blocks) };
-  if (s.type === "table") Object.assign(o, { columns: arr(s.columns), rows: arr(s.rows).filter(r => arr(r).some(c => str(c).trim())), footer: arr(s.footer).length ? s.footer : null });
-  if (s.type === "sessions") Object.assign(o, { headers: arr(s.headers), groups: arr(s.groups).map(g => ({ name: str(g.name), extra: str(g.extra), slots: arr(g.slots) })) });
-  if (s.type === "meetings") o.items = arr(s.items).map(m => ({ ...m, day: Number(m.day) || 0 })).filter(m => m.day);
-  return o;
-}
 // Each evaluation's files: the gradebook's (Evaluations → its page), then any the course page itself had (older pages).
 function evalFilesOf(scheme, ef) {
   const out = {};
@@ -350,11 +339,11 @@ function partWeeks(lectures, year) {
 }
 // The week a day is in (the last week whose Monday is on or before it).
 const weekOfDay = (day, weeks) => { let f = null; weeks.forEach(w => { if (!w.isBreak && w.start && mondayOf(w.start) <= day) f = w; }); return f; };
-// The About part's (about.json): its sections and policies, and which of the gradebook's rules show.
-function aboutOf(a, scheme, team) {
-  const show = a.rules || {};
-  return { description: str(a.description), team, sections: blocksOf(a.sections).map(b => ({ type: "text", title: "", blocks: [b] })), policies: blocksOf(a.policies),
-    rules: arr(scheme.policies).filter(x => (x.id in show ? show[x.id] : x.show)).map(x => ({ title: x.title, text: x.text })) };
+// About: the offering's description (about.json, else the page's own), the teaching team, and the gradebook's
+// course rules that its Settings show on the course page.
+function aboutOf(a, scheme, team, page) {
+  return { description: str(a && typeof a.description === "string" ? a.description : page.description), team, sections: [], policies: [],
+    rules: arr(scheme.policies).filter(x => x && x.show).map(x => ({ title: x.title, text: x.text })) };
 }
 function fromPage(page, year, lectures, extra) {
   const secs = arr(page.sections).map((s, si) => [s, si]).filter(([s]) => s && !s.hidden);
@@ -388,13 +377,9 @@ function fromPage(page, year, lectures, extra) {
       anns.push({ title: str(a.title), body: str(a.body), date: str(a.date), at: a.at || 0, week: w ? w.label : "", wi: w ? w.i : -1 });
     });
   }
-  const pol = secs.filter(([s]) => s.type === "policies").map(([s]) => s), rules = [];
-  pol.forEach(s => arr(scheme.policies).forEach(x => { const show = s.show || {}; if (x.id in show ? show[x.id] : x.show) rules.push({ title: x.title, text: x.text }); }));
   const ef = page.evalFiles || {};
   return {
-    about: extra && extra.about ? aboutOf(extra.about, scheme, arr(extra.team))
-      : { description: str(page.description), team: arr(extra && extra.team), sections: secs.filter(([s]) => s.type === "text").map(([s]) => overviewSection(s)).filter(x => x.blocks.length),   // contact and meeting-time tables: the teaching team's now
-          policies: pol.flatMap(s => blocksOf(s.blocks)), rules },
+    about: aboutOf(extra && extra.about, scheme, arr(extra && extra.team), page),
     lectures: { weeks, lists },
     announcements: { items: anns },
     evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: evalFilesOf(scheme, ef),

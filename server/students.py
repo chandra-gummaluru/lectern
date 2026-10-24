@@ -1,14 +1,14 @@
 """Students: each course offering's own class list, and students signing in to that course's page.
 
-An instructor adds students by email (Lectern → the offering → Students), and can email each one the
+The class list is the gradebook's students (<course>/<term>/grades.json in the private files): Lectern →
+the offering → Students adds them, one at a time or from a class list, and the gradebook shows them for
+marks. Each enrolled student (not dropped) with an email can sign in; an instructor can email them the
 course page's link. A student opens the course page and signs in to that course: their email, then a
 one-time code Lectern emails them. A student session is for that one course page only (it isn't a
 Lectern account and opens nothing else).
 
-  GET  /api/students/<owner>/<course>/<term>            the class list (instructors; TAs can see it)
-  POST /api/students/<owner>/<course>/<term>/add        { emails, invite }  instructors
-  POST /api/students/<owner>/<course>/<term>/remove     { email }           instructors (signs them out too)
-  POST /api/students/<owner>/<course>/<term>/invite     { email? }          instructors: email the link again
+  GET  /api/students/<owner>/<course>/<term>            who has signed in, been sent the link (the team)
+  POST /api/students/<owner>/<course>/<term>/invite     { email? | emails }  instructors: email the link
 
   GET  /c/<handle>/<course>/<term>/sign-in              the course's sign-in page
   POST /api/hub/<handle>/<course>/<term>/code           { email }          a code, if they're on the list
@@ -36,7 +36,6 @@ students_bp = Blueprint("students", __name__)
 CODE_MINUTES = 10
 MAX_TRIES = 5
 SESSION_DAYS = 120
-MAX_STUDENTS = 3000
 _EMAIL = re.compile(r"^[^\s@,;<>]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")
 _SLUG = re.compile(r"^[\w.-]{1,64}$")
 LIMITS = {"code-email": (5, 3600), "code-ip": (30, 3600), "verify-ip": (40, 600), "verify-email": (15, 600)}
@@ -71,6 +70,38 @@ def _staff(owner, course, term, lead=True):
     return o, off
 
 
+def roster(owner_id, off):
+    """{email: student} for the enrolled students (not dropped) of the gradebook, each with an email."""
+    from .store import Repo
+    import json
+    raw = Repo(owner_id, "priv").read(f"{off}/grades.json")
+    try:
+        book = json.loads(raw.decode("utf-8")) if raw else {}
+    except (ValueError, UnicodeDecodeError):
+        return {}
+    out = {}
+    for x in (book.get("students") if isinstance(book, dict) and isinstance(book.get("students"), list) else []):
+        if not isinstance(x, dict) or x.get("dropped"):
+            continue
+        f = x.get("f") if isinstance(x.get("f"), dict) else {}
+        e = norm(f.get("email") or x.get("email"))
+        if _EMAIL.match(e) and len(e) <= 254:
+            out[e] = {"num": str(x.get("num") or ""), "first": str(x.get("first") or ""), "last": str(x.get("last") or "")}
+    return out
+
+
+def on_list(owner_id, off, email):
+    return norm(email) in roster(owner_id, off)
+
+
+def _note(owner_id, off, email, col, t):
+    """Keep when a student was sent the link (invited) or last signed in (last_in)."""
+    assert col in ("invited", "last_in")
+    with db.transaction() as c:
+        c.execute("INSERT OR IGNORE INTO course_students (owner_id, offering, email, added) VALUES (?, ?, ?, ?)", (owner_id, off, email, t))
+        c.execute(f"UPDATE course_students SET {col} = ? WHERE owner_id = ? AND offering = ? AND email = ?", (t, owner_id, off, email))
+
+
 def cookie_name(owner_id, off):
     return "lst-" + sec.mac(f"{owner_id}/{off}", "student-cookie")[:16]
 
@@ -83,8 +114,7 @@ def student_of(owner_id, off):
     s = db.one("SELECT * FROM student_sessions WHERE id_hash = ?", (sec.token_hash(tok),))
     if not s or s["owner_id"] != owner_id or s["offering"] != off or s["expires"] < time.time():
         return None
-    on = db.one("SELECT email FROM course_students WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, s["email"]))
-    if not on:   # taken off the class list
+    if not on_list(owner_id, off, s["email"]):   # taken off the class list (or dropped)
         db.run("DELETE FROM student_sessions WHERE id_hash = ?", (s["id_hash"],))
         return None
     if time.time() - s["last_seen"] > 3600:
@@ -95,7 +125,7 @@ def student_of(owner_id, off):
 def course_name(owner_id, course, term):
     from .hub import about_of, page_data
     a, p = about_of(owner_id, course, term) or {}, page_data(owner_id, course, term) or {}
-    code = a.get("code") or p.get("code") or course.upper()
+    code = course.upper()
     title = a.get("title") or p.get("title") or ""
     return f"{code}: {title}" if title else code
 
@@ -120,67 +150,34 @@ def _invite(o, off, email, name):
                  f"To see everything on it, sign in there with this email ({email}): Lectern emails you a code.\n")
 
 
-# ── The class list (instructors) ─────────────────────────────────────
+# ── The class list (the team) ────────────────────────────────────────
 @students_bp.get("/api/students/<owner>/<course>/<term>")
 @signed_in
 def class_list(owner, course, term):
+    """When each student was sent the link and last signed in, by email; the course page's link; and whether email goes out.
+    (Who's on the class list is the gradebook's: the offering's Students card reads and changes it.)"""
     o, off = _staff(owner, course, term, lead=False)
-    rows = db.all_("SELECT email, added, last_in, invited FROM course_students WHERE owner_id = ? AND offering = ? ORDER BY email", (o["id"], off))
-    return jsonify(students=[dict(r) for r in rows], link=hub_url(o, off), email=mailer.configured())
-
-
-@students_bp.post("/api/students/<owner>/<course>/<term>/add")
-@signed_in
-def add_students(owner, course, term):
-    o, off = _staff(owner, course, term)
-    d = body()
-    found = [norm(x) for x in re.split(r"[\s,;]+", str(d.get("emails") or "")[:200000]) if x.strip()]
-    found = [x.strip("<>()\"'") for x in found]
-    good = list(dict.fromkeys(x for x in found if _EMAIL.match(x) and len(x) <= 254))
-    bad = [x for x in found if x not in good]
-    have = {r["email"] for r in db.all_("SELECT email FROM course_students WHERE owner_id = ? AND offering = ?", (o["id"], off))}
-    new = [x for x in good if x not in have]
-    if len(have) + len(new) > MAX_STUDENTS:
-        raise Refusal(400, f"A class list holds up to {MAX_STUDENTS} students.")
-    t = time.time()
-    with db.transaction() as c:
-        for x in new:
-            c.execute("INSERT INTO course_students (owner_id, offering, email, added, added_by) VALUES (?, ?, ?, ?, ?)", (o["id"], off, x, t, g.user["id"]))
-    sent = 0
-    if d.get("invite") and new:
-        name = course_name(o["id"], course, term)
-        for x in new:
-            if _invite(o, off, x, name):
-                sent += 1
-                db.run("UPDATE course_students SET invited = ? WHERE owner_id = ? AND offering = ? AND email = ?", (t, o["id"], off, x))
-    return jsonify(added=len(new), already=len(good) - len(new), bad=bad[:50], invited=sent)
-
-
-@students_bp.post("/api/students/<owner>/<course>/<term>/remove")
-@signed_in
-def remove_student(owner, course, term):
-    o, off = _staff(owner, course, term)
-    e = norm(body().get("email"))
-    with db.transaction() as c:
-        c.execute("DELETE FROM course_students WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
-        c.execute("DELETE FROM student_sessions WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
-        c.execute("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
-    return jsonify(ok=True)
+    rows = db.all_("SELECT email, invited, last_in FROM course_students WHERE owner_id = ? AND offering = ?", (o["id"], off))
+    return jsonify(state={r["email"]: {"invited": r["invited"], "last_in": r["last_in"]} for r in rows}, link=hub_url(o, off), email=mailer.configured())
 
 
 @students_bp.post("/api/students/<owner>/<course>/<term>/invite")
 @signed_in
-def invite_again(owner, course, term):
+def invite(owner, course, term):
+    """Email the course page's link: to one student ({email}), some ({emails: [...]}), or everyone on the class list ({})."""
     o, off = _staff(owner, course, term)
-    e = norm(body().get("email"))
-    rows = db.all_("SELECT email FROM course_students WHERE owner_id = ? AND offering = ?" + (" AND email = ?" if e else ""), (o["id"], off, e) if e else (o["id"], off))
-    if not rows:
-        raise Refusal(404, "They're not on the class list.")
+    d, on = body(), roster(o["id"], off)
+    want = [norm(d.get("email"))] if d.get("email") else [norm(x) for x in d.get("emails")] if isinstance(d.get("emails"), list) else list(on)
+    want = [x for x in dict.fromkeys(want) if x in on]
+    if not want:
+        raise Refusal(404, "They're not on the class list (enrolled, with an email).")
+    if not (mailer.configured() or mailer.keep):
+        raise Refusal(400, "Email isn't set up on this server, so the link can't go out: share it yourself.")
     name, t, sent = course_name(o["id"], course, term), time.time(), 0
-    for r in rows:
-        if _invite(o, off, r["email"], name):
+    for e in want[:5000]:
+        if _invite(o, off, e, name):
             sent += 1
-            db.run("UPDATE course_students SET invited = ? WHERE owner_id = ? AND offering = ? AND email = ?", (t, o["id"], off, r["email"]))
+            _note(o["id"], off, e, "invited", t)
     return jsonify(invited=sent)
 
 
@@ -206,8 +203,7 @@ def send_code(handle, course, term):
         raise Refusal(400, "Enter your email address.")
     _limit("code-ip", ip())
     _limit("code-email", f"{o['id']}/{off}/{e}")
-    on = db.one("SELECT email FROM course_students WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
-    if on:
+    if on_list(o["id"], off, e):
         code, t = f"{secrets.randbelow(10 ** 6):06d}", time.time()
         with db.transaction() as c:
             c.execute("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
@@ -240,7 +236,7 @@ def verify(handle, course, term):
         else:
             db.run("UPDATE student_codes SET tries = tries + 1 WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
         raise wrong
-    if not db.one("SELECT email FROM course_students WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e)):
+    if not on_list(o["id"], off, e):
         raise wrong
     tok, t = sec.new_token(), time.time()
     name = cookie_name(o["id"], off)
@@ -252,7 +248,7 @@ def verify(handle, course, term):
         c.execute("DELETE FROM student_sessions WHERE expires < ?", (t,))
         c.execute("INSERT INTO student_sessions (id_hash, owner_id, offering, email, created, last_seen, expires) VALUES (?, ?, ?, ?, ?, ?, ?)",
                   (sec.token_hash(tok), o["id"], off, e, t, t, t + SESSION_DAYS * 86400))
-        c.execute("UPDATE course_students SET last_in = ? WHERE owner_id = ? AND offering = ? AND email = ?", (t, o["id"], off, e))
+    _note(o["id"], off, e, "last_in", t)
     resp = make_response(jsonify(ok=True, back=f"/c/{o['handle']}/{off}/"))
     resp.set_cookie(name, tok, max_age=SESSION_DAYS * 86400, path="/", secure=request.is_secure, httponly=True, samesite="Lax")
     return resp

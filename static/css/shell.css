@@ -220,8 +220,9 @@ html.lt-has-session #splash { display: none; }
 @media (prefers-reduced-motion: reduce) { .lt-card { transition: none; } .lt-card.go:hover { transform: none; } }
 
 /* A course offering: its three parts side by side */
-.lt-three { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: 30px; }
-@media (max-width: 900px) { .lt-three { grid-template-columns: 1fr; } }
+.lt-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 30px; }
+@media (max-width: 900px) { .lt-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 .lt-part { display: flex; flex-direction: column; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); overflow: hidden; }
 .lt-part-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px 6px; }
 .lt-part-head svg { width: 26px; height: 26px; color: var(--home-ink-2); flex: none; }
@@ -470,5 +471,35 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lw-file { display: grid; grid-template-columns: 180px 1fr 34px; gap: 8px; align-items: center; margin: 0 0 8px; }
 .lw-file input, .lt-form input[type=date], .lt-form input[type=time], .lt-form input[type=url] { font: 14px var(--font-ui); height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lw-week { background: #26231a; border-color: #4a3f22; } }
-@media (max-width: 900px) { .lt-three { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .lw-two, .lw-file, .lt-three { grid-template-columns: 1fr; } }
+
+/* ── A teaching team member's page (team.js) ── */
+.lt-user-open { all: unset; cursor: pointer; display: flex; flex-direction: column; border-radius: 6px; flex: 1; min-width: 0; }
+.lt-user-open:hover b { text-decoration: underline; text-underline-offset: 2px; }
+.lt-user-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tm-show { display: flex !important; align-items: center; gap: 8px; font-weight: 600; }
+.tm-times { display: grid; gap: 8px; overflow-x: auto; }
+.tm-row { display: grid; grid-template-columns: 130px minmax(90px, 1fr) 120px 112px 112px minmax(100px, 1fr) 34px; gap: 8px; align-items: center; min-width: 760px; }
+.tm-row.tm-head { font: 600 11.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--home-ink-3); }
+.tm-row input, .tm-row select { font: 14px var(--font-ui); height: 36px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; }
+.tm-row input:focus, .tm-row select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+
+/* ── Announcements (announcements.js) ── */
+.an-card { background: var(--home-card); border: 1px solid var(--home-line-2); border-radius: 12px; padding: 14px 18px; cursor: pointer; }
+.an-card:hover { border-color: var(--home-ink-3); }
+.an-card.an-preview { cursor: default; margin-top: 12px; }
+.an-card .an-date { margin: 0 0 4px; font: 600 12px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; color: var(--home-ink-3); }
+.an-card h2 { margin: 0 0 6px; font: 500 22px/1.2 var(--font-serif); color: var(--home-ink); }
+.an-body { font-size: 15px; line-height: 1.55; color: var(--home-ink); }
+.an-body p { margin: 0 0 8px; } .an-body > div > :last-child { margin-bottom: 0; }
+.lt-form textarea#an-body { min-height: 180px; }
+
+/* ── About (about.js) ── */
+.lw-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ab-block { margin-top: 12px; }
+.ab-block-h { display: flex; align-items: flex-end; gap: 10px; }
+.ab-block-h .grow { flex: 1; }
+.ab-rule { display: grid !important; grid-template-columns: auto 1fr; gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--home-line); font-weight: 400 !important; cursor: pointer; }
+.ab-rule b { display: block; font-size: 14px; }
+.ab-rule span { font-size: 14px; color: var(--home-ink-2); }
+@media (max-width: 640px) { .lw-three { grid-template-columns: 1fr; } }

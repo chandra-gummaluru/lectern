@@ -25,7 +25,7 @@ function href(u) {
   if (sp) return `https://${sp[1]}.sharepoint.com/personal/${sp[2]}/_layouts/15/download.aspx?share=${sp[3]}`;
   if (/^(https?:|mailto:)/i.test(u)) return u;
   if (/^[a-z][a-z0-9+.-]*:/i.test(u) || u.startsWith("//")) return "";   // javascript: and the like
-  try { return new URL(u, D.pages || location.href).href; } catch (_) { return ""; }
+  try { return new URL(u, (D && D.pages) || location.href).href; } catch (_) { return ""; }
 }
 
 // The course page's shorthand: **bold**, *italic*, ~~strike~~, ==highlight==, `code`, [text](link), emails.
@@ -140,8 +140,35 @@ const meetingSub = m => (m.kind !== "other" && KIND[m.kind] ? m.label : "");
 const meetingsTable = items => tableHTML(["What", "When", "Where", "Who"], items.slice().sort((a, b) => (a.day || 9) - (b.day || 9) || String(a.start).localeCompare(b.start))
   .map(m => [[meetingName(m), meetingSub(m)].filter(Boolean).join(" "), `${DAY[m.day] || ""} ${hhmm(m.start, m.end)}`.trim(), m.where, m.who]), null);
 function meetings() {
-  const o = data("overview"); if (!o) return [];
-  return o.sections.filter(s => s.type === "meetings").flatMap(s => s.items || []).filter(m => m.day);
+  const o = data("about"); if (!o) return [];
+  const team = (o.team || []).flatMap(p => (p.times || []).map(x => ({ kind: x.kind, label: x.section, day: x.day, start: x.start, end: x.end, where: x.where, who: p.name })));
+  return [...team, ...o.sections.filter(s => s.type === "meetings").flatMap(s => s.items || [])].filter(m => m.day);
+}
+
+// The teaching team, by section (Lectern → Teaching Team → each person): each lecture section, tutorial and
+// lab with its times and who runs it; then office hours; then how to reach each person.
+const ROLE = { instructor: "Instructor", ta: "TA" };
+const when = x => [DAY3[x.day] || "", hhmm(x.start, x.end)].filter(Boolean).join(" ");
+function teamHTML(team) {
+  if (!team || !team.length) return "";
+  const secs = new Map();
+  team.forEach(p => (p.times || []).forEach(x => {
+    if (x.kind === "office" || !x.day) return;
+    const key = `${x.kind}|${x.section || ""}`;
+    if (!secs.has(key)) secs.set(key, { kind: x.kind, section: x.section, times: [], who: [] });
+    const s = secs.get(key);
+    if (!s.times.some(y => y.day === x.day && y.start === x.start && y.where === x.where)) s.times.push(x);
+    if (!s.who.includes(p.name)) s.who.push(p.name);
+  }));
+  const order = { lecture: 0, tutorial: 1, lab: 2, other: 3 };
+  const cards = [...secs.values()].sort((a, b) => order[a.kind] - order[b.kind] || String(a.section).localeCompare(String(b.section)))
+    .map(s => `<article class="hb-card hb-sec"><div class="hb-card-top"><span>${esc(KIND[s.kind] || "Other")}</span></div><h3>${esc(s.section || KIND[s.kind] || "Section")}</h3>
+      ${s.times.sort((a, b) => a.day - b.day || String(a.start).localeCompare(b.start)).map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
+      <p class="hb-sec-who">${esc(s.who.join(", "))}</p></article>`).join("");
+  const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => [p.name, `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), x.where]));
+  return `${cards ? `<h3 class="hb-h3">Sections</h3><div class="hb-grid">${cards}</div>` : ""}
+    ${oh.length ? `<h3 class="hb-h3">Office Hours</h3>${tableHTML(["Who", "When", "Where"], oh, null)}` : ""}
+    <h3 class="hb-h3">Teaching Team</h3>${tableHTML(["Name", "Role", "Email", "Office"], team.map(p => [p.name, ROLE[p.role] || "", p.email, p.office]), null)}`;
 }
 
 // The week to show as this one: the week we're in; between weeks (a reading week, the weekend after
@@ -160,16 +187,20 @@ function currentWeek(cal, now) {
 
 // ── Tabs ─────────────────────────────────────────────────────────────
 const DRAW = {
-  overview() {
-    const o = data("overview");
-    let h = `<h2 class="hb-h2">Overview</h2>${o.description ? `<p class="hb-desc">${rich(o.description)}</p>` : ""}`;
-    o.sections.forEach(s => {
-      h += `<h3 class="hb-h3">${esc(s.title)}</h3>`;
-      if (s.type === "meetings") h += (s.items || []).length ? meetingsTable(s.items) : `<p class="hb-empty">No times yet.</p>`;
+  about() {
+    const a = data("about");
+    let h = `<h2 class="hb-h2">About</h2>${a.description ? `<div class="hb-desc">${markdown(a.description)}</div>` : ""}${teamHTML(a.team)}`;
+    (a.sections || []).forEach(s => {
+      if (s.title) h += `<h3 class="hb-h3">${esc(s.title)}</h3>`;
+      if (s.type === "meetings") h += (s.items || []).length ? meetingsTable(s.items) : "";
       else if (s.type === "table") h += tableHTML(s.columns, s.rows, s.footer);
       else if (s.type === "sessions") h += tableHTML(s.headers, s.groups.flatMap(g => g.slots.map((x, i) => [i ? "" : g.name, x.a, x.b, i ? "" : g.extra])), null);
       h += blocksHTML(s.blocks);
     });
+    const kinds = [];
+    (a.rules || []).forEach(x => { let k = kinds.find(y => y.title === x.title); if (!k) kinds.push(k = { title: x.title, items: [] }); k.items.push(x.text); });
+    const pol = kinds.map(k => `<div class="hb-block"><h4>${esc(k.title)}</h4>${markdown(k.items.length === 1 ? k.items[0] : k.items.map(t => `- ${t}`).join("\n"))}</div>`).join("") + blocksHTML(a.policies);
+    if (pol) h += `<h3 class="hb-h3">Policies</h3><div class="hb-panel">${pol}</div>`;
     return h;
   },
 
@@ -270,14 +301,6 @@ const DRAW = {
     return `<h2 class="hb-h2">Announcements</h2><p class="hb-lede">Newest first.</p>${items.length ? items.map(a => annHTML(a, a.week)).join("") : '<p class="hb-empty">No announcements yet.</p>'}`;
   },
 
-  policies() {
-    const P = data("policies"), kinds = [];
-    P.rules.forEach(x => { let k = kinds.find(y => y.title === x.title); if (!k) kinds.push(k = { title: x.title, items: [] }); k.items.push(x.text); });
-    const body = kinds.map(k => `<div class="hb-block"><h4>${esc(k.title)}</h4>${markdown(k.items.length === 1 ? k.items[0] : k.items.map(t => `- ${t}`).join("\n"))}</div>`).join("")
-      + P.sections.map(s => blocksHTML(s.blocks)).join("");
-    return `<h2 class="hb-h2">Policies</h2><p class="hb-lede">${esc((P.sections[0] && P.sections[0].caption) || "Course rules, and what to do if you miss work")}</p>${body ? `<div class="hb-panel">${body}</div>` : '<p class="hb-empty">No policies yet.</p>'}`;
-  },
-
   accommodations() {
     return `<h2 class="hb-h2">My accommodations</h2><p class="hb-lede">Your accommodation requests and what was decided.</p><div class="hb-panel"><p class="hb-empty">Requests you make will show here.</p></div>`;
   },
@@ -327,7 +350,13 @@ function partWeeks(lectures, year) {
 }
 // The week a day is in (the last week whose Monday is on or before it).
 const weekOfDay = (day, weeks) => { let f = null; weeks.forEach(w => { if (!w.isBreak && w.start && mondayOf(w.start) <= day) f = w; }); return f; };
-function fromPage(page, year, lectures) {
+// The About part's (about.json): its sections and policies, and which of the gradebook's rules show.
+function aboutOf(a, scheme, team) {
+  const show = a.rules || {};
+  return { description: str(a.description), team, sections: blocksOf(a.sections).map(b => ({ type: "text", title: "", blocks: [b] })), policies: blocksOf(a.policies),
+    rules: arr(scheme.policies).filter(x => (x.id in show ? show[x.id] : x.show)).map(x => ({ title: x.title, text: x.text })) };
+}
+function fromPage(page, year, lectures, extra) {
   const secs = arr(page.sections).map((s, si) => [s, si]).filter(([s]) => s && !s.hidden);
   const scheme = page.scheme || {}, weeks = [], anns = [], lists = [];
   secs.forEach(([s, si]) => {
@@ -352,22 +381,30 @@ function fromPage(page, year, lectures) {
     weeks.length = 0; weeks.push(...part); lists.length = 0;
     anns.forEach(a => { const d = stampDay(a.date), w = (d && weekOfDay(d, weeks)) || weeks.find(x => !x.isBreak && x.label === a.week); a.wi = w ? w.i : -1; if (w) a.week = w.label; });
   }
+  if (extra && Array.isArray(extra.announcements)) {   // the Announcements part's: each in the week of its date
+    anns.length = 0;
+    extra.announcements.filter(a => a && (str(a.title).trim() || str(a.body).trim())).forEach(a => {
+      const d = stampDay(a.date), w = d && weekOfDay(d, weeks);
+      anns.push({ title: str(a.title), body: str(a.body), date: str(a.date), at: a.at || 0, week: w ? w.label : "", wi: w ? w.i : -1 });
+    });
+  }
   const pol = secs.filter(([s]) => s.type === "policies").map(([s]) => s), rules = [];
   pol.forEach(s => arr(scheme.policies).forEach(x => { const show = s.show || {}; if (x.id in show ? show[x.id] : x.show) rules.push({ title: x.title, text: x.text }); }));
   const ef = page.evalFiles || {};
   return {
-    overview: { description: str(page.description), sections: secs.filter(([s]) => OVERVIEW.includes(s.type)).map(([s]) => overviewSection(s)).filter(x => x.type !== "meetings" || x.items.length || x.blocks.length) },
+    about: extra && extra.about ? aboutOf(extra.about, scheme, arr(extra.team))
+      : { description: str(page.description), team: arr(extra && extra.team), sections: secs.filter(([s]) => OVERVIEW.includes(s.type)).map(([s]) => overviewSection(s)).filter(x => x.type !== "meetings" || x.items.length || x.blocks.length),
+          policies: pol.flatMap(s => blocksOf(s.blocks)), rules },
     lectures: { weeks, lists },
     announcements: { items: anns },
     evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: evalFilesOf(scheme, ef),
       request: scheme.requests && scheme.requests.url ? { url: scheme.requests.url, r: scheme.requests.repo, o: scheme.requests.offering } : null },
-    policies: { sections: pol.map(s => ({ title: str(s.title), caption: str(s.caption), blocks: blocksOf(s.blocks) })), rules },
     week: { weeks: weeks.map(w => ({ i: w.i, label: w.label, dates: w.dates || "", start: w.start || "", end: w.end || "", isBreak: w.isBreak })) },
     accommodations: {},
   };
 }
 
-const TABS = [["overview", "Overview"], ["week", "This week"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["announcements", "Announcements"], ["policies", "Policies"], ["accommodations", "My accommodations"]];
+const TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
 
 window.HubView = { draw, fromPage, currentWeek, today, esc, rich, markdown, meetingsTable, TABS, LOCK };
 })();

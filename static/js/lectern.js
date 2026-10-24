@@ -8,6 +8,9 @@
      #/csc258/f26/course   the Course Page Builder on csc258/f26/course.json (public repo)
      #/csc258/f26/grades   the Grade Builder on csc258/f26/grades.json (private repo)
      #/csc258/f26/lectures   the weeks and their lectures (lectures.js), shown on the course page
+     #/csc258/f26/about      the course page's About: description, sections, policies (about.js)
+     #/csc258/f26/announcements   announcements (announcements.js), each in its week on the course page
+     #/csc258/f26/team/12    a teaching team member: their sections, times and office hours (team.js)
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
      #/~ana/csc258/f26/…   the same, for an offering in someone else's files that you're on the teaching team of
      #/account             your account: password, two-factor sign-in, sessions
@@ -18,6 +21,9 @@ import * as Auth from "./auth.js";
 import * as Store from "./store.js";
 import { accountPage } from "./account.js";
 import { lecturesPage, lecturesUnsaved } from "./lectures.js";
+import { teamMemberPage } from "./team.js";
+import { announcementsPage } from "./announcements.js";
+import { aboutPage } from "./about.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -203,7 +209,7 @@ function listAll() {
     return map;
   })().catch(e => { S.listError = e; throw e; });
   // Pages that show the list draw again when it arrives (not a builder, and not your account page, which doesn't use it).
-  const redraw = () => { if (["home", "offering", "accom", "lectures"].includes(S.route.page)) renderPage(); };
+  const redraw = () => { if (["home", "offering", "accom", "lectures", "team", "announcements", "about"].includes(S.route.page)) renderPage(); };
   S.listing.then(redraw, redraw);
   return S.listing;
 }
@@ -224,6 +230,9 @@ function parseHash() {
     if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e, o };
     if (tool === "accommodations") return { page: "accom", c, t, o };
     if (tool === "lectures") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
+    if (tool === "team" && e) return { page: "team", c, t, o, p: e };
+    if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
+    if (tool === "about") return { page: "about", c, t, o };
     return { page: "offering", c, t, o };
   }
   if (p.length === 1 && p[0] === "account") return { page: "account" };
@@ -235,7 +244,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "lectures" ? `${at}/lectures${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "about" ? `${at}/about` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/lectures${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -514,6 +523,13 @@ function renderPage() {
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic }, r);
+  if (r.page === "about") return aboutPage({ $, esc, pageHTML, toast, Store, area, canEdit, ICON, renderPath, route: () => S.route, termName,
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s),
+    gradebookRules: async (c, t) => { const b = await getBook(c, t); return b ? schemeOf(b, "").policies : []; } }, r);
+  if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s) }, r);
+  if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], api: Auth.api, owner: () => curOwner() || S.user.handle }, r);
   const ctx = { S, pageHTML, modal, toast, setUser: u => { S.user = u; renderBar(); } };
   if (r.page === "account") { renderPath([HOME_STEP, { label: "Your Account" }]); return accountPage(ctx); }
 }
@@ -621,7 +637,7 @@ function offeringPage(c, t) {
     <div class="lt-three">
       <section class="lt-part">
         <div class="lt-part-head">${ICON.page}<h2>Course Page</h2></div>
-        <p class="lt-part-text">${o.page ? `What students see: the weekly schedule with lectures, files and links, deadlines and announcements.` : `No course page for this term yet.${edit && others.length ? ` Start from <code>${esc(others[0].c)}/${esc(others[0].t)}</code>'s page (without its announcements), or from a blank page.` : ""}`}</p>
+        <p class="lt-part-text">${o.page ? `What students see, put together from the parts below. Preview it, and choose which tabs are only for people signed in.` : `No course page for this term yet.${edit && others.length ? ` Start from <code>${esc(others[0].c)}/${esc(others[0].t)}</code>'s page (without its announcements), or from a blank page.` : ""}`}</p>
         <div class="lt-part-acts">${o.page
           ? `${edit ? `<button type="button" class="lt-btn primary" data-go="course">Open Course Page</button>` : ""}${live ? `<a class="lt-btn${edit ? "" : " primary"}" href="${esc(live)}" target="_blank" rel="noopener">Live page ${ICON.out}</a>` : ""}`
           : !edit ? "" : `${others.length ? `<button type="button" class="lt-btn primary" data-go="course" data-copy="${esc(others[0].c)}/${esc(others[0].t)}">Copy ${esc(others[0].t)}'s Page</button>` : ""}<button type="button" class="lt-btn${others.length ? "" : " primary"}" data-go="course"${loading ? " disabled" : ""}>Start a Blank Page</button>`}</div>
@@ -630,6 +646,16 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.lectures}<h2>Lectures</h2></div>
         <p class="lt-part-text">The weeks of the term and each week's lectures, tutorials and labs, with their files and links.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-lectures">${edit ? "Open Lectures" : "See Lectures"}</button></div>
+      </section>
+      <section class="lt-part">
+        <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>
+        <p class="lt-part-text">News for the class. Each one goes in the week of its date on the course page.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-anns">${edit ? "Open Announcements" : "See Announcements"}</button></div>
+      </section>
+      <section class="lt-part">
+        <div class="lt-part-head">${ICON.doc}<h2>About</h2></div>
+        <p class="lt-part-text">The course's title and description, sections of your own, and the course-wide policies.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-about">${edit ? "Open About" : "See About"}</button></div>
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.evals}<h2>Evaluations</h2></div>
@@ -654,6 +680,8 @@ function offeringPage(c, t) {
     </div>
   </div>`);
   $("#lt-lectures").onclick = () => go({ page: "lectures", c, t });
+  $("#lt-anns").onclick = () => go({ page: "announcements", c, t });
+  $("#lt-about").onclick = () => go({ page: "about", c, t });
   const acc = $("#lt-accom");
   if (acc) acc.onclick = () => go({ page: "accom", c, t });
   if (acc && o.grades) readAccom(c, t).then(d => {
@@ -692,7 +720,7 @@ async function teamPart(c, t) {
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
   box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams." : "The people who work on this offering."}</p>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
-        <div class="lt-user-who"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></div>
+        <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their sections, times and office hours, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag">Owner</span>`
           : lead && p.id !== d.me ? `${roleSel(p)}<button type="button" class="lt-link lt-del" data-remove="${p.id}">Remove</button>`
           : `<span class="lt-tag${p.role === "ta" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>
@@ -716,6 +744,7 @@ async function teamPart(c, t) {
   box.querySelectorAll("button[data-newrole]").forEach(b => {
     b.onclick = () => { newRole = b.dataset.v; box.querySelectorAll("button[data-newrole]").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); }); };
   });
+  box.querySelectorAll("[data-person]").forEach(b => { b.onclick = () => go({ page: "team", c, t, p: b.dataset.person }); });
   box.querySelectorAll("[data-remove]").forEach(b => {
     b.onclick = async () => {
       const me = Number(b.dataset.remove) === d.me;
@@ -972,6 +1001,19 @@ Lectern.uploadPublic = async (file, into = "evaluations") => {
   return `${siteURL()}${encPath(`${folder}/${name}`)}`;
 };
 
+// The teaching team as the course page shows it (as server/hub.py's team_of does): each person, with their
+// page's email, office, sections and times (team.json).
+async function teamFor(c, t) {
+  const owner = curOwner() || S.user.handle;
+  const [d, raw] = await Promise.all([Auth.api(`/api/teams/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`), readPriv(`${c}/${t}/team.json`).catch(() => null)]);
+  let info = {}; try { info = (JSON.parse(raw || "{}") || {}).people || {}; } catch (_) {}
+  return d.people.filter(p => (info[p.id] || {}).show !== false).map(p => {
+    const me = info[p.id] || {};
+    return { name: p.name || p.email, role: p.role === "ta" ? "ta" : "instructor", email: me.email || p.email, office: me.office || "",
+      times: (me.times || []).map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "" })) };
+  });
+}
+
 // Where the course page's Request Accommodation buttons go: Lectern's request form, for this course
 // offering, by your handle (the server finds your gradebook from it).
 const lecternURL = () => getCfg().then(c => c.app_url || `${location.origin}/`);
@@ -1016,6 +1058,9 @@ async function crossLink(tool, r, t, opts) {
     if (tool === "course") {
       const b = await getBook(r.c, r.t).catch(() => null);
       t.api.setScheme(b ? schemeOf(b, `${r.c}/${r.t}/grades.json`, await requestsFor(r.c, r.t)) : null, { edit: v => go({ page: "tool", tool: "grades", part: v === "settings" ? "settings" : "evals", c: r.c, t: r.t }) });
+      if (t.api.setTeam) t.api.setTeam(await teamFor(r.c, r.t).catch(() => null));
+      if (t.api.setAbout) { let a = null; try { a = JSON.parse(await readPriv(`${r.c}/${r.t}/about.json`) || "null"); } catch (_) {} t.api.setAbout(a && typeof a === "object" ? a : null); }
+      if (t.api.setAnnouncements) { let a = null; try { a = JSON.parse(await readPriv(`${r.c}/${r.t}/announcements.json`) || "null"); } catch (_) {} t.api.setAnnouncements(a && Array.isArray(a.items) ? a.items : null); }
       if (t.api.setLectures) { let l = null; try { l = JSON.parse(await readPriv(`${r.c}/${r.t}/lectures.json`) || "null"); } catch (_) {} t.api.setLectures(l && Array.isArray(l.weeks) ? l : null); }
     }
     if (tool === "grades") t.api.setLinks(await docLinks(r.c, r.t));

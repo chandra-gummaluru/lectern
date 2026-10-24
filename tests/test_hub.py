@@ -37,10 +37,10 @@ def test_the_hub_page_and_its_api(client, user, anon):
     assert r.status_code == 200 and b"/static/js/hub.js" in r.data
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
     assert j["course"]["code"] == "CSC258" and j["course"]["year"] == 2026
-    assert [t["id"] for t in j["tabs"]] == ["overview", "week", "lectures", "evaluations", "announcements", "policies", "accommodations"]
-    assert set(j["data"]) == {"overview", "week", "lectures", "evaluations", "announcements", "policies"}
+    assert [t["id"] for t in j["tabs"]] == ["week", "announcements", "lectures", "evaluations", "about", "accommodations"]
+    assert set(j["data"]) == {"week", "announcements", "lectures", "evaluations", "about"}
     assert j["viewer"] == {"signedIn": False, "role": None, "name": "", "staff": False, "preview": False}
-    meets = [s for s in j["data"]["overview"]["sections"] if s["type"] == "meetings"][0]["items"]
+    meets = [s for s in j["data"]["about"]["sections"] if s["type"] == "meetings"][0]["items"]
     assert any(m["kind"] == "office" and m["day"] == 1 for m in meets)
     weeks = j["data"]["week"]["weeks"]
     assert weeks[0]["start"] == "2026-09-07" and any(w["isBreak"] for w in weeks)
@@ -72,7 +72,7 @@ def test_signed_in_tabs_stay_private(client, user, anon):
     vis = {t["id"]: (t["visibility"], t["open"]) for t in j["tabs"]}
     assert vis["lectures"] == ("signed-in", False) and vis["announcements"] == ("signed-in", False)
     assert vis["accommodations"] == ("signed-in", False)   # always signed-in only
-    assert vis["overview"] == ("public", True)
+    assert vis["about"] == ("public", True)
     assert "lectures" not in j["data"] and "announcements" not in j["data"]
     blob = json.dumps(j)
     assert "lec03.pdf" not in blob and "Welcome to CSC258" not in blob
@@ -108,7 +108,7 @@ def test_hidden_sections_and_bad_links(client, user, anon):
     page["sections"][0]["weeks"][1]["cards"][0]["files"] = [{"label": "x", "url": ""}, {"label": "Slides", "url": "lec.pdf"}]
     publish(user, page)
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
-    assert not [s for s in j["data"]["overview"]["sections"] if s["type"] == "table"]
+    assert not [s for s in j["data"]["about"]["sections"] if s["type"] == "table"]
     assert j["data"]["lectures"]["weeks"][1]["cards"][0]["files"] == [{"label": "Slides", "url": "lec.pdf"}]
     assert j["pages"].endswith("/p/chandra/csc258/f26/")
 
@@ -128,7 +128,7 @@ def test_hidden_policies_stay_off_the_page(client, user, anon):
     pol["blocks"] = [{"heading": "Late work", "body": "10% a day."}, {"heading": "Note to self", "body": "Secret", "hidden": True}]
     publish(user, page)
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
-    assert [b["heading"] for b in j["data"]["policies"]["sections"][0]["blocks"]] == ["Late work"]
+    assert [b["heading"] for b in j["data"]["about"]["policies"]] == ["Late work"]
     assert "Secret" not in json.dumps(j)
 
 
@@ -167,3 +167,39 @@ def test_lectures_come_from_the_lectures_part(client, user, anon):
     assert ann["title"] == "Welcome to CSC258!" and ann["wi"] == 0 and ann["week"] == "Week 1"
     # Nothing else of the private files: lectures.json isn't served anywhere public.
     assert anon.get("/p/chandra/csc258/f26/lectures.json").status_code == 404
+
+
+def test_the_teaching_team_on_the_course_page(client, user, anon):
+    publish(user)
+    ta, tu = member("alan@utoronto.ca", "alan")
+    add(client, "alan@utoronto.ca", "ta", who=ta)
+    info = {"people": {str(user["id"]): {"office": "BA 4010", "times": [{"kind": "lecture", "section": "LEC0101", "day": 1, "start": "10:00", "end": "11:00", "where": "BA 1170"}]},
+                       str(tu["id"]): {"email": "alan@cs.example.edu", "times": [{"kind": "office", "day": "4", "start": "11:00", "end": "12:00", "where": "BA 3201"}]}}}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/team.json": json.dumps(info).encode()}, "seed", r.head())
+    team = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["about"]["team"]
+    assert [(p["name"], p["role"], p["email"]) for p in team] == [("Chandra Gummaluru", "instructor", "chandra@utoronto.ca"), ("ALAN", "ta", "alan@cs.example.edu")]
+    assert team[0]["times"][0]["section"] == "LEC0101" and team[1]["times"][0]["day"] == 4
+    info["people"][str(tu["id"])]["show"] = False
+    r.commit({"csc258/f26/team.json": json.dumps(info).encode()}, "seed", r.head())
+    assert len(anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["about"]["team"]) == 1
+
+
+def test_announcements_come_from_the_announcements_part(client, user, anon):
+    publish(user)
+    items = [{"id": "a", "title": "Midterm rooms", "date": "Oct 28, 2026, 09:00", "body": "EX 100"}, {"id": "b", "title": "", "body": ""}]
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/announcements.json": json.dumps({"items": items}).encode()}, "seed", r.head())
+    got = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["announcements"]["items"]
+    assert [(a["title"], a["week"]) for a in got] == [("Midterm rooms", "Week 7")]   # Oct 28 is in Week 7; the course page's own aren't shown
+
+
+def test_about_from_the_about_part(client, user, anon):
+    publish(user, with_tabs(overview="signed-in"))
+    about = {"title": "Computer Organization!", "description": "Gates to CPUs.", "sections": [{"id": "t", "heading": "Textbook", "body": "Patt & Patel"}],
+             "policies": [{"id": "p", "heading": "Late work", "body": "No."}, {"id": "q", "heading": "Hidden", "body": "x", "hidden": True}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/about.json": json.dumps(about).encode()}, "seed", r.head())
+    j = client.get("/api/hub/chandra/csc258/f26").get_json()
+    a = j["data"]["about"]
+    assert j["course"]["title"] == "Computer Organization!" and a["description"] == "Gates to CPUs."
+    assert [b["heading"] for s in a["sections"] for b in s["blocks"]] == ["Textbook"] and [b["heading"] for b in a["policies"]] == ["Late work"]
+    # Overview's old setting carries over to About: signed-in only.
+    assert "about" not in anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]

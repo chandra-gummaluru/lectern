@@ -36,12 +36,11 @@ SLUG = re.compile(r"^[\w.-]{1,64}$")
 
 # id, title. Overview and This week first: This week is where the hub opens.
 TABS = [
-    ("overview", "Overview"),
     ("week", "This week"),
+    ("announcements", "Announcements"),
     ("lectures", "Lectures"),
     ("evaluations", "Evaluations"),
-    ("announcements", "Announcements"),
-    ("policies", "Policies"),
+    ("about", "About"),
     ("accommodations", "My accommodations"),
 ]
 ALWAYS_SIGNED_IN = {"accommodations"}
@@ -86,6 +85,26 @@ def gradebook_files(owner_id, course, term):
     return out
 
 
+def announcements_of(owner_id, course, term):
+    """The Announcements part's (announcements.js): <course>/<term>/announcements.json's items, or None."""
+    raw = Repo(owner_id, "priv").read(f"{course}/{term}/announcements.json")
+    try:
+        d = json.loads(raw.decode("utf-8")) if raw else None
+    except (ValueError, UnicodeDecodeError):
+        return None
+    return d["items"] if isinstance(d, dict) and isinstance(d.get("items"), list) else None
+
+
+def about_of(owner_id, course, term):
+    """The About part's (about.js): <course>/<term>/about.json, or None."""
+    raw = Repo(owner_id, "priv").read(f"{course}/{term}/about.json")
+    try:
+        d = json.loads(raw.decode("utf-8")) if raw else None
+    except (ValueError, UnicodeDecodeError):
+        return None
+    return d if isinstance(d, dict) else None
+
+
 def lectures_of(owner_id, course, term):
     """The Lectures part's weeks (lectures.js): <course>/<term>/lectures.json in the private files, or None."""
     raw = Repo(owner_id, "priv").read(f"{course}/{term}/lectures.json")
@@ -96,13 +115,52 @@ def lectures_of(owner_id, course, term):
     return d if isinstance(d, dict) and isinstance(d.get("weeks"), list) else None
 
 
+TEAM_KINDS = {"lecture", "tutorial", "lab", "office", "other"}
+
+
+def team_of(owner_id, course, term):
+    """The teaching team as the course page shows it: each person (owner, instructors, TAs) with what
+    their page in Lectern says (team.json: email, office, sections and times). Removed members aren't
+    here; nor is anyone whose page says not to show them."""
+    off = f"{course}/{term}"
+    raw = Repo(owner_id, "priv").read(f"{off}/team.json")
+    try:
+        d = json.loads(raw.decode("utf-8")) if raw else {}
+    except (ValueError, UnicodeDecodeError):
+        d = {}
+    info = d.get("people") if isinstance(d, dict) and isinstance(d.get("people"), dict) else {}
+    o = db.one("SELECT id, name, email FROM users WHERE id = ?", (owner_id,))
+    rows = [(o, "instructor")] + [(r, r["role"]) for r in db.all_(
+        "SELECT u.id, u.name, u.email, m.role FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? ORDER BY m.role, u.name",
+        (owner_id, off))]
+    out = []
+    for u, role in rows:
+        me = info.get(str(u["id"])) if isinstance(info.get(str(u["id"])), dict) else {}
+        if me.get("show") is False:
+            continue
+        times = []
+        for x in _list(me.get("times")):
+            if not isinstance(x, dict):
+                continue
+            day = x.get("day")
+            day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
+            times.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "section": _s(x.get("section"), 60), "day": day,
+                          "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
+        out.append({"name": _s(u["name"], 200), "role": "ta" if role == "ta" else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
+                    "office": _s(me.get("office"), 200), "times": times})
+    return out
+
+
 def has_hub(owner_id, course, term):
     return Repo(owner_id, "pub").stat(f"{course}/{term}/{PAGE_DATA}") is not None
 
 
 def visibility(page):
     vis = dict(DEFAULT_VIS)
-    for k, v in (page.get("tabs") or {}).items() if isinstance(page.get("tabs"), dict) else []:
+    tabs = dict(page.get("tabs")) if isinstance(page.get("tabs"), dict) else {}
+    if "about" not in tabs and "overview" in tabs:   # About was Overview (and Policies)
+        tabs["about"] = tabs["overview"]
+    for k, v in tabs.items():
         if k in vis and k not in ALWAYS_SIGNED_IN and v in ("public", "signed-in"):
             vis[k] = v
     return vis
@@ -241,7 +299,7 @@ def _week_of(day, weeks):
     return found
 
 
-def buckets(page, year=None, book_files=None, lectures=None):
+def buckets(page, year=None, book_files=None, lectures=None, team=None, announcements=None, about=None):
     """Everything the page says, sorted into its tabs (all of them: the caller leaves out what a viewer can't see).
     lectures: the Lectures part's weeks (lectures.json), when there is one; else the course page's own."""
     secs = [s for s in _list(page.get("sections")) if isinstance(s, dict) and not s.get("hidden")]
@@ -259,17 +317,18 @@ def buckets(page, year=None, book_files=None, lectures=None):
             wk["dates"] = wk["dates"] or range_text(wk["start"], wk["end"])
         wk["i"] = len(weeks)
         weeks.append(wk)
-    # Announcements (still the course page's): each in the week its date is in, else the week it was written in.
-    for w in own:
-        for a in _list(w.get("announcements")):
-            if isinstance(a, dict) and (_s(a.get("title")).strip() or _s(a.get("body")).strip()):
-                day = _stamp_day(_s(a.get("date"), 60))
-                wk = _week_of(day, weeks) if day else None
-                if not wk:
-                    wk = next((x for x in weeks if not x["isBreak"] and x["label"] == _s(w.get("label"), 200)), None)
-                anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60),
-                             "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
-                             "week": wk["label"] if wk else _s(w.get("label"), 200), "wi": wk["i"] if wk else -1})
+    # Announcements: the Announcements part's (announcements.json), else the course page's own; each in the
+    # week its date is in (else, for the course page's, the week it was written in).
+    written = [({"label": ""}, a) for a in _list(announcements)] if isinstance(announcements, list) else [(w, a) for w in own for a in _list(w.get("announcements"))]
+    for w, a in written:
+        if isinstance(a, dict) and (_s(a.get("title")).strip() or _s(a.get("body")).strip()):
+            day = _stamp_day(_s(a.get("date"), 60))
+            wk = _week_of(day, weeks) if day else None
+            if not wk:
+                wk = next((x for x in weeks if not x["isBreak"] and x["label"] == _s(w.get("label"), 200)), None)
+            anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60),
+                         "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
+                         "week": wk["label"] if wk else _s(w.get("label"), 200), "wi": wk["i"] if wk else -1})
     rules = []
     pol = [s for s in secs if s.get("type") == "policies"]
     for s in pol:
@@ -278,12 +337,20 @@ def buckets(page, year=None, book_files=None, lectures=None):
             if isinstance(x, dict) and (bool(show[x["id"]]) if x.get("id") in show else bool(x.get("show"))):
                 rules.append({"title": _s(x.get("title"), 200), "text": _s(x.get("text"), 2000)})
     ef = page.get("evalFiles") if isinstance(page.get("evalFiles"), dict) else {}
+    if isinstance(about, dict):   # the About part's (about.json): its own sections and policies, and which gradebook rules show
+        show = about.get("rules") if isinstance(about.get("rules"), dict) else {}
+        rules = [{"title": _s(x.get("title"), 200), "text": _s(x.get("text"), 2000)} for x in _list(scheme.get("policies"))
+                 if isinstance(x, dict) and (bool(show[x["id"]]) if x.get("id") in show else bool(x.get("show")))]
+        about_b = {"description": _s(about.get("description")), "team": team or [],
+                   "sections": [{"type": "text", "title": "", "caption": "", "blocks": _blocks([b])} for b in _list(about.get("sections")) if _blocks([b])],
+                   "policies": _blocks(about.get("policies")), "rules": rules}
+    else:
+        about_b = {"description": _s(page.get("description")), "team": team or [],
+                   "sections": [x for x in (_section(s) for s in secs if s.get("type") in ("table", "sessions", "text", "meetings"))
+                                if x["type"] != "meetings" or x["items"] or x["blocks"]],
+                   "policies": [b for s in pol for b in _blocks(s.get("blocks"))], "rules": rules}
     return {
-        "overview": {
-            "description": _s(page.get("description")),
-            "sections": [x for x in (_section(s) for s in secs if s.get("type") in ("table", "sessions", "text", "meetings"))
-                         if x["type"] != "meetings" or x["items"] or x["blocks"]],
-        },
+        "about": about_b,
         "lectures": {"weeks": weeks},
         "announcements": {"items": anns},
         "evaluations": {
@@ -291,10 +358,6 @@ def buckets(page, year=None, book_files=None, lectures=None):
             "evals": _list(scheme.get("evals")),
             # The gradebook's files first (where they're added now), then any the course page itself had.
             "files": _merge_files(book_files or {}, {k: _files(v) for k, v in ef.items() if isinstance(k, str)}),
-        },
-        "policies": {
-            "sections": [{"title": _s(s.get("title"), 300), "caption": _s(s.get("caption"), 500), "blocks": _blocks(s.get("blocks"))} for s in pol],
-            "rules": rules,
         },
         # This week: the term's calendar (each week's name and dates). The browser fills each week in
         # from the tabs above that this viewer can see.
@@ -355,7 +418,10 @@ def hub_api(handle, course, term):
     signed = bool(role) and not preview
     vis = visibility(page)
     year = year_of(page, term)
-    all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term))
+    about = about_of(o["id"], course, term)
+    all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term), team_of(o["id"], course, term),
+                    announcements_of(o["id"], course, term), about)
+    head = about if about else page
     tabs, data = [], {}
     for tid, title in TABS:
         open_ = vis[tid] == "public" or signed
@@ -365,8 +431,9 @@ def hub_api(handle, course, term):
     if "evaluations" in data:   # where an evaluation's Request Accommodation button goes (accommodations.py's form)
         data["evaluations"]["request"] = {"url": f"{app_url()}request", "r": o["handle"], "o": offering}
     return jsonify(
-        course={"title": _s(page.get("title"), 300), "code": _s(page.get("code"), 60), "term": _s(page.get("term"), 100),
-                "school": _s(page.get("school"), 200), "offering": offering, "year": year},
+        course={"title": _s(head.get("title"), 300) or _s(page.get("title"), 300), "code": _s(head.get("code"), 60) or _s(page.get("code"), 60),
+                "term": _s(head.get("term"), 100) or _s(page.get("term"), 100), "school": _s(head.get("school"), 200) or _s(page.get("school"), 200),
+                "offering": offering, "year": year},
         viewer={"signedIn": signed, "role": None if preview else role, "name": u["name"] if u and signed else "",
                 "staff": role in STAFF, "preview": preview},
         tabs=tabs, data=data,

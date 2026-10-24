@@ -1160,14 +1160,14 @@ const isMajor = t => /midterm|final|exam|test|quiz|demo|project|due|presentation
 // open their own page. ui.tab is the tab showing; ui.week a week chosen on This week.
 // ═════════════════════════════════════════════════════════════════════
 const HV = () => window.HubView;
-const HUB_ALL = [["overview", "Overview"], ["week", "This week"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["announcements", "Announcements"], ["policies", "Policies"], ["accommodations", "My accommodations"]];
+const HUB_ALL = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
 const tabTitle = id => (HUB_ALL.find(t => t[0] === id) || HUB_ALL[0])[1];
 const OVERVIEW_TYPES = ["table", "sessions", "text", "meetings"];
 const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
 // The Lectures part's weeks (Lectern hands them over: setLectures), shown instead of the page's own.
-let lecturesPart = null;
+let lecturesPart = null, teamPart = null, annsPart = null, aboutPart = null;   // and the teaching team (setTeam) and announcements (setAnnouncements)
 function hubData() {
-  return { data: HV().fromPage(model, pageYear(model), lecturesPart), pages: gh.site ? `${gh.site}${encPath(courseDir())}/` : "" };
+  return { data: HV().fromPage(model, pageYear(model), lecturesPart, { team: teamPart, announcements: annsPart, about: aboutPart }), pages: gh.site ? `${gh.site}${encPath(courseDir())}/` : "" };
 }
 // The schedule's weeks, for choosing one: [{ path, label }], and the one that's on now.
 function weekChoices() {
@@ -1191,35 +1191,8 @@ function hubSection(s, i, n, extra = "") {
   return `<section class="hbe-sec${s.hidden ? " e-sec-hid" : ""}"><div class="hbe-sec-h">${T(`${p}.title`, s.title, "h3", "", "Section title", "hb-h3", { plain: true })}<div class="e-secctl">${extra}${eye}${ctlMove("sections", i, n)}${ctlDel("sections", i, "section")}</div></div>
     ${BODY[s.type](s, p)}</section>`;
 }
-const HUB_TAB = {
-  overview() {
-    const n = model.sections.length, has = model.sections.some(x => x.type === "meetings");
-    return `<h2 class="hb-h2">Overview</h2>${T("description", model.description, "p", "", "What the course is about: a sentence or two", "hb-desc")}
-      ${model.sections.map((s, i) => (OVERVIEW_TYPES.includes(s.type) ? hubSection(s, i, n) : "")).join("")}
-      <div class="e-addsec">${B("addsec", "sections", "+ Add a Section", "Add a section at the end of the Overview: a heading, then text and tables", 'data-kind="text"', "add")}${has ? "" : B("addsec", "sections", "+ Meeting Times & Office Hours", "Add the weekly meeting times and office hours", 'data-kind="meetings"', "add")}</div>`;
-  },
-  week(D) {
-    return HV().draw(D, "week", ui.week);
-  },
-  lectures(D) {
-    return HV().draw(D, "lectures");   // made in Lectern's Lectures, not here
-  },
-  evaluations(D) {
-    return HV().draw(D, "evaluations");   // made in Lectern's Evaluations, not here
-  },
-  announcements(D) {
-    const { out, cur } = weekChoices();
-    const bar = out.length ? `<div class="hbe-bar"><button type="button" class="c add" data-act="ann-new">+ New Announcement</button><label>in<select id="ann-week" aria-label="Which week it's in">${out.map(w => `<option value="${esc(w.path)}"${w.path === cur ? " selected" : ""}>${esc(w.label)}</option>`).join("")}</select></label></div>` : `<p class="hb-empty">Add weeks on the Lectures tab first: each announcement is in a week.</p>`;
-    return HV().draw(D, "announcements", null, { edit: true }).replace("</p>", `</p>${bar}`);
-  },
-  policies() {
-    const n = model.sections.length, list = model.sections.map((s, i) => [s, i]).filter(([s]) => s.type === "policies");
-    const edit = editGrades ? `<button type="button" class="c" data-act="edit-grades" data-v="settings" title="Change the course rules in the gradebook's settings">${ICON_EDIT}Edit</button>` : "";
-    return `<h2 class="hb-h2">Policies</h2>${list.length ? list.map(([s, i]) => `${T(`sections.${i}.caption`, s.caption, "p", "", "A line under the heading", "hb-lede")}<div class="hbe-bar">${edit}<span class="e-help" style="margin: 0;">The gradebook's course rules, and your own. Each one can be shown or kept off the page.</span></div><div class="hb-panel">${policiesBody(s, `sections.${i}`)}</div>`).join("")
-      : `<p class="hb-empty">No policies yet.</p><div class="e-addsec">${B("addsec", "sections", "+ Add Policies", "Add the Policies: the gradebook's course rules, and your own", 'data-kind="policies"', "add")}</div>`}`;
-  },
-  accommodations(D) { return HV().draw(D, "accommodations"); },
-};
+// Every tab is made in Lectern's own parts (Lectures, Announcements, Evaluations, About, the Teaching
+// Team); here it's shown as students see it, and each tab can be public or for signed-in people only.
 // Preview: the course hub exactly as it'll look, before saving: for people signed in to the course
 // ("in"), or for a visitor who isn't ("out": signed-in tabs locked, This week without them).
 function hubPreview(tab) {
@@ -1230,7 +1203,7 @@ function hubPreview(tab) {
   const body = locked(tab)
     ? `<div class="hb-locked">${HV().LOCK}<h2>${esc(tabTitle(tab))}</h2><p>${tab === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p><span class="hb-btn primary">Sign in</span></div>`
     : HV().draw(D, tab, ui.week);
-  const m = model, sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
+  const m = { ...model, ...(aboutPart || {}) }, sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
   const seg = [["in", "Signed in"], ["out", "Visitor"]].map(([v, t]) => `<button type="button" class="c${ui.preview === v ? " on" : ""}" data-act="preview-as" data-v="${v}" aria-pressed="${ui.preview === v}">${t}</button>`).join("");
   return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">Preview</span></nav>
     <div class="hb hbe hbe-pv"><div class="hbe-pvbar"><span class="grow"><b>Preview</b> · what ${out ? "a visitor who isn't signed in" : "people signed in to the course"} will see once you save.</span><span class="hbe-seg" role="group" aria-label="See it as">${seg}</span><button type="button" class="c primary" data-act="preview">Back to Editing</button></div>
@@ -1240,7 +1213,7 @@ function hubPreview(tab) {
     <main class="hb-main">${body}</main></div>`;
 }
 function hubEditor() {
-  const tab = HUB_ALL.some(t => t[0] === ui.tab) ? ui.tab : "overview", m = model;
+  const tab = HUB_ALL.some(t => t[0] === ui.tab) ? ui.tab : "week", m = { ...model, ...(aboutPart || {}) };
   if (ui.preview) return hubPreview(tab);
   const tabs = HUB_ALL.map(([id, t]) => {
     const sg = id === "accommodations" || tabVis(m, id) === "signed-in";
@@ -1248,15 +1221,11 @@ function hubEditor() {
       : `<span class="hbe-vis${sg ? " on" : ""}" data-act="tab-vis" data-v="${id}" role="button" tabindex="0" title="${sg ? "Signed-in only: click to make this tab public" : "Public: click to make this tab for signed-in people only"}">${sg ? HV().LOCK : GLOBE}</span>`;
     return `<span class="hb-tab hbe-tab" role="tab" tabindex="0" data-act="tab" data-v="${id}" aria-selected="${id === tab}">${esc(t)}${vis}</span>`;
   }).join("");
-  EDIT = true;
-  let body;
-  try { body = HUB_TAB[tab](hubData()); } finally { EDIT = false; }
-  EDIT = true;
+  const body = HV().draw(hubData(), tab);
+  const sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
   const head = `<header class="hb-head"><div class="hb-head-in"><div class="hb-titles">
-      <p class="hb-sub">${T("code", m.code, "span", "", "Course code", "", { plain: true })}<span class="e-dot"> · </span>${T("term", m.term, "span", "", "Term", "", { plain: true })}<span class="e-dot"> · </span>${T("school", m.school, "span", "", "School", "", { plain: true })}</p>
-      ${T("title", m.title, "h1", "", "Course title", "hb-title", { plain: true })}</div>
-      <div class="hb-who"><button type="button" class="c" data-act="preview" title="See the course page as students will, before you save">${EYE}Preview</button></div></div></header>`;
-  EDIT = false;
+      <p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc(m.title || m.code || "Course page")}</h1></div>
+      <div class="hb-who"><button type="button" class="c" data-act="preview" title="See the course page as a visitor who isn't signed in sees it">${EYE}Preview</button></div></div></header>`;
   return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">${esc(tabTitle(tab))}</span></nav>
     <div class="hb hbe">${head}<nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>
     <main class="hb-main">${body}</main></div>`;
@@ -2155,8 +2124,8 @@ function subtitleHTML(m) {
 
 // The course hub's tabs (Lectern serves the page in tabs): which ones people must sign in to see.
 // My accommodations is always for signed-in people only, so it isn't here.
-const HUB_TABS = [["overview", "Overview"], ["week", "This week"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["announcements", "Announcements"], ["policies", "Policies"]];
-const tabVis = (m, id) => (m.tabs && m.tabs[id] === "signed-in" ? "signed-in" : "public");
+const HUB_TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["about", "About"]];
+const tabVis = (m, id) => { const t = m.tabs || {}, v = id === "about" && !(id in t) ? t.overview : t[id]; return v === "signed-in" ? "signed-in" : "public"; };   // About was Overview
 function tabsPanel(m) {
   return `<div class="e-tabs"><span class="e-tabs-h">Course hub tabs</span>${HUB_TABS.map(([id, t]) => { const sg = tabVis(m, id) === "signed-in"; return `<button type="button" class="c${sg ? " on" : ""}" data-act="tab-vis" data-v="${id}" aria-pressed="${sg}" title="${sg ? "Only people in the course, signed in, see this tab: click to make it public" : "Anyone with the link sees this tab: click to make it for signed-in people only"}">${esc(t)}<small>${sg ? "Signed in" : "Public"}</small></button>`; }).join("")}
     <p class="e-help">This week only shows what's on the tabs a visitor can see.</p></div>`;
@@ -2283,7 +2252,7 @@ function parsePage(html) {
 // ═════════════════════════════════════════════════════════════════════
 // State, undo and editing
 // ═════════════════════════════════════════════════════════════════════
-const ui = { mode: "edit", collapsed: new Set(), page: "", tab: "overview", week: null, preview: null };
+const ui = { mode: "edit", collapsed: new Set(), page: "", tab: "week", week: null, preview: null };
 // GitHub connection and the page currently open from it (path = "csc108/f26/info.html", sha = its version).
 const gh = { repo: "", branch: "main", token: "", path: "", sha: null, last: "" };
 let model = BLANK_PAGE();
@@ -2598,7 +2567,7 @@ function act(d) {
       break;
     }
     case "edit-grades": if (editGrades) editGrades(d.v); break;
-    case "preview": flushTyping(); dropEmptyAnn(); ui.preview = ui.preview ? null : "in"; ui.week = null; render(); window.scrollTo(0, 0); break;
+    case "preview": flushTyping(); dropEmptyAnn(); ui.preview = ui.preview ? null : "out"; ui.week = null; render(); window.scrollTo(0, 0); break;
     case "preview-as": ui.preview = d.v; render(); break;
     case "tab": flushTyping(); dropEmptyAnn(); ui.tab = d.v; ui.week = null; ui.page = ""; render(); window.scrollTo(0, 0); break;
     case "ann-new": {   // in the week chosen beside the button; its page opens
@@ -3672,7 +3641,7 @@ if (lectern) {
       }
       else page = BLANK_PAGE();
       if (unsaved) undoStack.push(JSON.stringify(model));
-      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ensureMeetings(model); ui.collapsed.clear(); ui.page = ""; ui.tab = "overview"; ui.week = null; ui.preview = null;   // no sha: new, or an older page (info.html) that saves as course.json
+      model = page; gh.path = path; gh.sha = sha; fileName = ""; unsaved = !sha; ensureMeetings(model); ui.collapsed.clear(); ui.page = ""; ui.tab = "week"; ui.week = null; ui.preview = null;   // no sha: new, or an older page (info.html) that saves as course.json
       leaveHome(); render();
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }
@@ -3688,6 +3657,9 @@ if (lectern) {
     },
     state: () => ({ path: gh.path, unsaved }),
     setLectures(l) { lecturesPart = l; if (!ui.page) render(); },
+    setTeam(list) { teamPart = list; if (!ui.page) render(); },
+    setAnnouncements(items) { annsPart = items; if (!ui.page) render(); },
+    setAbout(a) { aboutPart = a; if (!ui.page) render(); },
     // Where it is (the course page, a week, a lecture…), and going back there: Lectern's Back and Forward.
     where: () => ({ page: ui.page || "", tab: ui.tab }),
     goto(l) { flushTyping(); dropEmptyAnn(); if (l.tab) ui.tab = l.tab; if (!l.page || getP(model, l.page)) goPage(l.page || ""); },

@@ -139,7 +139,7 @@ export async function studentsCard(ctx, c, t) {
         const sent = ((info.state || {})[mail.toLowerCase()] || {}).invited;
         return `<div class="lt-orow lt-user${s.dropped ? " lt-st-dropped" : ""}" data-q="${esc(q)}">
           <button type="button" class="lt-user-who lt-user-open" data-st-open="${esc(s.num)}" title="Their page in the gradebook">${who}</button>
-          ${lead && ok && info.email && !joined(s) ? `<span class="lt-orow-r"><button type="button" class="lt-link" data-st-invite="${esc(mail)}">${sent ? "Resend the link" : "Send the link"}</button></span>` : ""}</div>`;
+          ${lead && ok && info.email && !joined(s) ? `<span class="lt-orow-r"><button type="button" class="lt-btn lt-st-send" data-st-invite="${esc(mail)}">${ICON.mail}${sent ? "Resend the Link" : "Send the Link"}</button></span>` : ""}</div>`;
       }).join("")}</div>` : ""}`;
     wire(F);
     filter();

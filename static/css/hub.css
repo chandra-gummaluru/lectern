@@ -204,3 +204,4 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 .hb-card-desc { color: var(--ink-2); font-size: 14px; }
 .hb-card-desc .hb-md p, .hb-card-desc .hb-md ul, .hb-card-desc .hb-md ol { margin: 0 0 6px; }
 .hb-card-desc .hb-md > :last-child { margin-bottom: 0; }
+.hb-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

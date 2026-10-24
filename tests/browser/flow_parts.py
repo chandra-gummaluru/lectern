@@ -64,7 +64,7 @@ def main():
         me.wait_for_selector("#lt-desc")
         assert not me.query_selector("#lt-about-open, [data-go=course], [data-part=settings].lt-off-acts, .lt-off-acts [data-part]"), "old cards or Settings are still there"
         assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Lectures", "Announcements", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
-        expect(me.locator("#lt-title")).to_have_value("Computer Organization")
+        expect(me.locator("#lt-title")).to_have_text("Computer Organization")
         me.fill("#lt-title", "Computer Organization and Design")
         me.fill("#lt-desc .rt-ed", "From transistors to processors.")
         me.wait_for_timeout(1500)
@@ -82,14 +82,14 @@ def main():
         expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # Oct 27 is in Week 7, this week
         v.click(".hb-tab:has-text('About')")
         expect(v.locator(".hb-main")).to_contain_text("From transistors to processors.")
-        expect(v.locator(".hb-title")).to_have_text("Computer Organization and Design")
-        expect(v.locator(".hb-sub")).to_contain_text("CSC258")
+        expect(v.locator(".hb-title")).to_have_text("CSC258: Computer Organization and Design")
+        expect(v.locator(".hb-sub")).to_have_text("Fall 2026 · University of Toronto")
         v.screenshot(path=f"{OUT}/203-hub-about.png", full_page=True)
         print("3 the hub shows them")
 
         # 3. The course page: a preview, with each tab's visibility.
         me.click("#lt-view-page"); me.wait_for_selector(C + ".hbe")
-        expect(me.locator(C + ".hb-title")).to_have_text("Computer Organization and Design")
+        expect(me.locator(C + ".hb-title")).to_have_text("CSC258: Computer Organization and Design")
         tabs = me.eval_on_selector_all(C + ".hbe-tab", "els => els.map(e => e.textContent.trim())")
         assert tabs == ["This week", "Announcements", "Lectures", "Evaluations", "About", "My accommodations"], tabs
         for tb in ["week", "announcements", "lectures", "evaluations", "about"]:
@@ -114,7 +114,7 @@ def main():
         expect(me.locator("#no-err")).to_contain_text("title")
         me.fill("#no-title", "Operating Systems"); me.click(".lt-modal [data-ok]")
         me.wait_for_selector("#lt-title")
-        expect(me.locator("#lt-title")).to_have_value("Operating Systems")
+        expect(me.locator("#lt-title")).to_have_text("Operating Systems")
         t = me.evaluate("location.hash").split("/")[-1]
         assert json.loads(srv.text("priv", f"csc369/{t}/about.json"))["title"] == "Operating Systems"
         me.screenshot(path=f"{OUT}/205-new-offering.png")

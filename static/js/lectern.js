@@ -671,12 +671,12 @@ function offeringPage(c, t) {
   const book = path => ` data-part="${path}"${!o.grades && loading ? " disabled" : ""}`;
   pageHTML(`<div class="lt-in">
     <div class="lt-off-head">
-      <div class="lt-off-id"><h1>${esc(c.toUpperCase())}</h1>
+      <div class="lt-off-id"><h1 class="lt-off-h1"><span>${esc(c.toUpperCase())}</span><span id="lt-h1-title"></span></h1>
         <p class="lt-term-line">${esc(termName(t))}</p>
         ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "an instructor"}</p>` : ""}</div>
       <div class="lt-off-acts"><button type="button" class="lt-btn primary" id="lt-view-page" title="The course page: a preview, and which tabs are only for people signed in">${ICON.page}View Course Page</button>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
-    <div class="lt-about" id="lt-about"><p class="lt-about-title">&nbsp;</p></div>
+    <div class="lt-about" id="lt-about"></div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
     ${role === "staff" ? `<p class="lt-note">As staff you can look at everything here (the gradebook, evaluations, exams, lectures and students), but not change anything.</p>` : ""}
@@ -752,13 +752,21 @@ async function aboutPart(c, t, edit) {
   if (!here()) return;
   const d = v.data;
   if (!edit) {
-    box.innerHTML = `<p class="lt-about-title">${esc(d.title) || "<i>No title yet</i>"}</p>${d.description ? `<div class="lt-about-desc">${window.HubView.markdown(d.description)}</div>` : ""}`;
+    if (d.title) $("#lt-h1-title").innerHTML = `<span class="lt-h1-colon">:</span> ${esc(d.title)}`;
+    $(".lt-off-h1").title = $(".lt-off-h1").textContent;
+    box.innerHTML = d.description ? `<div class="lt-about-desc">${window.HubView.markdown(d.description)}</div>` : "";
     return;
   }
-  box.innerHTML = `<input type="text" class="lt-about-title lt-about-in" id="lt-title" value="${esc(d.title)}" placeholder="The course's title" aria-label="The course's title">
-    <div class="lt-about-desc" id="lt-desc"></div>
+  $("#lt-h1-title").innerHTML = `<span class="lt-h1-colon">:</span> <span class="lt-h1-in" id="lt-title" contenteditable="plaintext-only" role="textbox" aria-label="The course's title" data-ph="Add the course's title" spellcheck="true">${esc(d.title)}</span>`;
+  box.innerHTML = `<div class="lt-about-desc" id="lt-desc"></div>
     <span class="lt-about-st" id="lt-about-st" aria-live="polite"></span>`;
-  $("#lt-title").oninput = e => { d.title = e.target.value.trim(); saveAboutSoon(c, t, o, v); };
+  const ti = $("#lt-title"), tEmpty = () => ti.classList.toggle("empty", !ti.textContent.trim());
+  tEmpty();
+  const full = () => { $(".lt-off-h1").title = d.title ? `${c.toUpperCase()}: ${d.title}` : ""; };
+  full();
+  ti.oninput = () => { d.title = ti.textContent.replace(/\s+/g, " ").trim(); tEmpty(); full(); saveAboutSoon(c, t, o, v); };
+  ti.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); ti.blur(); } };
+  ti.onpaste = e => { e.preventDefault(); document.execCommand("insertText", false, (e.clipboardData.getData("text/plain") || "").replace(/\s+/g, " ")); };
   richText($("#lt-desc"), { value: d.description, quiet: true, label: "The course's description", placeholder: "Add a description: what the course is about, in a few sentences. Students see it on the course page's About tab.",
     onChange: md => { d.description = md; saveAboutSoon(c, t, o, v); } });
 }

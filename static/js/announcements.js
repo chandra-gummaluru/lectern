@@ -82,7 +82,7 @@ export function announcementsPage(ctx, r) {
       <div class="lx-head"><h1>Announcements</h1><span class="spacer"></span>${status$()}${edit ? `<button type="button" class="lx-btn main" id="an-new">${ICON.plus}New Announcement</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list">${list.map(x => `<div class="lx-row" style="--c:${COLOR}" data-an="${esc(x.id)}" role="button" tabindex="0">
-          <div class="lx-main"><div class="lx-top"><i class="lx-dot"></i><h3>${esc(x.title || "Untitled")}</h3></div>
+          <div class="lx-main"><div class="lx-top"><h3>${esc(x.title || "Untitled")}</h3></div>
             <p class="lx-when">${esc(whenOf(x))}</p>${plain(x.body) ? `<p class="lx-clip">${esc(plain(x.body))}</p>` : ""}</div>
           ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm" data-dup="${esc(x.id)}" title="A copy of it, dated now">${COPY}Duplicate</button></div>` : ""}</div>`).join("")}</div>`
         : `<div class="lx-empty">No announcements yet.${edit ? " Write the first one: the course page shows it in the week of its date." : ""}</div>`}
@@ -112,7 +112,7 @@ export function announcementsPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" style="--c:${COLOR}">
-        <div class="lx-ed-head"><i class="lx-dot"></i><h2 id="an-h">${esc(x.title || "New announcement")}</h2>
+        <div class="lx-ed-head"><h2 id="an-h">${esc(x.title || "New announcement")}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid ann">
           <label class="lx-f">Title<input type="text" id="an-title" value="${esc(x.title)}" placeholder="e.g. Midterm rooms posted"${dis}></label>

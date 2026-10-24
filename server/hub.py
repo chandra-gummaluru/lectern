@@ -351,7 +351,8 @@ def hub_page(handle, course, term):
     if not page:
         abort(404)
     a = about_of(o["id"], course, term) or {}
-    return render_template("hub.html", title=_s(a.get("title"), 300) or _s(page.get("title"), 300) or f"{course.upper()} {term}",
+    name = _s(a.get("title"), 300) or _s(page.get("title"), 300)
+    return render_template("hub.html", title=f"{course.upper()}: {name}" if name else f"{course.upper()} {term}",
                            api=f"/api/hub/{o['handle']}/{course}/{term}")
 
 

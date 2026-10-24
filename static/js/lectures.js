@@ -339,7 +339,7 @@ export function lecturesPage(ctx, r) {
       ${taNote()}
       <div class="lx-editor" id="lw-ed" style="--c:${KIND_COLOR[k]}">
         <div class="lx-ed-head"><h2 id="lw-h">${esc(titleOf(x))}</h2>
-          <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-btn" id="lw-dup">${COPY}Duplicate</button><button type="button" class="lx-ic" id="lw-del" title="Delete this lecture" aria-label="Delete this lecture">${ICON.trash}</button>` : ""}</span></div>
+          <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this lecture" aria-label="Delete this lecture">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid">
           <div class="lx-f">Type<span class="lx-seg" role="group" aria-label="Type">${KINDS.map(([v, n]) => `<button type="button" data-kind="${v}" aria-pressed="${v === k}"${dis}>${n}</button>`).join("")}</span></div>
           <label class="lx-f">Label<input type="text" id="lw-label" value="${esc(x.label)}" placeholder="e.g. Lecture 07"${dis}></label>
@@ -400,7 +400,6 @@ export function lecturesPage(ctx, r) {
       } catch (e) { toast(e.message || `Couldn't upload ${file.name}.`); }
       if (here()) drawLecture(w, x);
     };
-    $("#lw-dup").onclick = () => duplicate(w, x);
     $("#lw-del").onclick = async () => {
       if (!await confirmBox("Delete this lecture?", `${esc(titleOf(x))} goes from the course page, with its files and links (uploaded files stay in the course's files).`, "Delete")) return;
       w.cards = w.cards.filter(z => z !== x); changed(); toWeek(w);

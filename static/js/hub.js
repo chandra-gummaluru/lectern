@@ -43,8 +43,9 @@ function draw() {
 
 function header() {
   const c = D.course, v = D.viewer;
-  $("hb-sub").textContent = [c.code, c.term, c.school].filter(Boolean).join(" · ");
-  $("hb-title").textContent = c.title || c.code || "Course page";
+  $("hb-sub").textContent = [c.term, c.school].filter(Boolean).join(" · ");
+  $("hb-title").textContent = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
+  $("hb-title").title = $("hb-title").textContent;
   const ROLE = { owner: "Instructor", instructor: "Instructor", ta: "TA", student: "Student" };
   // Students sign in to this course page (its own sign-in: email and a code); the teaching team is signed in to Lectern.
   $("hb-who").innerHTML = v.signedIn

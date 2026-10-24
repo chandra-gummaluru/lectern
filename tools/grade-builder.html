@@ -2921,7 +2921,7 @@ function drawEvalEditor() {
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
   const labels = [...new Set([...counted().map(x => String(x.label || "").trim()).filter(Boolean), ...LABEL_IDEAS])];
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}"><i class="dot"></i><h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="btn" data-act="ev-dup" data-id="${esc(e.id)}">${PIC.copy}Duplicate</button><button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}"><i class="dot"></i><h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
       ${fld("label", "Label", e.label, "text", ' list="ev-labels" placeholder="e.g. Lab" autocomplete="off"')}

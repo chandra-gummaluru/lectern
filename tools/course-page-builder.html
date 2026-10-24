@@ -1204,11 +1204,11 @@ function hubPreview(tab) {
   const body = locked(tab)
     ? `<div class="hb-locked">${HV().LOCK}<h2>${esc(tabTitle(tab))}</h2><p>${tab === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p><span class="hb-btn primary">Sign in</span></div>`
     : HV().draw(D, tab, ui.week);
-  const m = { ...model, ...(aboutPart || {}) }, sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
+  const m = { ...model, ...(aboutPart || {}) }, sub = [m.term, m.school].filter(x => (x || "").trim()).join(" · ");
   const seg = [["in", "Signed in"], ["out", "Visitor"]].map(([v, t]) => `<button type="button" class="c${ui.preview === v ? " on" : ""}" data-act="preview-as" data-v="${v}" aria-pressed="${ui.preview === v}">${t}</button>`).join("");
   return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">Preview</span></nav>
     <div class="hb hbe hbe-pv"><div class="hbe-pvbar"><span class="grow"><b>Preview</b> · what ${out ? "a visitor who isn't signed in" : "people signed in to the course"} will see once you save.</span><span class="hbe-seg" role="group" aria-label="See it as">${seg}</span><button type="button" class="c primary" data-act="preview">Back to Editing</button></div>
-    <header class="hb-head"><div class="hb-head-in"><div class="hb-titles"><p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc(m.title || m.code || "Course page")}</h1></div>
+    <header class="hb-head"><div class="hb-head-in"><div class="hb-titles"><p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc([m.code, m.title].filter(x => (x || "").trim()).join(": ") || "Course page")}</h1></div>
       <div class="hb-who">${out ? `<span class="hb-btn">Sign in</span>` : ""}</div></div></header>
     <nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>
     <main class="hb-main">${body}</main></div>`;
@@ -1223,9 +1223,9 @@ function hubEditor() {
     return `<span class="hb-tab hbe-tab" role="tab" tabindex="0" data-act="tab" data-v="${id}" aria-selected="${id === tab}">${esc(t)}${vis}</span>`;
   }).join("");
   const body = HV().draw(hubData(), tab);
-  const sub = [m.code, m.term, m.school].filter(x => (x || "").trim()).join(" · ");
+  const sub = [m.term, m.school].filter(x => (x || "").trim()).join(" · ");
   const head = `<header class="hb-head"><div class="hb-head-in"><div class="hb-titles">
-      <p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc(m.title || m.code || "Course page")}</h1></div>
+      <p class="hb-sub">${esc(sub) || "&nbsp;"}</p><h1 class="hb-title">${esc([m.code, m.title].filter(x => (x || "").trim()).join(": ") || "Course page")}</h1></div>
       <div class="hb-who"><button type="button" class="c" data-act="preview" title="See the course page as a visitor who isn't signed in sees it">${EYE}Preview</button>${gh.sha && hubData().pages ? `<a class="c" href="${esc(hubData().pages)}" target="_blank" rel="noopener" title="The course page as students see it">Live page ${HICON.out}</a>` : ""}</div></div></header>`;
   return `<nav class="crumbs" aria-label="Where you are"><span class="cur" aria-current="page">${esc(tabTitle(tab))}</span></nav>
     <div class="hb hbe">${head}<nav class="hb-tabs" aria-label="Course page tabs"><div class="hb-tabs-in" role="tablist">${tabs}</div></nav>

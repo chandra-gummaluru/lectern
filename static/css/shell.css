@@ -684,3 +684,16 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lxw-time input.bad { border-color: #c4554d; }
 .lxw-pop .lxw-clear { flex: none; height: 32px; padding: 0 12px; border: 1px solid var(--lx-line, #b4b6ba); border-radius: 7px; background: var(--home-card); font: 600 12.5px var(--font-ui); }
 .lxw-pop .lxw-clear:hover { border-color: var(--accent); }
+.lt-btn.lt-st-send { height: 32px; padding: 0 12px; font-size: 13px; gap: 6px; }
+.lt-btn.lt-st-send svg { width: 15px; height: 15px; }
+
+/* The offering's heading: its code, then its title, typed right there (aboutPart) */
+.lt-off-h1 .lt-h1-colon { margin-left: .02em; }
+.lt-h1-in { display: inline; padding: 0 6px; margin-left: -6px; border-radius: 8px; outline: none; cursor: text; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.lt-h1-in:hover { box-shadow: 0 0 0 1px var(--home-line-2); }
+.lt-h1-in:focus { box-shadow: 0 0 0 2px var(--accent); background: var(--home-card); }
+.lt-h1-in.empty::before { content: attr(data-ph); color: var(--home-ink-3); font-style: italic; }
+.lt-off-id { min-width: 0; flex: 1; }
+/* One line: a title too long for it ends in "…" (while it's being typed in, it shows in full) */
+.lt-off-h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-off-h1:focus-within { white-space: normal; overflow: visible; }

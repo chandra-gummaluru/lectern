@@ -61,7 +61,6 @@ def main():
         me.fill("#sd-email", "maya.castillo@mail.utoronto.ca"); me.click(".lt-modal [data-ok]")
         me.wait_for_selector(S + ".lt-st-list .lt-orow")
         assert not me.query_selector("#sf-id"), "the fields can still change"
-        expect(me.locator(S + ".lt-st-fixed")).to_contain_text("Student Number")
         me.click("#st-import"); me.wait_for_selector(".lt-st-drop")
         me.set_input_files(".lt-st-drop input", files=[{"name": "classlist.csv", "mimeType": "text/csv", "buffer": CSV.encode()}])
         me.wait_for_selector("#im-sum")

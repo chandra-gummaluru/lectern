@@ -125,7 +125,7 @@ export async function studentsCard(ctx, c, t) {
           ${custom.map(f => `<span class="lt-st-chip">${esc(f.label)}<button type="button" data-sf-del="${esc(f.id)}" aria-label="Remove the field ${esc(f.label)}"${dis}>×</button></span>`).join("")}
           <form class="lt-st-newf" id="sf-new"><input type="text" id="sf-label" placeholder="Another field, e.g. UTORid" aria-label="Another field"${dis}><button type="submit" class="lt-btn add"${dis}>${ICON.plus}Add</button></form></div>
       </div>`
-      : `<p class="lt-part-text lt-st-fixed"><b>Each student has</b> ${esc(F.idLabel)}, a first and last name, an email${F.emailDomain ? ` at @${esc(F.emailDomain)}` : ""}${custom.length ? `, and ${custom.map(f => esc(f.label)).join(", ")}` : ""}.${lead ? " Fixed, now there are students." : ""}</p>`;
+      : "";
     box.innerHTML = `<p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks. The course page's link: <code>${esc(info.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
       ${held ? `<p class="lt-note lt-st-note">${UNSAVED}</p>` : ""}
       ${lead && !info.email ? `<p class="lt-note lt-st-note">Email isn't set up on this server, so Lectern can't email students their link or a sign-in code.</p>` : ""}

@@ -164,7 +164,7 @@ export function lecturesPage(ctx, r) {
       <div class="lx-main"><div class="lx-top"><h3>${esc(titleOf(x))}</h3></div>
         <p class="lx-when">${esc(lecWhen(x))}</p><p>${esc(lecMore(x))}</p></div>
       ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
-  const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No lectures this week.${edit ? " Add one, or drag one here." : ""}</p></div>`;
+  const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No lectures this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 
   // ── Every week ──
   function drawList() {
@@ -185,7 +185,7 @@ export function lecturesPage(ctx, r) {
       <div class="lx-row grp" data-week="${esc(w.id)}" role="button" tabindex="0">
         <div class="lx-main"><div class="lx-top"><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
       ${subsHTML(w)}
-      ${edit ? `<div class="lx-foot"><button type="button" class="lx-add" data-add-lec="${esc(w.id)}">${ICON.plus}Add a Lecture</button></div>` : `<div class="lx-foot"></div>`}
+      <div class="lx-foot"></div>
     </div>`;
   const breakHTML = w => `<div class="lx-break" data-unit="${esc(w.id)}"${edit ? ' draggable="true"' : ""}>${edit
     ? `<input type="text" data-break-text="${esc(w.id)}" value="${esc(w.text || "")}" placeholder="e.g. Reading Week" aria-label="Divider"><button type="button" class="lx-ic quiet" data-del-break="${esc(w.id)}" title="Delete this divider" aria-label="Delete this divider">${ICON.trash}</button>`
@@ -199,7 +199,6 @@ export function lecturesPage(ctx, r) {
       el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); open(el); } };
     });
     if (!edit) return;
-    root.querySelectorAll("[data-add-lec]").forEach(b => { b.onclick = () => addLecture(weekById(b.dataset.addLec)); });
     root.querySelectorAll("[data-dup]").forEach(b => { b.onclick = e => { e.stopPropagation(); duplicate(weekById(b.dataset.w), allCards().get(b.dataset.dup)); }; });
     root.querySelectorAll("[data-break-text]").forEach(inp => { inp.oninput = () => { weekById(inp.dataset.breakText).text = inp.value; changed(); }; });
     root.querySelectorAll("[data-del-break]").forEach(b => { b.onclick = () => { st.data.weeks = weeks().filter(w => w.id !== b.dataset.delBreak); changed(); draw(); }; });

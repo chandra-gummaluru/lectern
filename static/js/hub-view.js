@@ -93,6 +93,7 @@ function weekRange(w, year) {
 // ── Icons ────────────────────────────────────────────────────────────
 const svg = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
 const LOCK = svg('<rect x="4.5" y="11" width="15" height="9.5" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/>');
+const CHEV = svg('<path d="m6 9 6 6 6-6"/>').replace("<svg", '<svg class="hb-chev"');
 const PREV = svg('<path d="m15 18-6-6 6-6"/>'), NEXT = svg('<path d="m9 18 6-6-6-6"/>');
 const TRASH = svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>');
 const GRIP = '<svg class="hbe-grip" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
@@ -128,10 +129,12 @@ function annHTML(a, meta) {
   return `<article class="hb-ann${edCls(a._p)}"${opens(a._p, "Edit this announcement")}><p class="hb-ann-meta">${esc([meta, a.date].filter(Boolean).join(" · "))}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : EDIT ? "<h3>Untitled</h3>" : ""}${markdown(a.body)}</article>`;
 }
 // The Announcements tab: each one with its day beside it, on a line down the page.
-function feedHTML(a) {
+// One announcement on the Announcements tab: its date and time, its title, and (open) its message. The newest is
+// open; the others open with a click.
+function feedHTML(a, open) {
   const d = fromIso(stampDay(a.date)), tm = (/(\d{1,2}:\d\d)/.exec(a.date || "") || [])[1] || "";
-  return `<li class="hb-feed-i"><div class="hb-feed-d">${d ? `<span>${esc(d.toLocaleDateString("en-CA", { month: "short" }))}</span><b>${d.getDate()}</b>${tm ? `<small>${esc(tm)}</small>` : ""}` : "<span>—</span>"}</div>
-    <article class="hb-ann${edCls(a._p)}"${opens(a._p, "Edit this announcement")}>${a.week ? `<p class="hb-ann-meta">${esc(a.week)}</p>` : ""}${a.title ? `<h3>${esc(a.title)}</h3>` : ""}${markdown(a.body)}</article></li>`;
+  const when = d ? `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}${tm ? ` · ${tm}` : ""}` : a.date || "";
+  return `<details class="hb-ann hb-ann-x"${open ? " open" : ""}><summary>${when ? `<p class="hb-ann-meta">${esc(when)}</p>` : ""}<h3>${esc(a.title || "Announcement")}</h3>${CHEV}</summary><div class="hb-ann-b">${markdown(a.body)}</div></details>`;
 }
 const initials = n => String(n || "").split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "·";
 // The weights, as one bar: each evaluation (or group) its share of the course grade.
@@ -315,7 +318,22 @@ const DRAW = {
 
   announcements() {
     const items = data("announcements").items.slice().sort((a, b) => annTime(b) - annTime(a));
-    return `<h2 class="hb-h2">Announcements</h2><p class="hb-lede">News for the class, newest first.</p>${items.length ? `<ol class="hb-feed">${items.map(feedHTML).join("")}</ol>` : '<p class="hb-empty">No announcements yet.</p>'}`;
+    const head = `<h2 class="hb-h2">Announcements</h2><p class="hb-lede">News for the class, newest first.</p>`;
+    if (!items.length) return head + '<p class="hb-empty">No announcements yet.</p>';
+    // By week, as on the Lectures tab: the week on the left, its announcements beside it (each with its date).
+    const cal = (data("week") || {}).weeks || [], groups = [];
+    items.forEach(a => {
+      const key = a.wi >= 0 ? a.wi : `w:${a.week || ""}`;
+      let g = groups.find(x => x.key === key);
+      if (!g) groups.push(g = { key, wi: a.wi, label: a.week || "Announcements", items: [] });
+      g.items.push(a);
+    });
+    let first = true;
+    return head + `<div class="hb-term hb-anns">${groups.map((g, k) => {
+      const wk = cal.find(w => w.i === g.wi);
+      return `<section class="hb-week${k === 0 ? " now" : ""}"><div class="hb-week-h"><h3>${esc(g.label)}</h3>${wk && wk.dates ? `<span class="d">${esc(wk.dates)}</span>` : ""}</div>
+        <div class="hb-week-b hb-ann-list">${g.items.map(a => { const h = feedHTML(a, first); first = false; return h; }).join("")}</div></section>`;
+    }).join("")}</div>`;
   },
 
   accommodations() {

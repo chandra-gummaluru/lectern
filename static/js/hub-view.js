@@ -185,7 +185,7 @@ const DRAW = {
     const L = data("lectures"), lw = L ? L.weeks.find(x => x.i === w.i) : null;
     const E = data("evaluations"), evs = E ? (E.evals || []).filter(e => inWeek(e.date)).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)) : [];
     const A = data("announcements"), anns = A ? A.items.filter(a => a.wi === w.i).sort((a, b) => annTime(b) - annTime(a)) : [];
-    const ms = meetings();
+    const ms = meetings().filter(m => m.start);
 
     // The days: meetings (every week, on their day), evaluations and dated lectures.
     const days = [];
@@ -198,26 +198,18 @@ const DRAW = {
       days.push(`<li${d === now ? ' class="today"' : ""}><div class="dd">${DAY3[dow]}<b>${fromIso(d).getDate()}</b></div><div>${items.map(x => x.h).join("") || '<span class="hb-nothing">—</span>'}</div></li>`);
     }
 
-    let left = "";
-    if (A) {
-      left += `<h3 class="hb-h3">Announcements</h3>`;
-      if (anns.length) left += anns.map(a => annHTML(a, "")).join("");
-      else {
-        const latest = A.items.filter(a => a.wi < w.i).sort((a, b) => annTime(b) - annTime(a))[0];
-        left += latest ? annHTML(latest, `Latest · ${latest.week}`) : `<p class="hb-nothing">None this week.</p>`;
-      }
-    }
-    if (lw) {
-      left += `<h3 class="hb-h3">Lectures</h3>`;
-      left += lw.cards.length || lw.noClass ? `<div class="hb-grid">${lw.cards.map(c => lectureCard(c)).join("")}${lw.noClass ? `<div class="hb-card nocl">No class${lw.noClass > 1 ? ` (${lw.noClass} hours)` : ""}</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`;
-    }
-    if (E) left += `<h3 class="hb-h3">Evaluations</h3>${evs.length ? `<div class="hb-grid">${evs.map(evalCard).join("")}</div>` : `<p class="hb-nothing">Nothing due this week.</p>`}`;
+    // Only what there is: a part with nothing in it this week isn't shown (no empty headings).
+    let main = "";
+    const latest = A && !anns.length ? A.items.filter(a => a.wi < w.i).sort((a, b) => annTime(b) - annTime(a))[0] : null;
+    if (anns.length || latest) main += `<h3 class="hb-h3">Announcements</h3>${anns.length ? anns.map(a => annHTML(a, "")).join("") : annHTML(latest, `Latest · ${latest.week}`)}`;
+    if (lw && (lw.cards.length || lw.noClass)) main += `<h3 class="hb-h3">Lectures</h3><div class="hb-grid">${lw.cards.map(c => lectureCard(c)).join("")}${lw.noClass ? `<div class="hb-card nocl">No class${lw.noClass > 1 ? ` (${lw.noClass} hours)` : ""}</div>` : ""}</div>`;
+    if (evs.length) main += `<h3 class="hb-h3">Evaluations</h3><div class="hb-grid">${evs.map(evalCard).join("")}</div>`;
 
     return `<div class="hb-weeknav">
         <div class="grow"><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2><span class="d">${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</span></div>
       </div>${note ? `<p class="hb-note">${esc(note)}</p>` : ""}
-      <div class="hb-cols"><div>${left || '<p class="hb-nothing">Nothing to show for this week.</p>'}</div>
-        <div><h3 class="hb-h3">Day by day</h3><ul class="hb-days">${days.join("")}</ul></div></div>`;
+      <div class="hb-cols"><div><h3 class="hb-h3">Day by day</h3><ul class="hb-days">${days.join("")}</ul></div>
+        <div>${main || '<p class="hb-nothing hb-nothing-wk">No announcements, lectures or evaluations this week.</p>'}</div></div>`;
   },
 
   lectures() {

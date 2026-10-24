@@ -912,7 +912,7 @@ const S = {
   tmem: "padding: 9px 14px 9px 30px; vertical-align: top; color: var(--ink-2); border-top: 1px solid var(--line); font-size: 14px;",
   tmemd: "padding: 9px 14px; vertical-align: top; color: var(--ink-3); border-top: 1px solid var(--line); font-size: 14px;",
   // Announcements reuse the lecture-card look (white card, grey label strip), at full width.
-  ann: "margin: 0 0 12px 0; background-color: var(--card, #fff); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; overflow: hidden;",
+  ann: "margin: 0 0 12px 0; background-color: var(--card, #fff); border: 1px solid var(--line); border-radius: 12px; overflow: hidden;",
   annhead: "padding: 14px 18px 0 18px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3);",
   anndate: "float: right; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-3);",
   annpad: "padding: 4px 18px 6px 18px;",
@@ -1811,7 +1811,7 @@ function announcement(a, p, i, n) {
   const list = p.replace(/\.\d+$/, "");
   return `
         <div class="e-ann" style="${S.ann}" data-act="editann" data-path="${p}" title="Edit this announcement">
-          <div style="${S.annhead}">${a.date ? `<span style="${S.anndate}">${esc(a.date)}</span>` : ""}Announcement</div>
+          ${a.date ? `<div style="${S.annhead}">${esc(a.date)}</div>` : ""}
           <div style="${S.annpad}">${a.title ? `
             <h4 style="${S.anntitle}">${esc(a.title)}</h4>` : ""}
             ${a.body ? markdown(a.body) : '<p style="color: #a3a7ae; margin: 0 0 12px;">No message</p>'}

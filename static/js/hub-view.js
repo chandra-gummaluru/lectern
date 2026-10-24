@@ -243,7 +243,16 @@ const DRAW = {
     const files = e => fileLinks(E.files[e.id]);
     const note = e => [...(e.notes || []), e.accom && e.accom.standard && e.accom.approval ? "This applies only if you request it and it's approved." : ""].filter(Boolean).join(" ");
     const edit = e => (EDIT ? `<button type="button" class="hbe-mini" data-act="open" data-path="evalFiles.${esc(e.id)}" title="Files and links for ${esc(e.name)}">${(E.files[e.id] || []).length ? "Edit files" : "+ Files"}</button>` : "");
-    const cell = e => `${esc(note(e))}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${edit(e)}`;
+    // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
+    const request = e => {
+      const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+      const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null, rq = E.request;
+      if (by && !isNaN(by) && by < new Date()) return `<div class="hb-req-off">The deadline for accommodation requests has passed.</div>`;
+      const when = by && !isNaN(by) ? `<span class="hb-req-by">Request by ${esc(by.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" }))}, ${esc(a.byTime || "23:59")}</span>` : "";
+      const url = rq && rq.url ? `${rq.url}?${new URLSearchParams({ r: rq.r, o: rq.o, e: e.id })}` : "";
+      return `<div class="hb-req">${url ? `<a class="hb-btn hb-req-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn hb-req-btn">Request Accommodation</span>`}${when}</div>`;
+    };
+    const cell = e => `${esc(note(e))}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${request(e)}${edit(e)}`;
     const rows = [], total = E.units.reduce((t, u) => t + Number(u.weight || 0), 0);
     E.units.forEach(u => {
       if (u.kind === "group") {
@@ -251,11 +260,9 @@ const DRAW = {
         u.members.forEach(m => rows.push(`<tr class="sub"><td>${esc(m.name)}</td><td></td><td class="nw">${esc(evalWhen(m))}</td><td>${cell(m)}</td></tr>`));
       } else rows.push(`<tr><td>${esc(u.name)}</td><td>${fmtW(u.weight)}%</td><td class="nw">${esc(evalWhen(u))}</td><td>${cell(u)}</td></tr>`);
     });
-    const makeups = (E.evals || []).filter(e => e.makeupFor);
     return `<h2 class="hb-h2">Evaluations</h2><p class="hb-lede">Every evaluation, its weight and when it is. Together they make up your course grade.</p>
       <div class="hb-tw"><table class="hb-t"><thead><tr><th>Evaluation</th><th>Weight</th><th>When</th><th>Notes</th></tr></thead><tbody>${rows.join("")}</tbody>
-      <tfoot><tr><td>Total</td><td>${fmtW(total)}%</td><td></td><td></td></tr></tfoot></table></div>
-      ${makeups.length ? `<h3 class="hb-h3">Makeups</h3><div class="hb-grid">${makeups.map(evalCard).join("")}</div>` : ""}`;
+      <tfoot><tr><td>Total</td><td>${fmtW(total)}%</td><td></td><td></td></tr></tfoot></table></div>`;
   },
 
   announcements() {
@@ -323,7 +330,8 @@ function fromPage(page, year) {
     overview: { description: str(page.description), sections: secs.filter(([s]) => OVERVIEW.includes(s.type)).map(([s]) => overviewSection(s)).filter(x => x.type !== "meetings" || x.items.length || x.blocks.length) },
     lectures: { weeks, lists },
     announcements: { items: anns },
-    evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: Object.fromEntries(Object.entries(ef).map(([k, v]) => [k, filesOf(v)])) },
+    evaluations: { units: arr(scheme.units), evals: arr(scheme.evals), files: Object.fromEntries(Object.entries(ef).map(([k, v]) => [k, filesOf(v)])),
+      request: scheme.requests && scheme.requests.url ? { url: scheme.requests.url, r: scheme.requests.repo, o: scheme.requests.offering } : null },
     policies: { sections: pol.map(s => ({ title: str(s.title), caption: str(s.caption), blocks: blocksOf(s.blocks) })), rules },
     week: { weeks: weeks.map(w => ({ i: w.i, label: w.label, dates: w.dates || "", start: w.start || "", end: w.end || "", isBreak: w.isBreak })) },
     accommodations: {},

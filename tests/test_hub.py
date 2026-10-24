@@ -130,3 +130,9 @@ def test_hidden_policies_stay_off_the_page(client, user, anon):
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
     assert [b["heading"] for b in j["data"]["policies"]["sections"][0]["blocks"]] == ["Late work"]
     assert "Secret" not in json.dumps(j)
+
+
+def test_evaluations_say_where_to_request_accommodations(client, user, anon):
+    publish(user)
+    rq = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["evaluations"]["request"]
+    assert rq["url"].endswith("/request") and rq["r"] == "chandra" and rq["o"] == "csc258/f26"

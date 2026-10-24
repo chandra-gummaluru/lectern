@@ -281,6 +281,8 @@ def hub_api(handle, course, term):
         tabs.append({"id": tid, "title": title, "visibility": vis[tid], "open": open_})
         if open_:
             data[tid] = all_b[tid]
+    if "evaluations" in data:   # where an evaluation's Request Accommodation button goes (accommodations.py's form)
+        data["evaluations"]["request"] = {"url": f"{app_url()}request", "r": o["handle"], "o": offering}
     return jsonify(
         course={"title": _s(page.get("title"), 300), "code": _s(page.get("code"), 60), "term": _s(page.get("term"), 100),
                 "school": _s(page.get("school"), 200), "offering": offering, "year": year},

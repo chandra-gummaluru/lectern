@@ -244,11 +244,11 @@ const DRAW = {
     for (let d = mon; d <= addDays(mon, 6); d = addDays(d, 1)) {   // Monday to Sunday
       const dow = (fromIso(d).getDay() + 6) % 7 + 1, items = [];
       ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev"><span class="tm">${esc(hhmm(m.start, m.end))}</span><span class="k">${esc(meetingName(m))}${meetingSub(m) ? ` ${esc(meetingSub(m))}` : ""}</span>${esc(m.who)}${m.where ? ` <span class="wh">${m.who ? "· " : ""}${esc(m.where)}</span>` : ""}</div>` }));
-      evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due"><span class="tm">${esc(e.time || "")}</span><span class="k">${e.type === "test" ? "Test" : "Due"}</span>${esc(e.name)}</div>` }));
+      evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due${e.type === "test" ? " test" : ""}"><span class="tm">${esc(e.time || "")}</span><span class="k">${e.type === "test" ? "Test" : "Due"}</span>${esc(e.name)}</div>` }));
       (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => items.push({ t: (/(\d\d:\d\d)/.exec(c.date) || [])[1] || "", h: `<div class="hb-ev"><span class="tm">${esc((/(\d\d:\d\d)/.exec(c.date) || [])[1] || "")}</span><span class="k">${esc(c.label)}</span>${esc(c.title)}</div>` }));
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
       if (!items.length) continue;   // only the days that have something on them
-      days.push(`<li class="${d === now ? "today" : ""}"><div class="dd"><span>${DAY3[dow]}</span><b>${fromIso(d).getDate()}</b></div><div class="hb-day-items">${items.map(x => x.h).join("")}</div></li>`);
+      days.push(`<article class="hb-day${d === now ? " today" : ""}"><header><span>${d === now ? "Today" : DAY[dow]}</span><b>${esc(fmt(d, { month: "short", day: "numeric" }))}</b></header><div class="hb-day-items">${items.map(x => x.h).join("")}</div></article>`);
     }
 
     // Only what there is: a part with nothing in it this week isn't shown (no empty headings).
@@ -256,13 +256,14 @@ const DRAW = {
     const latest = A && !anns.length ? A.items.filter(a => a.wi < w.i).sort((a, b) => annTime(b) - annTime(a))[0] : null;
     if (anns.length || latest) main += `<h3 class="hb-h3">Announcements</h3>${anns.length ? anns.map(a => annHTML(a, "")).join("") : annHTML(latest, `Latest · ${latest.week}`)}`;
     if (lw && (lw.cards.length || lw.noClass)) main += `<h3 class="hb-h3">Lectures</h3><div class="hb-grid">${lw.cards.map(c => lectureCard(c)).join("")}${lw.noClass ? `<div class="hb-card nocl">No class${lw.noClass > 1 ? ` (${lw.noClass} hours)` : ""}</div>` : ""}</div>`;
-    if (evs.length) main += `<h3 class="hb-h3">Evaluations</h3><div class="hb-grid">${evs.map(evalCard).join("")}</div>`;
 
+    // One column, so it reads the same whatever the week has: the days that have something on them (side by side),
+    // then the week's announcements, then its lectures. A part with nothing in it isn't shown.
+    const daysHTML = days.length ? `<h3 class="hb-h3">Day by day</h3><div class="hb-daygrid">${days.join("")}</div>` : "";
     return `<div class="hb-weeknav">
         <div class="grow"><p class="hb-eyebrow">This week · ${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</p><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2></div>
       </div>${note ? `<p class="hb-note">${esc(note)}</p>` : ""}
-      <div class="hb-cols"><div><h3 class="hb-h3">Day by day</h3>${days.length ? `<ol class="hb-days">${days.join("")}</ol>` : `<p class="hb-nothing">Nothing on a particular day this week.</p>`}</div>
-        <div>${main || '<p class="hb-nothing hb-nothing-wk">No announcements, lectures or evaluations this week.</p>'}</div></div>`;
+      ${daysHTML + main || '<p class="hb-nothing hb-nothing-wk">Nothing on this week: no classes, deadlines or announcements.</p>'}`;
   },
 
   lectures() {
@@ -285,7 +286,7 @@ const DRAW = {
       const name = EDIT ? `<button type="button" class="hbe-wname" data-act="open" data-path="${esc(w._p)}" title="Edit this week: its dates, topic, hours, deadlines and announcements">${esc(w.label || "Week")}</button>` : esc(w.label);
       const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("");
       const add = EDIT ? `<div class="hbe-adds sm"><button type="button" class="hbe-add" data-act="lec-add" data-path="${esc(w._p)}" data-lfree="${esc(w._p)}" title="Add a lecture at the end of this week (or drop a lecture here to move it to the end)">+ Add Lecture</button></div>` : "";
-      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}${w.i === cur ? `<span class="hb-now">This week</span>` : ""}<h3>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}</div>
+      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}${w.i === cur ? `<span class="hb-now">This week</span>` : ""}<h3 title="${esc(w.label || "")}">${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}</div>
         <div class="hb-week-b">${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`}${add}</div></section>${tail}`;
     }).join("") + `</div>`;
   },
@@ -306,14 +307,12 @@ const DRAW = {
       return `<div class="hb-req">${url ? `<a class="hb-btn hb-req-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn hb-req-btn">Request Accommodation</span>`}${when}</div>`;
     };
     const extras = e => `${note(e) ? `<p class="hb-eval-n">${esc(note(e))}</p>` : ""}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${request(e)}${edit(e)}`;
-    const total = E.units.reduce((t, u) => t + Number(u.weight || 0), 0);
-    const one = u => `<article class="hb-eval${u.type === "test" ? " test" : ""}"><div class="hb-eval-m"><p class="hb-eval-k">${u.type === "test" ? "Test" : "Assignment"}${evalWhen(u) ? ` · ${esc(evalWhen(u))}` : ""}</p><h3>${esc(u.name)}</h3>${extras(u)}</div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
+    const one = u => `<article class="hb-eval${u.type === "test" ? " test" : ""}"><div class="hb-eval-m">${evalWhen(u) ? `<p class="hb-eval-k">${esc(evalWhen(u).replace(/^Due /, ""))}</p>` : ""}<h3>${esc(u.name)}</h3>${extras(u)}</div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
     const group = u => `<article class="hb-eval grp"><div class="hb-eval-m"><p class="hb-eval-k">${u.count} ${u.count === 1 ? "part" : "parts"}</p><h3>${esc(u.name)}</h3><p class="hb-eval-n">${esc(`The best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.`)}</p>
         <ul class="hb-eval-subs">${u.members.map(m => `<li><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${esc(evalWhen(m))}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
     return `<h2 class="hb-h2">Evaluations</h2><p class="hb-lede">Every evaluation, its weight and when it is. Together they make up your course grade.</p>
       ${weightBar(E.units)}
-      <div class="hb-evals">${E.units.map(u => (u.kind === "group" ? group(u) : one(u))).join("")}</div>
-      <p class="hb-eval-total">Total <b>${fmtW(total)}%</b></p>`;
+      <div class="hb-evals">${E.units.map(u => (u.kind === "group" ? group(u) : one(u))).join("")}</div>`;
   },
 
   announcements() {
@@ -331,7 +330,7 @@ const DRAW = {
     let first = true;
     return head + `<div class="hb-term hb-anns">${groups.map((g, k) => {
       const wk = cal.find(w => w.i === g.wi);
-      return `<section class="hb-week${k === 0 ? " now" : ""}"><div class="hb-week-h"><h3>${esc(g.label)}</h3>${wk && wk.dates ? `<span class="d">${esc(wk.dates)}</span>` : ""}</div>
+      return `<section class="hb-week${k === 0 ? " now" : ""}"><div class="hb-week-h"><h3 title="${esc(g.label)}">${esc(g.label)}</h3>${wk && wk.dates ? `<span class="d">${esc(wk.dates)}</span>` : ""}</div>
         <div class="hb-week-b hb-ann-list">${g.items.map(a => { const h = feedHTML(a, first); first = false; return h; }).join("")}</div></section>`;
     }).join("")}</div>`;
   },

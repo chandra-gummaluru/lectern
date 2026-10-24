@@ -438,3 +438,6 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
   .hb-dtl li:last-child::before { display: none; }
   .hb-dtl .hb-tl-d i { position: static; margin-right: 6px; }
 }
+/* Test / Due beside a name: a soft, quiet label */
+.hb-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; text-transform: none; line-height: 1; background: var(--strip); color: var(--ink-2); box-shadow: none; }
+.hb-tag.dk { background: var(--accent-bg); color: var(--accent); }

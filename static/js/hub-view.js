@@ -232,7 +232,7 @@ const DRAW = {
       const name = EDIT ? `<button type="button" class="hbe-wname" data-act="open" data-path="${esc(w._p)}" title="Edit this week: its dates, topic, hours, deadlines and announcements">${esc(w.label || "Week")}</button>` : esc(w.label);
       const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("");
       const add = EDIT ? `<div class="hbe-adds sm"><button type="button" class="hbe-add" data-act="lec-add" data-path="${esc(w._p)}" data-lfree="${esc(w._p)}" title="Add a lecture at the end of this week (or drop a lecture here to move it to the end)">+ Add Lecture</button></div>` : "";
-      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}<h3${w.i === cur && mondayOf(w.start) <= now ? ' data-now="This week"' : ""}>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}</div>
+      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}<h3>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}</div>
         ${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`}${add}</section>${tail}`;
     }).join("");
   },

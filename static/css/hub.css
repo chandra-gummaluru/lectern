@@ -125,7 +125,6 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 .hb-week-h .d { color: var(--ink-3); font-size: 13px; font-weight: 600; }
 .hb-week-h .t { color: var(--ink-2); flex-basis: 100%; }
 .hb-week-h .hb-pills { margin-left: auto; }
-.hb-week.now .hb-week-h h3::after { content: attr(data-now); font: 600 11px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: var(--accent-bg); border-radius: 99px; padding: 2px 8px; margin-left: 10px; vertical-align: 4px; }
 .hb-break { margin: 6px 0 26px; padding: 10px 16px; border-radius: var(--r); background: var(--strip); color: var(--ink-2); font-weight: 600; text-align: center; }
 
 /* Announcements */

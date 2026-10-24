@@ -39,8 +39,8 @@ def main():
         me.screenshot(path=f"{OUT}/200-offering.png", full_page=True)
 
         # 1. Announcements
-        me.click("#lt-anns"); me.wait_for_selector(".an-card")
-        expect(me.locator(".an-card").first).to_contain_text("Welcome to CSC258!")
+        me.click("#lt-anns"); me.wait_for_selector("[data-an]")
+        expect(me.locator("[data-an]").first).to_contain_text("Welcome to CSC258!")
         me.click("#an-new"); me.wait_for_selector("#an-title")
         me.fill("#an-title", "Midterm rooms posted")
         me.fill("#an-date", "2026-10-27"); me.dispatch_event("#an-date", "change")

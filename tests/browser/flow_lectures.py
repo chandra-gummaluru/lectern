@@ -34,14 +34,14 @@ def main():
         me.wait_for_selector("#lt-lectures")
         me.screenshot(path=f"{OUT}/180-offering.png")
         me.click("#lt-lectures")
-        me.wait_for_selector(".lw-week")
-        assert me.locator(".lw-week").count() == 12 and me.locator(".lw-break").count() == 1
+        me.wait_for_selector(".lx-group")
+        assert me.locator(".lx-group").count() == 12 and me.locator(".lx-break").count() == 1
         assert "Lectures" in me.inner_text("#lt-path")
         me.screenshot(path=f"{OUT}/181-lectures.png")
         assert srv.text("priv", "csc258/f26/lectures.json") is None   # nothing saved until something changes
 
         # A lecture: a new title, and its slides uploaded.
-        me.locator(".lw-week").nth(6).locator(".lw-lec").first.click()
+        me.locator(".lx-group").nth(6).locator("[data-lec]").first.click()
         me.wait_for_selector("#lw-title")
         me.fill("#lw-title", "Adders and ALUs")
         with me.expect_file_chooser() as fc:
@@ -69,8 +69,22 @@ def main():
         me.fill("#lw-title", "Course review")
         me.wait_for_timeout(1500)
         me.locator("#lt-path button", has_text="Lectures").click()
-        me.wait_for_selector(".lw-week")
-        expect(me.locator(".lw-week").last).to_contain_text("Course review")
+        me.wait_for_selector(".lx-group")
+        expect(me.locator(".lx-group").last).to_contain_text("Course review")
+        # Drag it to Week 12, before that week's first lecture; and drag Week 13 above Week 12.
+        src = me.locator(".lx-group").last.locator("[data-lec]").first
+        dst = me.locator(".lx-group").nth(11).locator("[data-lec]").first
+        src.drag_to(dst, target_position={"x": 40, "y": 5})
+        me.wait_for_timeout(1500)
+        saved = json.loads(srv.text("priv", "csc258/f26/lectures.json"))["weeks"]
+        w12, w13 = [w for w in saved if w.get("label") == "Week 12"][0], [w for w in saved if w.get("label") == "Week 13"][0]
+        assert w12["cards"][0]["title"] == "Course review" and w13["cards"] == [], (w12["cards"][0], w13["cards"])
+        expect(me.locator(".lx-group").last.locator(".lx-none")).to_be_visible()
+        me.locator(".lx-group").last.locator(".lx-row.grp").drag_to(me.locator(".lx-group").nth(11).locator(".lx-row.grp"), target_position={"x": 40, "y": 5})
+        me.wait_for_timeout(1500)
+        labels = [w.get("label") for w in json.loads(srv.text("priv", "csc258/f26/lectures.json"))["weeks"] if not w.get("isBreak")]
+        assert labels[-2:] == ["Week 13", "Week 12"], labels
+        print("2b dragged a lecture to another week, and a week up")
         me.screenshot(path=f"{OUT}/183-lectures-after.png")
         print("2 a week and a lecture added")
 
@@ -96,7 +110,7 @@ def main():
         ta = b.new_context(viewport={"width": 1360, "height": 900}); block_cdns(ta)
         tp = ta.new_page()
         srv.sign_in(tp, email="ta@utoronto.ca", hash="#/~chandra/csc258/f26/lectures")
-        tp.wait_for_selector(".lw-week")
+        tp.wait_for_selector(".lx-group")
         assert not tp.query_selector("[data-add-week]")
         expect(tp.locator(".lt-note")).to_contain_text("As a TA")
         print("4 a TA sees Lectures, read-only")

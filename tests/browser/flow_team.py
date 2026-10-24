@@ -62,7 +62,7 @@ def main():
         sec = v.locator(".hb-sec").first
         expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Mon 10:00–11:00"); expect(sec).to_contain_text("Wed 10:00–11:00"); expect(sec).to_contain_text("Chandra Gummaluru")
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")
-        v.screenshot(path=f"{OUT}/191-hub-team.png", full_page=True)
+        v.wait_for_timeout(700); v.screenshot(path=f"{OUT}/191-hub-team.png", full_page=True)
         v.click(".hb-tab:has-text('This week')")
         expect(v.locator(".hb-days")).to_contain_text("LEC0101")
         expect(v.locator(".hb-days")).to_contain_text("Office hours")

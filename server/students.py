@@ -184,12 +184,12 @@ def invite(owner, course, term):
 # ── Signing in to a course page (students) ───────────────────────────
 @students_bp.get("/c/<handle>/<course>/<term>/sign-in")
 def sign_in_page(handle, course, term):
-    from .hub import page_data
+    from .hub import page_or_blank
     try:
         o, off = _offering(handle, course, term)
     except Refusal:
         abort(404)
-    if not page_data(o["id"], course, term):
+    if page_or_blank(o["id"], course, term) is None:
         abort(404)
     return render_template("hub-signin.html", course=course_name(o["id"], course, term), api=f"/api/hub/{o['handle']}/{off}", back=f"/c/{o['handle']}/{off}/")
 

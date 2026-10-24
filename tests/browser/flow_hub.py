@@ -92,7 +92,7 @@ def main():
         expect(me.locator(".hb-staff")).to_contain_text("See it as a visitor")
         ph = browser("phone", 390)
         ph.goto(srv.base + "c/chandra/csc258/f26/#about")
-        ph.wait_for_selector(".hb-t")
+        ph.wait_for_selector(".hb-person")
         assert ph.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"), "page scrolls sideways"
         print("4 owner: staff bar; phone: no sideways scroll")
         b.close()

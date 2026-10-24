@@ -5,8 +5,7 @@ page itself is a preview with each tab's visibility.
    the hub shows it in Announcements and in that week.
 2. The offering's page: no About or Course Page cards, and no Settings; its title and description are
    changed under its code and save by themselves; the hub's header and About show them.
-3. View Course Page (Lectern): the new tabs (This week first, About), nothing to edit, Lectures made
-   signed-in only with its lock, saved; a visitor sees Lectures locked. Preview shows the visitor's view.
+3. View Course Page: the course page itself (the hub), in a new tab.
 4. A new offering asks for its title, and starts with it.
 Asserts as it goes; screenshots in shots/.
 
@@ -87,26 +86,14 @@ def main():
         v.screenshot(path=f"{OUT}/203-hub-about.png", full_page=True)
         print("3 the hub shows them")
 
-        # 3. The course page: a preview, with each tab's visibility.
-        me.click("#lt-view-page"); me.wait_for_selector(C + ".hbe")
-        expect(me.locator(C + ".hb-title")).to_have_text("CSC258: Computer Organization and Design")
-        tabs = me.eval_on_selector_all(C + ".hbe-tab", "els => els.map(e => e.textContent.trim())")
-        assert tabs == ["This week", "Announcements", "Lectures", "Evaluations", "About", "My accommodations"], tabs
-        for tb in ["week", "announcements", "lectures", "evaluations", "about"]:
-            me.click(C + f".hbe-tab[data-v={tb}]")
-            assert not me.query_selector(C + ".hb-main [data-act], " + C + ".hb-main .ed"), f"{tb} has editing in it"
-        expect(me.locator(C + ".hb-main")).to_contain_text("From transistors to processors.")
-        me.click(C + ".hbe-tab[data-v=lectures] .hbe-vis")
-        me.click(C + "[data-act=preview]")
-        me.click(C + ".hbe-tab[data-v=lectures]")
-        expect(me.locator(C + ".hb-locked")).to_be_visible()
-        me.screenshot(path=f"{OUT}/204-preview.png")
-        me.click(C + "[data-act=preview]:has-text('Back')")
-        me.keyboard.press("Control+s"); me.wait_for_timeout(2500)
-        assert json.loads(srv.text("pub", "csc258/f26/course.json"))["page"]["tabs"] == {"lectures": "signed-in"}
-        v.goto(srv.base + "c/chandra/csc258/f26/#lectures"); v.reload(); v.wait_for_selector(".hb-tab")
-        expect(v.locator(".hb-locked h2")).to_have_text("Lectures")
-        print("4 course page: view only, tabs' visibility saved")
+        # 3. View Course Page: the course page itself, in a new tab.
+        with me.context.expect_page() as np:
+            me.click("#lt-view-page")
+        cp = np.value; cp.wait_for_selector(".hb-tab")
+        assert cp.url.split("#")[0].endswith("/c/chandra/csc258/f26/"), cp.url
+        expect(cp.locator(".hb-title")).to_have_text("CSC258: Computer Organization and Design")
+        cp.close()
+        print("4 View Course Page opens the course page")
 
         # 4. A new offering: its title first.
         me.click("#lt-home"); me.wait_for_selector("#lt-new"); me.click("#lt-new")

@@ -206,3 +206,13 @@ def test_the_offerings_title_and_description(client, user, anon):
     assert j["course"]["school"] == "University of Toronto"
     # Overview's old setting carries over to About: signed-in only.
     assert "about" not in anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]
+
+
+def test_an_offering_made_in_lectern_has_a_course_page_without_course_json(client, user, anon):
+    r = store.Repo(user["id"], "priv")
+    r.commit({"csc369/f26/about.json": json.dumps({"format": "lectern-about/2", "title": "Operating Systems", "description": ""}).encode()}, "seed", r.head())
+    assert anon.get("/c/chandra/csc369/f26/").status_code == 200
+    j = anon.get("/api/hub/chandra/csc369/f26").get_json()
+    assert j["course"]["title"] == "Operating Systems" and all(t["open"] for t in j["tabs"] if t["id"] != "accommodations")
+    assert anon.get("/c/chandra/csc369/f26/sign-in").status_code == 200
+    assert anon.get("/c/chandra/nothing/f26/").status_code == 404

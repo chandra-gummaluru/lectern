@@ -54,10 +54,10 @@ def main():
         print("1 saved:", mt["files"])
 
         v = ctx.browser.new_context().new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/#evaluations"); v.wait_for_selector(".hb-t")
-        row = v.locator(".hb-t tr", has_text="Midterm").first
+        v.goto(srv.base + "c/chandra/csc258/f26/#evaluations"); v.wait_for_selector(".hb-eval")
+        row = v.locator(".hb-eval", has_text="Midterm").first
         expect(row.locator("a.hb-file")).to_have_count(2)
-        v.screenshot(path=f"{OUT}/171-hub-eval-files.png", full_page=True)
+        v.wait_for_timeout(900); v.screenshot(path=f"{OUT}/171-hub-eval-files.png", full_page=True)
         assert v.request.get(up).status == 200
         print("2 the hub shows them, without saving the course page")
         b.close()

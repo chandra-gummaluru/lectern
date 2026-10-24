@@ -83,6 +83,8 @@ const store = {
 const curOwner = () => (S.route && S.route.o) || "";
 const pagesBase = () => (S.user ? S.user.site.slice(0, -(S.user.handle.length + 1)) : "");
 const siteURL = (o = curOwner()) => (S.user ? (o ? `${pagesBase()}${o}/` : S.user.site) : "");
+// The course page itself (the hub, server/hub.py), at Lectern's own address.
+const hubURL = (c, t, o = curOwner()) => `${location.origin}/c/${encodeURIComponent(o || (S.user && S.user.handle) || "")}/${encPath(`${c}/${t}`)}/`;
 const liveURL = (c, t, o = curOwner()) => { const s = siteURL(o); return s ? `${s}${encPath(`${c}/${t}/info.html`)}` : ""; };
 const okey = (c, t, o = curOwner()) => `${o}|${c}/${t}`;
 const offering = (c, t, o = curOwner()) => (S.offerings && S.offerings.get(okey(c, t, o))) || { c, t, o, page: false, grades: false, exams: [] };
@@ -674,7 +676,7 @@ function offeringPage(c, t) {
       <div class="lt-off-id"><h1 class="lt-off-h1"><span>${esc(c.toUpperCase())}</span><span id="lt-h1-title"></span></h1>
         <p class="lt-term-line">${esc(termName(t))}</p>
         ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "an instructor"}</p>` : ""}</div>
-      <div class="lt-off-acts"><button type="button" class="lt-btn primary" id="lt-view-page" title="The course page: a preview, and which tabs are only for people signed in">${ICON.page}View Course Page</button>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
+      <div class="lt-off-acts"><a class="lt-btn primary" id="lt-view-page" href="${esc(hubURL(c, t))}" target="_blank" rel="noopener" title="The course page, as students see it">${ICON.page}View Course Page</a>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
     <div class="lt-about" id="lt-about"></div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
@@ -718,7 +720,6 @@ function offeringPage(c, t) {
       </section>
     </div>
   </div>`);
-  $("#lt-view-page").onclick = () => go({ page: "tool", tool: "course", c, t });
   $("#lt-lectures").onclick = () => go({ page: "lectures", c, t });
   $("#lt-anns").onclick = () => go({ page: "announcements", c, t });
   const acc = $("#lt-accom");

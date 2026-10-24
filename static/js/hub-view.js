@@ -127,6 +127,22 @@ function evalCard(e) {
 function annHTML(a, meta) {
   return `<article class="hb-ann${edCls(a._p)}"${opens(a._p, "Edit this announcement")}><p class="hb-ann-meta">${esc([meta, a.date].filter(Boolean).join(" · "))}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : EDIT ? "<h3>Untitled</h3>" : ""}${markdown(a.body)}</article>`;
 }
+// The Announcements tab: each one with its day beside it, on a line down the page.
+function feedHTML(a) {
+  const d = fromIso(stampDay(a.date)), tm = (/(\d{1,2}:\d\d)/.exec(a.date || "") || [])[1] || "";
+  return `<li class="hb-feed-i"><div class="hb-feed-d">${d ? `<span>${esc(d.toLocaleDateString("en-CA", { month: "short" }))}</span><b>${d.getDate()}</b>${tm ? `<small>${esc(tm)}</small>` : ""}` : "<span>—</span>"}</div>
+    <article class="hb-ann${edCls(a._p)}"${opens(a._p, "Edit this announcement")}>${a.week ? `<p class="hb-ann-meta">${esc(a.week)}</p>` : ""}${a.title ? `<h3>${esc(a.title)}</h3>` : ""}${markdown(a.body)}</article></li>`;
+}
+const initials = n => String(n || "").split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "·";
+// The weights, as one bar: each evaluation (or group) its share of the course grade.
+const SHADES = ["#1f2329", "#a67c00", "#7a7f87", "#c9a95a", "#4a4f57", "#e4d3a6", "#9aa0a8", "#6b5a2e"];
+function weightBar(units) {
+  const total = units.reduce((t, u) => t + Number(u.weight || 0), 0) || 1;
+  return `<div class="hb-wbar" role="img" aria-label="${esc(units.map(u => `${u.name} ${fmtW(u.weight)}%`).join(", "))}">${units.filter(u => Number(u.weight) > 0).map((u, k) => {
+    const c = SHADES[k % SHADES.length], light = ["#c9a95a", "#e4d3a6", "#9aa0a8"].includes(c), w = Number(u.weight) / total * 100;
+    return `<span style="flex:${w} 1 0;background:${c};color:${light ? "#1f2329" : "#fff"}" title="${esc(`${u.name}: ${fmtW(u.weight)}%`)}">${w >= 9 ? `<b>${esc(u.name)}</b><i>${fmtW(u.weight)}%</i>` : ""}</span>`;
+  }).join("")}</div>`;
+}
 function tableHTML(cols, rows, foot) {
   return `<div class="hb-tw"><table class="hb-t"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${rich(c)}</td>`).join("")}</tr>`).join("")}</tbody>${foot && foot.some(x => x) ? `<tfoot><tr>${foot.map(c => `<td>${rich(c)}</td>`).join("")}</tr></tfoot>` : ""}</table></div>`;
@@ -165,10 +181,12 @@ function teamHTML(team) {
     .map(s => `<article class="hb-card hb-sec"><div class="hb-card-top"><span>${esc(KIND[s.kind] || "Other")}</span></div><h3>${esc(s.section || KIND[s.kind] || "Section")}</h3>
       ${s.times.sort((a, b) => a.day - b.day || String(a.start).localeCompare(b.start)).map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
       <p class="hb-sec-who">${esc(s.who.join(", "))}</p></article>`).join("");
-  const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => [p.name, `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), x.where]));
+  const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => ({ who: p.name, day: x.day, when: `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), where: x.where, start: x.start })))
+    .sort((a, b) => a.day - b.day || String(a.start).localeCompare(String(b.start)));
+  const people = team.map(p => `<article class="hb-person"><span class="hb-av" aria-hidden="true">${esc(initials(p.name))}</span><div><h4>${esc(p.name)}</h4><p class="hb-person-r">${esc(ROLE[p.role] || "")}${p.office ? ` · ${esc(p.office)}` : ""}</p>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ""}</div></article>`).join("");
   return `${cards ? `<h3 class="hb-h3">Activities</h3><div class="hb-grid">${cards}</div>` : ""}
-    ${oh.length ? `<h3 class="hb-h3">Office Hours</h3>${tableHTML(["Who", "When", "Where"], oh, null)}` : ""}
-    <h3 class="hb-h3">Teaching Team</h3>${tableHTML(["Name", "Role", "Email", "Office"], team.map(p => [p.name, ROLE[p.role] || "", p.email, p.office]), null)}`;
+    ${oh.length ? `<h3 class="hb-h3">Office Hours</h3><ul class="hb-rows">${oh.map(x => `<li><b>${esc(x.when)}</b><span>${esc(x.who)}</span><span class="hb-rows-w">${esc(x.where || "")}</span></li>`).join("")}</ul>` : ""}
+    <h3 class="hb-h3">Teaching Team</h3><div class="hb-people">${people}</div>`;
 }
 
 // The week to show as this one: the week we're in; between weeks (a reading week, the weekend after
@@ -189,7 +207,7 @@ function currentWeek(cal, now) {
 const DRAW = {
   about() {
     const a = data("about");
-    let h = `<h2 class="hb-h2">About</h2>${a.description ? `<div class="hb-desc">${markdown(a.description)}</div>` : ""}${teamHTML(a.team)}`;
+    let h = `<h2 class="hb-h2">About the course</h2>${a.description ? `<div class="hb-desc">${markdown(a.description)}</div>` : ""}${teamHTML(a.team)}`;
     (a.sections || []).forEach(s => {
       if (s.title) h += `<h3 class="hb-h3">${esc(s.title)}</h3>`;
       if (s.type === "meetings") h += (s.items || []).length ? meetingsTable(s.items) : "";
@@ -199,8 +217,8 @@ const DRAW = {
     });
     const kinds = [];
     (a.rules || []).forEach(x => { let k = kinds.find(y => y.title === x.title); if (!k) kinds.push(k = { title: x.title, items: [] }); k.items.push(x.text); });
-    const pol = kinds.map(k => `<div class="hb-block"><h4>${esc(k.title)}</h4>${markdown(k.items.length === 1 ? k.items[0] : k.items.map(t => `- ${t}`).join("\n"))}</div>`).join("") + blocksHTML(a.policies);
-    if (pol) h += `<h3 class="hb-h3">Policies</h3><div class="hb-panel">${pol}</div>`;
+    const pol = kinds.map(k => `<article class="hb-pol"><h4>${esc(k.title)}</h4>${markdown(k.items.length === 1 ? k.items[0] : k.items.map(t => `- ${t}`).join("\n"))}</article>`).join("") + blocksHTML(a.policies);
+    if (pol) h += `<h3 class="hb-h3">Policies</h3><div class="hb-pols">${pol}</div>`;
     return h;
   },
 
@@ -226,7 +244,7 @@ const DRAW = {
       evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due"><span class="tm">${esc(e.time || "")}</span><span class="k">${e.type === "test" ? "Test" : "Due"}</span>${esc(e.name)}</div>` }));
       (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => items.push({ t: (/(\d\d:\d\d)/.exec(c.date) || [])[1] || "", h: `<div class="hb-ev"><span class="tm">${esc((/(\d\d:\d\d)/.exec(c.date) || [])[1] || "")}</span><span class="k">${esc(c.label)}</span>${esc(c.title)}</div>` }));
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
-      days.push(`<li${d === now ? ' class="today"' : ""}><div class="dd">${DAY3[dow]}<b>${fromIso(d).getDate()}</b></div><div>${items.map(x => x.h).join("") || '<span class="hb-nothing">—</span>'}</div></li>`);
+      days.push(`<li class="${[d === now ? "today" : "", items.length ? "" : "quiet"].filter(Boolean).join(" ")}"><div class="dd"><span>${DAY3[dow]}</span><b>${fromIso(d).getDate()}</b></div><div class="hb-day-items">${items.map(x => x.h).join("")}</div></li>`);
     }
 
     // Only what there is: a part with nothing in it this week isn't shown (no empty headings).
@@ -237,19 +255,19 @@ const DRAW = {
     if (evs.length) main += `<h3 class="hb-h3">Evaluations</h3><div class="hb-grid">${evs.map(evalCard).join("")}</div>`;
 
     return `<div class="hb-weeknav">
-        <div class="grow"><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2><span class="d">${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</span></div>
+        <div class="grow"><p class="hb-eyebrow">This week · ${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</p><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2></div>
       </div>${note ? `<p class="hb-note">${esc(note)}</p>` : ""}
-      <div class="hb-cols"><div><h3 class="hb-h3">Day by day</h3><ul class="hb-days">${days.join("")}</ul></div>
+      <div class="hb-cols"><div><h3 class="hb-h3">Day by day</h3><ol class="hb-days">${days.join("")}</ol></div>
         <div>${main || '<p class="hb-nothing hb-nothing-wk">No announcements, lectures or evaluations this week.</p>'}</div></div>`;
   },
 
   lectures() {
     const L = data("lectures"), E = data("evaluations"), now = today();
-    const head = `<h2 class="hb-h2">Lectures</h2><p class="hb-lede">Every week's lectures and their files, in order.</p>`;
+    const head = `<h2 class="hb-h2">Lectures</h2><p class="hb-lede">Every week of the term, its lectures and their files.</p>`;
     const adds = list => (EDIT ? `<div class="hbe-adds"><button type="button" class="hbe-add" data-act="add" data-path="${esc(list)}" data-kind="week">+ Add Week</button><button type="button" class="hbe-add" data-act="add" data-path="${esc(list)}" data-kind="break">+ Add Section Divider</button></div>` : "");
     if (!L.weeks.length) return head + (EDIT && L.lists && L.lists.length ? adds(L.lists[0]) : `<p class="hb-empty">No lectures yet.</p>`);
     const cw = L.weeks.some(w => !w.isBreak && w.start) ? currentWeek(L.weeks, now) : null, cur = cw ? cw.dated[cw.k].i : -1;
-    return head + L.weeks.map((w, j) => {
+    return head + `<div class="hb-term">` + L.weeks.map((w, j) => {
       const drag = EDIT && w._list ? ` draggable="true" data-dl="${esc(w._list)}" data-di="${w._j}"` : "";
       const tail = w._last ? adds(w._list) : "";
       if (w.isBreak) {
@@ -263,9 +281,9 @@ const DRAW = {
       const name = EDIT ? `<button type="button" class="hbe-wname" data-act="open" data-path="${esc(w._p)}" title="Edit this week: its dates, topic, hours, deadlines and announcements">${esc(w.label || "Week")}</button>` : esc(w.label);
       const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("");
       const add = EDIT ? `<div class="hbe-adds sm"><button type="button" class="hbe-add" data-act="lec-add" data-path="${esc(w._p)}" data-lfree="${esc(w._p)}" title="Add a lecture at the end of this week (or drop a lecture here to move it to the end)">+ Add Lecture</button></div>` : "";
-      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}<h3>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}</div>
-        ${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`}${add}</section>${tail}`;
-    }).join("");
+      return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}${w.i === cur ? `<span class="hb-now">This week</span>` : ""}<h3>${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}</div>
+        <div class="hb-week-b">${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`}${add}</div></section>${tail}`;
+    }).join("") + `</div>`;
   },
 
   evaluations() {
@@ -283,26 +301,24 @@ const DRAW = {
       const url = rq && rq.url ? `${rq.url}?${new URLSearchParams({ r: rq.r, o: rq.o, e: e.id })}` : "";
       return `<div class="hb-req">${url ? `<a class="hb-btn hb-req-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn hb-req-btn">Request Accommodation</span>`}${when}</div>`;
     };
-    const cell = e => `${esc(note(e))}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${request(e)}${edit(e)}`;
-    const rows = [], total = E.units.reduce((t, u) => t + Number(u.weight || 0), 0);
-    E.units.forEach(u => {
-      if (u.kind === "group") {
-        rows.push(`<tr><td>${esc(u.name)}</td><td>${fmtW(u.weight)}%</td><td></td><td>${esc(`The best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.`)}</td></tr>`);
-        u.members.forEach(m => rows.push(`<tr class="sub"><td>${esc(m.name)}</td><td></td><td class="nw">${esc(evalWhen(m))}</td><td>${cell(m)}</td></tr>`));
-      } else rows.push(`<tr><td>${esc(u.name)}</td><td>${fmtW(u.weight)}%</td><td class="nw">${esc(evalWhen(u))}</td><td>${cell(u)}</td></tr>`);
-    });
+    const extras = e => `${note(e) ? `<p class="hb-eval-n">${esc(note(e))}</p>` : ""}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${request(e)}${edit(e)}`;
+    const total = E.units.reduce((t, u) => t + Number(u.weight || 0), 0);
+    const one = u => `<article class="hb-eval${u.type === "test" ? " test" : ""}"><div class="hb-eval-m"><p class="hb-eval-k">${u.type === "test" ? "Test" : "Assignment"}${evalWhen(u) ? ` · ${esc(evalWhen(u))}` : ""}</p><h3>${esc(u.name)}</h3>${extras(u)}</div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
+    const group = u => `<article class="hb-eval grp"><div class="hb-eval-m"><p class="hb-eval-k">${u.count} ${u.count === 1 ? "part" : "parts"}</p><h3>${esc(u.name)}</h3><p class="hb-eval-n">${esc(`The best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.`)}</p>
+        <ul class="hb-eval-subs">${u.members.map(m => `<li><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${esc(evalWhen(m))}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
     return `<h2 class="hb-h2">Evaluations</h2><p class="hb-lede">Every evaluation, its weight and when it is. Together they make up your course grade.</p>
-      <div class="hb-tw"><table class="hb-t"><thead><tr><th>Evaluation</th><th>Weight</th><th>When</th><th>Notes</th></tr></thead><tbody>${rows.join("")}</tbody>
-      <tfoot><tr><td>Total</td><td>${fmtW(total)}%</td><td></td><td></td></tr></tfoot></table></div>`;
+      ${weightBar(E.units)}
+      <div class="hb-evals">${E.units.map(u => (u.kind === "group" ? group(u) : one(u))).join("")}</div>
+      <p class="hb-eval-total">Total <b>${fmtW(total)}%</b></p>`;
   },
 
   announcements() {
     const items = data("announcements").items.slice().sort((a, b) => annTime(b) - annTime(a));
-    return `<h2 class="hb-h2">Announcements</h2><p class="hb-lede">Newest first.</p>${items.length ? items.map(a => annHTML(a, a.week)).join("") : '<p class="hb-empty">No announcements yet.</p>'}`;
+    return `<h2 class="hb-h2">Announcements</h2><p class="hb-lede">News for the class, newest first.</p>${items.length ? `<ol class="hb-feed">${items.map(feedHTML).join("")}</ol>` : '<p class="hb-empty">No announcements yet.</p>'}`;
   },
 
   accommodations() {
-    return `<h2 class="hb-h2">My accommodations</h2><p class="hb-lede">Your accommodation requests and what was decided.</p><div class="hb-panel"><p class="hb-empty">Requests you make will show here.</p></div>`;
+    return `<h2 class="hb-h2">My accommodations</h2><p class="hb-lede">Your accommodation requests and what was decided.</p><div class="hb-panel hb-soft"><p class="hb-empty">Requests you make will show here.</p></div>`;
   },
 };
 

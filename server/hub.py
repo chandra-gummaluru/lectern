@@ -164,6 +164,21 @@ def institution():
     return os.environ.get("LECTERN_INSTITUTION", "University of Toronto")
 
 
+PARTS = ("about.json", "lectures.json", "announcements.json", "grades.json", "team.json")
+
+
+def page_or_blank(owner_id, course, term):
+    """course.json's page; or, for an offering made in Lectern's parts that has none, an empty page (every tab
+    public), so its course page is there from the start. None: no such offering."""
+    page = page_data(owner_id, course, term)
+    if page is not None:
+        return page
+    if not (SLUG.match(course or "") and SLUG.match(term or "")):
+        return None
+    priv = Repo(owner_id, "priv")
+    return {"sections": []} if any(priv.stat(f"{course}/{term}/{f}") is not None for f in PARTS) else None
+
+
 def has_hub(owner_id, course, term):
     return Repo(owner_id, "pub").stat(f"{course}/{term}/{PAGE_DATA}") is not None
 
@@ -341,8 +356,8 @@ def _offering_or_404(handle, course, term):
     o = owner_of(handle)
     if not o:
         return None, None
-    page = page_data(o["id"], course, term)
-    return (o, page) if page else (o, None)
+    page = page_or_blank(o["id"], course, term)
+    return (o, page) if page is not None else (o, None)
 
 
 @hub_bp.get("/c/<handle>/<course>/<term>/")

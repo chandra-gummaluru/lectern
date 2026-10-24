@@ -40,9 +40,10 @@ def main():
         # 1. The owner: the offering's Teaching Team; add the TA, invite an instructor.
         own = browser("owner")
         srv.sign_in(own, hash="#/csc258/f26")
-        own.wait_for_selector("#lt-team-add"); own.screenshot(path=f"{OUT}/t01-team-owner.png", full_page=True)
+        own.wait_for_selector("#lt-team-new"); own.screenshot(path=f"{OUT}/t01-team-owner.png", full_page=True)
         def invite(email, role):
-            own.fill("#lt-team-email", email); own.click(f"#lt-team-add button[data-newrole][data-v='{role}']"); own.click("#lt-team-add [type=submit]")
+            own.click("#lt-team-new"); own.wait_for_selector("#tm-new-email")   # Add a Team Member: a window with their email and role
+            own.fill("#tm-new-email", email); own.click(f".lt-modal button[data-newrole][data-v='{role}']"); own.click(".lt-modal [data-ok]")
             own.wait_for_function("e => { const i = document.querySelector('#lt-team-msg .lt-linkbox input'); return i && i.value && i.value !== e; }", arg=getattr(invite, "last", ""))
             invite.last = own.input_value("#lt-team-msg .lt-linkbox input")
             return invite.last
@@ -115,7 +116,7 @@ def main():
         ip.wait_for_selector("#lt-team .lt-orow"); ip.wait_for_timeout(500)
         print("instructor lands on:", ip.evaluate("location.hash"))
         assert ip.evaluate("location.hash") == "#/~chandra/csc258/f26"
-        assert ip.query_selector("#lt-accom") and ip.query_selector("#lt-team-add")
+        assert ip.query_selector("#lt-accom") and ip.query_selector("#lt-team-new")
         ip.screenshot(path=f"{OUT}/t07-instructor.png", full_page=True)
         b.close()
     print("\n".join(errors) or "no page errors")

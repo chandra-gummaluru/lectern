@@ -238,13 +238,14 @@ const DRAW = {
 
     // The days: meetings (every week, on their day), evaluations and dated lectures.
     const days = [];
-    for (let d = mon; d <= addDays(mon, 6); d = addDays(d, 1)) {   // Monday to Sunday, every day
+    for (let d = mon; d <= addDays(mon, 6); d = addDays(d, 1)) {   // Monday to Sunday
       const dow = (fromIso(d).getDay() + 6) % 7 + 1, items = [];
       ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev"><span class="tm">${esc(hhmm(m.start, m.end))}</span><span class="k">${esc(meetingName(m))}${meetingSub(m) ? ` ${esc(meetingSub(m))}` : ""}</span>${esc(m.who)}${m.where ? ` <span class="wh">${m.who ? "· " : ""}${esc(m.where)}</span>` : ""}</div>` }));
       evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due"><span class="tm">${esc(e.time || "")}</span><span class="k">${e.type === "test" ? "Test" : "Due"}</span>${esc(e.name)}</div>` }));
       (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => items.push({ t: (/(\d\d:\d\d)/.exec(c.date) || [])[1] || "", h: `<div class="hb-ev"><span class="tm">${esc((/(\d\d:\d\d)/.exec(c.date) || [])[1] || "")}</span><span class="k">${esc(c.label)}</span>${esc(c.title)}</div>` }));
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
-      days.push(`<li class="${[d === now ? "today" : "", items.length ? "" : "quiet"].filter(Boolean).join(" ")}"><div class="dd"><span>${DAY3[dow]}</span><b>${fromIso(d).getDate()}</b></div><div class="hb-day-items">${items.map(x => x.h).join("")}</div></li>`);
+      if (!items.length) continue;   // only the days that have something on them
+      days.push(`<li class="${d === now ? "today" : ""}"><div class="dd"><span>${DAY3[dow]}</span><b>${fromIso(d).getDate()}</b></div><div class="hb-day-items">${items.map(x => x.h).join("")}</div></li>`);
     }
 
     // Only what there is: a part with nothing in it this week isn't shown (no empty headings).
@@ -257,7 +258,7 @@ const DRAW = {
     return `<div class="hb-weeknav">
         <div class="grow"><p class="hb-eyebrow">This week · ${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</p><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2></div>
       </div>${note ? `<p class="hb-note">${esc(note)}</p>` : ""}
-      <div class="hb-cols"><div><h3 class="hb-h3">Day by day</h3><ol class="hb-days">${days.join("")}</ol></div>
+      <div class="hb-cols"><div><h3 class="hb-h3">Day by day</h3>${days.length ? `<ol class="hb-days">${days.join("")}</ol>` : `<p class="hb-nothing">Nothing on a particular day this week.</p>`}</div>
         <div>${main || '<p class="hb-nothing hb-nothing-wk">No announcements, lectures or evaluations this week.</p>'}</div></div>`;
   },
 

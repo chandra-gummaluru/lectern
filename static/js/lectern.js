@@ -812,10 +812,7 @@ async function teamPart(c, t) {
       </div>`).join("")}
       ${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited as ${A_ROLE[i.role] || "an instructor"}: waiting for them to accept</span></div>
         <span class="lt-orow-r"><button type="button" class="lt-link" data-uninvite="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>
-    ${lead ? `<form class="lt-team-add" id="lt-team-add" novalidate>
-      <input type="email" id="lt-team-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
-      ${roleSeg("ta", 'data-newrole=""', "Role", false)}
-      <button type="submit" class="lt-btn add">${ICON.plus}Add to the team</button></form><div id="lt-team-msg"></div>` : ""}`;
+    ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div><div id="lt-team-msg"></div>` : ""}`;
   const again = () => teamPart(c, t);
   const call = async (what, body) => { try { await Auth.api(`${base}/${what}`, body); return true; } catch (e) { toast(e.message); again(); return false; } };
   box.querySelectorAll("button[data-role]").forEach(b => {
@@ -824,10 +821,6 @@ async function teamPart(c, t) {
       b.parentElement.querySelectorAll("button").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); });
       if (await call("role", { user: Number(b.dataset.role), role: b.dataset.v })) toast(`Now ${A_ROLE[b.dataset.v]}.`);
     };
-  });
-  let newRole = "ta";
-  box.querySelectorAll("button[data-newrole]").forEach(b => {
-    b.onclick = () => { newRole = b.dataset.v; box.querySelectorAll("button[data-newrole]").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); }); };
   });
   box.querySelectorAll("[data-person]").forEach(b => { b.onclick = () => go({ page: "team", c, t, p: b.dataset.person }); });
   box.querySelectorAll("[data-remove]").forEach(b => {
@@ -840,20 +833,40 @@ async function teamPart(c, t) {
     };
   });
   box.querySelectorAll("[data-uninvite]").forEach(b => { b.onclick = async () => { if (await call("uninvite", { id: b.dataset.uninvite })) again(); }; });
-  const f = $("#lt-team-add");
-  if (f) f.onsubmit = async e => {
-    e.preventDefault();
-    const btn = f.querySelector("[type=submit]"); btn.disabled = true;
-    try {
-      const r = await Auth.api(`${base}/add`, { email: $("#lt-team-email").value.trim(), role: newRole });
-      await again();
-      const msg = $("#lt-team-msg"); if (!msg) return;
-      if (r.emailed) { toast("Invitation emailed. They join once they accept it."); return; }
-      msg.innerHTML = `<p class="lt-note">The server can't send email, so send them this link: they join once they open it (and sign in, or make an account). Only to them: it works for whoever has it.
-        <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
-      const cp = msg.querySelector("[data-copy]"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { msg.querySelector("input").select(); } };
-    } catch (x) { toast(x.message); btn.disabled = false; }
-  };
+  // Adding someone: their email and role, in a window; they get an invitation to accept.
+  const add = $("#lt-team-new");
+  if (add) add.onclick = () => modal(`<h2>Add a Team Member</h2><p>They get an email with a link to join this offering's teaching team. They join once they accept it (signing in, or making an account).</p>
+      <div class="lt-form">
+        <label>Email<input type="email" id="tm-new-email" placeholder="name@utoronto.ca" autocomplete="off" spellcheck="false"></label>
+        <div><span class="lt-field-l">Role</span>${roleSeg("ta", 'data-newrole=""', "Role", false)}<small class="lt-role-help" id="tm-new-help"></small></div>
+      </div>
+      <p class="lt-err" id="tm-new-err"></p>
+      <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Send the Invitation</button></div>`, (m, close) => {
+    let newRole = "ta";
+    const HELP = { instructor: "Can do everything here, the team too.", ta: "Enters marks, and sees the gradebook and exams.", staff: "Sees everything, and changes nothing." };
+    const help = () => { m.querySelector("#tm-new-help").textContent = HELP[newRole]; };
+    help();
+    m.querySelectorAll("button[data-newrole]").forEach(b => { b.onclick = () => { newRole = b.dataset.v; m.querySelectorAll("button[data-newrole]").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); }); help(); }; });
+    m.querySelector("[data-no]").onclick = close;
+    const ok = m.querySelector("[data-ok]"), err = m.querySelector("#tm-new-err"), em = m.querySelector("#tm-new-email");
+    const send = async () => {
+      const email = em.value.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = "Enter their email address."; return em.focus(); }
+      ok.disabled = true; err.textContent = "";
+      try {
+        const r = await Auth.api(`${base}/add`, { email, role: newRole });
+        close();
+        await again();
+        const msg = $("#lt-team-msg"); if (!msg) return;
+        if (r.emailed) { toast(`Invitation emailed to ${email}. They join once they accept it.`); return; }
+        msg.innerHTML = `<p class="lt-note">The server can't send email, so send them this link: they join once they open it (and sign in, or make an account). Only to them: it works for whoever has it.
+          <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
+        const cp = msg.querySelector("[data-copy]"); if (cp) cp.onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { msg.querySelector("input").select(); } };
+      } catch (x) { err.textContent = x.message; ok.disabled = false; }
+    };
+    ok.onclick = send;
+    em.addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+  });
 }
 function deleteOfferingDialog(c, t) {
   const o = offering(c, t), name = `${c}/${t}`;

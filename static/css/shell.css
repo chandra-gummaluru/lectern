@@ -501,7 +501,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-st-newf .lt-btn { height: 30px; }
 .lt-st-fixed { margin-top: 12px !important; font-size: 13px !important; color: var(--home-ink-3) !important; }
 .lt-st-fixed b { color: var(--home-ink-2); font-weight: 600; }
-.lt-st-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.lt-st-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 .lt-st-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
 .lt-st-bar .lt-st-count { flex: 1; margin: 0 !important; }
 .lt-st-find { height: 34px; width: 240px; max-width: 100%; padding: 0 11px; border-radius: 9px; border: 1px solid var(--home-line-2); background: var(--home-card); color: var(--home-ink); font: 13.5px var(--font-ui); box-sizing: border-box; }
@@ -697,3 +697,5 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* One line: a title too long for it ends in "…" (while it's being typed in, it shows in full) */
 .lt-off-h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lt-off-h1:focus-within { white-space: normal; overflow: visible; }
+.lt-field-l { display: block; margin: 0 0 5px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.lt-role-help { display: block; margin-top: 6px; font-size: 12.5px; color: var(--ink-3); }

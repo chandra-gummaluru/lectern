@@ -112,7 +112,7 @@ function lectureCard(c, drag) {
   const when = c.date ? esc(String(c.date).replace(/, \d{4}/, "")) : "";
   const dr = EDIT && drag ? ` draggable="true" data-ldrag="${esc(drag.week)}" data-lj="${drag.j}"` : "";
   return `<article class="hb-card${edCls(c._p)}${EDIT && !c.title ? " hb-untitled" : ""}"${opens(c._p, "Edit this lecture: its title, description, files and links")}${dr}><div class="hb-card-top"><span>${esc(c.label)}</span><span>${when}</span></div>
-    <h3>${esc(c.title || (EDIT ? "Untitled" : c.label) || "Untitled")}</h3>${c.description ? `<p>${rich(c.description)}</p>` : ""}
+    <h3>${esc(c.title || (EDIT ? "Untitled" : c.label) || "Untitled")}</h3>${c.description ? `<div class="hb-card-desc">${markdown(c.description)}</div>` : ""}
     ${files ? `<div class="hb-files">${files}</div>` : `<div class="hb-soon">Coming soon</div>`}</article>`;
 }
 function evalWhen(e) {

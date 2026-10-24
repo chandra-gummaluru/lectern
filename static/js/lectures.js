@@ -19,6 +19,8 @@
    An offering without one starts from its course page's weeks (course.json), and becomes a lectures.json
    with the first change. Changes save by themselves. Instructors change it; TAs see it. */
 
+import { richText } from "./richtext.js";
+
 const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];
 const KIND_COLOR = { lecture: "#3b7dd8", tutorial: "#2e9b6a", lab: "#8a5cd1", other: "#8b8f96" };
 const WEEK_COLOR = "#c99a06";
@@ -158,7 +160,7 @@ export function lecturesPage(ctx, r) {
 
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
-      <div class="lx-main"><div class="lx-top"><i class="lx-dot"></i><h3>${esc(titleOf(x))}</h3></div>
+      <div class="lx-main"><div class="lx-top"><h3>${esc(titleOf(x))}</h3></div>
         <p class="lx-when">${esc(lecWhen(x))}</p><p>${esc(lecMore(x))}</p></div>
       ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No lectures this week.${edit ? " Add one, or drag one here." : ""}</p></div>`;
@@ -180,7 +182,7 @@ export function lecturesPage(ctx, r) {
   }
   const weekHTML = w => `<div class="lx-group" style="--c:${WEEK_COLOR}" data-unit="${esc(w.id)}"${edit ? ' draggable="true"' : ""}>
       <div class="lx-row grp" data-week="${esc(w.id)}" role="button" tabindex="0">
-        <div class="lx-main"><div class="lx-top"><i class="lx-dot"></i><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
+        <div class="lx-main"><div class="lx-top"><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
       ${subsHTML(w)}
       ${edit ? `<div class="lx-foot"><button type="button" class="lx-add" data-add-lec="${esc(w.id)}">${ICON.plus}Add a Lecture</button></div>` : `<div class="lx-foot"></div>`}
     </div>`;
@@ -291,7 +293,7 @@ export function lecturesPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" style="--c:${WEEK_COLOR}">
-        <div class="lx-ed-head"><i class="lx-dot"></i><h2 id="lw-h">${esc(w.label || "Week")}</h2>
+        <div class="lx-ed-head"><h2 id="lw-h">${esc(w.label || "Week")}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this week" aria-label="Delete this week">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid week">
           <label class="lx-f">Name<input type="text" id="lw-label" value="${esc(w.label)}" placeholder="e.g. Week 4"${dis}></label>
@@ -333,7 +335,7 @@ export function lecturesPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" id="lw-ed" style="--c:${KIND_COLOR[k]}">
-        <div class="lx-ed-head"><i class="lx-dot"></i><h2 id="lw-h">${esc(titleOf(x))}</h2>
+        <div class="lx-ed-head"><h2 id="lw-h">${esc(titleOf(x))}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-btn" id="lw-dup">${COPY}Duplicate</button><button type="button" class="lx-ic" id="lw-del" title="Delete this lecture" aria-label="Delete this lecture">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid">
           <div class="lx-f">Type<span class="lx-seg" role="group" aria-label="Type">${KINDS.map(([v, n]) => `<button type="button" data-kind="${v}" aria-pressed="${v === k}"${dis}>${n}</button>`).join("")}</span></div>
@@ -348,20 +350,20 @@ export function lecturesPage(ctx, r) {
         </div>
         <p class="lx-help">The date and time are optional: with a date, This week shows it on its day.</p>
         <h3 class="lx-sec">Description</h3>
-        <label class="lx-f"><textarea id="lw-desc" rows="3" placeholder="A sentence or two about it" aria-label="Description"${dis}>${esc(x.description)}</textarea></label>
+        <div id="lw-desc"></div>
         <h3 class="lx-sec">Files and Links</h3>
         <p class="lx-help">Each one is a button students click on the course page, with this lecture. With none, it says Coming soon.</p>
         <div id="lw-files">${files.map((f, i) => `<div class="lx-frow"><input type="text" data-fl="${i}" value="${esc(f.label)}" placeholder="Button text, e.g. Slides" aria-label="Button text"${dis}><input type="url" data-fu="${i}" value="${esc(f.url)}" placeholder="https://…" aria-label="Link"${dis}>${edit ? `<button type="button" class="lx-ic quiet" data-fdel="${i}" aria-label="Remove it">${ICON.trash}</button>` : ""}</div>`).join("") || (edit ? "" : `<p class="lx-help">None.</p>`)}</div>
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
       </div>
     </div></div>`);
+    richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;
     let shown = titleOf(x);
     const head = () => { $("#lw-named").innerHTML = namedHTML(x); const now = titleOf(x); if (now === shown) return; shown = now; $("#lw-h").textContent = now; renderPath(lecSteps(w, x)); };
     const bind = (id, fn) => { const el = $(id); el.oninput = el.onchange = () => { fn(el.value); changed(); }; };
     bind("#lw-label", v => { x.label = v.trim(); head(); });
     bind("#lw-title", v => { x.title = v.trim(); head(); });
-    bind("#lw-desc", v => { x.description = v.trim(); });
     const stamp = () => { const d = $("#lw-date").value, tm = $("#lw-time").value; if (d) x.date = writeStamp(d, tm); else delete x.date; };
     bind("#lw-date", stamp); bind("#lw-time", stamp);
     document.querySelectorAll("[data-kind]").forEach(b => { b.onclick = () => {   // a new type: the label follows, if it was the usual one

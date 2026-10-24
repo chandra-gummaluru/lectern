@@ -60,7 +60,7 @@ def main():
         assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Lectures", "Announcements", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
         expect(me.locator("#lt-title")).to_have_value("Computer Organization")
         me.fill("#lt-title", "Computer Organization and Design")
-        me.fill("#lt-desc", "From transistors to processors.")
+        me.fill("#lt-desc .rt-ed", "From transistors to processors.")
         me.wait_for_timeout(1500)
         expect(me.locator("#lt-about-st")).to_have_text("Saved")
         me.screenshot(path=f"{OUT}/202-offering-about.png")

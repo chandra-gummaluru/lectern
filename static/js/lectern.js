@@ -23,6 +23,7 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { studentsCard } from "./students.js";
+import { richText } from "./richtext.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -752,12 +753,11 @@ async function aboutPart(c, t, edit) {
     return;
   }
   box.innerHTML = `<input type="text" class="lt-about-title lt-about-in" id="lt-title" value="${esc(d.title)}" placeholder="The course's title" aria-label="The course's title">
-    <textarea class="lt-about-desc lt-about-in" id="lt-desc" rows="2" placeholder="Add a description: what the course is about, in a few sentences. Students see it on the course page's About tab." aria-label="The course's description">${esc(d.description)}</textarea>
+    <div class="lt-about-desc" id="lt-desc"></div>
     <span class="lt-about-st" id="lt-about-st" aria-live="polite"></span>`;
-  const ta = $("#lt-desc"), fit = () => { ta.style.height = "auto"; ta.style.height = `${ta.scrollHeight + 2}px`; };
-  fit();
   $("#lt-title").oninput = e => { d.title = e.target.value.trim(); saveAboutSoon(c, t, o, v); };
-  ta.oninput = () => { d.description = ta.value; fit(); saveAboutSoon(c, t, o, v); };
+  richText($("#lt-desc"), { value: d.description, quiet: true, label: "The course's description", placeholder: "Add a description: what the course is about, in a few sentences. Students see it on the course page's About tab.",
+    onChange: md => { d.description = md; saveAboutSoon(c, t, o, v); } });
 }
 
 // ── The teaching team: who else works on this offering, as instructor or TA ──

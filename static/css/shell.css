@@ -622,3 +622,34 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
   .lx-grid, .lx-grid.two, .lx-grid.when, .lx-grid.ann, .lx-grid.week, .lx-grid.one, .lx-frow { grid-template-columns: 1fr; }
   .lx-editor { padding: 20px 16px; }
 }
+
+/* ── A rich text box (richtext.js): bold, italic, links and lists, kept as Markdown. It grows with what's
+   in it, and has no handle to drag it bigger. ── */
+.rt { position: relative; border: 1px solid var(--lx-line, #b4b6ba); border-radius: 8px; background: var(--home-card); }
+.rt:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.rt-bar { display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid var(--home-line); }
+.rt-bar button { display: inline-grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--home-ink-2); cursor: pointer; }
+.rt-bar button:hover { background: var(--home-strip); color: var(--home-ink); }
+.rt-bar button[aria-pressed="true"] { background: var(--home-strip); color: var(--home-ink); box-shadow: inset 0 0 0 1px var(--home-line-2); }
+.rt-bar svg { width: 16px; height: 16px; }
+.rt-link { display: flex; gap: 6px; padding: 6px; border-bottom: 1px solid var(--home-line); }
+.rt-link[hidden] { display: none; }
+.rt-link input { flex: 1; min-width: 0; height: 30px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--lx-line, #b4b6ba); background: var(--home-card); color: var(--home-ink); font: 13.5px var(--font-ui); }
+.rt-link input:focus { outline: none; border-color: var(--accent); }
+.rt-link button { height: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--lx-line, #b4b6ba); background: var(--home-card); color: var(--home-ink); font: 600 12.5px var(--font-ui); cursor: pointer; }
+.rt-link button[data-rt-ok] { background: var(--home-ink); border-color: var(--home-ink); color: var(--home-card); }
+.rt-ed { min-height: 72px; padding: 8px 10px; font: 14.5px/1.55 var(--font-ui); color: var(--home-ink); outline: none; overflow-wrap: anywhere; cursor: text; }
+.rt-ed p { margin: 0 0 8px; } .rt-ed ul, .rt-ed ol { margin: 0 0 8px; padding-left: 22px; } .rt-ed > :last-child { margin-bottom: 0; }
+.rt-ed a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.rt-ed.empty::before { content: attr(data-ph); color: var(--home-ink-3); pointer-events: none; position: absolute; }
+.rt.off { background: transparent; }
+.rt.off .rt-ed { cursor: default; color: var(--home-ink-2); }
+/* Quiet: looks like the page's own text; the toolbar shows above it while it's being typed in. */
+.rt.quiet { border-color: transparent; background: transparent; margin-left: -11px; }
+.rt.quiet:hover { border-color: var(--home-line-2); }
+.rt.quiet:focus-within { border-color: var(--accent); background: var(--home-card); }
+.rt.quiet .rt-bar { position: absolute; right: -1px; bottom: calc(100% + 6px); z-index: 5; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); box-shadow: 0 4px 14px rgb(0 0 0 / .08); }
+.rt.quiet:not(:focus-within) .rt-bar, .rt.quiet:not(:focus-within) .rt-link { display: none; }
+.rt.quiet .rt-link { position: absolute; left: -1px; right: -1px; top: calc(100% + 6px); z-index: 5; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); }
+.rt.quiet .rt-ed { min-height: 0; padding: 4px 10px; font-size: 15px; color: var(--home-ink-2); }
+.rt.quiet .rt-ed.empty::before { font-style: italic; }

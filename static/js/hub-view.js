@@ -137,15 +137,6 @@ function feedHTML(a, open) {
   return `<details class="hb-ann hb-ann-x"${open ? " open" : ""}><summary>${when ? `<p class="hb-ann-meta">${esc(when)}</p>` : ""}<h3>${esc(a.title || "Announcement")}</h3>${CHEV}</summary><div class="hb-ann-b">${markdown(a.body)}</div></details>`;
 }
 const initials = n => String(n || "").split(/[\s,]+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "·";
-// The weights, as one bar: each evaluation (or group) its share of the course grade.
-const SHADES = ["#1f2329", "#a67c00", "#7a7f87", "#c9a95a", "#4a4f57", "#e4d3a6", "#9aa0a8", "#6b5a2e"];
-function weightBar(units) {
-  const total = units.reduce((t, u) => t + Number(u.weight || 0), 0) || 1;
-  return `<div class="hb-wbar" role="img" aria-label="${esc(units.map(u => `${u.name} ${fmtW(u.weight)}%`).join(", "))}">${units.filter(u => Number(u.weight) > 0).map((u, k) => {
-    const c = SHADES[k % SHADES.length], light = ["#c9a95a", "#e4d3a6", "#9aa0a8"].includes(c), w = Number(u.weight) / total * 100;
-    return `<span style="flex:${w} 1 0;background:${c};color:${light ? "#1f2329" : "#fff"}" title="${esc(`${u.name}: ${fmtW(u.weight)}%`)}">${w >= 9 ? `<b>${esc(u.name)}</b><i>${fmtW(u.weight)}%</i>` : ""}</span>`;
-  }).join("")}</div>`;
-}
 function tableHTML(cols, rows, foot) {
   return `<div class="hb-tw"><table class="hb-t"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead>
     <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${rich(c)}</td>`).join("")}</tr>`).join("")}</tbody>${foot && foot.some(x => x) ? `<tfoot><tr>${foot.map(c => `<td>${rich(c)}</td>`).join("")}</tr></tfoot>` : ""}</table></div>`;
@@ -243,12 +234,14 @@ const DRAW = {
     const days = [];
     for (let d = mon; d <= addDays(mon, 6); d = addDays(d, 1)) {   // Monday to Sunday
       const dow = (fromIso(d).getDay() + 6) % 7 + 1, items = [];
-      ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev"><span class="tm">${esc(hhmm(m.start, m.end))}</span><span class="k">${esc(meetingName(m))}${meetingSub(m) ? ` ${esc(meetingSub(m))}` : ""}</span>${esc(m.who)}${m.where ? ` <span class="wh">${m.who ? "· " : ""}${esc(m.where)}</span>` : ""}</div>` }));
-      evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due${e.type === "test" ? " test" : ""}"><span class="tm">${esc(e.time || "")}</span><span class="k">${e.type === "test" ? "Test" : "Due"}</span>${esc(e.name)}</div>` }));
-      (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => items.push({ t: (/(\d\d:\d\d)/.exec(c.date) || [])[1] || "", h: `<div class="hb-ev"><span class="tm">${esc((/(\d\d:\d\d)/.exec(c.date) || [])[1] || "")}</span><span class="k">${esc(c.label)}</span>${esc(c.title)}</div>` }));
+      // Each thing: its time (start, and end below), what it is, and one quiet detail (where, or its label).
+      const tm = (a, b) => `<span class="tm">${a ? `<b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}` : "<b>·</b>"}</span>`;
+      ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev">${tm(m.start, m.end)}<span class="what"><b>${esc(meetingName(m))}${meetingSub(m) ? ` <span class="sec">${esc(meetingSub(m))}</span>` : ""}</b>${m.where ? `<small>${esc(m.where)}</small>` : ""}</span></div>` }));
+      evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due">${tm(e.time, "")}<span class="what"><b>${esc(e.name)}</b><span class="hb-tag${e.type === "test" ? " dk" : ""}">${e.type === "test" ? "Test" : "Due"}</span></span></div>` }));
+      (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => { const at = (/(\d\d:\d\d)/.exec(c.date) || [])[1] || ""; items.push({ t: at, h: `<div class="hb-ev">${tm(at, "")}<span class="what"><b>${esc(c.title || c.label)}</b>${c.title && c.label ? `<small>${esc(c.label)}</small>` : ""}</span></div>` }); });
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
       if (!items.length) continue;   // only the days that have something on them
-      days.push(`<article class="hb-day${d === now ? " today" : ""}"><header><span>${d === now ? "Today" : DAY[dow]}</span><b>${esc(fmt(d, { month: "short", day: "numeric" }))}</b></header><div class="hb-day-items">${items.map(x => x.h).join("")}</div></article>`);
+      days.push(`<li class="${d === now ? "today" : ""}"><span class="hb-tl-dot"></span><p class="hb-tl-d">${d === now ? `<i>Today</i>` : ""}${esc(DAY3[dow])} · ${esc(fmt(d, { month: "short", day: "numeric" }))}</p><div class="hb-day-items">${items.map(x => x.h).join("")}</div></li>`);
     }
 
     // Only what there is: a part with nothing in it this week isn't shown (no empty headings).
@@ -259,7 +252,7 @@ const DRAW = {
 
     // One column, so it reads the same whatever the week has: the days that have something on them (side by side),
     // then the week's announcements, then its lectures. A part with nothing in it isn't shown.
-    const daysHTML = days.length ? `<h3 class="hb-h3">Day by day</h3><div class="hb-daygrid">${days.join("")}</div>` : "";
+    const daysHTML = days.length ? `<h3 class="hb-h3">Day by day</h3><div class="hb-tl hb-dtl"><ol>${days.join("")}</ol></div>` : "";
     return `<div class="hb-weeknav">
         <div class="grow"><p class="hb-eyebrow">This week · ${esc(`${fmt(mon, { month: "short", day: "numeric" })} – ${fmt(last, { month: "short", day: "numeric" })}`)}</p><h2 class="hb-h2">${esc(w.label)}${lw && lw.topic ? `: ${esc(lw.topic)}` : ""}</h2></div>
       </div>${note ? `<p class="hb-note">${esc(note)}</p>` : ""}
@@ -307,12 +300,14 @@ const DRAW = {
       return `<div class="hb-req">${url ? `<a class="hb-btn hb-req-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn hb-req-btn">Request Accommodation</span>`}${when}</div>`;
     };
     const extras = e => `${note(e) ? `<p class="hb-eval-n">${esc(note(e))}</p>` : ""}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${request(e)}${edit(e)}`;
-    const one = u => `<article class="hb-eval${u.type === "test" ? " test" : ""}"><div class="hb-eval-m">${evalWhen(u) ? `<p class="hb-eval-k">${esc(evalWhen(u).replace(/^Due /, ""))}</p>` : ""}<h3>${esc(u.name)}</h3>${extras(u)}</div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
-    const group = u => `<article class="hb-eval grp"><div class="hb-eval-m"><p class="hb-eval-k">${u.count} ${u.count === 1 ? "part" : "parts"}</p><h3>${esc(u.name)}</h3><p class="hb-eval-n">${esc(`The best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.`)}</p>
-        <ul class="hb-eval-subs">${u.members.map(m => `<li><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${esc(evalWhen(m))}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></div><div class="hb-eval-w"><b>${fmtW(u.weight)}%</b></div></article>`;
+    // A marking scheme, as a syllabus has it: one list, each evaluation a row (its name and when, its weight on the
+    // right); a group's row opens to show its parts.
+    const when = e => esc(evalWhen(e).replace(/^Due /, ""));
+    const one = u => `<li class="hb-eval${u.type === "test" ? " test" : ""}"><div class="hb-eval-m"><h3>${esc(u.name)}</h3>${evalWhen(u) ? `<p class="hb-eval-d">${u.type === "test" ? "" : "Due "}${when(u)}</p>` : ""}${extras(u)}</div><div class="hb-eval-w">${fmtW(u.weight)}%</div></li>`;
+    const group = u => `<li class="hb-eval grp"><details><summary><div class="hb-eval-m"><h3>${esc(u.name)}</h3><p class="hb-eval-d">${esc(`Best ${u.keep} of ${u.count}, ${fmtW(u.weight / Math.max(1, u.keep))}% each`)}</p></div><div class="hb-eval-w">${fmtW(u.weight)}%</div>${CHEV}</summary>
+        <ul class="hb-eval-subs">${u.members.map(m => `<li><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${when(m)}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></details></li>`;
     return `<h2 class="hb-h2">Evaluations</h2><p class="hb-lede">Every evaluation, its weight and when it is. Together they make up your course grade.</p>
-      ${weightBar(E.units)}
-      <div class="hb-evals">${E.units.map(u => (u.kind === "group" ? group(u) : one(u))).join("")}</div>`;
+      <ol class="hb-scheme">${E.units.map(u => (u.kind === "group" ? group(u) : one(u))).join("")}</ol>`;
   },
 
   announcements() {

@@ -1495,6 +1495,18 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .dd-list button small { font: 600 11px var(--font-mono); color: #9fa3aa; }
 .dd-list button svg { width: 16px; height: 16px; color: var(--accent); }
 .dd-list .dot { width: 10px; height: 10px; flex: none; }
+/* The menus look like Lectern's dropdowns (the About picker): an icon, a small grey line over the name. */
+.dd-list button { padding: 7px 9px !important; border-radius: 6px !important; font-weight: 400; }
+.dd-list button b { font-weight: 400 !important; }
+.dd-list button[aria-selected="true"] { background: transparent; }
+.dd-list button:hover, .dd-list button:focus-visible { background: #f2f1ee !important; outline: none; }
+.dd-list button > svg:last-child { color: #1f2329 !important; }
+.dd-list .dot.ic { color: #4a4f57 !important; }
+.dd-list button .dot.ic svg { color: #4a4f57 !important; }
+.menu-list .dd-t { font-size: 14px; color: #1f2329; }
+.dd-t { flex: 1; min-width: 0; display: grid; line-height: 1.25; }
+.dd-t small { font: 700 10.5px/1.3 var(--font-ui) !important; letter-spacing: .08em; text-transform: uppercase; color: #80848b !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dd-t b { flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-h { padding: 8px 10px 3px; font: 700 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #9fa3aa; }
 .dd-sep { height: 1px; margin: 4px 6px; background: #ecedef; }
 /* menus: items size to their two lines of text */
@@ -3885,7 +3897,7 @@ function act(b) {
     case "sec": ui.section = b.dataset.v; return render();
     case "st-what-menu": {   // what to show: the course grade or an evaluation, each with its circle
       const opts = [["grade", "Course Grade", "#5f6166", ""], ...counted().map(e => [e.id, e.name, colorOf(e), titleOf(e)])];
-      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh]) => `<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.stats.what === id}">${evIcon(id)}<b>${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.stats.what === id ? svg("check") : ""}</button>`).join("")}</div>`,
+      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh]) => `<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.stats.what === id}">${evIcon(id)}<span class="dd-t">${sh ? `<small>${esc(name)}</small>` : ""}<b>${esc(sh || name)}</b></span>${ui.stats.what === id ? svg("check") : ""}</button>`).join("")}</div>`,
         pop => pop.addEventListener("click", e => { const o = e.target.closest("[data-pick]"); if (!o) return; closePops(); ui.stats.what = o.dataset.pick; render(); }), "dd-pop");
     }
     case "st-who-menu": {   // which students
@@ -3913,8 +3925,8 @@ function act(b) {
           pop.addEventListener("click", ev => { if (!ev.target.closest("[data-fxclear]")) return; list.forEach(([k]) => delete ui.fxOff[k]); closePops(); render(); }); }, "dd-pop");
     }
     case "fx-menu": {
-      const opts = [["grade", "Course Grade", "#5f6166", ""], ...model.evals.map(x => [x.id, x.name, colorOf(x), x.makeupFor ? "makeup" : titleOf(x)])];
-      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh], k) => `${k === 1 ? '<span class="dd-sep"></span>' : ""}<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.focus === id}">${evIcon(id)}<b title="${esc(name)}">${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.focus === id ? svg("check") : ""}</button>`).join("")}</div>`,
+      const opts = [["grade", "Course Grade", "#5f6166", ""], ...model.evals.map(x => [x.id, x.name, colorOf(x), titleOf(x)])];
+      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh], k) => `${k === 1 ? '<span class="dd-sep"></span>' : ""}<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.focus === id}">${evIcon(id)}<span class="dd-t">${sh ? `<small>${esc(name)}</small>` : ""}<b title="${esc(name)}">${esc(sh || name)}</b></span>${ui.focus === id ? svg("check") : ""}</button>`).join("")}</div>`,
         pop => pop.addEventListener("click", ev => { const o = ev.target.closest("[data-pick]"); if (!o) return; closePops(); ui.focus = o.dataset.pick; if (ui.sort !== "name" && ui.sort !== "grade") ui.sort = "name"; render(); }), "dd-pop");
     }
     case "fx": ui.focus = b.dataset.v; if (ui.sort !== "name" && ui.sort !== "grade") ui.sort = "name"; return render();

@@ -89,7 +89,7 @@ def main():
         tp.screenshot(path=f"{OUT}/t05-ta-mark-saved.png")
         # A change to an evaluation isn't saved: Lectern says so first, and only the marks go.
         tp.evaluate("location.hash = '#/~chandra/csc258/f26/evaluations'"); tp.wait_for_timeout(1200)
-        tp.click(G + ".erow:has(h3:text-is('Midterm'))"); tp.wait_for_timeout(600)
+        tp.click(G + ".erow:has(.er-kind:text-is('Midterm 1'))"); tp.wait_for_timeout(600)
         tp.screenshot(path=f"{OUT}/t06a-ta-eval.png")
         w = tp.query_selector(G + "input[data-ed='weight'], " + G + "input[data-bind$='weight'], " + G + "input[data-f='weight']")
         print("weight field:", bool(w))

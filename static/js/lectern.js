@@ -17,6 +17,8 @@
    at /p/<handle>/…) and "priv" (grades, exams). See store.js and server/store.py.
    ============================================================ */
 import * as Auth from "./auth.js";
+import { enhanceSelects } from "./select.js";
+enhanceSelects();   // every dropdown drawn as the About picker
 import * as Store from "./store.js";
 import { accountPage } from "./account.js";
 import { lecturesPage, lecturesUnsaved } from "./lectures.js";

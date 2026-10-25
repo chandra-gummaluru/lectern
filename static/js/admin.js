@@ -2,6 +2,8 @@
    accounts (and deleting them), email settings, and the other admins. Its own session, separate from Lectern's.
    Admins are added only on the server: python app.py admin you@example.com */
 import { wireShow, secureHere } from "./auth.js";
+import { enhanceSelects } from "./select.js";
+enhanceSelects();   // every dropdown drawn as the About picker
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);

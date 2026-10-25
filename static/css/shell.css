@@ -890,3 +890,15 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .hd-row > .hd-main > .hd { grid-column: 2; grid-row: 1; min-width: 0; }
 .hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
 @media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }
+
+/* select.js: every <select> drawn as the About picker; the select itself stays, hidden, under it. */
+.pks { position: relative; display: block; min-width: 0; }
+.pks[hidden] { display: none !important; }
+.pks-inline { display: inline-block; vertical-align: middle; max-width: 100%; }
+.pks-inline .pks-btn { width: auto; max-width: 100%; }
+.pks-btn { width: 100%; }
+.pks-btn .pk1-cur { flex: 1; }
+.pks-native { position: absolute !important; width: 1px !important; height: 1px !important; min-width: 0 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; opacity: 0 !important; pointer-events: none !important; overflow: hidden !important; }
+.pks-pop { position: fixed; right: auto; top: 0; left: 0; z-index: 1000; width: max-content; max-width: min(420px, calc(100vw - 16px)); }
+.pks-pop .pk1-opt:disabled { opacity: .45; cursor: default; }
+.pks-pop .pk1-opt:focus { outline: none; background: var(--home-strip); }

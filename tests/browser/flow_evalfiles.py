@@ -55,7 +55,7 @@ def main():
 
         v = ctx.browser.new_context().new_page()
         v.goto(srv.base + "c/chandra/csc258/f26/#evaluations"); v.wait_for_selector(".hs-ev")
-        v.locator(".hs-row.hs-ev", has_text="Midterm").first.click(); v.wait_for_selector(".hs-tiles")
+        v.locator(".hs-ev", has_text="Midterm").first.click(); v.wait_for_selector(".ec-card .ec-head")
         expect(v.locator("a.hs-file")).to_have_count(2)
         v.wait_for_timeout(900); v.screenshot(path=f"{OUT}/171-hub-eval-files.png", full_page=True)
         assert v.request.get(up).status == 200

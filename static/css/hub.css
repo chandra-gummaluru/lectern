@@ -802,3 +802,10 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .wk-item > .ab-av { flex: none; align-self: flex-start; margin-top: 14px; }
 .ab-rest { margin-top: 22px; padding-top: 6px; border-top: 1px solid var(--line); }
 .ab-rest .hb-panel, .ab-rest .hs-card { box-shadow: none; }
+.wk-link > .hs-num { flex: none; align-self: center; }
+.wk-break { justify-content: center; color: var(--ink-3); font-size: 14px; background: var(--strip); margin: 0 -18px; padding: 8px 18px !important; }
+.wk-now .wk-b h3 { color: var(--ink); }
+.wk-w { flex: none; font: 500 22px/1 var(--font-serif); color: var(--ink); font-variant-numeric: tabular-nums; margin-left: 12px; }
+.wk-sub { padding-left: 38px !important; }
+.wk-sub h3 { font-size: 19px !important; }
+.hs-kick .hs-tag { text-transform: none; letter-spacing: 0; font-weight: 600; }

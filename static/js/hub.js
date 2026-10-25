@@ -129,6 +129,10 @@ function markSeen() {
 const MEGAPHONE = svg('<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>');
 // An announcement, as an activity's card is: its icon, ANNOUNCEMENT (and its sections), its title and date, its message.
 const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? " hs-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<p class="hs-when">${esc(stampText(a.date))}</p></div><div class="hs-body">${markdown(a.body)}</div></div></article>`;
+// An announcement as a row in a card's group (a week's page, Announcements): as an activity's row is.
+const annItem = a => `<div class="wk-item${isNew(a) ? " wk-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="wk-b"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p><h3>${esc(a.title || "Announcement")}</h3><p class="wk-when">${esc(stampText(a.date))}</p><div class="hs-body">${markdown(a.body)}</div></div></div>`;
+// An evaluation as a row in a card's group (a week's page, a group's): it opens the evaluation's page.
+const evItem = e => `<a class="wk-item wk-link" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3>${evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${CHEV}</a>`;
 function weekRow(w, now) {
   if (w.isBreak) return `<p class="hs-break">${esc(w.label || "Break")}</p>`;
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");
@@ -361,11 +365,24 @@ const PAGES = {
   announcements() {
     if (!open("announcements")) return lockedPage("announcements", "Announcements");
     const items = (data("announcements").items || []).slice().sort((a, b) => annTime(b) - annTime(a));
-    return `${path([["Announcements"]])}${head("Announcements", "News for the class, newest first.")}${items.length ? `<div class="hs-stack">${items.map(annCard).join("")}</div>` : `<p class="hs-empty">No announcements yet.</p>`}`;
+    // One card, as a week's page is: the announcements a row each, newest first.
+    return `${path([["Announcements"]])}
+      <article class="ec-card wk-card">
+        <header class="ec-head"><span class="hs-ic ec-ic">${MEGAPHONE}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Announcements</h1><p class="ec-subline">News for the class, newest first.</p></div></header>
+        ${items.length ? `<div class="wk-group"><div class="wk-list">${items.map(annItem).join("")}</div></div>` : `<p class="hs-empty">No announcements yet.</p>`}
+      </article>`;
   },
   activities() {
     if (!open("lectures")) return lockedPage("lectures", "Activities");
-    return `${path([["Activities"]])}${head("Activities", "The term, week by week: open a week for its lectures, tutorials and labs, their files, and what's due.")}${weeks().length ? weekList() : `<p class="hs-empty">The weeks will appear here.</p>`}`;
+    // One card: the term's weeks, a row each (as a week's page has its activities).
+    const now = thisWeek();
+    const rows = weeks().map(w => w.isBreak ? `<div class="wk-item wk-break">${esc(w.label || "Break")}</div>`
+      : `<a class="wk-item wk-link hs-wk${w.i === now ? " wk-now" : ""}" href="#week/${w.i}"><span class="hs-num">${esc(weekNum(w))}</span><div class="wk-b"><p class="hs-kick">${esc(w.label || "Week")}${w.i === now ? ` <span class="hs-tag">This week</span>` : ""}</p><h3>${esc(w.topic || w.label || "Week")}</h3>${w.dates ? `<p class="wk-when">${esc(w.dates)}</p>` : ""}</div>${CHEV}</a>`).join("");
+    return `${path([["Activities"]])}
+      <article class="ec-card wk-card">
+        <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON.lecture}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Activities</h1><p class="ec-subline">The term, week by week: open a week for its lectures, tutorials and labs, their files, and what's due.</p></div></header>
+        ${rows ? `<div class="wk-group"><div class="wk-list">${rows}</div></div>` : `<p class="hs-empty">The weeks will appear here.</p>`}
+      </article>`;
   },
   week(arg) {
     if (!open("lectures")) return lockedPage("lectures", "Activities");
@@ -380,8 +397,8 @@ const PAGES = {
     const acts = w.cards.map(c => { const k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [];
       return item(KIND_ICON[k], `${esc(KIND_NAME[k])}${groupTag(c.groups)}`, c.title || c.label || "Untitled", datesOf(c).map(stampText).join(" · "),
         `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`); }).join("");
-    const due = evs.map(e => `<a class="wk-item wk-link" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3>${evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${CHEV}</a>`).join("");
-    const an = anns.map(a => item(MEGAPHONE, `${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}`, a.title || "Announcement", stampText(a.date), `<div class="hs-body">${markdown(a.body)}</div>`)).join("");
+    const due = evs.map(evItem).join("");
+    const an = anns.map(annItem).join("");
     return `${path([["Activities", "#activities"], [w.label || "Week"]])}
       <article class="ec-card wk-card">
         <header class="ec-head"><span class="hs-num">${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
@@ -391,15 +408,27 @@ const PAGES = {
   },
   evaluations() {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
-    return `${path([["Evaluations"]])}${head("Evaluations", "Every evaluation, its weight and when it is. Together they make up your course grade.")}${evalList()}`;
+    // One card: each evaluation a row with its weight (a group, then its own, under it).
+    const U = data("evaluations").units || [];
+    const W = w => (w != null ? `<span class="wk-w">${fmtW(w)}%</span>` : "");
+    const row = (e, w, sub) => `<a class="wk-item wk-link hs-ev${sub ? " wk-sub" : ""}" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[e.kind === "group" ? "group" : evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.kind === "group" ? "Group" : e.name)}</p><h3>${esc(e.kind === "group" ? e.name : e.title || e.name)}</h3>${e.kind === "group" ? `<p class="wk-when">The best ${e.keep} of ${e.count} count, ${fmtW(e.weight / Math.max(1, e.keep))}% each</p>` : evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${W(w)}${CHEV}</a>`;
+    const rows = U.map(u => u.kind === "group" ? row(u, u.weight) + (u.members || []).map(m => row(m, null, true)).join("") : row(u, u.weight)).join("");
+    return `${path([["Evaluations"]])}
+      <article class="ec-card wk-card">
+        <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON.test}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Evaluations</h1><p class="ec-subline">Every evaluation, its weight and when it is. Together they make up your course grade.</p></div></header>
+        ${rows ? `<div class="wk-group"><div class="wk-list">${rows}</div></div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}
+      </article>`;
   },
   evaluation(arg) {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
     const f = unitOf(arg); if (!f) return PAGES.evaluations();
     const { u, group } = f, E = data("evaluations");
     if (u.kind === "group") {
-      return `${path([["Evaluations", "#evaluations"], [u.name]])}<p class="hs-kick hs-kick-top">Group</p>${head(u.name, `Worth ${fmtW(u.weight)}% of your grade: the best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.`)}
-        <div class="hs-list">${(u.members || []).map(m => evRow(m)).join("")}</div>`;
+      return `${path([["Evaluations", "#evaluations"], [u.name]])}
+        <article class="ec-card wk-card">
+          <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON.group}</span><div class="ec-tt"><p class="hs-kick">Group</p><h1>${esc(u.name)}</h1><p class="ec-subline">Worth ${fmtW(u.weight)}% of your grade: the best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.</p></div></header>
+          ${(u.members || []).length ? `<div class="wk-group"><div class="wk-list">${u.members.map(evItem).join("")}</div></div>` : ""}
+        </article>`;
     }
     return evalCard(u, group, E);
   },

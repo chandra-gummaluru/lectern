@@ -432,10 +432,10 @@ export function lecturesPage(ctx, r) {
           <label class="lx-f">Title<input type="text" id="lw-title" value="${esc(x.title)}" placeholder="e.g. Latches and flip-flops"${dis}></label>
         </div>
         <p class="lx-help" id="lw-named">${namedHTML(x)}</p>
-        <div class="lx-grid when">
+        <div class="lx-grid one">
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""} data-kick="${esc(rangeText(y.start, y.end))}" data-icon="${esc(`<span class="pk1-wk">${esc(weekNum(y))}</span>`)}">${esc(y.label || "Week")}</option>`).join("")}</select></label>
-          <div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div>
         </div>
+        <div class="lx-grid one"><div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div></div>
 
         <div class="lx-grid one"><div class="lx-f">For<div id="lw-groups"></div></div></div>
         <h3 class="lx-sec">Description</h3>

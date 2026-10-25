@@ -64,7 +64,7 @@ def main():
         assert me.get_attribute("#lw-start-f", "data-date") == "2026-12-07", me.get_attribute("#lw-start-f", "data-date")
         expect(me.locator("#lw-start")).to_have_text("Mon, Dec 7, 2026")
         me.fill("#lw-topic", "Review")
-        me.click("[data-add-kind=lecture]")
+        me.click("[data-add-activity]")
         me.wait_for_selector("#lw-title")
         expect(me.locator("#lw-label")).to_have_value("Lecture 25")
         me.fill("#lw-title", "Course review")

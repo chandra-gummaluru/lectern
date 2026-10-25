@@ -611,7 +611,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-frow { display: grid; grid-template-columns: 200px 1fr 36px; gap: 8px; align-items: center; margin: 0 0 8px; }
 .lx-fbtns { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 4px; }
 .lx-editor .lx-subs { padding: 4px 0 0; }
-.lx-editor .lx-adds { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.lx-editor .lx-adds { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 10px; }
 .lx-preview { cursor: default; margin-top: 8px; }
 .lx-preview:hover { box-shadow: none; }
 .lx-preview .an-body { margin-top: 6px; }
@@ -725,3 +725,11 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-row.sub.lx-lec { gap: 14px; }
 .lx-lec .lx-when { margin: 2px 0 0 !important; }
 .lx-lec .lx-clip { margin: 3px 0 0 !important; }
+
+/* Add buttons: dashed yellow outline. Main buttons: white with a black outline (not solid black). */
+.lx-btn.add { background: transparent !important; border: 1.5px dashed var(--accent) !important; color: var(--accent) !important; }
+.lx-btn.add:hover:not(:disabled) { background: var(--accent-bg) !important; border-style: solid !important; }
+.lt-btn.primary, .lt-save, .lt-modal .lt-btn.primary, .lx-btn.main, .rt-link button[data-rt-ok] {
+  background: var(--home-card) !important; border: 1.5px solid var(--home-ink) !important; color: var(--home-ink) !important; opacity: 1 !important; }
+.lt-btn.primary:hover:not(:disabled), .lt-save:hover:not(:disabled), .lt-modal .lt-btn.primary:hover:not(:disabled), .lx-btn.main:hover:not(:disabled), .rt-link button[data-rt-ok]:hover {
+  background: var(--accent-bg) !important; border-color: var(--home-ink) !important; color: var(--home-ink) !important; }

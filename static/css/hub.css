@@ -443,3 +443,6 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 .hb-tag.dk { background: var(--accent-bg); color: var(--accent); }
 .hb-card-ev { margin: 6px 0 0 !important; font-size: 13.5px !important; }
 .hb-card.test .hb-card-ev a { color: inherit; }
+
+/* Main buttons: white with a black outline (not solid black). */
+.hb .hb-btn.primary, .hb a.hb-file:first-child { background: var(--card) !important; border: 1.5px solid var(--ink) !important; color: var(--ink) !important; opacity: 1 !important; }

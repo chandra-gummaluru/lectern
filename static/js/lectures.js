@@ -187,7 +187,7 @@ export function lecturesPage(ctx, r) {
     const list = weeks();
     pageHTML(`<div class="lt-in"><div class="lx">
       <div class="lx-head"><h1>Activities</h1><span class="spacer"></span>${status$()}
-        ${edit ? `<button type="button" class="lx-btn main" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
+        ${edit ? `<button type="button" class="lx-btn add" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list" data-units>${list.map(w => (w.isBreak ? breakHTML(w) : weekHTML(w))).join("")}</div>` : `<div class="lx-empty">No weeks yet.${edit ? " Add the term's first week." : ""}</div>`}
     </div></div>`);
@@ -322,7 +322,7 @@ export function lecturesPage(ctx, r) {
         <h3 class="lx-sec">Activities</h3>
         <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
         ${subsHTML(w)}
-        ${edit ? `<div class="lx-adds">${KINDS.map(([k, n]) => `<button type="button" class="lx-add" data-add-kind="${k}">${ICON.plus}${k === "other" ? "Something Else" : `Add a ${n}`}</button>`).join("")}</div>` : ""}
+        ${edit ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add-activity>${ICON.plus}Add an Activity</button></div>` : ""}
       </div>
     </div></div>`);
     const root = $(".lx");
@@ -336,7 +336,7 @@ export function lecturesPage(ctx, r) {
     let shown = w.label || "Week";
     bind("#lw-label", "label", () => { if ((w.label || "Week") === shown) return; shown = w.label || "Week"; $("#lw-h").textContent = shown; renderPath(weekSteps(w)); });
     bind("#lw-topic", "topic");
-    root.querySelectorAll("[data-add-kind]").forEach(b => { b.onclick = () => addLecture(w, b.dataset.addKind); });
+    root.querySelectorAll("[data-add-activity]").forEach(b => { b.onclick = () => { const last = (w.cards || []).at(-1); addLecture(w, last ? kindOf(last) : "lecture"); }; });
     $("#lw-del").onclick = async () => {
       const n = (w.cards || []).length;
       if (!await confirmBox("Delete this week?", `${esc(w.label || "This week")}${n ? ` and its ${n} activit${n === 1 ? "y" : "ies"}` : ""} go${n ? "" : "es"} from the course page.`, "Delete")) return;
@@ -373,7 +373,7 @@ export function lecturesPage(ctx, r) {
         <h3 class="lx-sec">Files and Links</h3>
         <p class="lx-help">Each one is a button students click on the course page, with this activity. With none, it says Coming soon.</p>
         <div id="lw-files">${files.map((f, i) => `<div class="lx-frow"><input type="text" data-fl="${i}" value="${esc(f.label)}" placeholder="Button text, e.g. Slides" aria-label="Button text"${dis}><input type="url" data-fu="${i}" value="${esc(f.url)}" placeholder="https://…" aria-label="Link"${dis}>${edit ? `<button type="button" class="lx-ic quiet" data-fdel="${i}" aria-label="Remove it">${ICON.trash}</button>` : ""}</div>`).join("") || (edit ? "" : `<p class="lx-help">None.</p>`)}</div>
-        ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
+        ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn add" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn add" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
       </div>
     </div></div>`);
     whenField($("#lw-when-f"), { date: when.date, time: when.time, id: "lw-when", label: "When", empty: "Choose a date", timeLabel: "Starts At", near: w.start, disabled: !edit,

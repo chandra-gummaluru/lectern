@@ -79,7 +79,7 @@ export function announcementsPage(ctx, r) {
     renderPath([...steps, { label: "Announcements" }]);
     const list = st.data.items.slice().sort((x, y) => timeOf(y) - timeOf(x));
     pageHTML(`<div class="lt-in"><div class="lx">
-      <div class="lx-head"><h1>Announcements</h1><span class="spacer"></span>${status$()}${edit ? `<button type="button" class="lx-btn main" id="an-new">${ICON.plus}New Announcement</button>` : ""}</div>
+      <div class="lx-head"><h1>Announcements</h1><span class="spacer"></span>${status$()}${edit ? `<button type="button" class="lx-btn add" id="an-new">${ICON.plus}New Announcement</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list">${list.map(x => `<div class="lx-row" style="--c:${COLOR}" data-an="${esc(x.id)}" role="button" tabindex="0">
           <div class="lx-main"><div class="lx-top"><h3>${esc(x.title || "Untitled")}</h3></div>

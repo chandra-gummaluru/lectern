@@ -978,6 +978,19 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .fx-fpop label.check input { margin-top: 3px; }
 .fx-fpop label.check small { display: block; font-size: 12px; color: var(--ink-3); font-weight: 400; }
 .fx-fpop .link { justify-self: start; }
+/* Filter: tick boxes, as Lectern's tick-box dropdowns (pick.js) have them. */
+.fpop .fx-fpop { gap: 1px; padding: 0; }
+.fpop .fx-fpop > b { padding: 6px 9px 4px; font: 700 10.5px/1.3 var(--font-ui); letter-spacing: .08em; color: #80848b; }
+.fpop .fx-fpop label.check { align-items: center; gap: 10px; padding: 7px 9px; border-radius: 6px; font: 400 14px/1.3 var(--font-ui); color: #1f2329; }
+.fpop .fx-fpop label.check:hover { background: #f2f1ee; }
+.fpop .fx-fpop label.check input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: #1f2329; }
+.fpop .fx-fpop label.check small { margin-top: 1px; font-size: 12.5px; color: #80848b; }
+.fpop .fx-fpop .link { margin: 4px 9px 6px; }
+/* Action menus (Import, Export): an icon, the action, a line on what it does. */
+.act-list .dd-t .dd-d { display: block; margin-top: 1px; font: 400 12.5px/1.35 var(--font-ui); color: #80848b; white-space: normal; }
+.act-list button { align-items: flex-start !important; max-width: 340px; }
+.act-list button > svg:first-child { margin-top: 2px; color: #4a4f57 !important; flex: none; }
+.st-list button > svg:first-child { flex: none; }
 .fx-fnote { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--accent-bg, #fdf8e8); font: 12.5px/1.45 var(--font-ui); color: var(--ink-2); }
 .fx-grid td.fx-gcell { text-align: center; padding: 0 14px; }
 .fx-grid td.fx-gcell .gp { font-size: 15px; }
@@ -2590,17 +2603,17 @@ function marksPreview(text, name, only) {
 }
 
 function importMenu(anchor) {
-  popover(anchor, `<div class="menu-list">
-    <button type="button" data-m="roster"><b>Class list</b><span>A CSV from Quercus or ACORN</span></button>
-    <button type="button" data-m="marks"${model.evals.length ? "" : " disabled"}><b>Marks</b><span>A CSV: student ID, then a column per evaluation, headed with its name</span></button></div>`, pop => {
+  popover(anchor, `<div class="menu-list dd-list act-list">
+    <button type="button" data-m="roster">${svg("upload")}<span class="dd-t"><b>Class list</b><span class="dd-d">A CSV from Quercus or ACORN</span></span></button>
+    <button type="button" data-m="marks"${model.evals.length ? "" : " disabled"}>${svg("upload")}<span class="dd-t"><b>Marks</b><span class="dd-d">A CSV: student ID, then a column per evaluation, headed with its name</span></span></button></div>`, pop => {
     pop.addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b || b.disabled) return; closePops(); ({ roster: importRoster, marks: () => uploadMarks(null) })[b.dataset.m](); });
   }, "menu");
 }
 function exportMenu(anchor) {
   const slug = (model.course.code || "grades").replace(/\s+/g, "") + (model.course.term ? `-${model.course.term.replace(/\s+/g, "")}` : "");
-  popover(anchor, `<div class="menu-list">
-    <button type="button" data-x="final"><b>Final grades</b><span>Each student's details and course grade</span></button>
-    <button type="button" data-x="all"><b>All marks</b><span>A column per evaluation (its name), then each student's details and grade (uploads back as is)</span></button></div>`, pop => {
+  popover(anchor, `<div class="menu-list dd-list act-list">
+    <button type="button" data-x="final">${svg("download")}<span class="dd-t"><b>Final grades</b><span class="dd-d">Each student's details and course grade</span></span></button>
+    <button type="button" data-x="all">${svg("download")}<span class="dd-t"><b>All marks</b><span class="dd-d">A column per evaluation (its name), then each student's details and grade (uploads back as is)</span></span></button></div>`, pop => {
     pop.addEventListener("click", e => {
       const b = e.target.closest("[data-x]"); if (!b) return; closePops();
       const studs = [...model.students].sort((a, c) => a.num.localeCompare(c.num)), evs = model.evals;
@@ -3884,8 +3897,8 @@ function act(b) {
       const sn = b.dataset.s, e = evalById(b.dataset.e), m = markOf(sn, e.id), cur = statusOf(m) || "";
       const opts = [["", m.pts != null ? `Marked: ${fmtNum(m.pts)} / ${outOf(e)}` : "No Status", ""], ["missed", "Not Submitted", "ban"], ["excused", "Excused", "dashcircle"], ["deferred", "Deferred", "clock"], ["aiv", "Academic Integrity", "shield"]];
       const g = groupOf(e), accV = g ? `g:${g.id}` : e.id, own = g ? groupOverride(sn, g) : overrideOf(sn, e.id);
-      return popover(b, `<div class="menu-list dd-list st-list" role="listbox">${opts.map(([v, l, ic]) => `<button type="button" role="option" data-st="${v}" aria-selected="${cur === v}" class="${v ? `st-o st-${v}` : ""}">${ic ? svg(ic) : "<i class='st-none'></i>"}<b>${esc(l)}</b>${cur === v ? svg("check") : ""}</button>`).join("")}
-          ${e.makeupFor ? "" : `<span class="dd-sep"></span><button type="button" data-acc="${esc(accV)}"><i class="st-none"></i><b>${own ? "Their Accommodation" : "Accommodation"}${g ? ` (${esc(groupShort(g))})` : ""}</b></button>`}</div>`,
+      return popover(b, `<div class="menu-list dd-list st-list" role="listbox">${opts.map(([v, l, ic]) => `<button type="button" role="option" data-st="${v}" aria-selected="${cur === v}" class="${v ? `st-o st-${v}` : ""}">${ic ? svg(ic) : "<i class='st-none'></i>"}<span class="dd-t"><b>${esc(l)}</b></span>${cur === v ? svg("check") : ""}</button>`).join("")}
+          ${e.makeupFor ? "" : `<span class="dd-sep"></span><button type="button" data-acc="${esc(accV)}">${svg("flag")}<span class="dd-t"><b>${own ? "Their Accommodation" : "Accommodation"}${g ? ` (${esc(groupShort(g))})` : ""}</b></span></button>`}</div>`,
         pop => pop.addEventListener("click", ev => {
           const o = ev.target.closest("button"); if (!o) return; closePops();
           if (o.dataset.acc != null) { ui.cell = { s: sn, e: e.id }; return studentEditor(sn, o.dataset.acc); }
@@ -3902,7 +3915,7 @@ function act(b) {
     }
     case "st-who-menu": {   // which students
       const secs = [...new Set(enrolled().map(sectionOf).filter(Boolean))].sort(), cur = ui.stats.who;
-      const opt = (v2, label) => `<button type="button" role="option" data-pick="${esc(v2)}" aria-selected="${cur === v2}"><b>${esc(label)}</b>${cur === v2 ? svg("check") : ""}</button>`;
+      const opt = (v2, label) => `<button type="button" role="option" data-pick="${esc(v2)}" aria-selected="${cur === v2}"><span class="dd-t"><b>${esc(label)}</b></span>${cur === v2 ? svg("check") : ""}</button>`;
       return popover(b, `<div class="menu-list dd-list" role="listbox">${opt("all", "All students")}${secs.length ? `<span class="dd-h">${esc(filterField().label)}</span>${secs.map(x => opt(`sec:${x}`, x)).join("")}<span class="dd-sep"></span>` : ""}${opt("picked", "Selected students…")}${opt("one", "One student…")}</div>`,
         pop => pop.addEventListener("click", e => { const o = e.target.closest("[data-pick]"); if (!o) return; closePops(); ui.stats.who = o.dataset.pick; ui.stats.q = ""; render(); const q = $("#st-q"); if (q) q.focus(); }), "dd-pop");
     }

@@ -35,6 +35,22 @@
 .mem-out { flex: none; white-space: nowrap; font: 500 13.5px var(--font-ui); color: #80848b; }
 tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .nm-tag { display: inline-block; padding: 0 7px; border-radius: 99px; background: #f1f1ef; box-shadow: inset 0 0 0 1px #d4d5d8; font: 600 11px/17px var(--font-ui); color: #5f6166; }
+/* A student's accommodation requests (Lectern): as on the Accommodations page */
+.rq-list { display: grid; gap: 10px; }
+.rq { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid #dfe0e2; border-radius: 10px; background: #fff; }
+.rq-ic { flex: none; color: #b58a00; margin-top: 1px; } .rq-ic svg { width: 22px; height: 22px; display: block; }
+.st-approved .rq-ic, .rq-mini.st-approved { color: #2f8f5b; } .st-rejected .rq-ic, .rq-mini.st-rejected { color: #c0392b; }
+.rq-b { flex: 1; min-width: 0; }
+.rq-k { margin: 1px 0 6px; font: 700 11px/1.4 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #80848b; }
+.rq-t { margin: 0; font-size: 14.5px; color: #1f2329; }
+.rq-q { margin: 0; padding: 8px 12px; border-radius: 8px; background: #f6f5f2; box-shadow: inset 0 0 0 1px #e6e5e1; font-size: 14.5px; color: #1f2329; white-space: pre-wrap; }
+.rq-c { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px; }
+.rq-av { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #f6f5f2; box-shadow: inset 0 0 0 1px #cfd0d3; font: 600 10.5px var(--font-ui); color: #4a4f57; }
+.rq-ch { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 4px 0 0; font-size: 13px; color: #80848b; } .rq-ch b { color: #1f2329; font-weight: 600; } .rq-v { font-weight: 600; }
+.st-approved .rq-v { color: #2f8f5b; } .st-rejected .rq-v { color: #c0392b; }
+.rq-n { display: inline-block; margin: 5px 0 0; padding: 7px 11px; border-radius: 4px 12px 12px 12px; background: #fff; box-shadow: inset 0 0 0 1px #cfd0d3; font-size: 13.5px; color: #1f2329; white-space: pre-wrap; }
+.rq-mini { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; font: 600 12.5px var(--font-ui); color: #b58a00; } .rq-mini svg { width: 16px; height: 16px; }
+.rq-foot { margin: 8px 0 18px; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -3211,6 +3227,7 @@ document.addEventListener("click", ev => {
     if (m.classList.contains("on-page")) return goPage(() => { ui.stAcc = to; });
     m.dataset.acc = ui.stAcc = to; return drawStudentEditor();
   }
+  if (a === "open-accom") { if (window.Lectern && window.Lectern.openAccom) window.Lectern.openAccom(); return; }
   if (a === "acc-clear") { const n = m.dataset.student, id = m.dataset.acc; change(() => { if (model.overrides[n]) delete model.overrides[n][id]; }); m.dataset.acc = ui.stAcc = ""; return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (a === "acc-mode") {
     const n = m.dataset.student, e = evalById(m.dataset.acc);
@@ -3673,7 +3690,37 @@ function notesHTML(s) {
       <button type="button" class="add-mk" data-ed="nt-add">${svg("plus")}Add Note</button></div>`;
 }
 function accPolicy(s, e) { const o = overrideOf(s.num, e.id) || {}; return { o, p: o.missed || e.missed, w: o.weight != null ? num(o.weight) : num(e.weight) }; }
+// The student's accommodation requests for an evaluation (from the course page's Request Accommodation button),
+// in Lectern, for those who may see them: each as on the Accommodations page, decided there.
+let REQS;   // undefined: not read yet; null: not for this viewer (or not in Lectern)
+function loadReqs() {
+  if (!(window.Lectern && window.Lectern.requests)) { REQS = null; return; }
+  REQS = null;
+  window.Lectern.requests().then(L => { REQS = L; if (L && L.length) drawStudentEditor(); }).catch(() => { REQS = null; });
+}
+const REQ_ICON = {
+  approved: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m7.8 12.3 2.8 2.8 5.6-6"/></svg>',
+  rejected: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m8.8 8.8 6.4 6.4M15.2 8.8l-6.4 6.4"/></svg>',
+  pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01" stroke-width="2.8"/></svg>',
+};
+const REQ_STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
+const reqsFor = (s, e) => (REQS || []).filter(r => String(r.student) === String(s.num) && r.eval === e.id).sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
+const stampOf = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
+function reqsHTML(s, e) {
+  const L = reqsFor(s, e); if (!L.length) return "";
+  const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  return `<h3 class="ed-sec rq-sec">Their Requests</h3>
+    <div class="rq-list">${L.map(r => `<div class="rq st-${esc(r.status)}"><span class="rq-ic" title="${esc(REQ_STATUS[r.status] || r.status)}">${REQ_ICON[r.status] || REQ_ICON.pending}</span>
+      <div class="rq-b"><p class="rq-k">${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</p>
+        ${r.kind === "standard" ? `<p class="rq-t">${esc(r.standard || "")}</p>` : `<blockquote class="rq-q">${esc(r.details || "")}</blockquote>`}
+        ${r.status !== "pending" ? `<div class="rq-c"><span class="rq-av">${esc(ini(r.decidedBy))}</span><div><p class="rq-ch"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="rq-v">${esc(REQ_STATUS[r.status])}</span><span>${esc(stampOf(r.decided))}</span></p>${r.note ? `<p class="rq-n">${esc(r.note)}</p>` : ""}</div></div>` : ""}
+      </div></div>`).join("")}</div>
+    ${window.Lectern && window.Lectern.openAccom ? `<div class="rq-foot"><button type="button" class="link" data-ed="open-accom">${L.some(r => r.status === "pending") ? "Decide it in Accommodations" : "Open Accommodations"}</button></div>` : ""}`;
+}
+let reqsOf = "";   // whose page the requests were read for (read again on another student's: they may have changed)
 function drawStudentEditor() {
+  if (ui.student && ui.student !== reqsOf) { reqsOf = ui.student; REQS = undefined; }
+  if (ui.student && REQS === undefined) loadReqs();
   const m = $(".editor[data-student]"); if (!m) return;
   const s = model.students.find(x => x.num === m.dataset.student); if (!s) return closeModal();
   const av = `<span class="av${m.dataset.acc ? "" : " big"}">${esc(initials(s))}</span>`;
@@ -3698,18 +3745,20 @@ function drawStudentEditor() {
     const { o, p, w } = accPolicy(s, e);
     $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2></div>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the course's policy.</p>
+      ${reqsHTML(s, e)}
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="acc-weight" value="${o.weight != null ? esc(o.weight) : ""}" placeholder="${fmtNum(e.weight)}"></label>
         <p class="ed-help">All other evaluations scale so the total stays ${fmtNum(weightSum())}%. Use 0% to excuse the assignment.</p></div>
       <h3 class="ed-sec">If They Don't Submit It</h3>
       ${policyHTML(e, p, w, "acc-")}
       ${Object.keys(o).length ? `<div class="ed-foot"><button type="button" class="link" data-ed="acc-clear">Back to the Course's Policy</button></div>` : ""}`;
+    if (REQS === undefined) loadReqs();
     return;
   }
   const accRow = (x, sub) => {
     const { o, p, w } = accPolicy(s, x), own = !sub && Object.keys(o).length;
     return `<div class="acc-row${own ? " own" : ""}${sub ? " sub" : ""}" style="--c:${colorOf(x)}">${evIcon(x)}<div class="acc-t"><b>${esc(x.name)}</b>
         <small>${sub ? accMemberNote(s, x) : own ? `${o.weight != null ? `Weight ${fmtNum(o.weight)}%. ` : ""}${policySentence(x, p, w)}` : `${fmtNum(x.weight)}%. ${policySentence(x)}`}</small></div>
-        ${scoreHTML(s, x)}${sub ? "" : `<button type="button" class="ec-btn2" data-ed="acc-open" data-v="${esc(x.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button>`}</div>`;
+        ${!sub && reqsFor(s, x).length ? `<span class="rq-mini st-${esc(reqsFor(s, x)[0].status)}" title="Their request: ${esc(REQ_STATUS[reqsFor(s, x)[0].status] || "")}">${REQ_ICON[reqsFor(s, x)[0].status] || REQ_ICON.pending}Requested</span>` : ""}${scoreHTML(s, x)}${sub ? "" : `<button type="button" class="ec-btn2" data-ed="acc-open" data-v="${esc(x.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button>`}</div>`;
   };
   const groupRow = g => {
     const go = groupOverride(s.num, g), own = !!go;

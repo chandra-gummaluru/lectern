@@ -1154,6 +1154,13 @@ function schemeOf(b, from, requests = null) {
 
 // An evaluation's file, uploaded from Evaluations: into the offering's public files (<course>/<term>/evaluations/),
 // under a name not taken yet. → its public address, for the course page's button.
+// For the gradebook: the students' accommodation requests (for whoever may read them: coordinators and staff;
+// others get null), and the Accommodations page, to decide them.
+Lectern.requests = async () => {
+  const r = S.route; if (!r.c || !r.t || !["owner", "coordinator", "staff"].includes(roleIn(r.c, r.t))) return null;
+  try { return (await readAccom(r.c, r.t)).requests; } catch (_) { return null; }
+};
+Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // For the gradebook: a TA's or instructor's activity groups (the ones they run an activity of), or null.
 Lectern.myGroups = async () => {
   const r = S.route; if (!r.c || !r.t || !["ta", "instructor"].includes(roleIn(r.c, r.t))) return null;

@@ -1021,8 +1021,10 @@ async function accomPage(c, t) {
   };
   // The decision, as a comment: who decided (their initials), what and when, and their note to the student.
   const initials = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  // Each decision, the earlier ones first (a changed decision keeps the ones before it).
+  const decisionsOf = r => [...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])];
   const decisionHTML = r => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
-      <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
+      <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
         ${r.note ? `<p class="lt-cmt-n">${esc(r.note)}</p>` : ""}</div></div>`;
   const reqCard = r => `<article class="lx-row lt-req st-${esc(r.status)}" title="${esc(r.id)}">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
@@ -1031,7 +1033,7 @@ async function accomPage(c, t) {
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
         <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
-        ${r.status !== "pending" ? decisionHTML(r) : ""}
+        ${decisionsOf(r).map(decisionHTML).join("")}
       </div>
       <div class="lx-side lt-req-side">
         <div class="lt-req-acts">${r.status === "pending"

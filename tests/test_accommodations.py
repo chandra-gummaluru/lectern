@@ -190,8 +190,13 @@ def test_decide(client, gh):
     assert rec["status"] == "approved" and rec["decidedBy"] == "Chandra Gummaluru" and rec["note"] == "See you Thursday at 6." and rec["decided"]
     m = mailer.sent[-1]
     assert m["to"] == "maya.castillo@mail.utoronto.ca" and m["subject"].endswith("approved") and "See you Thursday at 6." in m["body"]
-    r = decide(gh.client, rid, "rejected")
-    assert requests_of(gh)[0]["status"] == "rejected" and mailer.sent[-1]["subject"].endswith("rejected")
+    r = decide(gh.client, rid, "rejected", note="Sorry, I've had to reject it.")
+    rec = requests_of(gh)[0]
+    assert rec["status"] == "rejected" and mailer.sent[-1]["subject"].endswith("rejected")
+    # The earlier decision stays, as history.
+    assert [(h["status"], h["note"]) for h in rec["history"]] == [("approved", "See you Thursday at 6.")] and rec["history"][0]["decidedBy"] == "Chandra Gummaluru"
+    decide(gh.client, rid, "approved")
+    assert [h["status"] for h in requests_of(gh)[0]["history"]] == ["approved", "rejected"]
 
 
 def test_decide_needs_access(client, gh):

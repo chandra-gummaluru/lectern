@@ -457,6 +457,9 @@ def decide():
             r = next((x for x in f["requests"] if x.get("id") == rid), None)
             if not r:
                 raise Refusal(404, "That request isn't there any more.")
+            if r.get("status") in ("approved", "rejected"):   # a changed decision: the earlier one stays, as history
+                r["history"] = (r.get("history") if isinstance(r.get("history"), list) else [])[-49:] + [
+                    {"status": r["status"], "decided": r.get("decided", ""), "decidedBy": r.get("decidedBy", ""), "note": r.get("note", "")}]
             r.update(status=decision, decided=_now(), decidedBy=who, note=note)
             return dict(r)
 

@@ -855,7 +855,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-req .lt-cmt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 5px 0 0 !important; font-size: 13.5px !important; color: var(--home-ink-3) !important; }
 .lt-cmt-h b { color: var(--home-ink); font-weight: 600; }
 .lt-cmt-v { font-weight: 600; }
-.st-approved .lt-cmt-v { color: #2f8f5b; }
-.st-rejected .lt-cmt-v { color: #c0392b; }
+.lt-cmt-v.v-approved { color: #2f8f5b; }
+.lt-cmt-v.v-rejected { color: #c0392b; }
 .lt-req .lt-cmt-n { display: inline-block; max-width: 100%; margin: 6px 0 0 !important; padding: 8px 12px; border-radius: 4px 12px 12px 12px; background: var(--home-card); box-shadow: inset 0 0 0 1px var(--home-line-2); font-size: 14px !important; line-height: 1.5; color: var(--home-ink) !important; white-space: pre-wrap; }
 

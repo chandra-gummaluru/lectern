@@ -47,7 +47,7 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .rq-c { display: flex; gap: 9px; align-items: flex-start; margin-top: 10px; }
 .rq-av { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #f6f5f2; box-shadow: inset 0 0 0 1px #cfd0d3; font: 600 10.5px var(--font-ui); color: #4a4f57; }
 .rq-ch { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 4px 0 0; font-size: 13px; color: #80848b; } .rq-ch b { color: #1f2329; font-weight: 600; } .rq-v { font-weight: 600; }
-.st-approved .rq-v { color: #2f8f5b; } .st-rejected .rq-v { color: #c0392b; }
+.rq-v.v-approved { color: #2f8f5b; } .rq-v.v-rejected { color: #c0392b; }
 .rq-n { display: inline-block; margin: 5px 0 0; padding: 7px 11px; border-radius: 4px 12px 12px 12px; background: #fff; box-shadow: inset 0 0 0 1px #cfd0d3; font-size: 13.5px; color: #1f2329; white-space: pre-wrap; }
 .rq-mini { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; font: 600 12.5px var(--font-ui); color: #b58a00; } .rq-mini svg { width: 16px; height: 16px; }
 .rq-foot { display: flex; justify-content: flex-end; margin: 10px 0 18px; }
@@ -3716,7 +3716,7 @@ function reqsHTML(s, e) {
     <div class="rq-list">${L.map(r => `<div class="rq st-${esc(r.status)}"><span class="rq-ic" title="${esc(REQ_STATUS[r.status] || r.status)}">${REQ_ICON[r.status] || REQ_ICON.pending}</span>
       <div class="rq-b"><p class="rq-k">${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</p>
         ${r.kind === "standard" ? `<p class="rq-t">${esc(r.standard || "")}</p>` : `<blockquote class="rq-q">${esc(r.details || "")}</blockquote>`}
-        ${r.status !== "pending" ? `<div class="rq-c"><span class="rq-av">${esc(ini(r.decidedBy))}</span><div><p class="rq-ch"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="rq-v">${esc(REQ_STATUS[r.status])}</span><span>${esc(stampOf(r.decided))}</span></p>${r.note ? `<p class="rq-n">${esc(r.note)}</p>` : ""}</div></div>` : ""}
+        ${[...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])].map(d => `<div class="rq-c"><span class="rq-av">${esc(ini(d.decidedBy))}</span><div><p class="rq-ch"><b>${esc(d.decidedBy || "The teaching team")}</b><span class="rq-v v-${esc(d.status)}">${esc(REQ_STATUS[d.status] || d.status)}</span><span>${esc(stampOf(d.decided))}</span></p>${d.note ? `<p class="rq-n">${esc(d.note)}</p>` : ""}</div></div>`).join("")}
       </div></div>`).join("")}</div>
     ${window.Lectern && window.Lectern.openAccom ? `<div class="rq-foot"><button type="button" class="ec-btn2" data-ed="open-accom">${L.some(r => r.status === "pending") ? "Decide it in Accommodations" : "Open Accommodations"}</button></div>` : ""}`;
 }

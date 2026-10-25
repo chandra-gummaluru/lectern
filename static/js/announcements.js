@@ -54,6 +54,9 @@ export function announcementsPage(ctx, r) {
   async function load() {
     pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading the announcements…</div></div>`);
     try {
+      // What one can be about, and who it's for, first: the page may be drawn again as soon as there's data.
+      const [G, A, E] = await Promise.all([ctx.groups ? ctx.groups().catch(() => []) : [], ctx.activities ? ctx.activities().catch(() => []) : [], ctx.evaluations ? ctx.evaluations().catch(() => []) : []]);
+      st.groups = G; st.acts = A; st.evals = E;
       const f = await Store.readFile(repo, path);
       if (f) { st.data = JSON.parse(f.text); st.sha = f.sha; }
       else {
@@ -62,9 +65,6 @@ export function announcementsPage(ctx, r) {
         st.data = fromCoursePage(page); st.sha = null;
       }
       if (!Array.isArray(st.data.items)) st.data.items = [];
-      // What one can be about, and who it's for.
-      const [G, A, E] = await Promise.all([ctx.groups ? ctx.groups().catch(() => []) : [], ctx.activities ? ctx.activities().catch(() => []) : [], ctx.evaluations ? ctx.evaluations().catch(() => []) : []]);
-      st.groups = G; st.acts = A; st.evals = E;
     } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the announcements. ${esc(e.message)}</p></div>`); return; }
     if (here()) draw();
   }

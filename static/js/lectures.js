@@ -157,6 +157,10 @@ export function lecturesPage(ctx, r) {
 
   async function load() {
     pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading the activities…</div></div>`);
+    // The evaluations and groups first: the page may be drawn again (by another view of it) as soon as there are weeks.
+    try { st.evals = ctx.evaluations ? await ctx.evaluations() : []; } catch (_) { st.evals = []; }
+    try { st.groups = ctx.groups ? await ctx.groups() : []; } catch (_) { st.groups = []; }
+    mine();
     try {
       const f = await Store.readFile(repo, path);
       if (f) { st.data = JSON.parse(f.text); st.sha = f.sha; }
@@ -167,9 +171,6 @@ export function lecturesPage(ctx, r) {
       }
       if (!Array.isArray(st.data.weeks)) st.data.weeks = [];
     } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the activities. ${esc(e.message)}</p></div>`); return; }
-    try { st.evals = ctx.evaluations ? await ctx.evaluations() : []; } catch (_) { st.evals = []; }
-    try { st.groups = ctx.groups ? await ctx.groups() : []; } catch (_) { st.groups = []; }
-    mine();
     if (here()) draw();
   }
 

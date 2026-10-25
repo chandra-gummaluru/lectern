@@ -144,3 +144,34 @@ def test_asking_for_codes_is_rate_limited(client, course):
     st = app.test_client()
     codes = [st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H).status_code for _ in range(8)]
     assert codes[:5] == [200] * 5 and 429 in codes[5:]
+
+
+def test_a_student_sees_their_own_sections(client, course):
+    """Signed in, a student in LEC0102 sees their section (not LEC0101), the people who run it (and the
+    coordinators), and an evaluation on their section's date."""
+    import json as _j
+    from test_hub import SAMPLE
+    ta, tu = member("alan@utoronto.ca", "alan")
+    add(client, "alan@utoronto.ca", "ta", who=ta)
+    tb, tbu = member("bea@utoronto.ca", "bea")
+    add(client, "bea@utoronto.ca", "ta", who=tb)
+    page = _j.loads(_j.dumps(SAMPLE["page"])); page["tabs"] = {"lectures": "signed-in"}
+    e = page["scheme"]["evals"][0]; e["date"], e["dates"] = "2026-10-02", [{"groups": ["g2"], "date": "2026-10-05", "time": "18:00"}]
+    publish(course, page)
+    st = [{"num": "1", "first": "Maya", "last": "S", "f": {"email": "maya@mail.utoronto.ca"}, "groups": ["g2"]}]
+    groups = {"groups": [{"id": "g1", "name": "LEC0101", "kind": "lecture", "people": [str(tu["id"])], "items": [{"id": "a", "day": 1, "start": "10:00", "end": "11:00", "where": "BA 1170"}]},
+                         {"id": "g2", "name": "LEC0102", "kind": "lecture", "people": [str(tbu["id"])], "items": [{"id": "b", "day": 2, "start": "13:00", "end": "14:00", "where": "GB 120"}]}]}
+    r = store.Repo(course["id"], "priv")
+    r.commit({"csc258/f26/grades.json": _j.dumps({"format": "grade-builder/1", "students": st, "evals": [], "marks": {}}).encode(),
+              "csc258/f26/groups.json": _j.dumps(groups).encode()}, "seed", r.head())
+    s = app.test_client(); sign_in(s, "maya@mail.utoronto.ca")
+    j = s.get(HUB).get_json()
+    about = j["data"]["about"]
+    assert [g["name"] for g in about["groups"]] == ["LEC0102"]
+    names = [p["name"] for p in about["team"]]
+    assert any("bea" in n.lower() for n in names) and not any("alan" in n.lower() for n in names), names
+    assert all(x.get("sid") in (None, "g2") for p in about["team"] for x in p["times"])
+    ev = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
+    assert ev["date"] == "2026-10-05" and ev["time"] == "18:00" and "dates" not in ev
+    staff = client.get(HUB).get_json()["data"]["about"]   # the teaching team: every section
+    assert [g["name"] for g in staff["groups"]] == ["LEC0101", "LEC0102"]

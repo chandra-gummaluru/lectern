@@ -506,7 +506,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hs-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .hb a.hs-file { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
 .hb a.hs-file:hover { background: var(--accent-bg); }
-.hs-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-weight: 600; font-size: 14px; text-decoration: none; }
+.hs-more { display: flex; width: fit-content; margin-left: auto; align-items: center; gap: 4px; margin-top: 10px; font-weight: 600; font-size: 14px; text-decoration: none; }
 .hs-more svg { width: 15px; height: 15px; }
 .hs-empty { margin: 0; padding: 16px; border: 1.5px dashed var(--line-2); border-radius: 10px; color: var(--ink-3); text-align: center; }
 .hs-locked { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1.5px dashed var(--line-2); border-radius: 10px; color: var(--ink-2); }

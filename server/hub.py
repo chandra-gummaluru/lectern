@@ -141,7 +141,7 @@ def team_of(owner_id, course, term):
         gd = None
     groups = [g for g in _list(gd.get("groups"))] if isinstance(gd, dict) else None
     o = db.one("SELECT id, name, email FROM users WHERE id = ?", (owner_id,))
-    rows = [(o, "instructor")] + [(r, r["role"]) for r in db.all_(
+    rows = [(o, "owner")] + [(r, r["role"]) for r in db.all_(
         "SELECT u.id, u.name, u.email, m.role FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? ORDER BY m.role, u.name",
         (owner_id, off))]
     out = []
@@ -151,23 +151,26 @@ def team_of(owner_id, course, term):
             continue
         times = []
         mine = [x for x in _list(me.get("times")) if isinstance(x, dict) and (groups is None or x.get("kind") == "office")]
+        runs = []
         if groups is not None:
             from .teams import runs_section
             for g in groups:
                 if not runs_section(g, u["id"]):
                     continue
+                runs.append(_s(g.get("id"), 40))
                 for x in _list(g.get("items")):
                     if isinstance(x, dict):
-                        mine.append({**x, "kind": _kind_of(g, x), "section": g.get("name")})
+                        mine.append({**x, "kind": _kind_of(g, x), "section": g.get("name"), "sid": _s(g.get("id"), 40)})
         for x in mine:
             if not isinstance(x, dict):
                 continue
             day = x.get("day")
             day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
             times.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "section": _s(x.get("section"), 60), "day": day,
-                          "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200), **_map(x)})
+                          "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200), **_map(x),
+                          **({"sid": x["sid"]} if x.get("sid") else {})})
         out.append({"name": _s(u["name"], 200), "role": role if role in ("coordinator", "ta", "staff") else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
-                    "office": _s(me.get("office"), 200), "times": times})
+                    "office": _s(me.get("office"), 200), "times": times, "sections": runs, "lead": role in ("owner", "coordinator")})
     return out
 
 
@@ -504,6 +507,18 @@ def hub_api(handle, course, term):
             from .students import roster
             mine = set((roster(o["id"], offering).get(student) or {}).get("groups") or [])
         ok = lambda x: not x.get("groups") or bool(set(x["groups"]) & mine)
+        # A student in sections sees only theirs on About: their sections, and the people who run them (with
+        # those sections' times and their office hours), the coordinators and staff.
+        sections = all_b["about"].get("groups")
+        if student and mine and sections:
+            all_b["about"]["groups"] = [g for g in sections if g.get("id") in mine]
+            team = []
+            for p in all_b["about"].get("team") or []:
+                theirs = set(p.get("sections") or []) & mine
+                if not (theirs or p.get("lead") or p.get("role") == "staff"):
+                    continue
+                team.append({**p, "times": [x for x in p.get("times") or [] if not x.get("sid") or x["sid"] in mine]})
+            all_b["about"]["team"] = team
         for w in all_b["lectures"]["weeks"]:
             w["cards"] = [c for c in w["cards"] if ok(c)]
         all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a)]

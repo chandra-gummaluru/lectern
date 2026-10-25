@@ -791,3 +791,5 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .wk-group { margin-top: 16px; padding: 4px 18px; border: 1px solid var(--line-2); border-radius: 10px; }
 .wk-group .wk-item:first-child { padding-top: 14px; }
 .wk-card .ec-head + .wk-group { margin-top: 18px; }
+.wk-pn { display: flex; justify-content: space-between; margin-top: 16px; }
+.hb .wk-pn a.hb-btn { color: var(--ink); text-decoration: none; }

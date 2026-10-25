@@ -387,7 +387,7 @@ const PAGES = {
         <header class="ec-head"><span class="hs-num">${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
         ${[acts, due, an].filter(Boolean).map(x => `<div class="wk-group"><div class="wk-list">${x}</div></div>`).join("") || `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`}
       </article>
-      <nav class="hs-pn">${prev ? `<a href="#week/${prev.i}">‹ ${esc(prev.label || "Previous week")}</a>` : "<span></span>"}${next ? `<a href="#week/${next.i}">${esc(next.label || "Next week")} ›</a>` : ""}</nav>`;
+      <nav class="hs-pn wk-pn">${prev ? `<a class="hb-btn" href="#week/${prev.i}">${svg('<path d="m15 6-6 6 6 6"/>')}${esc(prev.label || "Previous week")}</a>` : "<span></span>"}${next ? `<a class="hb-btn" href="#week/${next.i}">${esc(next.label || "Next week")}${svg('<path d="m9 6 6 6-6 6"/>')}</a>` : ""}</nav>`;
   },
   evaluations() {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");

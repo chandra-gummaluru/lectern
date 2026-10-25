@@ -2901,7 +2901,7 @@ function buildBtn(e) {
 // A group as a long card, with its members as sub-cards inside it.
 function groupRowHTML(g) {
   const n = g.members.length, keep = num(g.keep), each = num(g.weight) / Math.max(1, keep);
-  return `<div class="egroup" style="--c:${colorOf(g)}" draggable="true" data-unit="g:${esc(g.id)}">
+  return `<div class="egroup" style="--c:#c99a06" draggable="true" data-unit="g:${esc(g.id)}">
     <div class="erow grp" data-act="ed-group" data-id="${esc(g.id)}" role="button" tabindex="0">
       ${evIcon(g, true)}<div class="er-main"><div class="er-top"><div class="er-tt"><p class="er-kind">Group${g.members.length ? ` of ${esc(typeOf(g) === "other" ? "Evaluations" : TYPE_NAME[typeOf(g)] + "s")}` : ""}</p><h3>${esc(g.name)}</h3></div></div>
         <p>Worth ${fmtNum(num(g.weight))}%${n ? `: the best ${fmtNum(keep)} of ${n} count, ${fmtNum(Math.round(each * 100) / 100)}% each.` : ". No evaluations in it yet."}</p></div>

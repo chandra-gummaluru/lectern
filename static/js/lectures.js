@@ -160,7 +160,9 @@ export function lecturesPage(ctx, r) {
   const kindLabel = x => x.label || kindName(kindOf(x));   // above the title, e.g. LECTURE 07
   // Under the title: when it is (if it has a date) and its files; nothing about what it doesn't have.
   const evalName = x => { const e = x.eval && (st.evals || []).find(y => y.id === x.eval); return e ? e.name : ""; };
-  const lecMeta = x => { const n = (x.files || []).length, w = whenText(x.date), ev = evalName(x); return [w ? esc(w) : "", ev ? `For ${esc(ev)}` : "", n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
+  // Under the title: when it is, as Announcements says it (if it has a date); its description; then what goes with it.
+  const plain = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`#>]+/g, "").replace(/^\s*([-+]|\d+[.)])\s+/gm, "").replace(/\s+/g, " ").trim();
+  const lecMeta = x => { const n = (x.files || []).length, ev = evalName(x); return [ev ? `For ${esc(ev)}` : "", n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
   const status$ = () => (edit ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
   const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the activities; the instructors change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
@@ -176,7 +178,7 @@ export function lecturesPage(ctx, r) {
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(x.title ? kindLabel(x) : kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div>
+      <div class="lx-main"><p class="lx-kind">${esc(x.title ? kindLabel(x) : kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${whenText(x.date, true) ? `<p class="lx-when">${esc(whenText(x.date, true))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div>
       ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm lx-quiet" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No activities this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 

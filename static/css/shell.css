@@ -723,3 +723,5 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-kicon.big { width: 40px; height: 40px; }
 .lx-kicon.big svg { width: 21px; height: 21px; }
 .lx-row.sub.lx-lec { gap: 14px; }
+.lx-lec .lx-when { margin: 2px 0 0 !important; }
+.lx-lec .lx-clip { margin: 3px 0 0 !important; }

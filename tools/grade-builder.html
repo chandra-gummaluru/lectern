@@ -2037,9 +2037,9 @@ function typeLabel(e) {
   // A label that's one of the types' own names (e.g. from before a change of type) isn't kept; and a title
   // that changes of type once grew ("Project: Test: Midterm Test") loses those.
   const own = new Set(E_TYPES.map(([, n]) => labelKey(n)));
-  if (lab && !own.has(labelKey(lab))) { const t = String(e.title || "").trim(); e.title = t ? `${lab}: ${t}` : lab; }
+  if (lab && !own.has(labelKey(lab))) { const t = String(e.title || "").trim(); e.title = !t ? lab : labelKey(t).startsWith(labelKey(lab) + ":") ? t : `${lab}: ${t}`; }
   const re = new RegExp(`^(\\s*(${E_TYPES.map(([, n]) => n).join("|")})\\s*:\\s*)+`, "i");
-  if (e.title) e.title = String(e.title).replace(re, "").trim() || e.title;
+  if (e.title) e.title = String(e.title).replace(re, "").replace(/^(\s*([^:]+?)\s*:\s*)(\2\s*:\s*)+/i, "$1").trim() || e.title;   // ("Quiz: Quiz: …" → "Quiz: …")
   e.label = name;
 }   // everything but a test is handed in by a due date
 // Each type's icon (the same drawing style as Lectern's Activities); no colours.
@@ -3223,8 +3223,11 @@ document.addEventListener("click", ev => {
   if (a === "mode") change(() => { e.missed.mode = b.dataset.v; e.missed.split = "custom"; });
   if (a === "etype") change(() => {   // an assignment is due at 23:59 unless it says otherwise; a test has no such default
     const was = e.type; e.type = b.dataset.v;
-    if (e.type === "other" && was !== "other") e.label = "";   // Other: its own label, typed in
-    typeLabel(e); syncNames();
+    // A type's label is its name; Other's is typed in. (Changing type keeps the title as it is: an older
+    // label is moved into the title only when a gradebook is opened, typeLabel.)
+    if (e.type === "other" && was !== "other") e.label = "";
+    else if (e.type !== "other") e.label = TYPE_NAME[e.type] || "Assignment";
+    syncNames();
     if (isDue(e) && !e.time) e.time = "23:59";
     if (e.type === "test" && e.time === "23:59") e.time = "";
   });

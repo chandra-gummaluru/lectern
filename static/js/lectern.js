@@ -1019,6 +1019,11 @@ async function accomPage(c, t) {
     rejected: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m8.8 8.8 6.4 6.4M15.2 8.8l-6.4 6.4"/></svg>',
     pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01" stroke-width="2.8"/></svg>',
   };
+  // The decision, as a comment: who decided (their initials), what and when, and their note to the student.
+  const initials = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const decisionHTML = r => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
+      <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
+        ${r.note ? `<p class="lt-cmt-n">${esc(r.note)}</p>` : ""}</div></div>`;
   const reqCard = r => `<article class="lx-row lt-req st-${esc(r.status)}" title="${esc(r.id)}">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
       <div class="lx-main">
@@ -1026,7 +1031,7 @@ async function accomPage(c, t) {
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
         <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
-        ${r.status !== "pending" ? `<p class="lt-req-dec">${esc(STATUS[r.status])}${r.decidedBy ? ` by ${esc(r.decidedBy)}` : ""}${r.decided ? `, ${esc(fmtStamp(r.decided))}` : ""}.${r.note ? ` Note: “${esc(r.note)}”` : ""}</p>` : ""}
+        ${r.status !== "pending" ? decisionHTML(r) : ""}
       </div>
       <div class="lx-side lt-req-side">
         <div class="lt-req-acts">${r.status === "pending"

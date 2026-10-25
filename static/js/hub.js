@@ -312,10 +312,9 @@ function evalCard(u, group, E) {
   const req = requestBtn(u);
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
-      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div></header>
+      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
       ${sec("When")}${dates}
-      ${sec("Grading")}${grading}
-      ${policy || acc || req ? `<h3 class="ec-sub">If You Miss It</h3>${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}` : ""}
+      ${policy || acc || req ? `${sec("If You Miss It")}${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
     </article>`;

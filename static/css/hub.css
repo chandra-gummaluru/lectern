@@ -744,3 +744,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-req { display: flex; justify-content: flex-end; margin-top: 12px; }
 @media (max-width: 640px) { .ec-gf { padding-left: 0; border-left: 0; } }
 .ec-subline { margin: 4px 0 0; font-size: 14.5px; color: var(--ink-2); }
+.ec-head .ec-grading { flex: none; display: block; }
+.ec-head .ec-mk { justify-items: end; text-align: right; min-width: 0; }
+.ec-head .ec-mk b { font-size: 40px; }
+@media (max-width: 640px) { .ec-head .ec-mk { justify-items: start; text-align: left; } }

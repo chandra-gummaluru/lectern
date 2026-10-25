@@ -160,13 +160,8 @@ const PAGES = {
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0], n = realWeeks().length;
       out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `${weekOpen(w, now)}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
     }
-    // Evaluations: every one, with its weight.
-    if (!open("evaluations")) out.push(lockedSec("evaluations", "Evaluations"));
-    else {
-      out.push(`<section class="hs-sec">${secHead("Evaluations", "#evaluations")}${evalList()}</section>`);
-    }
-    // More: About, My accommodations.
-    const more = [["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."], ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."]].filter(([id]) => tab(id));
+    // More: Evaluations, About, My accommodations.
+    const more = [["evaluations", "Evaluations", "Every evaluation, its weight and when it is."], ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."], ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."]].filter(([id]) => tab(id));
     if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s]) => `<a class="hs-row" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${open(id) ? "" : LOCK}${CHEV}</a>`).join("")}</div></section>`);
     document.title = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
     return out.join("");

@@ -76,7 +76,7 @@ def main():
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
         v.goto(srv.base + "c/chandra/csc258/f26/"); v.wait_for_selector(".hs-sec")
         secs = v.eval_on_selector_all(".hs-sec-h h2", "els => els.map(e => e.textContent.trim())")
-        assert secs == ["Announcements", "Activities", "Evaluations"], secs
+        assert secs == ["Announcements", "Activities"], secs
         expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # the newest announcement, in full
         v.click(".hs-row:has-text('About the Course')")
         expect(v.locator(".hb-main")).to_contain_text("From transistors to processors.")

@@ -24,7 +24,7 @@ DEMO = os.path.join(ROOT, "sample-data/demo-courses/csc258/f26")
 OLD = open(os.path.join(DEMO, "info.html"), encoding="utf-8").read()
 DATA = open(os.path.join(DEMO, "course.json"), encoding="utf-8").read()
 C = "[data-lt-tool='course'] "
-HOME = ["Announcements", "Activities", "Evaluations"]   # the home page's sections
+HOME = ["Announcements", "Activities"]   # the home page's sections
 TABS = ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"]   # the course page builder (Lectern) still has its tabs
 
 

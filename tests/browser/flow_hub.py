@@ -78,7 +78,7 @@ def main():
         v.wait_for_selector(".hs-sec")
         assert v.url.endswith("/c/chandra/csc258/f26/"), v.url
         links = v.eval_on_selector_all(".hs-link b", "els => els.map(e => e.textContent.trim())")
-        assert links == [x for x in HOME if x != "Announcements"], links   # the newest announcement has its See all instead
+        assert links == ["All Announcements"] + [x for x in HOME if x != "Announcements"], links   # the newest announcement, then its All Announcements
         v.screenshot(path=f"{OUT}/164-hub-home-visitor.png", full_page=True)
         assert v.query_selector(".hs-link:has-text('Activities') .hs-lock"), "Activities isn't locked on the home page"
         v.goto(srv.base + "c/chandra/csc258/f26/#activities")

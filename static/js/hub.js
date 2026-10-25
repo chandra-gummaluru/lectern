@@ -100,6 +100,7 @@ const evalsIn = w => { const s = weekSpan(w); return s ? allEvals().filter(e => 
 const annsIn = w => ((data("announcements") || {}).items || []).filter(a => a.wi === w.i).sort((a, b) => annTime(b) - annTime(a));
 
 // ── Pieces ───────────────────────────────────────────────────────────
+const DAY3 = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const head = (title, sub) => `<header class="hs-head"><h1>${esc(title)}</h1>${sub ? `<p>${sub}</p>` : ""}</header>`;
 const path = steps => `<nav class="hs-path" aria-label="Where you are"><a href="#">Home</a>${steps.map(([l, h]) => `<span aria-hidden="true">›</span>${h ? `<a href="${h}">${esc(l)}</a>` : `<b>${esc(l)}</b>`}`).join("")}</nav>`;
 const secHead = (title, h, extra = "") => `<a class="hs-sec-h" href="${h}"><h2>${esc(title)}</h2>${extra}${CHEV}</a>`;
@@ -157,6 +158,8 @@ function evalList() {
 }
 const unitOf = id => { const E = data("evaluations"); if (!E) return null; for (const u of E.units || []) { if (u.id === id) return { u }; if (u.kind === "group") { const m = (u.members || []).find(x => x.id === id); if (m) return { u: m, group: u }; } } const e = allEvals().find(x => x.id === id); return e ? { u: e } : null; };
 
+// A row that opens a page of the course page (Evaluations, About the Course…), locked when it isn't open.
+const linkRow = (id, t, sub, tb) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`;
 // ── Pages ────────────────────────────────────────────────────────────
 const PAGES = {
   home() {
@@ -165,11 +168,11 @@ const PAGES = {
     // The newest announcement in full, then this week opened (the first week, before the term starts).
     if (open("announcements")) {
       const items = (data("announcements").items || []).slice().sort((x, y) => annTime(y) - annTime(x));
-      if (items.length) { out.push(`<section class="hs-sec">${annCard(items[0])}<a class="hs-more" href="#announcements">See all announcements ${CHEV}</a></section>`); shown.add("announcements"); }
+      if (items.length) { out.push(`<section class="hs-sec">${annCard(items[0])}<div class="hs-list hs-after">${linkRow("announcements", "All Announcements", `${items.length} announcement${items.length === 1 ? "" : "s"}, newest first.`)}</div></section>`); shown.add("announcements"); }
     }
     if (open("lectures")) {
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0];
-      if (w) { out.push(`<section class="hs-sec">${weekOpen(w, now)}<a class="hs-more" href="#activities">See all weeks ${CHEV}</a></section>`); shown.add("activities"); }
+      if (w) { out.push(`<section class="hs-sec">${weekOpen(w, now)}<div class="hs-list hs-after">${linkRow("activities", "All Weeks", "The term, week by week: lectures, tutorials and labs, with their files.", "lectures")}</div></section>`); shown.add("activities"); }
     }
     // Then everything else, each a page of its own.
     const more = [
@@ -179,7 +182,7 @@ const PAGES = {
       ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
       ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."],
     ].filter(([id, , , t]) => tab(t || id) && !shown.has(id));
-    if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`).join("")}</div></section>`);
+    if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => linkRow(id, t, s, tb)).join("")}</div></section>`);
     document.title = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
     return out.join("");
   },
@@ -218,15 +221,48 @@ const PAGES = {
         <div class="hs-list">${(u.members || []).map(m => evRow(m)).join("")}</div>`;
     }
     const t = evType(u), files = filesHTML((E.files || {})[u.id] || u.files);
-    const worth = group ? `Counts in ${esc(group.name)}: the best ${group.keep} of ${group.count}, ${fmtW(group.weight / Math.max(1, group.keep))}% each.` : u.weight != null ? `Worth ${fmtW(u.weight)}% of your grade.` : "";
+    const at = (d, tm) => `${day(d, true)}${tm ? ` at ${tm}` : ""}`;
+    const G = ((data("about") || {}).groups) || [], gn = ids => ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean).join(", ") || "Some sections";
+    // Its facts as tiles: when (released, due; or its date), and what it's worth.
+    const tiles = [];
+    if (isDue(u) && u.release) tiles.push(["Released", at(u.release, u.releaseTime), ""]);
+    tiles.push([isDue(u) ? "Due" : "Date", u.date ? at(u.date, u.time) : "To be announced", (u.dates || []).filter(d => d.date).map(d => `${gn(d.groups)}: ${at(d.date, d.time)}`).join(" · ")]);
+    if (group) tiles.push(["Worth", `${fmtW(group.weight / Math.max(1, group.keep))}%`, `In ${group.name}: the best ${group.keep} of ${group.count} count`]);
+    else if (u.weight != null) tiles.push(["Worth", `${fmtW(u.weight)}%`, "of your grade"]);
     const notes = [...(u.notes || []), u.accom && u.accom.standard && u.accom.approval ? "This applies only if you request it and it's approved." : ""].filter(Boolean);
+    const req = requestHTML(u), A = annsOn(`eval:${u.id}`);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
-      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(u.name)}</p>${head(u.title || u.name, esc(evWhen(u) || (t === "test" ? "Date to be announced" : "Due date to be announced")))}
-      <div class="hs-card hs-facts">${worth ? `<p>${worth}</p>` : ""}${notes.map(n => `<p>${esc(n)}</p>`).join("")}${files}${requestHTML(u)}</div>
-      ${annsOn(`eval:${u.id}`).length ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Announcements</h2><div class="hs-stack">${annsOn(`eval:${u.id}`).map(annCard).join("")}</div></section>` : ""}`;
+      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(u.name)}</p>${head(u.title || u.name, "")}
+      <div class="hs-tiles">${tiles.map(([k, v, sub]) => `<div class="hs-tile"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`).join("")}</div>
+      ${files ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Files and Links</h2>${files}</section>` : ""}
+      ${notes.length || req ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">If You Miss It</h2><div class="hs-card hs-facts">${notes.map(n => `<p>${esc(n)}</p>`).join("")}${req}</div></section>` : ""}
+      ${A.length ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Announcements</h2><div class="hs-stack">${A.map(annCard).join("")}</div></section>` : ""}`;
   },
   // (Its description is in the header already.)
-  about() { return open("about") ? `${path([["About the Course"]])}${HubView.draw({ ...D, data: { ...D.data, about: { ...data("about"), description: "" } } }, "about")}` : lockedPage("about", "About the Course"); },
+  about() {
+    if (!open("about")) return lockedPage("about", "About the Course");
+    const a = data("about"), G = a.groups, T = a.team || [];
+    // The rest (the course page's own sections, the rules) as it was drawn; without sections, the team's times too.
+    const rest = HubView.draw({ ...D, data: { ...D.data, about: { ...a, description: "", ...(G ? { team: [], groups: null } : {}) } } }, "about").replace(/<h2 class="hb-h2">About the course<\/h2>/, "");
+    if (!G) return `${path([["About the Course"]])}${head("About the Course", "")}${rest}`;
+    const mine = D.viewer && D.viewer.role === "student";
+    const timesHTML = I => { const L = [];   // the days that share a time and a place, together
+      I.slice().sort((x, y) => (x.day || 9) - (y.day || 9)).forEach(x => { const k = `${x.start}|${x.end}|${x.where || ""}`, l = L.find(y => y.k === k); if (l) l.days.push(DAY3[x.day]); else L.push({ k, days: [DAY3[x.day]].filter(Boolean), x }); });
+      return L.map(l => `<span class="hs-time"><b>${esc(l.days.join(", "))}</b><em>${esc([l.x.start, l.x.end].filter(Boolean).join("–"))}</em><i>${l.x.map ? `<a href="${esc(l.x.map)}" target="_blank" rel="noopener" title="${esc(l.x.address || "On the map")}">${esc(l.x.where || "On the map")}</a>` : esc(l.x.where || "")}</i></span>`).join(""); };
+    const SEC = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
+    const secs = G.slice().sort((x, y) => (["lecture", "tutorial", "lab"].indexOf(x.kind) - ["lecture", "tutorial", "lab"].indexOf(y.kind)) || String(x.name).localeCompare(String(y.name), undefined, { numeric: true }))
+      .map(g => `<div class="hs-row hs-plain hd-row"><span class="hs-ic">${KIND_ICON[g.kind] || KIND_ICON.other}</span><div class="hs-t hd-main"><div class="hd"><small class="hs-kick">${esc(SEC[g.kind] || "Section")}</small><b>${esc(g.name || "Section")}</b></div>
+        ${(g.items || []).length ? `<span class="hs-times">${timesHTML(g.items)}</span>` : ""}${(g.who || []).length ? `<small class="hs-who">${esc(g.who.join(", "))}</small>` : ""}</div></div>`).join("");
+    const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
+    const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+    const people = T.map(p => { const oh = (p.times || []).filter(x => x.kind === "office" && x.day);
+      return `<div class="hs-row hs-plain hd-row"><span class="hs-av" aria-hidden="true">${esc(ini(p.name))}</span><div class="hs-t hd-main"><div class="hd"><small class="hs-kick">${esc([ROLE[p.role] || "", p.office].filter(Boolean).join(" · "))}</small><b>${esc(p.name)}</b>
+        ${p.email ? `<small><a href="mailto:${esc(p.email)}">${esc(p.email)}</a></small>` : ""}</div>${oh.length ? `<small class="hs-oh-h">Office Hours</small><span class="hs-times">${timesHTML(oh)}</span>` : ""}</div></div>`; }).join("");
+    return `${path([["About the Course"]])}${head("About the Course", "")}
+      ${secs ? `<section class="hs-sec"><h2 class="hs-h2">${mine ? "Your Sections" : "Sections"}</h2><div class="hs-list">${secs}</div></section>` : ""}
+      ${people ? `<section class="hs-sec"><h2 class="hs-h2">Teaching Team</h2><div class="hs-list">${people}</div></section>` : ""}
+      ${rest.replace(/\s/g, "") ? `<div class="hs-rest">${rest}</div>` : ""}`;
+  },
   accommodations() { return open("accommodations") ? `${path([["My Accommodations"]])}${HubView.draw(D, "accommodations")}` : lockedPage("accommodations", "My Accommodations"); },
 };
 

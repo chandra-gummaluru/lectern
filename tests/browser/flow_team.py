@@ -123,10 +123,10 @@ def main():
 
         # 4. The course page's About: the group with its times and who runs them; office hours; the team.
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".hb-main h2")
-        sec = v.locator(".hb-sec").first
-        expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Lecture Section"); expect(sec).to_contain_text("Mon 10:00–11:00"); expect(sec).to_contain_text("Wed 10:00–11:00")
-        expect(v.locator(".hb-main")).to_contain_text("Tutorial Section"); expect(v.locator(".hb-main")).to_contain_text("Thu 15:00–16:00"); expect(sec).to_contain_text("Chandra Gummaluru")
+        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".hs-plain")
+        sec = v.locator(".hs-plain").first
+        expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Lecture Section"); expect(sec.locator(".hs-time").first).to_contain_text("Mon, Wed10:00–11:00")
+        expect(v.locator(".hb-main")).to_contain_text("Tutorial Section"); expect(v.locator(".hb-main")).to_contain_text("Thu15:00–16:00"); expect(sec).to_contain_text("Chandra Gummaluru")
         expect(sec.locator("a[href*='openstreetmap.org']").first).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")
         expect(v.locator(".hb-main")).to_contain_text("Office Hours")

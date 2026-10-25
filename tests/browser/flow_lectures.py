@@ -91,9 +91,11 @@ def main():
 
         # The hub shows it, and the course page editor's Lectures tab: nothing to edit there.
         v = b.new_context().new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/#lectures"); v.wait_for_selector(".hb-week")
-        expect(v.locator(".hb-main")).to_contain_text("Adders and ALUs")
-        expect(v.locator(".hb-main")).to_contain_text("Course review")
+        v.goto(srv.base + "c/chandra/csc258/f26/#lectures"); v.wait_for_selector(".hs-wk")
+        seen = ""   # every week's page, opened from the list of weeks
+        for h in v.eval_on_selector_all("a.hs-wk", "els => els.map(e => e.getAttribute('href'))"):
+            v.evaluate(f"location.hash = '{h}'"); v.wait_for_selector(".hs-head"); seen += v.inner_text(".hb-main")
+        assert "Adders and ALUs" in seen and "Course review" in seen, "the weeks' pages don't show the lectures"
         assert v.request.get(srv.base + "p/chandra/csc258/f26/lectures/lec13.pdf").status == 200
         me.evaluate("location.hash = '#/csc258/f26/course'")
         me.wait_for_selector(C + ".hbe")

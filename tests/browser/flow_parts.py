@@ -74,12 +74,11 @@ def main():
         print("2 title and description saved")
 
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/"); v.wait_for_selector(".hb-tab")
-        tabs = v.eval_on_selector_all(".hb-tab", "els => els.map(e => e.textContent.trim())")
-        assert tabs == ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"], tabs
-        expect(v.locator(".hb-tab[aria-selected=true]")).to_have_text("This week")
-        expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # Oct 27 is in Week 7, this week
-        v.click(".hb-tab:has-text('About')")
+        v.goto(srv.base + "c/chandra/csc258/f26/"); v.wait_for_selector(".hs-sec")
+        secs = v.eval_on_selector_all(".hs-sec-h h2", "els => els.map(e => e.textContent.trim())")
+        assert secs == ["Announcements", "Activities", "Evaluations"], secs
+        expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # the newest announcement, in full
+        v.click(".hs-row:has-text('About the Course')")
         expect(v.locator(".hb-main")).to_contain_text("From transistors to processors.")
         expect(v.locator(".hb-title")).to_have_text("CSC258: Computer Organization and Design")
         expect(v.locator(".hb-sub")).to_have_text("Fall 2026 · University of Toronto")
@@ -89,7 +88,7 @@ def main():
         # 3. View Course Page: the course page itself, in a new tab.
         with me.context.expect_page() as np:
             me.click("#lt-view-page")
-        cp = np.value; cp.wait_for_selector(".hb-tab")
+        cp = np.value; cp.wait_for_selector(".hs-sec")
         assert cp.url.split("#")[0].endswith("/c/chandra/csc258/f26/"), cp.url
         expect(cp.locator(".hb-title")).to_have_text("CSC258: Computer Organization and Design")
         cp.close()

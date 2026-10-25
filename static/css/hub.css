@@ -456,3 +456,71 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 .hb a.hb-card.hb-evl:hover { border-color: var(--ink-3); }
 .hb-eval.hb-hl, .hb-eval-subs li.hb-hl { animation: hb-hl 2.4s ease-out; }
 @keyframes hb-hl { 0%, 40% { background: var(--accent-bg, #fdf3d6); } 100% { background: transparent; } }
+
+/* ── The course page, simplified (hub.js): a home of sections, each opening its own page, as in Lectern ── */
+.hb-title a { color: inherit; text-decoration: none; }
+.hb-main.hb-main { max-width: 860px; }
+.hs-path { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; font-size: 14px; color: var(--ink-3); }
+.hs-path a { color: var(--ink-2); text-decoration: none; font-weight: 500; }
+.hs-path a:hover { color: var(--ink); text-decoration: underline; }
+.hs-path b { color: var(--ink); font-weight: 600; }
+.hs-head { margin: 0 0 22px; }
+.hs-head h1 { margin: 0; font: 500 38px/1.15 var(--font-serif); letter-spacing: -.015em; }
+.hs-head p { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
+.hs-kick-top { display: flex; align-items: center; gap: 7px; margin: 0 0 4px !important; }
+.hs-desc { color: var(--ink-2); margin: 0 0 30px; max-width: 68ch; }
+.hs-sec { margin: 0 0 34px; }
+.hs-sec-h { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--ink); text-decoration: none; width: fit-content; }
+.hb a.hs-sec-h { color: var(--ink); text-decoration: none; }
+.hs-sec-h h2 { margin: 0; font: 500 28px/1.2 var(--font-serif); }
+.hs-sec-h svg { width: 20px; height: 20px; color: var(--ink-3); transition: transform .15s; }
+a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
+.hs-sec-h.hs-off svg { width: 16px; height: 16px; }
+.hs-h2 { margin: 0 0 12px; font: 700 12px/1.3 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.hs-list, .hs-stack { display: grid; gap: 8px; }
+.hs-stack { gap: 12px; }
+.hb a.hs-row, .hs-row { display: flex; align-items: center; gap: 14px; padding: 13px 18px; background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; color: var(--ink); text-decoration: none; transition: box-shadow .15s, border-color .15s; }
+.hb a.hs-row:hover { box-shadow: 0 4px 16px rgb(0 0 0 / .07); border-color: var(--ink-3); }
+.hs-row > svg:last-child { flex: none; width: 18px; height: 18px; color: var(--ink-3); }
+.hs-t { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.hs-t b { font: 500 19px/1.3 var(--font-serif); }
+.hs-t small { font-size: 14px; color: var(--ink-2); }
+.hs-t small.hs-kick, .hs-kick { font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0; }
+.hs-num { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--accent-line); font: 500 18px/1 var(--font-serif); color: var(--ink); }
+.hs-wk.now { border-color: var(--accent-line); background: color-mix(in srgb, var(--accent-bg) 45%, var(--card)); }
+.hs-tag { flex: none; display: inline-block; padding: 2px 10px; border-radius: 99px; background: var(--accent-bg); box-shadow: inset 0 0 0 1px var(--accent-line); color: var(--ink); font: 600 12.5px/20px var(--font-ui); }
+.hs-head .hs-tag { margin-left: 6px; vertical-align: 1px; }
+.hs-ic { flex: none; display: grid; place-items: center; width: 24px; color: var(--ink-2); }
+.hs-ic svg { width: 22px; height: 22px; }
+.hs-ic.sm { width: 16px; } .hs-ic.sm svg { width: 15px; height: 15px; }
+.hs-w { flex: none; font: 500 22px/1 var(--font-serif); color: var(--ink); font-variant-numeric: tabular-nums; }
+.hs-break { margin: 6px 0; padding: 8px 14px; border: 1.5px dashed var(--line-2); border-radius: 10px; color: var(--ink-3); font-size: 14px; text-align: center; }
+.hs-card { padding: 18px 20px; background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; }
+.hs-card h3 { margin: 2px 0 6px; font: 500 22px/1.25 var(--font-serif); }
+.hs-body { color: var(--ink-2); }
+.hs-act { display: flex; gap: 14px; align-items: flex-start; }
+.hs-act > .hs-ic { margin-top: 2px; }
+.hs-act-b { flex: 1; min-width: 0; }
+.hs-when { margin: -2px 0 8px; font-weight: 500; color: var(--ink-2); font-size: 14px; }
+.hs-soon { margin: 8px 0 0; color: var(--ink-3); font-size: 14px; }
+.hs-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.hb a.hs-file { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 8px; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+.hb a.hs-file:hover { background: var(--accent-bg); }
+.hs-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-weight: 600; font-size: 14px; text-decoration: none; }
+.hs-more svg { width: 15px; height: 15px; }
+.hs-empty { margin: 0; padding: 16px; border: 1.5px dashed var(--line-2); border-radius: 10px; color: var(--ink-3); text-align: center; }
+.hs-locked { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border: 1.5px dashed var(--line-2); border-radius: 10px; color: var(--ink-2); }
+.hs-locked span { flex: 1; }
+.hs-group { border: 1px solid var(--accent-line); border-radius: 12px; background: color-mix(in srgb, var(--accent-bg) 35%, var(--paper)); overflow: hidden; }
+.hs-group > a.hs-row.hs-grp { border: 0; border-radius: 0; background: color-mix(in srgb, var(--accent-bg) 60%, var(--card)); }
+.hs-group > a.hs-row.hs-grp:hover { box-shadow: none; }
+.hs-group > .hs-list { padding: 12px 14px 14px; }
+.hs-facts p { margin: 0 0 8px; color: var(--ink-2); }
+.hs-facts > :last-child { margin-bottom: 0; }
+.hs-req { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
+.hs-by { font-size: 13.5px; color: var(--ink-3); }
+.hs-note { color: var(--ink-3) !important; font-size: 14px; }
+.hs-pn { display: flex; justify-content: space-between; gap: 12px; margin-top: 30px; font-weight: 600; font-size: 14px; }
+.hs-pn a { text-decoration: none; }
+@media (max-width: 640px) { .hs-head h1 { font-size: 30px; } .hs-sec-h h2 { font-size: 24px; } .hs-row { padding: 12px 14px; } .hs-card { padding: 16px; } }
+.hb-head-in.hb-head-in, .hb-staff-in { max-width: 860px; }

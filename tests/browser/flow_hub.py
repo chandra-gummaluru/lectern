@@ -24,7 +24,8 @@ DEMO = os.path.join(ROOT, "sample-data/demo-courses/csc258/f26")
 OLD = open(os.path.join(DEMO, "info.html"), encoding="utf-8").read()
 DATA = open(os.path.join(DEMO, "course.json"), encoding="utf-8").read()
 C = "[data-lt-tool='course'] "
-TABS = ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"]
+HOME = ["Announcements", "Activities", "Evaluations"]   # the home page's sections
+TABS = ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"]   # the course page builder (Lectern) still has its tabs
 
 
 def main():
@@ -74,21 +75,21 @@ def main():
         # 3. A visitor: the published address leads to the hub; Lectures is locked.
         v = browser("visitor")
         v.goto(srv.base + "p/chandra/csc258/f26/info.html")
-        v.wait_for_selector(".hb-tab")
+        v.wait_for_selector(".hs-sec")
         assert v.url.endswith("/c/chandra/csc258/f26/"), v.url
-        assert v.eval_on_selector_all(".hb-tab", "els => els.map(e => e.textContent.trim())") == TABS
-        expect(v.locator(".hb-tab[aria-selected=true]")).to_have_text("This week")
-        v.screenshot(path=f"{OUT}/164-hub-week-visitor.png", full_page=True)
-        v.click(".hb-tab:has-text('Activities')")
+        assert v.eval_on_selector_all(".hs-sec-h h2", "els => els.map(e => e.textContent.trim())") == HOME
+        v.screenshot(path=f"{OUT}/164-hub-home-visitor.png", full_page=True)
+        assert v.query_selector(".hs-sec-h.hs-off h2:has-text('Activities')"), "Activities isn't locked on the home page"
+        v.goto(srv.base + "c/chandra/csc258/f26/#activities")
         expect(v.locator(".hb-locked h2")).to_have_text("Activities")
         assert "lec03.pdf" not in v.content()
-        v.click(".hb-tab:has-text('About')")
+        v.goto(srv.base + "c/chandra/csc258/f26/#about")
         expect(v.locator(".hb-main")).to_contain_text("From transistors to processors")
         print("3 visitor: lectures locked, about shown")
 
         # 4. The owner on the hub, and a phone.
         me.goto(srv.base + "c/chandra/csc258/f26/#lectures")
-        me.wait_for_selector(".hb-week")
+        me.wait_for_selector(".hs-wk")
         expect(me.locator(".hb-staff")).to_contain_text("See it as a visitor")
         ph = browser("phone", 390)
         ph.goto(srv.base + "c/chandra/csc258/f26/#about")

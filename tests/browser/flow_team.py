@@ -63,10 +63,7 @@ def main():
         expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Mon 10:00–11:00"); expect(sec).to_contain_text("Wed 10:00–11:00"); expect(sec).to_contain_text("Chandra Gummaluru")
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")
         v.wait_for_timeout(700); v.screenshot(path=f"{OUT}/191-hub-team.png", full_page=True)
-        v.click(".hb-tab:has-text('This week')")
-        expect(v.locator(".hb-dtl")).to_contain_text("LEC0101")
-        expect(v.locator(".hb-dtl")).to_contain_text("Office hours")
-        print("2 the hub shows the section, office hours and team; This week the times")
+        print("2 the hub shows the section, office hours and team")
         b.close()
     print("\n".join(errors) or "no page errors")
     assert not errors

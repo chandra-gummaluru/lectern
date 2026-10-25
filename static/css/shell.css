@@ -733,3 +733,5 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
   background: var(--home-card) !important; border: 1.5px solid var(--home-ink) !important; color: var(--home-ink) !important; opacity: 1 !important; }
 .lt-btn.primary:hover:not(:disabled), .lt-save:hover:not(:disabled), .lt-modal .lt-btn.primary:hover:not(:disabled), .lx-btn.main:hover:not(:disabled), .rt-link button[data-rt-ok]:hover {
   background: var(--accent-bg) !important; border-color: var(--home-ink) !important; color: var(--home-ink) !important; }
+/* The Owner pill on the Teaching Team: the same text size as the buttons. */
+.lt-tag.lt-owner { margin-right: 0; padding: 4px 13px; font: 600 14px/20px var(--font-ui); letter-spacing: 0; vertical-align: middle; }

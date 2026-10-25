@@ -808,7 +808,7 @@ async function teamPart(c, t) {
   box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams. Staff see everything and change nothing." : "The people who work on this offering."}</p>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
         <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
-        <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag">Owner</span>`
+        <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag lt-owner">Owner</span>`
           : lead && p.id !== d.me ? `${roleSel(p)}<button type="button" class="lt-link lt-del" data-remove="${p.id}">Remove</button>`
           : `<span class="lt-tag${p.role === "ta" || p.role === "staff" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>
       </div>`).join("")}

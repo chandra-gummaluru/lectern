@@ -750,3 +750,11 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 @media (max-width: 640px) { .ec-head .ec-mk { justify-items: start; text-align: left; } }
 .ec-part { margin-top: 18px; }
 .ec-part > div:first-child > .ec-rw:first-child, .ec-part > div:first-child > .ec-pol:first-child { margin-top: 0; }
+.ec-accrow { display: flex; align-items: center; gap: 12px 14px; padding: 14px 16px; border: 1px solid var(--line-2); border-radius: 10px; background: color-mix(in srgb, var(--accent-bg) 35%, var(--card)); }
+.ec-accrow > .hs-ic.sm { width: 20px; color: var(--accent); align-self: flex-start; margin-top: 2px; } .ec-accrow > .hs-ic.sm svg { width: 19px; height: 19px; }
+.ec-acct { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ec-acct b { font: 600 14.5px var(--font-ui); color: var(--ink); }
+.ec-acct span { font-size: 14px; color: var(--ink-2); }
+.ec-acct small { font-size: 13px; color: var(--ink-3); }
+.ec-accbtn { flex: none; }
+@media (max-width: 640px) { .ec-accrow { flex-wrap: wrap; } .ec-accbtn { width: 100%; } }

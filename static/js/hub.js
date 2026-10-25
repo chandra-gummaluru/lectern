@@ -309,13 +309,17 @@ function evalCard(u, group, E) {
       ${mi.zero > 0 ? `<div class="ec-rw-row ec-zero"><span class="sp"></span>${fmtW(mi.zero)}% counts as zero</div>` : ""}</div>` : ""}` : (u.notes || []).map(n => `<p class="ec-p">${esc(n)}</p>`).join("");
   // Accommodations: the standard one (if it must be asked for), and until when.
   const a = u.accom || {}, by = a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";
-  const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-acc">${a.standard && a.approval ? `<p class="ec-p">${policy && mi ? "This applies" : `The standard accommodation, <b>${esc(String(a.standard).replace(/\.\s*$/, ""))}</b>, applies`} only if you request it and it's approved.</p>` : ""}${a.alternate ? `<p class="ec-p">You can also ask for an alternate accommodation.</p>` : ""}${by ? `<p class="ec-p ec-by">Requests close ${esc(by)}.</p>` : ""}</div>` : "";
+  // Accommodations: one row, as the dates are: what can be asked for and until when, and the button to ask.
+  const HAND = svg('<path d="M12 21s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 8.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16.6 12 21 12 21z"/>');
+  const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
+  const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks)}</span>${by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
   const req = requestBtn(u);
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
       <div class="ec-part">${dates}</div>
-      ${policy || acc || req ? `<div class="ec-part">${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}</div>` : ""}
+      ${policy ? `<div class="ec-part">${policy}</div>` : ""}
+      ${acc ? `<div class="ec-part">${acc.replace("@@REQ@@", req ? `<span class="ec-accbtn">${req}</span>` : "")}</div>` : req ? `<div class="ec-part ec-req">${req}</div>` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
     </article>`;

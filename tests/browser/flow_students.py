@@ -108,12 +108,13 @@ def main():
         me.keyboard.press("Control+s"); me.wait_for_timeout(2500)
         pol = json.loads(srv.text("pub", "csc258/f26/course.json"))["page"]["scheme"]["policies"]
         assert [x["show"] for x in pol if x["id"] == "round"] == [True], pol
-        hub = b.new_context().new_page(); hub.goto(srv.base + "c/chandra/csc258/f26/#about"); hub.wait_for_selector(".hb-main h2")
+        hub = b.new_context().new_page(); hub.goto(srv.base + "c/chandra/csc258/f26/#about"); hub.wait_for_selector(".hs-head h1")
         expect(hub.locator(".hb-main")).to_contain_text("rounded to the nearest whole percent")
         hub.close()
         print("3 the gradebook shows them; its settings are the grade rules, and the course page gets them on save")
 
         # 4. A student signs in; a dropped one can't.
+        srv.put("priv", {"csc258/f26/announcements.json": json.dumps({"items": [{"id": "an1", "title": "Welcome", "date": "Sep 8, 2026, 09:00", "body": "Hello, everyone."}]})})
         stu = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
         stu.on("pageerror", lambda e: errors.append(f"student pageerror: {e}"))
         stu.goto(srv.base + "c/chandra/csc258/f26/#lectures"); stu.wait_for_selector(".hb-locked")
@@ -128,7 +129,12 @@ def main():
         stu.fill("#si-c", code); stu.click("#si-code button[type=submit]")
         stu.wait_for_selector(".hs-sec")
         expect(stu.locator(".hb-who")).to_contain_text("maya.castillo@mail.utoronto.ca")
-        stu.click("a.hs-more:has-text('See all weeks')")
+        # An announcement they haven't seen is New; once shown, it isn't the next time.
+        expect(stu.locator(".hs-ann.hs-new .hs-newtag")).to_have_text("New")
+        stu.screenshot(path=f"{OUT}/214a-new-announcement.png")
+        stu.wait_for_timeout(2200); stu.reload(); stu.wait_for_selector(".hs-ann")
+        expect(stu.locator(".hs-ann.hs-new")).to_have_count(0)
+        stu.click("a.hs-link:has-text('All Weeks')")
         stu.wait_for_selector(".hs-wk")
         stu.screenshot(path=f"{OUT}/214-signed-in.png")
         me.locator("#lt-path button", has_text="csc258 / f26").click(); me.wait_for_selector(S + ".lt-st-list")

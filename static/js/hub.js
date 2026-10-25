@@ -114,7 +114,19 @@ function lockedPage(id, title) {
 const annsOn = key => ((data("announcements") || {}).items || []).filter(a => a.on === key).sort((x, y) => annTime(y) - annTime(x));
 // For the teaching team: what's only for some sections says which.
 const groupTag = ids => { if (!(ids || []).length || !D.viewer.staff) return ""; const G = ((data("about") || {}).groups) || [], n = ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean); return `<span class="hs-tag hs-gtag" title="Only their students see this">${esc(n.length ? n.join(", ") : "Some groups")} only</span>`; };
-const annCard = a => `<article class="hs-card hs-ann"><p class="hs-kick">${esc(stampText(a.date))}${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
+// New: an announcement a signed-in student hasn't seen yet. Shown in full, it's seen (told to the server a
+// moment later; it stays marked New on this page until they leave it).
+let SEEN0 = null; const shownNew = new Set();
+const seenSet = () => SEEN0 || (SEEN0 = new Set((D.viewer && D.viewer.seen) || []));
+const isNew = a => !!(D.viewer && D.viewer.role === "student" && a.id && !seenSet().has(a.id));
+const note = a => { if (isNew(a)) shownNew.add(a.id); return ""; };
+const unread = () => ((data("announcements") || {}).items || []).filter(isNew).length;
+function markSeen() {
+  const SEEN = seenSet(), ids = [...shownNew].filter(id => !SEEN.has(id)); shownNew.clear();
+  if (!ids.length) return;
+  setTimeout(() => { ids.forEach(id => SEEN.add(id)); fetch(`${root.dataset.api}/seen`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {}); }, 1500);
+}
+const annCard = a => `<article class="hs-card hs-ann${isNew(a) ? " hs-new" : ""}"${note(a)}><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}${esc(stampText(a.date))}${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
 function weekRow(w, now) {
   if (w.isBreak) return `<p class="hs-break">${esc(w.label || "Break")}</p>`;
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");
@@ -168,7 +180,7 @@ const PAGES = {
     // The newest announcement in full, then this week opened (the first week, before the term starts).
     if (open("announcements")) {
       const items = (data("announcements").items || []).slice().sort((x, y) => annTime(y) - annTime(x));
-      if (items.length) { out.push(`<section class="hs-sec">${annCard(items[0])}<div class="hs-list hs-after">${linkRow("announcements", "All Announcements", `${items.length} announcement${items.length === 1 ? "" : "s"}, newest first.`)}</div></section>`); shown.add("announcements"); }
+      if (items.length) { out.push(`<section class="hs-sec">${annCard(items[0])}<div class="hs-list hs-after">${linkRow("announcements", "All Announcements", unread() > (isNew(items[0]) ? 1 : 0) ? `${unread() - (isNew(items[0]) ? 1 : 0)} more new · ${items.length} in all, newest first.` : `${items.length} announcement${items.length === 1 ? "" : "s"}, newest first.`)}</div></section>`); shown.add("announcements"); }
     }
     if (open("lectures")) {
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0];
@@ -277,7 +289,7 @@ function route() {
 
 function draw() {
   const { id, arg } = route(), m = $("hb-main");
-  try { m.innerHTML = PAGES[id](arg); }
+  try { m.innerHTML = PAGES[id](arg); markSeen(); }
   catch (e) { console.error(e); m.innerHTML = `<p class="hb-empty">Something went wrong showing this part of the page.</p>`; }
   if (id !== "home") { const h = m.querySelector(".hs-head h1, .hb-h2, .hb-locked h2"); document.title = `${h ? h.textContent : "Course page"} · ${D.course.code || D.course.title}`; }
 }

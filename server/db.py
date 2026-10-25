@@ -149,6 +149,14 @@ CREATE TABLE IF NOT EXISTS resets (
   expires    REAL NOT NULL,
   used       REAL NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS announcements_seen (  -- the announcements each student has seen on the course page (the rest are New for them)
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  email     TEXT NOT NULL,
+  ann_id    TEXT NOT NULL,
+  at        REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, email, ann_id)
+);
 CREATE TABLE IF NOT EXISTS course_students (  -- when each student was sent the course page's link and last signed in (students.py; the class list is the gradebook's)
   owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   offering  TEXT NOT NULL,

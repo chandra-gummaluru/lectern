@@ -255,6 +255,22 @@ def verify(handle, course, term):
     return resp
 
 
+@students_bp.post("/api/hub/<handle>/<course>/<term>/seen")
+@handles
+def seen(handle, course, term):
+    """A signed-in student has seen these announcements (the course page showed them): they're not New any more."""
+    o, off = _offering(handle, course, term)
+    email = student_of(o["id"], off)
+    if not email:
+        raise Refusal(401, "Sign in to the course page first.", "signed-out")
+    ids = [str(x)[:80] for x in (body().get("ids") or []) if isinstance(x, str) and x.strip()][:200]
+    t = time.time()
+    with db.transaction() as c:
+        for a in ids:
+            c.execute("INSERT OR IGNORE INTO announcements_seen (owner_id, offering, email, ann_id, at) VALUES (?, ?, ?, ?, ?)", (o["id"], off, email, a, t))
+    return jsonify(ok=True)
+
+
 @students_bp.post("/api/hub/<handle>/<course>/<term>/sign-out")
 @handles
 def sign_out(handle, course, term):

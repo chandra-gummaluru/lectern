@@ -410,7 +410,9 @@ def buckets(page, year=None, book_files=None, lectures=None, team=None, announce
                 wk = next((x for x in weeks if not x["isBreak"] and x["label"] == _s(w.get("label"), 200)), None)
             on = _s(a.get("on"), 60)
             act = next((c for x in weeks for c in x["cards"] if on.startswith("act:") and c["id"] and c["id"] == on[4:]), None)
-            anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60), "on": on,
+            import hashlib
+            aid = _s(a.get("id"), 80) or "h-" + hashlib.sha1(f'{_s(a.get("title"))}|{_s(a.get("date"))}'.encode()).hexdigest()[:12]
+            anns.append({"id": aid, "title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60), "on": on,
                          # about an activity: for whoever the activity is for
                          "groups": act["groups"] if act else ([] if on.startswith("act:") else _groups(a)),
                          "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
@@ -555,7 +557,9 @@ def hub_api(handle, course, term):
                 "term": term_name(term), "school": institution(),
                 "offering": offering, "year": year},
         viewer={"signedIn": signed, "role": None if preview else role, "name": student or (u["name"] if u and signed else ""),
-                "staff": role in STAFF, "preview": preview},
+                "staff": role in STAFF, "preview": preview,
+                # a student: the announcements they've seen (the others are New for them)
+                **({"seen": [r["ann_id"] for r in db.all_("SELECT ann_id FROM announcements_seen WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], offering, student))]} if student else {})},
         tabs=tabs, data=data,
         lectern=app_url(), signIn=f"/c/{o['handle']}/{offering}/sign-in",
         pages=f"{pages_base()}{o['handle']}/{offering}/",

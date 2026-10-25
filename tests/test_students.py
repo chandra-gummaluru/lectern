@@ -175,3 +175,19 @@ def test_a_student_sees_their_own_sections(client, course):
     assert ev["date"] == "2026-10-05" and ev["time"] == "18:00" and "dates" not in ev
     staff = client.get(HUB).get_json()["data"]["about"]   # the teaching team: every section
     assert [g["name"] for g in staff["groups"]] == ["LEC0101", "LEC0102"]
+
+
+def test_announcements_a_student_has_seen(client, course):
+    """The course page tells the server which announcements a student has seen; the rest are New for them."""
+    import json as _j
+    enrol(course, "maya@mail.utoronto.ca")
+    r = store.Repo(course["id"], "priv")
+    r.commit({"csc258/f26/announcements.json": _j.dumps({"items": [{"id": "a1", "title": "One", "date": "Sep 8, 2026, 09:00", "body": "x"},
+                                                                     {"id": "a2", "title": "Two", "date": "Sep 9, 2026, 09:00", "body": "y"}]}).encode()}, "seed", r.head())
+    s = app.test_client(); sign_in(s, "maya@mail.utoronto.ca")
+    j = s.get(HUB).get_json()
+    assert j["viewer"]["seen"] == [] and {a["id"] for a in j["data"]["announcements"]["items"]} == {"a1", "a2"}
+    assert s.post(f"{HUB}/seen", json={"ids": ["a2"]}, headers=H).status_code == 200
+    assert s.get(HUB).get_json()["viewer"]["seen"] == ["a2"]
+    assert app.test_client().post(f"{HUB}/seen", json={"ids": ["a1"]}, headers=H).status_code == 401   # not signed in
+    assert "seen" not in client.get(HUB).get_json()["viewer"]   # the teaching team: nothing is New for them

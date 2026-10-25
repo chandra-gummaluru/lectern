@@ -718,10 +718,10 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-wnum { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--home-card); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 55%, var(--lx-line)); font: 500 20px/1 var(--font-serif); color: var(--home-ink); font-variant-numeric: lining-nums; }
 
 /* Each activity's type, as an icon on its left (Activities) */
-.lx-kicon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--home-card); color: var(--home-ink-2); box-shadow: inset 0 0 0 1px var(--home-line-2); }
-.lx-kicon svg { width: 19px; height: 19px; }
-.lx-kicon.big { width: 40px; height: 40px; }
-.lx-kicon.big svg { width: 21px; height: 21px; }
+.lx-kicon { flex: none; display: grid; place-items: center; width: 26px; height: 36px; color: var(--home-ink-2); }
+.lx-kicon svg { width: 22px; height: 22px; }
+.lx-kicon.big { width: 28px; height: 40px; }
+.lx-kicon.big svg { width: 24px; height: 24px; }
 .lx-row.sub.lx-lec { gap: 14px; }
 .lx-lec .lx-when { margin: 2px 0 0 !important; }
 .lx-lec .lx-clip { margin: 3px 0 0 !important; }

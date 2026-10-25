@@ -2419,6 +2419,13 @@ function popover(anchor, html, bind, cls = "") {
   const f = $("input:not([type=checkbox]), textarea", el); if (f) { f.focus(); if (f.select) f.select(); }
   return el;
 }
+// After a student is dropped or deleted from their page: back to the page before it (Lectern's), else the list.
+function leaveStudent(num) {
+  const L = window.Lectern;
+  if (L && L.back && L.quiet) { let went = false; L.quiet(() => { went = L.back(num); if (went) { ui.student = ""; ui.stAcc = ""; } }); if (went) return; }
+  const back = ui.stFrom === "grades" || (tabs && !tabs.includes("students")) ? "grades" : "students";
+  ui.student = ""; ui.stAcc = ""; ui.view = back; render();
+}
 function closePops() { $$(".fpop").forEach(e => { const f = e._onClose; e._onClose = null; if (e._anchor) e._anchor.removeAttribute("aria-expanded"); e.remove(); if (f) f(); }); }
 document.addEventListener("mousedown", e => { const p = $(".fpop"); if (!p || e.target.closest(".fpop")) return; if (p._anchor && p._anchor.contains(e.target)) return; closePops(); });   // its own button toggles it (on click)
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $(".fpop")) closePops(); });
@@ -3276,7 +3283,8 @@ document.addEventListener("click", ev => {
       setOverride(n, e.id, { missed: p }); });
     return drawStudentEditor();
   }
-  if (a === "sremove") { const n = m.dataset.student, s = model.students.find(x => x.num === n); ui.student = ""; change(() => { model.students = model.students.filter(x => x.num !== n); delete model.marks[n]; delete model.overrides[n]; delete model.finals[n]; }); return toast(`${s.name || n} removed, with their marks.`, true); }
+  if (a === "sremove") { const n = m.dataset.student, s = model.students.find(x => x.num === n), quiet = (window.Lectern && window.Lectern.quiet) || (f => f());
+    quiet(() => { ui.student = ""; change(() => { model.students = model.students.filter(x => x.num !== n); delete model.marks[n]; delete model.overrides[n]; delete model.finals[n]; }); }); toast(`${s.name || n} removed, with their marks.`, true); return leaveStudent(n); }
   if (a === "mode") change(() => { e.missed.mode = b.dataset.v; e.missed.split = "custom"; });
   if (a === "etype") change(() => {   // an assignment is due at 23:59 unless it says otherwise; a test has no such default
     const was = e.type; e.type = b.dataset.v;
@@ -3952,7 +3960,7 @@ function act(b) {
     }
     case "st-back": { const back = ui.stFrom === "grades" || (tabs && !tabs.includes("students")) ? "grades" : "students"; return goPage(() => { ui.student = ""; ui.stAcc = ""; ui.view = back; }); }
     case "only-acc": ui.onlyAcc = !ui.onlyAcc; return render();
-    case "st-drop": { const s = model.students.find(x => x.num === b.dataset.num), to = !s.dropped; change(() => { if (to) s.dropped = true; else delete s.dropped; }); return toast(to ? `${s.name || s.num} dropped. Their marks are kept.` : `${s.name || s.num} is enrolled again.`, true); }
+    case "st-drop": { const s = model.students.find(x => x.num === b.dataset.num), to = !s.dropped; change(() => { if (to) s.dropped = true; else delete s.dropped; }); toast(to ? `${s.name || s.num} dropped. Their marks are kept.` : `${s.name || s.num} is enrolled again.`, true); return to && ui.student ? leaveStudent(s.num) : undefined; }
     case "st-pick": { const S = ui.stats; if (S.who === "one") S.one = b.dataset.v; else if (!S.picked.includes(b.dataset.v)) S.picked.push(b.dataset.v); S.q = ""; render(); const q = $("#st-q"); if (q) q.focus(); return; }
     case "st-unpick": { const S = ui.stats; if (S.who === "one") S.one = ""; else S.picked = S.picked.filter(x => x !== b.dataset.v); render(); const q = $("#st-q"); if (q) q.focus(); return; }
     case "goto": { if (b.dataset.s && b.dataset.e) { ui.view = "grades"; ui.find = ""; ui.cell = { s: b.dataset.s, e: b.dataset.e }; render(); const inp = cellInput(b.dataset.s, b.dataset.e); if (inp) inp.scrollIntoView({ block: "center" }); } else if (b.dataset.e) { ui.view = "evals"; render(); evalEditor(b.dataset.e); } else if (!b.dataset.s) { ui.view = "evals"; render(); } return; }

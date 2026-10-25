@@ -80,6 +80,8 @@ export async function studentsCard(ctx, c, t) {
     try {
       const [f, d, g] = await Promise.all([Store.readFile(repo, path), api(base), groups ? groups().catch(() => []) : []]);
       book = f ? JSON.parse(f.text) : null; info = d; G = g || [];
+      // The gradebook open with changes not saved yet (a student dropped or deleted there): its copy.
+      const gb = gradebook(); if (gb && gb.api && gb.api.state().path === path && gb.api.state().unsaved) book = gb.api.book();
     } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">Couldn't read the class list. ${esc(e.message)}</p>`; return; }
     if (here()) draw();
   }

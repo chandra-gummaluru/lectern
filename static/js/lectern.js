@@ -811,7 +811,7 @@ function studentsPart(c, t) {
     groupIds: names => groupIdsFor(Store, area(Store.PRIV, o), c, t, names),
     groupsChanged: () => groupsPart(c, t),
     // A student's own page, in the gradebook (their marks, accommodations, notes; dropping or deleting them).
-    openStudent: num => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: num, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } }),
+    openStudent: num => { S.studentFrom = { num: String(num), route: { ...S.route } }; go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: num, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } }); },
     here: () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box),
     gradebook: () => gradebookOf(c, t, o),
     // The file changed: an open gradebook reads it again when it next shows; a new one is on Home.
@@ -1193,6 +1193,12 @@ Lectern.requests = async () => {
   const r = S.route; if (!r.c || !r.t || !["owner", "coordinator", "staff"].includes(roleIn(r.c, r.t))) return null;
   try { return (await readAccom(r.c, r.t)).requests; } catch (_) { return null; }
 };
+// For a builder, after something that ends its page (a student dropped or deleted): the page before it,
+// if Lectern has one; false if not (the builder goes to its own list).
+// A student's page opened from one of Lectern's (the offering's Students): back to that page.
+Lectern.back = num => { const f = S.studentFrom; if (!f || (num != null && f.num !== String(num))) return false; S.studentFrom = null; go(f.route); return true; };
+// A change in a builder that isn't a step of its own (the page it was on is about to be left).
+Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); } finally { setTimeout(() => { H.applying = was && H.applying; }, 300); } };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // For the gradebook: a TA's or instructor's sections (the ones they run), or null.
 Lectern.myGroups = async () => {

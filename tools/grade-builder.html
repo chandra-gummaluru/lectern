@@ -51,6 +51,7 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .rq-n { display: inline-block; margin: 5px 0 0; padding: 7px 11px; border-radius: 4px 12px 12px 12px; background: #fff; box-shadow: inset 0 0 0 1px #cfd0d3; font-size: 13.5px; color: #1f2329; white-space: pre-wrap; }
 .rq-mini { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; font: 600 12.5px var(--font-ui); color: #b58a00; } .rq-mini svg { width: 16px; height: 16px; }
 .rq-foot { display: flex; justify-content: flex-end; margin: 10px 0 18px; }
+.rw-was, .rw-now { font-family: var(--font-ui); font-size: 13.5px; font-variant-numeric: tabular-nums; }   /* the reweighting table's percentages: the regular font */
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -1620,7 +1621,7 @@ button.c.add:hover, button.add-mk:hover, button.e-addlec:hover, button.e-addcard
 button.ic.trash:hover:not(:disabled), button.ic.x:hover:not(:disabled), button.c.x:hover:not(:disabled) { background: var(--danger-bg) !important; border-color: var(--danger-line, var(--danger)) !important; color: var(--danger) !important; }
 
 /* Percentages and marks shown on their own: always the serif */
-.gp, td.fx-pct, .fx-pct span, .fx-facts b, .acc-score b:not(.ns), .rw-now, .rw-was, .keep-row b, .wseg i, .eb-v, .sum-l + b, .fx-avg b, .sum-big, .fg-val { font-family: var(--font-serif) !important; font-weight: 500 !important; font-variant-numeric: lining-nums tabular-nums; letter-spacing: 0 !important; }
+.gp, td.fx-pct, .fx-pct span, .fx-facts b, .acc-score b:not(.ns), .keep-row b, .wseg i, .eb-v, .sum-l + b, .fx-avg b, .sum-big, .fg-val { font-family: var(--font-serif) !important; font-weight: 500 !important; font-variant-numeric: lining-nums tabular-nums; letter-spacing: 0 !important; }
 td.fx-pct, .fx-pct span, .fx-grid td.fx-gcell .gp, .fx-facts b { font-size: 17px !important; }
 .acc-score b:not(.ns) { font-size: 22px !important; }
 .fg-val { gap: 0 !important; }

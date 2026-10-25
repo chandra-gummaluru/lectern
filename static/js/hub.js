@@ -286,11 +286,11 @@ function evalCard(u, group, E) {
   const grading = `<table class="ec-dates ec-grade"><thead><tr><th>Worth</th><th>Points</th><th>Your Mark</th></tr></thead><tbody><tr><td>${esc(worthV)}${group ? `<small>In ${esc(group.name)}: the best ${group.keep} of ${group.count} count</small>` : ""}</td><td>${esc(outOf)}</td><td class="${m && (m.pts != null || m.status) ? "" : "ec-none"}">${esc(mark)}</td></tr></tbody></table>`;
   // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
   const w = fmtW(u.weight), mi = u.missed;
-  const opt = (on, ttl, sub) => `<p class="ec-p ec-pol"><b>${esc(ttl)}.</b> ${esc(sub)}</p>`;
+  const opt = (on, ttl, sub) => `<p class="ec-p ec-pol">${esc(sub)}</p>`;
   const policy = !group && mi ? `<div>${mi.mode === "reweight" ? opt(true, "A makeup, or shift its weight", `Makeups and other evaluations take the ${w}%.`) : opt(true, "Counts as zero", `The ${w}% stays, with a mark of 0.`)}</div>
     ${mi.mode === "reweight" && (mi.parts || []).length ? `<div class="ec-rw"><p class="ec-rw-h">Its ${w}% goes to…</p>${mi.parts.map(x => {
       const it = unitOf(x.id), ic = EV_ICON[it ? evType(it.u) : "assignment"];
-      return `<div class="ec-rw-row"><span class="hs-ic sm">${ic}</span><b>${esc(x.name)}</b><span class="ec-tag">${x.kind === "makeup" ? "Makeup" : "Shifted to it"}</span><span class="sp"></span>${x.kind === "shift" && x.was != null ? `<s>${fmtW(x.was)}%</s><span class="ec-arrow">→</span><b>${fmtW(x.was + x.pct)}%</b>` : `<b>${fmtW(x.pct)}%</b>`}</div>`; }).join("")}
+      return `<div class="ec-rw-row"><span class="hs-ic sm">${ic}</span><b>${esc(x.name)}</b><span class="sp"></span>${x.kind === "shift" && x.was != null ? `<s>${fmtW(x.was)}%</s><span class="ec-arrow">→</span><b>${fmtW(x.was + x.pct)}%</b>` : `<b>${fmtW(x.pct)}%</b>`}</div>`; }).join("")}
       ${mi.zero > 0 ? `<div class="ec-rw-row ec-zero"><span class="sp"></span>${fmtW(mi.zero)}% counts as zero</div>` : ""}</div>` : ""}` : (u.notes || []).map(n => `<p class="ec-p">${esc(n)}</p>`).join("");
   // Accommodations: the standard one (if it must be asked for), and until when.
   const a = u.accom || {}, by = a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";

@@ -16,7 +16,8 @@
 import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
 import { richText } from "./richtext.js";
-import { pickMany } from "./pick.js";
+import { pickMany, pickOne } from "./pick.js";
+import { KIND_ICON, EV_ICON, EV_TYPES } from "./lectures.js";
 // Its activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
 const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
@@ -135,9 +136,7 @@ export function announcementsPage(ctx, r) {
         </div>
         <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
         <div class="lx-grid two">
-          <label class="lx-f">About<select id="an-on"${dis}><option value="">Nothing in particular</option>
-            ${(st.acts || []).length ? `<optgroup label="Activities">${st.acts.filter(a => canEdit(c, t) || !edit || ((a.groups || []).length && a.groups.every(g => L.has(g))) || x.on === `act:${a.id}`).map(a => `<option value="act:${esc(a.id)}"${x.on === `act:${a.id}` ? " selected" : ""}>${esc(a.week)} · ${esc(a.name)}</option>`).join("")}</optgroup>` : ""}
-            ${(st.evals || []).length ? `<optgroup label="Evaluations">${st.evals.map(e => `<option value="eval:${esc(e.id)}"${x.on === `eval:${e.id}` ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</optgroup>` : ""}</select></label>
+          <div class="lx-f">About<div id="an-on-f"></div></div>
           <div class="lx-f">For<div id="an-groups"></div></div>
         </div>
         <h3 class="lx-sec">Message</h3>
@@ -161,8 +160,17 @@ export function announcementsPage(ctx, r) {
       }
     };
     forSel();
+    // What it's about: an activity (under its week) or an evaluation, each with its icon, or nothing in particular.
+    const KN = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab", other: "Other" };
+    const aboutOpts = [
+      ...(st.acts || []).filter(a => canEdit(c, t) || !edit || ((a.groups || []).length && a.groups.every(g => L.has(g))) || x.on === `act:${a.id}`)
+        .map(a => ({ value: `act:${a.id}`, label: a.name, kick: KN[a.kind] || "Activity", icon: KIND_ICON[a.kind] || KIND_ICON.other, group: a.week })),
+      ...(st.evals || []).map(e => ({ value: `eval:${e.id}`, label: e.title || e.name, kick: e.title ? e.name : EV_TYPES[e.type] || "Evaluation", icon: EV_ICON[e.type] || EV_ICON.assignment, group: "Evaluations" })),
+    ];
+    pickOne($("#an-on-f"), { options: aboutOpts, value: x.on || "", empty: "Nothing in particular", emptyHint: "A general announcement", search: "Search activities and evaluations", id: "an-on", label: "About",
+      disabled: !edit, onChange: v => onChange(v) });
     if (!edit) return;
-    $("#an-on").onchange = e => { if (e.target.value) x.on = e.target.value; else delete x.on; if (String(x.on || "").startsWith("act:")) { delete x.group; delete x.groups; } else if (!canEdit(c, t) && !groupsOf(x).length) x.groups = [...L].slice(0, 1); forSel(); changed(); };
+    const onChange = val => { if (val) x.on = val; else delete x.on; if (String(x.on || "").startsWith("act:")) { delete x.group; delete x.groups; } else if (!canEdit(c, t) && !groupsOf(x).length) x.groups = [...L].slice(0, 1); forSel(); changed(); };
     let shown = x.title || "New announcement";
     const head = () => { const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };
     $("#an-title").oninput = $("#an-title").onchange = e => { x.title = e.target.value.trim(); head(); changed(); };

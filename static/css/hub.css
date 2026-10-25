@@ -498,7 +498,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hs-card { padding: 18px 20px; background: var(--card); border: 1px solid var(--line-2); border-radius: 10px; }
 .hs-card h3 { margin: 2px 0 6px; font: 500 22px/1.25 var(--font-serif); }
 .hs-body { color: var(--ink-2); }
-.hs-act { display: flex; gap: 14px; align-items: flex-start; }
+.hs-act { --hd-gap: 14px; display: flex; gap: 14px; align-items: flex-start; }
 .hs-act > .hs-ic { margin-top: 2px; }
 .hs-act-b { flex: 1; min-width: 0; }
 .hs-when { margin: -2px 0 8px; font-weight: 500; color: var(--ink-2); font-size: 14px; }
@@ -577,3 +577,13 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hs-sec-top { margin-top: 28px; }
 .hs-gtag { margin-left: 8px; font-size: 11px; line-height: 18px; padding: 0 8px; letter-spacing: 0; text-transform: none; vertical-align: 1px; }
 
+
+/* A card whose icon (left) and buttons (right) sit in the middle of its heading (the small grey line, the
+   title, the date), not of everything under it: .hd-row, with .hd-main holding .hd (the heading) and the rest. */
+.hd-row { display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--hd-gap, 20px) !important; row-gap: 0 !important; align-items: center; }
+.hd-row > :first-child { grid-column: 1; grid-row: 1; align-self: center !important; margin-top: 0 !important; }
+.hd-row > .hd-main { display: contents; }
+.hd-row > .hd-main > * { grid-column: 2 / -1; }
+.hd-row > .hd-main > .hd { grid-column: 2; grid-row: 1; min-width: 0; }
+.hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
+@media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }

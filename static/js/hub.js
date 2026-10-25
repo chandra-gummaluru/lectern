@@ -129,7 +129,7 @@ const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${
 function activityCard(c) {
   const k = kindOf(c), D_ = datesOf(c).map(stampText).join(" · ");
   const anns = c.id ? annsOn(`act:${c.id}`) : [];
-  return `<article class="hs-card hs-act"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
+  return `<article class="hs-card hs-act hd-row"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 function requestHTML(e) {

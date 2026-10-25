@@ -859,3 +859,34 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-cmt-v.v-rejected { color: #c0392b; }
 .lt-req .lt-cmt-n { display: inline-block; max-width: 100%; margin: 6px 0 0 !important; padding: 8px 12px; border-radius: 4px 12px 12px 12px; background: var(--home-card); box-shadow: inset 0 0 0 1px var(--home-line-2); font-size: 14px !important; line-height: 1.5; color: var(--home-ink) !important; white-space: pre-wrap; }
 
+
+/* pickOne (pick.js): one of many, each with its icon and a small grey line over its name. */
+.pk1-btn { height: auto; min-height: 36px; padding: 6px 10px; text-align: left; }
+.pk1-cur { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pk1-ic { flex: none; display: grid; place-items: center; width: 22px; height: 22px; color: var(--home-ink-2); }
+.pk1-ic svg { width: 20px; height: 20px; }
+.pk1-t { display: grid; min-width: 0; line-height: 1.25; }
+.pk1-t small { font: 700 10.5px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--home-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk1-t b { font: 400 14px var(--font-ui); color: var(--home-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk1-empty b { color: var(--home-ink-2); }
+.pk1-empty small { order: 2; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 12.5px; }
+.pk1-pop { max-height: 340px; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.pk1-q { flex: none; padding: 8px; border-bottom: 1px solid var(--lx-line); }
+.pk1-q input { width: 100%; height: 32px; padding: 0 10px; border: 1px solid var(--lx-line); border-radius: 7px; font: 400 14px var(--font-ui); background: var(--home-card); color: var(--home-ink); }
+.pk1-q input:focus { outline: none; border-color: var(--accent); }
+.pk1-list { overflow: auto; padding: 4px; }
+.pk1-h { margin: 8px 9px 3px; font: 700 10.5px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--home-ink-3); }
+.pk1-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 9px; border: 0; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; }
+.pk1-opt:hover, .pk1-opt.on { background: var(--home-strip); }
+.pk1-opt > .pk1-t { flex: 1; }
+.pk1-opt > svg { flex: none; width: 16px; height: 16px; color: var(--home-ink); }
+
+/* A card whose icon (left) and buttons (right) sit in the middle of its heading (the small grey line, the
+   title, the date), not of everything under it: .hd-row, with .hd-main holding .hd (the heading) and the rest. */
+.hd-row { display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: var(--hd-gap, 20px) !important; row-gap: 0 !important; align-items: center; }
+.hd-row > :first-child { grid-column: 1; grid-row: 1; align-self: center !important; margin-top: 0 !important; }
+.hd-row > .hd-main { display: contents; }
+.hd-row > .hd-main > * { grid-column: 2 / -1; }
+.hd-row > .hd-main > .hd { grid-column: 2; grid-row: 1; min-width: 0; }
+.hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
+@media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }

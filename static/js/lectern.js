@@ -530,16 +530,16 @@ function renderPage() {
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic,
     // The gradebook's evaluations: each week shows the ones dated in it, and opens one in the Evaluations.
-    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", short: e.short || "", date: e.date || "", time: e.time || "" })) : []; },
+    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim(), date: e.date || "", time: e.time || "" })) : []; },
     openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups), me: S.user.id }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id,
     // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups),
-    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation" })) : []; },
+    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim() })) : []; },
     activities: async () => { const t = await readPriv(`${r.c}/${r.t}/lectures.json`).catch(() => null); let d = null; try { d = t ? JSON.parse(t) : null; } catch (_) {}
-      return ((d && d.weeks) || []).filter(w => !w.isBreak).flatMap(w => (w.cards || []).map(x => ({ id: x.id, week: w.label || "Week", name: x.title || x.label || "Untitled", groups: Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : [] }))); } }, r);
+      return ((d && d.weeks) || []).filter(w => !w.isBreak).flatMap(w => (w.cards || []).map(x => ({ id: x.id, week: w.label || "Week", name: x.title || x.label || "Untitled", kind: x.kind || "lecture", groups: Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : [] }))); } }, r);
   if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], api: Auth.api, owner: () => curOwner() || S.user.handle,
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups) }, r);
@@ -1026,16 +1026,16 @@ async function accomPage(c, t) {
   const decisionHTML = r => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
       <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
         ${r.note ? `<p class="lt-cmt-n">${esc(r.note)}</p>` : ""}</div></div>`;
-  const reqCard = r => `<article class="lx-row lt-req st-${esc(r.status)}" title="${esc(r.id)}">
+  const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" title="${esc(r.id)}">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
-      <div class="lx-main">
+      <div class="lx-main hd-main"><div class="hd">
         <p class="lx-kind">${esc(r.evalName)} · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"}</p>
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
-        <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p>
+        <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p></div>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
         ${decisionsOf(r).map(decisionHTML).join("")}
       </div>
-      <div class="lx-side lt-req-side">
+      <div class="lx-side lt-req-side hd-side">
         <div class="lt-req-acts">${r.status === "pending"
           ? `<button type="button" class="lt-btn" data-decide="rejected" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Reject</button><button type="button" class="lt-btn primary" data-decide="approved" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Approve</button>`
           : `<button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div></div>

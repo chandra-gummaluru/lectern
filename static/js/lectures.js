@@ -39,8 +39,8 @@ export const KIND_ICON = {
 };
 const WEEK_COLOR = "#c99a06";
 // An evaluation's icon and name, as the Gradebook's Evaluations has them.
-const EV_TYPES = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
-const EV_ICON = {
+export const EV_TYPES = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
+export const EV_ICON = {
   assignment: ic('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
   test: ic('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/>'),
   project: ic('<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>'),
@@ -224,9 +224,9 @@ export function lecturesPage(ctx, r) {
   }
 
   // One lecture as a sub-card, inside its week.
-  const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
+  const lecRow = (w, x) => `<div class="lx-row sub lx-lec hd-row" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}${groupsOf(x).map(groupName).filter(Boolean).length ? ` · ${esc(groupsOf(x).map(groupName).filter(Boolean).join(", "))}` : ""}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
+      <div class="lx-main hd-main"><div class="hd"><p class="lx-kind">${esc(kindName(kindOf(x)))}${groupsOf(x).map(groupName).filter(Boolean).length ? ` · ${esc(groupsOf(x).map(groupName).filter(Boolean).join(", "))}` : ""}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}</div>${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
   // An activity for one activity group (e.g. LEC0101) is only for its students; without one, it's everyone's.
   const groupName = id => (id && ((st.groups || []).find(g => g.id === id) || {}).name) || "";
   const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };

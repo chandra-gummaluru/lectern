@@ -3263,7 +3263,7 @@ function uniqueShort(base) { let s = base, k = 2; while (model.evals.some(x => S
 const fmtTime = t => t || "";   // 24-hour, as stored: 18:10
 function whenLabel(e) {
   if (e.type === "deadline" && !e.date) return "No deadline";
-  if (e.type === "deadline") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "end of day"}`; }
+  if (e.type === "deadline") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "End of Day"}`; }
   if (!e.date) return e.type === "test" ? "Choose a date" : "Choose a due date";
   const d = new Date(`${e.date}T12:00`); if (isNaN(d)) return e.date;
   return `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time ? fmtTime(e.time) : "no time"}`;
@@ -3289,7 +3289,7 @@ function openWhen(btn, e) {
     for (let k = 0; k < 42; k++) { const d = new Date(start); d.setDate(start.getDate() + k); days.push(d); }
     pop.innerHTML = `<div class="wp-head"><button type="button" data-w="prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><b>${first.toLocaleDateString("en-CA", { month: "long", year: "numeric" })}</b><button type="button" data-w="next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div>
       <div class="wp-days">${["S", "M", "T", "W", "T", "F", "S"].map(x => `<i>${x}</i>`).join("")}${days.map(d => `<button type="button" data-day="${iso(d)}" class="${d.getMonth() !== first.getMonth() ? "out" : ""}${iso(d) === today ? " today" : ""}${iso(d) === e.date ? " on" : ""}">${d.getDate()}</button>`).join("")}</div>
-      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" ? "Starts At" : e.type === "deadline" ? "By" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
+      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" ? "Starts At" : e.type === "deadline" ? "By" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of Day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
   };
   popover(btn, "", pop => {
     pop._onClose = () => render();   // the list, the name and the course page follow

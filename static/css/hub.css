@@ -719,3 +719,6 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-dates tr + tr td { border-top: 1px solid var(--line); }
 .ec-dwho { font-weight: 600; color: var(--ink-2) !important; }
 .ec-card .ec-facts { margin: 0; padding-top: 0; border-top: 0; grid-template-columns: repeat(auto-fit, minmax(160px, 220px)); }
+.ec-grade { table-layout: fixed; }
+.ec-grade td small { display: block; font-size: 12.5px; color: var(--ink-3); }
+.ec-none { color: var(--ink-3) !important; }

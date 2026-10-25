@@ -279,10 +279,11 @@ function evalCard(u, group, E) {
   // Grading: what it's worth, and its points (theirs, once it's marked).
   const m = (D.viewer.marks || {})[u.id], total = u.total;
   const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
-  const pts = m && m.pts != null ? `${fmtW(m.pts)} / ${total ? fmtW(total) : "?"}` : `— / ${total ? fmtW(total) : "—"}`;
-  const ptsSub = m && m.status ? ST[m.status] : m && m.pts != null && total ? `${fmtW(Math.round(m.pts / total * 1000) / 10)}%` : me ? "Not marked yet" : "Sign in to see your mark";
-  const worth = group ? tile("Worth", `${fmtW(group.weight / Math.max(1, group.keep))}%`, `In ${group.name}: the best ${group.keep} of ${group.count} count`) : u.weight != null ? tile("Worth", `${fmtW(u.weight)}%`, "of your grade") : "";
-  const grading = `${worth}${tile("Points", pts, ptsSub, m && m.status ? " ec-st" : "")}`;
+  // Grading, as the dates are: one row of what it's worth, out of how many points, and their mark.
+  const outOf = total ? fmtW(total) : "—";
+  const mark = m && m.status ? ST[m.status] : m && m.pts != null ? `${fmtW(m.pts)} / ${total ? fmtW(total) : "?"}${total ? ` (${fmtW(Math.round(m.pts / total * 1000) / 10)}%)` : ""}` : me ? "Not marked yet" : "Sign in to see it";
+  const worthV = group ? `${fmtW(group.weight / Math.max(1, group.keep))}%` : u.weight != null ? `${fmtW(u.weight)}%` : "—";
+  const grading = `<table class="ec-dates ec-grade"><thead><tr><th>Worth</th><th>Points</th><th>Your Mark</th></tr></thead><tbody><tr><td>${esc(worthV)}${group ? `<small>In ${esc(group.name)}: the best ${group.keep} of ${group.count} count</small>` : ""}</td><td>${esc(outOf)}</td><td class="${m && (m.pts != null || m.status) ? "" : "ec-none"}">${esc(mark)}</td></tr></tbody></table>`;
   // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
   const w = fmtW(u.weight), mi = u.missed;
   const opt = (on, ttl, sub) => `<p class="ec-p ec-pol"><b>${esc(ttl)}.</b> ${esc(sub)}</p>`;
@@ -299,7 +300,7 @@ function evalCard(u, group, E) {
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1></div>${req ? `<span class="ec-acts">${req}</span>` : ""}</header>
       ${sec("When")}${dates}
-      ${sec("Grading")}<div class="ec-facts">${grading}</div>
+      ${sec("Grading")}${grading}
       ${policy || acc ? `${sec("If You Miss It")}${policy}${acc}` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}

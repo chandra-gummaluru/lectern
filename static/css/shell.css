@@ -808,3 +808,18 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* Students: their groups, in the Add a Student window */
 .lt-st-groups { display: flex; flex-wrap: wrap; gap: 6px; }
 .lx-editor .lx-help + .lx-grid { margin-top: 14px; }
+
+/* Who runs a group's activity: a dropdown of the teaching team, with ticks. */
+.gr-who .lx-f { width: min(360px, 100%); }
+.gr-dd { position: relative; display: block; }
+.gr-dd-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--lx-line); background: var(--home-card); color: var(--home-ink); font: 14.5px var(--font-ui); cursor: pointer; text-align: left; }
+.gr-dd-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gr-dd-btn svg { flex: none; width: 15px; height: 15px; color: var(--home-ink-3); }
+.gr-dd-btn:hover:not(:disabled) { border-color: var(--home-ink-3); }
+.gr-dd-btn[aria-expanded="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.gr-dd-btn:disabled { cursor: default; background: var(--home-strip); color: var(--home-ink-2); }
+.gr-dd-pop { position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 30; max-height: 260px; overflow: auto; padding: 4px; border: 1px solid var(--lx-line); border-radius: 10px; background: var(--home-card); box-shadow: 0 10px 30px rgb(0 0 0 / .14); }
+.gr-dd-opt { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 6px; font: 14px var(--font-ui); color: var(--home-ink); cursor: pointer; }
+.gr-dd-opt:hover { background: var(--home-strip); }
+.gr-dd-opt input { flex: none; width: 16px !important; height: 16px !important; margin: 0; padding: 0; accent-color: var(--home-ink); }
+.gr-dd-opt span { flex: 1; text-align: left; font: 400 14px var(--font-ui); }

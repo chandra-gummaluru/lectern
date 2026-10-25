@@ -31,6 +31,7 @@ const KIND_ICON = {
   other: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
 };
 export const GROUP_ICON = ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>');
+const CARET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const kindOf = x => (KIND_NAME[x.kind] ? x.kind : "other");
 const hm = x => (x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : "");
 // "Mon 13:00–14:00" (and where), for a list.
@@ -165,6 +166,8 @@ export function groupPage(ctx, r) {
     const opt = (list, v) => list.map(([k, nm]) => `<option value="${k}"${String(v) === String(k) ? " selected" : ""}>${esc(nm)}</option>`).join("");
     const days = DAYS.slice(1).map((d, k) => [String(k + 1), d]);
     const items = g.items.slice().sort((a, b) => (a.day || 9) - (b.day || 9) || String(a.start).localeCompare(String(b.start)));
+    // Who runs it: a dropdown of the teaching team, each ticked or not.
+    const whoText = x => { const n = (x.people || []).map(id => (P.find(p => String(p.id) === String(id)) || {}).name).filter(Boolean); return n.length ? n.join(", ") : "No one yet"; };
     const row = x => `<div class="gr-item" data-it="${esc(x.id)}">
         <span class="lx-kicon" aria-hidden="true">${KIND_ICON[kindOf(x)]}</span>
         <div class="gr-item-b">
@@ -175,7 +178,7 @@ export function groupPage(ctx, r) {
             <label class="lx-f">Ends<input type="text" data-k="end" value="${esc(x.end || "")}" placeholder="e.g. 2 pm" autocomplete="off"${dis}></label>
             <label class="lx-f">Where<input type="text" data-k="where" value="${esc(x.where || "")}" placeholder="e.g. BA 1170" autocomplete="off"${dis}></label>
           </div>
-          <div class="gr-who"><span class="gr-who-l">Run by</span>${P.length ? P.map(p => `<button type="button" class="gr-chip" data-who="${esc(p.id)}" aria-pressed="${(x.people || []).includes(String(p.id))}"${dis}>${esc(p.name || p.email)}</button>`).join("") : `<span class="lt-hint">No one on the teaching team yet.</span>`}</div>
+          <div class="gr-who"><span class="lx-f">Run by<span class="gr-dd">${P.length ? `<button type="button" class="gr-dd-btn" data-who-open aria-haspopup="listbox" aria-expanded="false"${dis}><span>${esc(whoText(x))}</span>${CARET}</button>` : `<span class="lt-hint">No one on the teaching team yet.</span>`}</span></span></div>
         </div>
         ${edit ? `<button type="button" class="lx-ic quiet" data-del-it="${esc(x.id)}" title="Remove this activity" aria-label="Remove this activity">${ICON.trash}</button>` : ""}
       </div>`;
@@ -205,12 +208,25 @@ export function groupPage(ctx, r) {
       else x[k] = e.target.value.trim();
       changed();
     });
+    let pop = null;
+    const close = () => { if (pop) { pop.closest(".gr-dd").querySelector("[data-who-open]").setAttribute("aria-expanded", "false"); pop.remove(); pop = null; } };
+    document.addEventListener("mousedown", e => { if (pop && !e.target.closest(".gr-dd")) close(); });
+    document.addEventListener("keydown", e => { if (pop && e.key === "Escape") close(); });
+    box.addEventListener("change", e => {
+      const cb = e.target.closest("[data-who]"); if (!cb) return;
+      const it = cb.closest("[data-it]"), x = g.items.find(y => y.id === it.dataset.it), id = String(cb.dataset.who);
+      x.people = cb.checked ? [...new Set([...(x.people || []).map(String), id])] : (x.people || []).map(String).filter(p => p !== id);
+      it.querySelector("[data-who-open] span").textContent = whoText(x); changed();
+    });
     box.addEventListener("click", e => {
-      const chip = e.target.closest("[data-who]"), del = e.target.closest("[data-del-it]");
-      if (chip) {
-        const x = g.items.find(y => y.id === chip.closest("[data-it]").dataset.it), id = String(chip.dataset.who);
-        x.people = (x.people || []).includes(id) ? x.people.filter(p => p !== id) : [...(x.people || []), id];
-        chip.setAttribute("aria-pressed", String(x.people.includes(id))); changed();
+      const openB = e.target.closest("[data-who-open]"), del = e.target.closest("[data-del-it]");
+      if (openB) {
+        const was = pop && pop.closest(".gr-dd") === openB.closest(".gr-dd"); close(); if (was) return;
+        const x = g.items.find(y => y.id === openB.closest("[data-it]").dataset.it);
+        pop = document.createElement("div"); pop.className = "gr-dd-pop"; pop.setAttribute("role", "listbox"); pop.setAttribute("aria-multiselectable", "true");
+        pop.innerHTML = P.map(p => `<label class="gr-dd-opt"><input type="checkbox" data-who="${esc(p.id)}"${(x.people || []).map(String).includes(String(p.id)) ? " checked" : ""}><span>${esc(p.name || p.email)}</span></label>`).join("");
+        openB.after(pop); openB.setAttribute("aria-expanded", "true");
+        return;
       }
       if (del) { g.items = g.items.filter(y => y.id !== del.dataset.delIt); changed(); draw(); }
     });

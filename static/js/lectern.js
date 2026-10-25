@@ -1233,6 +1233,8 @@ Lectern.back = num => { const f = S.studentFrom; if (!f || (num != null && f.num
 // A change in a builder that isn't a step of its own (the page it was on is about to be left).
 Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); } finally { setTimeout(() => { H.applying = was && H.applying; }, 300); } };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
+// One request's own page (what they asked for, every decision, and deciding it).
+Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t, q: String(id) }); };
 // For the gradebook: the offering's sections (an evaluation's dates for some of them), and the dropdown to pick them.
 Lectern.sections = async () => { const r = S.route; if (!r.c || !r.t) return []; const G = await readGroups(Store, area(Store.PRIV), r.c, r.t); return sortSections(G.data.groups).map(g => ({ id: g.id, name: g.name || "Untitled section", kind: sectionKind(g) })); };
 Lectern.pickMany = pickMany;

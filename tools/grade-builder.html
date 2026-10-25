@@ -51,6 +51,15 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .rq-n { display: inline-block; margin: 5px 0 0; padding: 7px 11px; border-radius: 4px 12px 12px 12px; background: #fff; box-shadow: inset 0 0 0 1px #cfd0d3; font-size: 13.5px; color: #1f2329; white-space: pre-wrap; }
 .rq-mini { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; font: 600 12.5px var(--font-ui); color: #b58a00; } .rq-mini svg { width: 16px; height: 16px; }
 .rq-foot { display: flex; justify-content: flex-end; margin: 10px 0 18px; }
+.rq-row { width: 100%; align-items: center; text-align: left; font: inherit; color: inherit; cursor: default; }
+button.rq-row { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+button.rq-row:hover { border-color: #80848b; box-shadow: 0 4px 14px rgb(0 0 0 / .06); }
+.rq-row .rq-ic { margin-top: 0; }
+.rq-row .hd { display: grid; gap: 2px; }
+.rq-row .rq-k { margin: 0; }
+.rq-row .rq-t { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 14px; color: #4a4f57; }
+.rq-st { flex: none; font: 600 13px var(--font-ui); color: #b58a00; } .rq-st.v-approved { color: #2f8f5b; } .rq-st.v-rejected { color: #c0392b; }
+.rq-row > svg:last-child { flex: none; width: 18px; height: 18px; color: #80848b; }
 .rw-was, .rw-now { font-family: var(--font-ui); font-size: 13.5px; font-variant-numeric: tabular-nums; }   /* the reweighting table's percentages: the regular font */
 .fx-title > .dot.ic.box { flex: none; width: 26px !important; height: 28px !important; margin: 0 !important; color: #4a4f57; }   /* its icon, level with its name */
 .fx-title > .dot.ic.box svg { width: 22px !important; height: 22px !important; }
@@ -1802,6 +1811,7 @@ const pct = n => `${fmtNum(n)}%`;
 
 const ICON = {
   up: '<path d="m6 15 6-6 6 6"/>',
+  chev: '<path d="m9 6 6 6-6 6"/>',
   filter: '<path d="M3 5h18l-7 8v6l-4-2v-4z"/>',
   down: '<path d="m6 9 6 6 6-6"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
@@ -3344,6 +3354,7 @@ document.addEventListener("click", ev => {
     if (m.classList.contains("on-page")) return goPage(() => { ui.stAcc = to; });
     m.dataset.acc = ui.stAcc = to; return drawStudentEditor();
   }
+  if (a === "rq-open") { if (window.Lectern && window.Lectern.openRequest) window.Lectern.openRequest(b.dataset.v); return; }
   if (a === "open-accom") { if (window.Lectern && window.Lectern.openAccom) window.Lectern.openAccom(); return; }
   if (a === "acc-clear") { const n = m.dataset.student, id = m.dataset.acc; change(() => { if (model.overrides[n]) delete model.overrides[n][id]; }); m.dataset.acc = ui.stAcc = ""; return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (a === "acc-mode") {
@@ -3836,15 +3847,15 @@ const REQ_STATUS = { pending: "Waiting", approved: "Approved", rejected: "Reject
 const reqsFor = (s, e) => (REQS || []).filter(r => String(r.student) === String(s.num) && r.eval === e.id).sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
 const stampOf = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
 function reqsHTML(s, e) {
+  // Their requests for it, at the bottom: one row each (what and when, and where it stands); each opens its page.
   const L = reqsFor(s, e); if (!L.length) return "";
-  const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const can = !!(window.Lectern && window.Lectern.openRequest);
+  const clip = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
   return `<h3 class="ed-sec rq-sec">Their Requests</h3>
-    <div class="rq-list">${L.map(r => `<div class="rq hd-row st-${esc(r.status)}"><span class="rq-ic" title="${esc(REQ_STATUS[r.status] || r.status)}">${REQ_ICON[r.status] || REQ_ICON.pending}</span>
-      <div class="rq-b hd-main"><p class="rq-k hd">${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</p>
-        ${r.kind === "standard" ? `<p class="rq-t">${esc(r.standard || "")}</p>` : `<blockquote class="rq-q">${esc(r.details || "")}</blockquote>`}
-        ${[...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])].map(d => `<div class="rq-c"><span class="rq-av">${esc(ini(d.decidedBy))}</span><div><p class="rq-ch"><b>${esc(d.decidedBy || "The teaching team")}</b><span class="rq-v v-${esc(d.status)}">${esc(REQ_STATUS[d.status] || d.status)}</span><span>${esc(stampOf(d.decided))}</span></p>${d.note ? `<p class="rq-n">${esc(d.note)}</p>` : ""}</div></div>`).join("")}
-      </div></div>`).join("")}</div>
-    ${window.Lectern && window.Lectern.openAccom ? `<div class="rq-foot"><button type="button" class="ec-btn2" data-ed="open-accom">${L.some(r => r.status === "pending") ? "Decide it in Accommodations" : "Open Accommodations"}</button></div>` : ""}`;
+    <div class="rq-list">${L.map(r => `<${can ? `button type="button" data-ed="rq-open" data-v="${esc(r.id)}"` : "div"} class="rq rq-row st-${esc(r.status)}"><span class="rq-ic" title="${esc(REQ_STATUS[r.status] || r.status)}">${REQ_ICON[r.status] || REQ_ICON.pending}</span>
+      <span class="rq-b hd-main"><span class="hd"><span class="rq-k">${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</span>
+        <span class="rq-t">${esc(clip(r.kind === "standard" ? r.standard : r.details))}</span></span></span>
+      <span class="rq-st v-${esc(r.status)}">${esc(REQ_STATUS[r.status] || r.status)}</span>${can ? svg("chev") : ""}</${can ? "button" : "div"}>`).join("")}</div>`;
 }
 let reqsOf = "";   // whose page the requests were read for (read again on another student's: they may have changed)
 function drawStudentEditor() {
@@ -3874,12 +3885,12 @@ function drawStudentEditor() {
     const { o, p, w } = accPolicy(s, e);
     $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}</div>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the course's policy.</p>
-      ${reqsHTML(s, e)}
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="acc-weight" value="${o.weight != null ? esc(o.weight) : ""}" placeholder="${fmtNum(e.weight)}"></label>
         <p class="ed-help">All other evaluations scale so the total stays ${fmtNum(weightSum())}%. Use 0% to excuse the assignment.</p></div>
       <h3 class="ed-sec">If They Don't Submit It</h3>
       ${policyHTML(e, p, w, "acc-")}
-      ${Object.keys(o).length ? `<div class="ed-foot"><button type="button" class="link" data-ed="acc-clear">Back to the Course's Policy</button></div>` : ""}`;
+      ${Object.keys(o).length ? `<div class="ed-foot"><button type="button" class="link" data-ed="acc-clear">Back to the Course's Policy</button></div>` : ""}
+      ${reqsHTML(s, e)}`;
     if (REQS === undefined) loadReqs();
     return;
   }

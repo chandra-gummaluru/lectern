@@ -273,9 +273,14 @@ function evalCard(u, group, E) {
   if ((u.dates || []).length) rows.push(rows.shift());   // the sections' own first, then everyone else's
   // Its facts, together in one area (no boxes): when (each section's, if they differ), what it's worth, its points.
   const tile = (k, v, sub = "", cls = "") => `<div class="ec-fact${cls}"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`;
-  // Its dates, as a table: whose (when sections differ), released (an assignment), and due (or its date).
-  const rel = due && rows.some(r => r.release), whoCol = rows.some(r => r.who) && rows.length > 1;
-  const dates = `<table class="ec-dates"><thead><tr>${whoCol ? "<th>For</th>" : ""}${rel ? "<th>Released</th>" : ""}<th>${due ? "Due" : "Date"}</th></tr></thead><tbody>${rows.map(r => `<tr>${whoCol ? `<td class="ec-dwho">${esc(r.who)}</td>` : ""}${rel ? `<td>${esc(r.release ? at(r.release, r.releaseTime) : "—")}</td>` : ""}<td>${esc(at(r.date, r.time))}</td></tr>`).join("")}</tbody></table>`;
+  // Its dates, a row each: whose (a section's icon and name, or everyone), then when (released, and due or its date).
+  const CAL = svg('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>');
+  const OPEN = svg('<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>');
+  const ALL = svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.5 2.2 4.5 5.4"/>');
+  const whoIc = r => (r.kinds && r.kinds.length ? KIND_ICON[r.kinds[0]] || KIND_ICON.other : ALL);
+  const dates = `<div class="ec-when">${rows.map(r => `<div class="ec-wrow">
+      ${r.who ? `<span class="ec-wwho"><span class="hs-ic sm">${whoIc(r)}</span>${esc(r.who)}</span>` : ""}
+      <span class="ec-wat">${due && r.release ? `<span class="ec-wd"><span class="hs-ic sm">${OPEN}</span><small>Released</small>${esc(at(r.release, r.releaseTime))}</span>` : ""}<span class="ec-wd"><span class="hs-ic sm">${CAL}</span>${due ? "<small>Due</small>" : ""}${esc(at(r.date, r.time))}</span></span></div>`).join("")}</div>`;
   // Grading: what it's worth, and its points (theirs, once it's marked).
   const m = (D.viewer.marks || {})[u.id], total = u.total;
   const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
@@ -283,7 +288,11 @@ function evalCard(u, group, E) {
   const outOf = total ? fmtW(total) : "—";
   const mark = m && m.status ? ST[m.status] : m && m.pts != null ? `${fmtW(m.pts)} / ${total ? fmtW(total) : "?"}${total ? ` (${fmtW(Math.round(m.pts / total * 1000) / 10)}%)` : ""}` : me ? "Not marked yet" : "Sign in to see it";
   const worthV = group ? `${fmtW(group.weight / Math.max(1, group.keep))}%` : u.weight != null ? `${fmtW(u.weight)}%` : "—";
-  const grading = `<table class="ec-dates ec-grade"><thead><tr><th>Worth</th><th>Points</th><th>Your Mark</th></tr></thead><tbody><tr><td>${esc(worthV)}${group ? `<small>In ${esc(group.name)}: the best ${group.keep} of ${group.count} count</small>` : ""}</td><td>${esc(outOf)}</td><td class="${m && (m.pts != null || m.status) ? "" : "ec-none"}">${esc(mark)}</td></tr></tbody></table>`;
+  const PCT = svg('<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>');
+  const PTS = svg('<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>');
+  const MARK = svg('<circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.3 2.6 2.6 5-5.2"/>');
+  const fact = (ic, k, v, cls = "") => `<span class="ec-wd${cls}"><span class="hs-ic sm">${ic}</span><small>${esc(k)}</small>${esc(v)}</span>`;
+  const grading = `<div class="ec-when"><div class="ec-wrow"><span class="ec-wat">${fact(PCT, "Worth", worthV)}${fact(PTS, "Points", outOf)}${fact(MARK, "Your Mark", mark, m && (m.pts != null || m.status) ? "" : " ec-none")}</span></div>${group ? `<div class="ec-wrow ec-wnote">In ${esc(group.name)}: the best ${group.keep} of ${group.count} count.</div>` : ""}</div>`;
   // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
   const w = fmtW(u.weight), mi = u.missed;
   const opt = (on, ttl, sub) => `<p class="ec-p ec-pol">${esc(sub)}</p>`;

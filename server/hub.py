@@ -552,10 +552,12 @@ def hub_api(handle, course, term):
                 mm["total"] = pol[mm["id"]]["total"]
     # An evaluation's dates for some sections: with those sections' names (the course page says which).
     gname = {str(x.get("id")): x.get("name") or "" for x in all_b["about"]["groups"] or [] if isinstance(x, dict)}
+    gkind = {str(x.get("id")): x.get("kind") or "" for x in all_b["about"]["groups"] or [] if isinstance(x, dict)}
     def _named(e):
         for d in _list(e.get("dates") if isinstance(e, dict) else None):
             if isinstance(d, dict):
                 d["names"] = [gname[str(i)] for i in _list(d.get("groups")) if gname.get(str(i))]
+                d["kinds"] = [gkind.get(str(i), "") for i in _list(d.get("groups")) if gname.get(str(i))]
     for u in _list((all_b.get("evaluations") or {}).get("units")):
         _named(u)
         for m in _list(u.get("members") if isinstance(u, dict) else None):

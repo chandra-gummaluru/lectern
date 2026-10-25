@@ -150,14 +150,15 @@ const PAGES = {
   home() {
     const c = D.course, a = data("about"), out = [];
     if (a && a.description) out.push(`<div class="hs-desc">${markdown(a.description)}</div>`);
+    const shown = new Set();   // what has a See all link already (it isn't listed again below)
     // The newest announcement in full, then this week opened (the first week, before the term starts).
     if (open("announcements")) {
       const items = (data("announcements").items || []).slice().sort((x, y) => annTime(y) - annTime(x));
-      if (items.length) out.push(`<section class="hs-sec">${annCard(items[0])}</section>`);
+      if (items.length) { out.push(`<section class="hs-sec">${annCard(items[0])}<a class="hs-more" href="#announcements">See all announcements ${CHEV}</a></section>`); shown.add("announcements"); }
     }
     if (open("lectures")) {
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0];
-      if (w) out.push(`<section class="hs-sec">${weekOpen(w, now)}</section>`);
+      if (w) { out.push(`<section class="hs-sec">${weekOpen(w, now)}<a class="hs-more" href="#activities">See all weeks ${CHEV}</a></section>`); shown.add("activities"); }
     }
     // Then everything else, each a page of its own.
     const more = [
@@ -166,7 +167,7 @@ const PAGES = {
       ["evaluations", "Evaluations", "Every evaluation, its weight and when it is."],
       ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
       ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."],
-    ].filter(([id, , , t]) => tab(t || id));
+    ].filter(([id, , , t]) => tab(t || id) && !shown.has(id));
     if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`).join("")}</div></section>`);
     document.title = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
     return out.join("");

@@ -100,7 +100,11 @@ function renumber(weeks) {
   for (const w of weeks) { if (w.isBreak) continue; for (const x of w.cards || []) {
     const k = kindOf(x); x.kind = k; if (k === "other") continue;
     const name = kindName(k), lab = String(x.label || "").trim();
-    if (lab && !new RegExp(`^${name}\\s*\\d*$`, "i").test(lab)) { const t = String(x.title || "").trim(); x.title = t ? `${lab}: ${t}` : lab; }
+    // A label that's one of the types' own (Lecture 01, Tutorial 2…, e.g. from before a change of type) isn't kept;
+    // and a title that a change of type once grew ("Tutorial 1: Lecture 01: Prologue") loses those.
+    const AUTO = /^(lecture|tutorial|lab)\s*\d*$/i;
+    if (lab && !AUTO.test(lab)) { const t = String(x.title || "").trim(); x.title = t ? `${lab}: ${t}` : lab; }
+    if (x.title) x.title = String(x.title).replace(/^(\s*(lecture|tutorial|lab)\s*\d+\s*:\s*)+/i, "").trim() || x.title;
     n[k] = (n[k] || 0) + 1; x.label = `${name} ${k === "lecture" ? String(n[k]).padStart(2, "0") : n[k]}`;
   } }
 }

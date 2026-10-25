@@ -1205,6 +1205,14 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .erow .ec-mk { margin-top: 4px; }
 .er-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .er-side .ec-acts { margin-top: 0; }
+.er-w { font: 600 22px/1 var(--font-ui); color: #1f2329; font-variant-numeric: tabular-nums; }
+.erow.sub .er-w { font-size: 16px; color: #5f6166; }
+.dot.ic.ic { width: auto !important; height: auto !important; background: none !important; border-radius: 0 !important; box-shadow: none !important; margin-top: 0 !important; display: inline-grid; place-items: center; color: var(--ink-2); }
+.dot.ic svg { width: 15px !important; height: 15px !important; }
+.dot.ic.box { width: 36px !important; height: 36px !important; border-radius: 10px !important; background: #fff !important; color: #3d4148; box-shadow: inset 0 0 0 1px #d4d5d8 !important; }
+.dot.ic.box svg { width: 20px !important; height: 20px !important; }
+.erow.sub .dot.ic.box { width: 30px !important; height: 30px !important; border-radius: 8px !important; }
+.erow.sub .dot.ic.box svg { width: 17px !important; height: 17px !important; }
 .ec-btn { padding: 6px 16px; border-radius: 8px; background: #5f6166; border: 1px solid #3f4146; color: #fff; font: 600 13.5px var(--font-ui); }
 .erow:hover .ec-btn { background: #3f4146; }
 .ec-btn { display: inline-flex; align-items: center; gap: 6px; }
@@ -1872,9 +1880,9 @@ function normalizeBook(x) {
     if (e.label != null && e.label !== "" || e.title) return;
     const n = String(e.name || "").trim(), m = /^(.*\S)\s+\d+\s*(?:[:\u2013\u2014-]\s*(.*))?$/.exec(n);
     e.label = m ? m[1] : n; e.title = m && m[2] ? m[2].trim() : "";
-    e.type = /test|midterm|exam|quiz/i.test(e.label) ? "test" : "assignment";
+    e.type = /test|midterm|exam|quiz/i.test(e.label) ? "test" : /lab/i.test(e.label) ? "lab" : /project/i.test(e.label) ? "project" : "assignment";
   });
-  b.evals.forEach(e => { if (!["test", "assignment"].includes(e.type)) e.type = "assignment"; ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto; });
+  b.evals.forEach(e => { if (!E_TYPES.some(([v]) => v === e.type)) e.type = "assignment"; ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto; });
   // Splits are always custom shares now: older "by weight" / "equal" splits become the same shares.
   const keepModel = typeof model === "undefined" ? undefined : model;
   const toShares = p => {
@@ -1978,7 +1986,28 @@ const counted = () => model.evals.filter(e => !e.makeupFor);   // evaluations th
 // label (Lab 1, Lab 2… apart from Assignment 1, 2), without a number when the label is used once
 // (Midterm), then its title if it has one ("Lab 2: Flip-flops"). Reordering renumbers. A short name
 // that was never typed follows the name (Lab 2 → L2); a typed one stays as typed.
-const E_TYPES = [["test", "Test"], ["assignment", "Assignment"]];
+const E_TYPES = [["assignment", "Assignment"], ["test", "Test"], ["project", "Project"], ["lab", "Lab"], ["other", "Other"]];
+const TYPE_NAME = Object.fromEntries(E_TYPES);
+const isDue = e => e.type !== "test";   // everything but a test is handed in by a due date
+// Each type's icon (the same drawing style as Lectern's Activities); no colours.
+const evi = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const TYPE_ICON = {
+  assignment: evi('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
+  test: evi('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/>'),
+  project: evi('<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>'),
+  lab: evi('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>'),
+  other: evi('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
+  grade: evi('<path d="M3 9.5 12 5l9 4.5-9 4.5z"/><path d="M7 11.5V16c1.5 1.5 3 2 5 2s3.5-.5 5-2v-4.5M21 9.5V14"/>'),
+};
+// An evaluation's type; a group's is its evaluations' type when they share one.
+function typeOf(x) {
+  if (x === "grade") return "grade";
+  if (typeof x === "string") x = evalById(x);
+  if (!x) return "other";
+  if (x.members) { const t = [...new Set(x.members.map(evalById).filter(Boolean).map(e => e.type))]; return t.length === 1 ? t[0] : "other"; }
+  return TYPE_ICON[x.type] ? x.type : "other";
+}
+const evIcon = (x, box) => `<i class="dot ic${box ? " box" : ""}" title="${esc(x === "grade" ? "Course Grade" : x && x.members ? "Group" : TYPE_NAME[typeOf(x)] || "Other")}">${TYPE_ICON[typeOf(x)]}</i>`;
 const LABEL_IDEAS = ["Assignment", "Lab", "Quiz", "Problem set", "Project", "Test", "Midterm", "Final exam"];
 const labelKey = l => String(l || "").trim().toLowerCase();
 const labelNum = new WeakMap();   // evaluation → its number among the same label (kept out of the saved file)
@@ -2010,7 +2039,7 @@ function fmtWhen(e) {
   const day = d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
   return e.time ? `${day} at ${e.time}` : day;
 }
-const whenSentence = e => (e.type === "test" ? `Test${fmtWhen(e) ? `, ${fmtWhen(e)}` : ", no date yet"}` : `Assignment${fmtWhen(e) ? `, due ${fmtWhen(e)}` : ", no due date yet"}`);
+const whenSentence = e => (e.type === "test" ? `Test${fmtWhen(e) ? `, ${fmtWhen(e)}` : ", no date yet"}` : `${TYPE_NAME[e.type] || "Assignment"}${fmtWhen(e) ? `, due ${fmtWhen(e)}` : ", no due date yet"}`);
 const groupOf = e => (model.groups || []).find(g => g.members.includes(e.id));
 // What the course's weight is split into: evaluations on their own, and groups (in place of their members).
 function units() {
@@ -2430,7 +2459,7 @@ function marksPreview(text, name, only) {
   };
   const drawSum = () => {
     const { P, unknown, total, twice } = plan();
-    $("#up-sum", m).innerHTML = (P.length ? `<div class="up-list">${P.map(p => `<div class="up-row" style="--c:${colorOf(p.e)}"><i class="dot"></i><b>${esc(shortName(p.e))}</b><span>${esc(p.e.name)}</span><span class="spacer"></span>
+    $("#up-sum", m).innerHTML = (P.length ? `<div class="up-list">${P.map(p => `<div class="up-row" style="--c:${colorOf(p.e)}">${evIcon(p.e)}<b>${esc(shortName(p.e))}</b><span>${esc(p.e.name)}</span><span class="spacer"></span>
           <span class="up-n">${p.set.length} mark${p.set.length === 1 ? "" : "s"}</span>${p.replace ? `<span class="up-w">${p.replace} replace${p.replace === 1 ? "s" : ""} a mark already entered</span>` : ""}${p.over ? `<span class="st-pill">${svg("warn")}${p.over} above ${fmtNum(p.e.total)}</span>` : ""}${p.bad.length ? `<span class="st-pill" title="${esc(p.bad.join("\n"))}">${svg("warn")}${p.bad.length} not a number</span>` : ""}</div>`).join("")}</div>`
         : `<p class="up-note">${only ? "Choose the column with the points." : "Choose which evaluation each column fills."}</p>`)
       + (twice ? notice("<b>Two columns fill the same evaluation.</b> The one further right wins.") : "")
@@ -2535,8 +2564,7 @@ function render() {
 const PAL = ["#c99a06", "#3b7dd8", "#2f9e6f", "#d0663b", "#8b5cf6", "#0e9aa7", "#d6457f", "#6b7280", "#a16207", "#2563eb"];
 function colorOf(x) {   // an evaluation or a group; makeups and group members share their colour
   const base = x.members ? x : x.makeupFor ? evalById(x.makeupFor) || x : x, g = base.members ? base : groupOf(base);
-  const k = units().findIndex(u => (g ? u.g === g : u.e === base));
-  return PAL[(k < 0 ? 0 : k) % PAL.length];
+  return "#8b8f96";   // one colour: types show by their icons
 }
 const band = p => (p == null ? "none" : p < 50 ? "low" : p < 70 ? "mid" : "high");
 // How the course's weight splits across the evaluations.
@@ -2598,7 +2626,7 @@ function gridHTML() {
   const sections = [...new Set(model.students.map(sectionOf).filter(Boolean))].sort();
   const sortArrow = k => (ui.sort === k ? `<span class="h-sort${(ui.sortDir || 1) < 0 ? " down" : ""}">${svg("up")}</span>` : "");
   const sortable = (k, label) => `data-act="sort" data-v="${esc(k)}" aria-sort="${ui.sort === k ? ((ui.sortDir || 1) > 0 ? "ascending" : "descending") : "none"}" title="Sort by ${label}"`;
-  const head = `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th>${evs.map(e => `<th class="c-ev${e.makeupFor ? " mk-col" : ""}" data-e="${esc(e.id)}" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n"><i class="dot"></i>${esc(shortName(e))}${sortArrow(e.id)}</span><span class="h-t">/${outOf(e)}</span></th>`).join("")}<th class="c-grade" ${sortable("grade", "grade")}>${sortArrow("grade")}Grade</th></tr>`;
+  const head = `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th>${evs.map(e => `<th class="c-ev${e.makeupFor ? " mk-col" : ""}" data-e="${esc(e.id)}" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n">${evIcon(e)}${esc(shortName(e))}${sortArrow(e.id)}</span><span class="h-t">/${outOf(e)}</span></th>`).join("")}<th class="c-grade" ${sortable("grade", "grade")}>${sortArrow("grade")}Grade</th></tr>`;
   const rows = list.map(s => {
     const res = studentResult(s.num);
     return `<tr data-s="${esc(s.num)}"${s.dropped ? ' class="dropped"' : ""}><td class="c-name"><button type="button" data-act="student" data-s="${esc(s.num)}"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}${s.dropped ? " · Dropped" : ""}</small></button></td>
@@ -2653,10 +2681,10 @@ function focusHTML() {
   const sortArrow = k => (ui.sort === k ? `<span class="h-sort${(ui.sortDir || 1) < 0 ? " down" : ""}">${svg("up")}</span>` : "");
   const sortable = (k, label) => `data-act="sort" data-v="${esc(k)}" aria-sort="${ui.sort === k ? ((ui.sortDir || 1) > 0 ? "ascending" : "descending") : "none"}" title="Sort by ${label}"`;
   // What to show: a dropdown of the course grade and every evaluation, each with its colour
-  const picker = `<button type="button" class="dd-btn fx-dd" data-act="fx-menu" aria-haspopup="listbox" style="--c:${e ? colorOf(e) : "#5f6166"}"><i class="dot"></i><span class="fx-ddn" title="${esc(e ? e.name : "Course Grade")}">${esc(e ? e.name : "Course Grade")}</span>${svg("caret")}</button>`;
+  const picker = `<button type="button" class="dd-btn fx-dd" data-act="fx-menu" aria-haspopup="listbox" style="--c:${e ? colorOf(e) : "#5f6166"}">${evIcon(e)}<span class="fx-ddn" title="${esc(e ? e.name : "Course Grade")}">${esc(e ? e.name : "Course Grade")}</span>${svg("caret")}</button>`;
   const head = e
-    ? `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n" title="${esc(e.name)}"><i class="dot"></i><span class="h-nt">${esc(String(e.name).split(":")[0])}</span>${sortArrow(e.id)}</span><span class="h-t">${ui.fxPct ? "%" : `/${outOf(e)}`}</span></th></tr>`
-    : `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:#5f6166" ${sortable("grade", "course grade")}><span class="h-n"><i class="dot"></i>Course Grade${sortArrow("grade")}</span><span class="h-t">%</span></th></tr>`;
+    ? `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n" title="${esc(e.name)}">${evIcon(e)}<span class="h-nt">${esc(String(e.name).split(":")[0])}</span>${sortArrow(e.id)}</span><span class="h-t">${ui.fxPct ? "%" : `/${outOf(e)}`}</span></th></tr>`
+    : `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:#5f6166" ${sortable("grade", "course grade")}><span class="h-n">${evIcon("grade")}Course Grade${sortArrow("grade")}</span><span class="h-t">%</span></th></tr>`;
   const rows = list.map(st => {
     const res = studentResult(st.num), who = `<td class="c-name"><button type="button" data-act="student" data-s="${esc(st.num)}"><b>${esc(st.name) || "<i>No name</i>"}</b><small>${esc(st.num)}${st.dropped ? " · Dropped" : ""}</small></button></td>`;
     if (!e) return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="fx-pct fx-gcell" data-grade="${esc(st.num)}" title="${res.final != null ? "Final" : `${res.pending} still to come`}">${gradeCell(st.num)}</td></tr>`;
@@ -2689,14 +2717,14 @@ function fxStatsHTML(f) {
   const vals = all.map(st => statValue(st, f)), sum = summarize(vals.map(v => (v === "missed" ? 0 : v))), pct = x => `${r1(x)}%`;
   const nf = fxFilters(f);
   const missed = vals.filter(x => x === "missed").length, unmarked = vals.filter(x => x == null).length;
-  const sub = e ? `${e.type === "test" ? "Test" : "Assignment"} · Out of ${outOf(e)}${groupOf(e) ? ` · In ${esc(groupOf(e).name)}` : e.makeupFor ? " · A makeup" : ` · Worth ${fmtNum(e.weight)}% of the grade`}` : `${all.length} enrolled · ${all.filter(st => studentResult(st.num).final != null).length} final`;
+  const sub = e ? `${TYPE_NAME[e.type] || "Assignment"} · Out of ${outOf(e)}${groupOf(e) ? ` · In ${esc(groupOf(e).name)}` : e.makeupFor ? " · A makeup" : ` · Worth ${fmtNum(e.weight)}% of the grade`}` : `${all.length} enrolled · ${all.filter(st => studentResult(st.num).final != null).length} final`;
   // One line under the average: how many count, how many failed, and what's missing.
   const bits = [`${sum.n || 0} of ${all.length} ${e ? "marked" : "with a grade"}`];
   if (sum.n) bits.push(`<i class="${sum.low ? "low" : ""}">${sum.low} under 50%</i>`);
   if (e && missed) bits.push(`<i class="low">${missed} not submitted (as 0)</i>`);
   if (e && unmarked && all.length > sum.n + missed) bits.push(`${unmarked} not marked`);
   return `<div class="fx-card">
-      <div class="fx-title" style="--c:${e ? colorOf(e) : "#5f6166"}"><i class="dot"></i><div><h3>${esc(e ? e.name : "Course Grade")}</h3><small>${sub}</small></div></div>
+      <div class="fx-title" style="--c:${e ? colorOf(e) : "#5f6166"}">${evIcon(e)}<div><h3>${esc(e ? e.name : "Course Grade")}</h3><small>${sub}</small></div></div>
       <div class="fx-avg"><span>Average / Median</span><b><em class="${sum.n ? band(sum.mean) : ""}">${sum.n ? pct(sum.mean) : "—"}</em><i>/</i><em class="fx-med">${sum.n ? pct(sum.med) : "—"}</em></b><small>${bits.join(" · ")}</small></div>
       ${nf.length ? `<p class="fx-fnote">${svg("filter")}<span>${nf.map(([, l]) => esc(l)).join(" · ")}<br>${all.length} of ${everyone.length} students</span></p>` : ""}
       <div class="fx-hist"><span class="fx-l">Distribution</span>${fxHist(sum.n ? sum.vals : [], sum.n ? sum : null)}</div>
@@ -2823,7 +2851,6 @@ function evalsHTML() {
   ui.evalEd = ui.groupEd = "";
   return `<div class="page-in wide"><div class="pg-head"><h1>Evaluations</h1><span class="spacer"></span>
       <button type="button" class="btn" data-act="grpadd" title="Like the best 5 of 7 assignments">${PIC.group}Add a Group</button><button type="button" class="btn main" data-act="evadd">${svg("plus")}Add an Evaluation</button></div>
-    ${weightBarHTML(true)}
     ${units().length ? `<div class="elist">${units().map(u => (u.g ? groupRowHTML(u.g) : evalRowHTML(u.e) + makeupsOf(u.e).map(x => evalRowHTML(x, false, u.e)).join(""))).join("")}</div>` : `<div class="ep-empty">No evaluations yet. Add the course's assignments, tests and exams.</div>`}</div>`;
 }
 // One evaluation as a long card: what it is on the left, marks and actions on the right.
@@ -2831,10 +2858,10 @@ function evalsHTML() {
 function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a makeup for
   const g = sub && groupOf(e);
   return `<div class="erow${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
-    <div class="er-main"><div class="er-top"><i class="dot"></i><h3>${esc(e.name)}</h3>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
+    <div class="er-main"><div class="er-top">${evIcon(e, true)}<h3>${esc(e.name)}</h3>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
       <p class="er-when">${esc(whenSentence(e))}</p>
       <p>Out of ${outOf(e)} points.${sub ? "" : of ? ` Only for students who don't submit ${esc(shortName(of))}.` : ` ${policySentence(e)}`}</p></div>
-    <div class="er-side">
+    <div class="er-side">${of ? "" : `<span class="er-w" title="${sub ? `Each counted one of ${esc(g.name)}` : "Of the course grade"}">${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%</span>`}
       <span class="ec-acts"><button type="button" class="ec-btn2 ec-ic" data-act="ev-dup" data-id="${esc(e.id)}" title="A copy of ${esc(e.name)}, right after it">${PIC.copy}Duplicate</button></span></div></div>`;
 }
 // Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
@@ -2847,9 +2874,9 @@ function groupRowHTML(g) {
   const n = g.members.length, keep = num(g.keep), each = num(g.weight) / Math.max(1, keep);
   return `<div class="egroup" style="--c:${colorOf(g)}" draggable="true" data-unit="g:${esc(g.id)}">
     <div class="erow grp" data-act="ed-group" data-id="${esc(g.id)}" role="button" tabindex="0">
-      <div class="er-main"><div class="er-top"><i class="dot"></i><h3>${esc(g.name)}</h3></div>
+      <div class="er-main"><div class="er-top">${evIcon(g, true)}<h3>${esc(g.name)}</h3></div>
         <p>${n ? `The best ${fmtNum(keep)} of ${n} count, ${fmtNum(Math.round(each * 100) / 100)}% each.` : "No evaluations in it yet."}</p></div>
-      <div class="er-side">${n ? `<div class="grp-viz">${g.members.map((id, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}</div>` : ""}</div></div>
+      <div class="er-side"><span class="er-w" title="Of the course grade">${fmtNum(num(g.weight))}%</span>${n ? `<div class="grp-viz">${g.members.map((id, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}</div>` : ""}</div></div>
     ${n ? `<div class="esubs">${g.members.map(evalById).filter(Boolean).map(e => evalRowHTML(e, true)).join("")}</div>` : ""}
   </div>`;
 }
@@ -2921,7 +2948,7 @@ function drawEvalEditor() {
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
   const labels = [...new Set([...counted().map(x => String(x.label || "").trim()).filter(Boolean), ...LABEL_IDEAS])];
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}"><i class="dot"></i><h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
       ${fld("label", "Label", e.label, "text", ' list="ev-labels" placeholder="e.g. Lab" autocomplete="off"')}
@@ -3020,7 +3047,7 @@ function rwRowsHTML(e, p = e.missed, w = num(e.weight), pfx = "") {   // pfx: "a
   const rowOf = c => {
     const mk = (p.makeups || []).find(t => t.id === c.id), to = !mk && (p.to || []).find(t => t.id === c.id), on = mk || to, canMk = !pfx || c.makeupFor === e.id;
     const f = on ? ((mk ? parts.mk : parts.to).find(x => x.id === c.id) || { f: 0 }).f : 0;
-    return `<div class="rw-row${on ? " on" : ""}${mk ? " rw-mk" : ""}" style="--c:${colorOf(c)}"><label class="rw-pick"><input type="checkbox" data-ed="${pfx}rwto" data-v="${esc(c.id)}"${on ? " checked" : ""}><i class="dot"></i><b>${esc(c.name)}</b></label>
+    return `<div class="rw-row${on ? " on" : ""}${mk ? " rw-mk" : ""}" style="--c:${colorOf(c)}"><label class="rw-pick"><input type="checkbox" data-ed="${pfx}rwto" data-v="${esc(c.id)}"${on ? " checked" : ""}>${evIcon(c)}<b>${esc(c.name)}</b></label>
       ${on ? `<span class="seg rw-kind" role="group" aria-label="As"><button type="button" data-ed="${pfx}kind" data-v="makeup" data-id="${esc(c.id)}" aria-pressed="${!!mk}"${canMk ? ` title="It only counts for students who miss ${esc(shortName(e))}"` : ` disabled title="Only ${esc(shortName(e))}'s own makeups can be a makeup here"`}>Makeup</button><button type="button" data-ed="${pfx}kind" data-v="shift" data-id="${esc(c.id)}" aria-pressed="${!!to}" title="Everyone writes it; it takes this part of the weight">Shift to it</button></span>
         <span class="rw-share"><input type="number" class="num xs" min="0" step="any" data-ed="${pfx}share" data-v="${esc(c.id)}" value="${esc(r2(w * num(on.share) / 100))}" placeholder="0">%</span>` : ""}
       <span class="spacer"></span>${mk ? `<span class="rw-now">${r2(w * f)}%</span>` : c.makeupFor ? `<span class="rw-was">its makeup</span>` : `<span class="rw-was">${fmtNum(c.weight)}%</span>${to ? `${ARROW()}<span class="rw-now">${r2(num(c.weight) + w * f)}%</span>` : `<span class="arrow"></span><span class="rw-now"></span>`}`}</div>`;
@@ -3030,7 +3057,7 @@ function rwRowsHTML(e, p = e.missed, w = num(e.weight), pfx = "") {   // pfx: "a
 // What they add up to: all of it, or less (the rest counts as zero) or more (scaled back to all of it).
 function stayRowHTML(e, p = e.missed, w = num(e.weight)) {
   const T = shareParts(p, e).total, r2 = x => fmtNum(Math.round(x * 100) / 100), ok = Math.abs(T - 1) < 1e-6;
-  return `<div class="rw-row rw-stay${ok ? " ok" : " over"}" style="--c:${colorOf(e)}"><span class="rw-cb"></span><i class="dot"></i><b>Together</b>
+  return `<div class="rw-row rw-stay${ok ? " ok" : " over"}" style="--c:${colorOf(e)}"><span class="rw-cb"></span>${evIcon(e)}<b>Together</b>
     <span class="rw-share">${ok ? `${r2(w)}%: all of it` : T < 1 ? `${r2(w * T)}% of ${r2(w)}%: the other ${r2(w * (1 - T))}% counts as zero` : `${r2(w * T)}%, more than its ${r2(w)}%: each is scaled back`}</span></div>`;
 }
 
@@ -3040,7 +3067,7 @@ function drawGroupEditor() {
   const m = $(".editor[data-group]"); if (!m) return;
   const g = (model.groups || []).find(x => x.id === m.dataset.group); if (!g) { ui.groupEd = ""; return render(); }
   const cands = counted().filter(e => !groupOf(e) || groupOf(e) === g), n = g.members.length, keep = Math.min(num(g.keep), Math.max(1, n)), each = num(g.weight) / Math.max(1, num(g.keep));
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(g)}"><i class="dot"></i><h2>${esc(g.name)}</h2><span class="ed-acts"><button type="button" class="ic trash" data-ed="gdelete" title="Delete group (its evaluations stay)" aria-label="Delete group">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(g)}">${evIcon(g, true)}<h2>${esc(g.name)}</h2><span class="ed-acts"><button type="button" class="ic trash" data-ed="gdelete" title="Delete group (its evaluations stay)" aria-label="Delete group">${svg("trash")}</button></span></div>
     <div class="ed-grid three"><label class="pf"><span>Name</span><input type="text" data-g="name" value="${esc(g.name)}"></label><label class="pf"><span>Short Name</span><input type="text" data-g="short" value="${esc(g.short)}" placeholder="e.g. Asgn"></label><label class="pf"><span>Weight %</span><input type="number" data-g="weight" min="0" step="any" value="${esc(g.weight)}"></label></div>
     <h3 class="ed-sec">What Counts</h3>
     <div class="keep-row">Each student's best <span class="stepper"><button type="button" data-ed="keep" data-v="-1" aria-label="Fewer"${num(g.keep) <= 1 ? " disabled" : ""}>−</button><b>${fmtNum(g.keep)}</b><button type="button" data-ed="keep" data-v="1" aria-label="More"${num(g.keep) >= n ? " disabled" : ""}>+</button></span> of ${n}, each worth <b>${fmtNum(Math.round(each * 100) / 100)}%</b>.</div>
@@ -3140,7 +3167,7 @@ document.addEventListener("click", ev => {
   if (a === "mode") change(() => { e.missed.mode = b.dataset.v; e.missed.split = "custom"; });
   if (a === "etype") change(() => {   // an assignment is due at 23:59 unless it says otherwise; a test has no such default
     e.type = b.dataset.v;
-    if (e.type === "assignment" && !e.time) e.time = "23:59";
+    if (isDue(e) && !e.time) e.time = "23:59";
     if (e.type === "test" && e.time === "23:59") e.time = "";
   });
   if (a === "when") return openWhen(b, e);
@@ -3353,7 +3380,7 @@ function statsHTML() {
   const dotOf = id => (id === "grade" ? "#5f6166" : colorOf(evalById(id)));
   const whoName = S.who === "all" ? "All students" : S.who.startsWith("sec:") ? S.who.slice(4) : S.who === "picked" ? "Selected students" : "One student";
   const controls = `<div class="st-controls"><span>Show</span>
-      <button type="button" class="dd-btn" data-act="st-what-menu" aria-haspopup="listbox" style="--c:${dotOf(what)}"><i class="dot"></i>${esc(whatName)}${svg("caret")}</button>
+      <button type="button" class="dd-btn" data-act="st-what-menu" aria-haspopup="listbox" style="--c:${dotOf(what)}">${evIcon(what)}${esc(whatName)}${svg("caret")}</button>
       <span>for</span><button type="button" class="dd-btn" data-act="st-who-menu" aria-haspopup="listbox">${esc(whoName)}${svg("caret")}</button></div>
     ${S.who === "picked" ? `<div class="st-pick">${picker(true)}</div>` : ""}
     ${S.who === "one" ? `<div class="st-pick">${one ? `<span class="pick-chip big">${esc(one.name || one.num)}<small>${esc(one.num)}</small><button type="button" data-act="st-unpick" data-v="${esc(one.num)}" aria-label="Choose someone else">${svg("x")}</button></span>` : picker(false)}</div>` : ""}`;
@@ -3407,7 +3434,7 @@ function spreadRowHTML(label, color, vals, clsMean, extra = "") {
       <span class="sp-med" style="left:${at(su.med)}" title="Median ${r1(su.med)}%"></span>
       ${clsMean != null ? `<span class="sp-cls" style="left:${at(clsMean)}" title="Whole class: ${r1(clsMean)}%"></span>` : ""}
       <span class="sp-avg" style="left:${at(su.mean)}" title="Average ${r1(su.mean)}% · lowest ${r1(su.min)}% · highest ${r1(su.max)}%"></span>` : `<span class="sp-none">Not marked yet</span>`;
-  return `<div class="sp-row" style="--c:${color}"><span class="sp-n"><i class="dot"></i>${label}</span><span class="sp-track">${fig}</span>
+  return `<div class="sp-row" style="--c:${color}"><span class="sp-n">${evIcon(id)}${label}</span><span class="sp-track">${fig}</span>
     <span class="sp-v">${su.n ? `<b class="${band(su.mean)}">${r1(su.mean)}%</b><small>median ${r1(su.med)}%${extra}</small>` : `<b>—</b>`}</span></div>`;
 }
 const spreadHead = compare => `<span class="sp-key"><span class="k-whisk"></span>lowest to highest<span class="k-band"></span>middle half<span class="k-avg"></span>average<span class="k-med"></span>median${compare ? `<span class="k-cls"></span>whole class` : ""}</span>
@@ -3430,7 +3457,7 @@ function evalBarsHTML(people, all, single, compare = single) {
   const rows = counted().map(e => {
     const mine = summarize(people.map(s => statValue(s, e.id))), cls = summarize(all.map(s => statValue(s, e.id)));
     const sv = single ? statValue(people[0], e.id) : null, v = single ? (typeof sv === "number" ? sv : null) : mine.n ? mine.mean : null;
-    return `<div class="eb-row" style="--c:${colorOf(e)}"><span class="eb-n"><i class="dot"></i>${esc(e.name)}</span>
+    return `<div class="eb-row" style="--c:${colorOf(e)}"><span class="eb-n">${evIcon(e)}${esc(e.name)}</span>
       <span class="eb-track">${v != null ? `<i style="width:${Math.min(100, v)}%"></i>` : ""}${compare && cls.n ? `<em style="left:${Math.min(100, cls.mean)}%" title="Class average ${r1(cls.mean)}%"></em>` : ""}</span>
       <span class="eb-v">${v != null ? `${r1(v)}%` : single && sv === "missed" ? "not submitted" : "—"}</span></div>`;
   }).join("");
@@ -3593,7 +3620,7 @@ function drawStudentEditor() {
   if (ag) {   // a group's accommodation for this student
     const go = groupOverride(s.num, ag) || {}, ex = new Set(go.excused || []), mem = ag.members.map(evalById).filter(Boolean), live = mem.filter(x => !ex.has(x.id));
     const keep = Math.max(1, Math.min(go.keep != null ? num(go.keep) : num(ag.keep), live.length || 1)), gw = go.weight != null ? num(go.weight) : num(ag.weight);
-    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(ag)}"><i class="dot"></i><h2>${esc(ag.name)}</h2></div>
+    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(ag)}">${evIcon(ag, true)}<h2>${esc(ag.name)}</h2></div>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the group's policy.</p>
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="gacc-weight" value="${go.weight != null ? esc(go.weight) : ""}" placeholder="${fmtNum(ag.weight)}"></label>
         <p class="ed-help">All other evaluations scale so the total stays ${fmtNum(weightSum())}%. Use 0% to excuse the whole group.</p></div>
@@ -3601,14 +3628,14 @@ function drawStudentEditor() {
       <div class="keep-row">Their best <span class="stepper"><button type="button" data-ed="gacc-keep" data-v="-1" aria-label="Fewer"${keep <= 1 ? " disabled" : ""}>−</button><b>${fmtNum(keep)}</b><button type="button" data-ed="gacc-keep" data-v="1" aria-label="More"${keep >= live.length ? " disabled" : ""}>+</button></span> of ${live.length} count, each worth <b>${fmtNum(Math.round(gw / keep * 100) / 100)}%</b>.</div>
       <h3 class="ed-sec">Excused</h3>
       <p class="ed-help">An excused one doesn't count for them at all; their best ${fmtNum(keep)} come from the rest.</p>
-      <div class="mem-list">${mem.map(x => `<label class="rw-row${ex.has(x.id) ? " on" : ""}" style="--c:${colorOf(x)}"><input type="checkbox" data-ed="gacc-ex" data-v="${esc(x.id)}"${ex.has(x.id) ? " checked" : ""}><i class="dot"></i><b>${esc(x.name)}</b><span class="spacer"></span>${scoreHTML(s, x)}</label>`).join("")}</div>
+      <div class="mem-list">${mem.map(x => `<label class="rw-row${ex.has(x.id) ? " on" : ""}" style="--c:${colorOf(x)}"><input type="checkbox" data-ed="gacc-ex" data-v="${esc(x.id)}"${ex.has(x.id) ? " checked" : ""}>${evIcon(x)}<b>${esc(x.name)}</b><span class="spacer"></span>${scoreHTML(s, x)}</label>`).join("")}</div>
       ${groupOverride(s.num, ag) ? `<div class="ed-foot"><button type="button" class="link" data-ed="gacc-clear">Back to the Group's Policy</button></div>` : ""}`;
     return;
   }
   const e = m.dataset.acc && evalById(m.dataset.acc);
   if (e) {   // one evaluation's accommodation for this student
     const { o, p, w } = accPolicy(s, e);
-    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}"><i class="dot"></i><h2>${esc(e.name)}</h2></div>
+    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2></div>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the course's policy.</p>
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="acc-weight" value="${o.weight != null ? esc(o.weight) : ""}" placeholder="${fmtNum(e.weight)}"></label>
         <p class="ed-help">All other evaluations scale so the total stays ${fmtNum(weightSum())}%. Use 0% to excuse the assignment.</p></div>
@@ -3619,13 +3646,13 @@ function drawStudentEditor() {
   }
   const accRow = (x, sub) => {
     const { o, p, w } = accPolicy(s, x), own = !sub && Object.keys(o).length;
-    return `<div class="acc-row${own ? " own" : ""}${sub ? " sub" : ""}" style="--c:${colorOf(x)}"><i class="dot"></i><div class="acc-t"><b>${esc(x.name)}</b>
+    return `<div class="acc-row${own ? " own" : ""}${sub ? " sub" : ""}" style="--c:${colorOf(x)}">${evIcon(x)}<div class="acc-t"><b>${esc(x.name)}</b>
         <small>${sub ? accMemberNote(s, x) : own ? `${o.weight != null ? `Weight ${fmtNum(o.weight)}%. ` : ""}${policySentence(x, p, w)}` : `${fmtNum(x.weight)}%. ${policySentence(x)}`}</small></div>
         ${scoreHTML(s, x)}${sub ? "" : `<button type="button" class="ec-btn2" data-ed="acc-open" data-v="${esc(x.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button>`}</div>`;
   };
   const groupRow = g => {
     const go = groupOverride(s.num, g), own = !!go;
-    return `<div class="acc-group" style="--c:${colorOf(g)}"><div class="acc-row grp${own ? " own" : ""}"><i class="dot"></i><div class="acc-t"><b>${esc(g.name)}</b><small>${groupSentence(g, go)}</small></div>
+    return `<div class="acc-group" style="--c:${colorOf(g)}"><div class="acc-row grp${own ? " own" : ""}">${evIcon(g)}<div class="acc-t"><b>${esc(g.name)}</b><small>${groupSentence(g, go)}</small></div>
         <button type="button" class="ec-btn2" data-ed="acc-open" data-v="g:${esc(g.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button></div>
       ${g.members.map(evalById).filter(Boolean).map(x => accRow(x, true)).join("")}</div>`;
   };
@@ -3735,7 +3762,7 @@ function act(b) {
     case "sec": ui.section = b.dataset.v; return render();
     case "st-what-menu": {   // what to show: the course grade or an evaluation, each with its circle
       const opts = [["grade", "Course Grade", "#5f6166", ""], ...counted().map(e => [e.id, e.name, colorOf(e), shortName(e)])];
-      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh]) => `<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.stats.what === id}"><i class="dot"></i><b>${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.stats.what === id ? svg("check") : ""}</button>`).join("")}</div>`,
+      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh]) => `<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.stats.what === id}">${evIcon(id)}<b>${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.stats.what === id ? svg("check") : ""}</button>`).join("")}</div>`,
         pop => pop.addEventListener("click", e => { const o = e.target.closest("[data-pick]"); if (!o) return; closePops(); ui.stats.what = o.dataset.pick; render(); }), "dd-pop");
     }
     case "st-who-menu": {   // which students
@@ -3764,7 +3791,7 @@ function act(b) {
     }
     case "fx-menu": {
       const opts = [["grade", "Course Grade", "#5f6166", ""], ...model.evals.map(x => [x.id, x.name, colorOf(x), x.makeupFor ? "makeup" : shortName(x)])];
-      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh], k) => `${k === 1 ? '<span class="dd-sep"></span>' : ""}<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.focus === id}"><i class="dot"></i><b title="${esc(name)}">${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.focus === id ? svg("check") : ""}</button>`).join("")}</div>`,
+      return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh], k) => `${k === 1 ? '<span class="dd-sep"></span>' : ""}<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.focus === id}">${evIcon(id)}<b title="${esc(name)}">${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.focus === id ? svg("check") : ""}</button>`).join("")}</div>`,
         pop => pop.addEventListener("click", ev => { const o = ev.target.closest("[data-pick]"); if (!o) return; closePops(); ui.focus = o.dataset.pick; if (ui.sort !== "name" && ui.sort !== "grade") ui.sort = "name"; render(); }), "dd-pop");
     }
     case "fx": ui.focus = b.dataset.v; if (ui.sort !== "name" && ui.sort !== "grade") ui.sort = "name"; return render();
@@ -3783,10 +3810,10 @@ function act(b) {
     case "goto": { if (b.dataset.s && b.dataset.e) { ui.view = "grades"; ui.find = ""; ui.cell = { s: b.dataset.s, e: b.dataset.e }; render(); const inp = cellInput(b.dataset.s, b.dataset.e); if (inp) inp.scrollIntoView({ block: "center" }); } else if (b.dataset.e) { ui.view = "evals"; render(); evalEditor(b.dataset.e); } else if (!b.dataset.s) { ui.view = "evals"; render(); } return; }
     case "evadd": {
       // Another of the same as the last one (Lab after Lab), unless that was a one-off like a Midterm: then an Assignment.
-      const all = counted(), last = all.at(-1), again = last && String(last.label || "").trim() && (last.type === "assignment" || all.filter(x => labelKey(x.label) === labelKey(last.label)).length > 1);
+      const all = counted(), last = all.at(-1), again = last && String(last.label || "").trim() && (last.type !== "test" || all.filter(x => labelKey(x.label) === labelKey(last.label)).length > 1);
       const e = newEval();
       Object.assign(e, { type: again ? last.type : "assignment", label: again ? String(last.label).trim() : "Assignment", shortAuto: true });
-      if (e.type === "assignment") e.time = "23:59";
+      if (isDue(e)) e.time = "23:59";
       change(() => { model.evals.push(e); model.evals = orderEvals(model.evals); syncNames(); });
       evalEditor(e.id); const f = $('.editor [data-f="label"]'); if (f) { f.focus(); f.select(); } return;
     }
@@ -3794,7 +3821,7 @@ function act(b) {
     case "ev-dup": {   // a copy right after it (in its group, if it's in one), named from the same label: Lab 2 → Lab 3
       const x = evalById(b.dataset.id); if (!x) return;
       const c = clone(x);
-      Object.assign(c, { id: uid(), makeupFor: null, shortAuto: true, date: "", time: x.type === "assignment" ? "23:59" : "" });
+      Object.assign(c, { id: uid(), makeupFor: null, shortAuto: true, date: "", time: isDue(x) ? "23:59" : "" });
       c.missed = Object.assign(clone(x.missed), { makeups: [] });
       const g = groupOf(x);
       change(() => {

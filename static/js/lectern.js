@@ -1073,7 +1073,7 @@ function schemeOf(b, from, requests = null) {
   };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, short: e.short || "", type: e.type === "test" ? "test" : "assignment", date: e.date || "", time: e.time || "", ...accom(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, short: e.short || "", type: ["test", "project", "lab", "other"].includes(e.type) ? e.type : "assignment", date: e.date || "", time: e.time || "", ...accom(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));

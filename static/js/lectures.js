@@ -25,7 +25,7 @@ import { richText } from "./richtext.js";
 import { whenField } from "./when.js";
 
 const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];
-const KIND_COLOR = { lecture: "#3b7dd8", tutorial: "#2e9b6a", lab: "#8a5cd1", other: "#8b8f96" };
+const KIND_COLOR = { lecture: "#c99a06", tutorial: "#c99a06", lab: "#c99a06", other: "#c99a06" };   // one colour: types show by their icons
 const ic = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 // Each type's icon: a lecture's board, a tutorial's conversation, a lab's flask, and a dot for the rest.
 export const KIND_ICON = {

@@ -735,3 +735,23 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
   background: var(--accent-bg) !important; border-color: var(--home-ink) !important; color: var(--home-ink) !important; }
 /* The Owner pill on the Teaching Team: the same text size as the buttons. */
 .lt-tag.lt-owner { margin-right: 0; padding: 4px 13px; font: 600 14px/20px var(--font-ui); letter-spacing: 0; vertical-align: middle; }
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+/* A field that cannot be changed (e.g. the Label of a type that is named by its type). */
+.lx-f input:disabled, .lx-f select:disabled { background: var(--home-strip) !important; color: var(--home-ink-3) !important; cursor: default; }
+
+/* Teaching Team and Students: the buttons beside the card's text; people's names and details at the text size of the rest. */
+.lt-st-head { display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap; }
+.lt-st-head > .lt-part-text { flex: 1 1 360px; padding: 0 !important; }
+.lt-st-head > .lt-st-acts { flex: none; margin-top: 0; }
+.lt-user-who b { font-size: 14px; }
+.lt-user-who span { font-size: 14px; }
+
+/* The offering page: Announcements as a long card, then Activities, Evaluations and Gradebook side by side. */
+.lt-off-parts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .lt-off-parts { grid-template-columns: 1fr; } }
+/* One text size on the offering page: cards' text, the description, and people's names and details are all 14px. */
+.lt-part-text, .lt-part.lt-wide .lt-part-text { font-size: 14px; }
+.rt.quiet .rt-ed { font-size: 14px; }

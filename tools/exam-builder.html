@@ -9,7 +9,11 @@
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-<style>html, body { margin: 0; font-size: 14px; } [hidden] { display: none !important; } img { max-width: 100%; }</style>
+<style>html, body { margin: 0; font-size: 14px; } [hidden] { display: none !important; } img { max-width: 100%; }
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+</style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
    Canvas width. The page itself is always the light Canvas look; only the

@@ -76,6 +76,18 @@ function nextLabel(weeks, kind, beforeWeek = null) {
   return m ? m[1] + String(Number(m[2]) + 1).padStart(m[2].length, "0") + m[3] : `${name} ${kind === "lecture" ? "01" : "1"}`;
 }
 
+// Lectures, tutorials and labs are named by their type, numbered in course order (Lecture 01, Tutorial 1…);
+// only Other has a label of its own. An older label that isn't the usual one moves into the title.
+function renumber(weeks) {
+  const n = {};
+  for (const w of weeks) { if (w.isBreak) continue; for (const x of w.cards || []) {
+    const k = kindOf(x); x.kind = k; if (k === "other") continue;
+    const name = kindName(k), lab = String(x.label || "").trim();
+    if (lab && !new RegExp(`^${name}\\s*\\d*$`, "i").test(lab)) { const t = String(x.title || "").trim(); x.title = t ? `${lab}: ${t}` : lab; }
+    n[k] = (n[k] || 0) + 1; x.label = `${name} ${k === "lecture" ? String(n[k]).padStart(2, "0") : n[k]}`;
+  } }
+}
+
 // From a course page's weeks (course.json's schedule sections), the first time.
 function fromCoursePage(page) {
   const weeks = [];
@@ -130,6 +142,7 @@ export function lecturesPage(ctx, r) {
   // Saving: a moment after each change, one save at a time; a change made meanwhile is saved after it.
   let timer = 0;
   function changed() {
+    renumber(weeks());
     st.dirty = true; status("Saving…");
     clearTimeout(timer); timer = setTimeout(save, 500);
   }
@@ -169,6 +182,7 @@ export function lecturesPage(ctx, r) {
   const toLec = (w, x) => go({ page: "lectures", c, t, w: w.id, l: x.id });
 
   function draw() {
+    renumber(weeks());
     const w = r.w && weekById(r.w), x = w && r.l && (w.cards || []).find(y => y.id === r.l);
     if (r.l && x) return drawLecture(w, x);
     if (r.w && w) return drawWeek(w);
@@ -346,7 +360,7 @@ export function lecturesPage(ctx, r) {
 
   // ── A lecture ──
   const lecSteps = (w, x) => [...steps, { label: "Activities", go: () => go({ page: "lectures", c, t }) }, { label: w.label || "Week", go: () => toWeek(w) }, { label: titleOf(x) }];
-  const namedHTML = x => `Shown as <b>${esc(nameOf(x))}</b>.${x.label && /\d/.test(x.label) ? ` Add another ${esc(kindName(kindOf(x)).toLowerCase())} and it's numbered after this one.` : ""}`;
+  const namedHTML = x => `Shown as <b>${esc(nameOf(x))}</b>.${kindOf(x) === "other" ? "" : ` ${esc(kindName(kindOf(x)))}s are numbered in course order.`}`;
   function drawLecture(w, x) {
     renderPath(lecSteps(w, x));
     const dis = edit ? "" : " disabled", when = readStamp(x.date), k = kindOf(x);
@@ -358,7 +372,7 @@ export function lecturesPage(ctx, r) {
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this activity" aria-label="Delete this activity">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid">
           <div class="lx-f">Type<span class="lx-seg" role="group" aria-label="Type">${KINDS.map(([v, n]) => `<button type="button" data-kind="${v}" aria-pressed="${v === k}"${dis}>${n}</button>`).join("")}</span></div>
-          <label class="lx-f">Label<input type="text" id="lw-label" value="${esc(x.label)}" placeholder="e.g. Lecture 07"${dis}></label>
+          <label class="lx-f">Label<input type="text" id="lw-label" value="${esc(x.label)}" placeholder="e.g. Midterm review"${k === "other" ? dis : ' disabled title="Only Other has a label of its own; the rest are named by their type, in order"'}></label>
           <label class="lx-f">Title<input type="text" id="lw-title" value="${esc(x.title)}" placeholder="e.g. Latches and flip-flops"${dis}></label>
         </div>
         <p class="lx-help" id="lw-named">${namedHTML(x)}</p>
@@ -388,7 +402,8 @@ export function lecturesPage(ctx, r) {
     document.querySelectorAll("[data-kind]").forEach(b => { b.onclick = () => {   // a new type: the label follows, if it was the usual one
       const was = kindOf(x), now = b.dataset.kind; if (now === was) return;
       x.kind = now;
-      if (!x.label || new RegExp(`^${kindName(was)}\\b`, "i").test(x.label)) { x.label = nextLabel(weeks().map(y => (y === w ? { ...y, cards: y.cards.filter(z => z !== x) } : y)), now, w); $("#lw-label").value = x.label; }
+      if (now === "other") x.label = ""; else renumber(weeks());
+      const lab = $("#lw-label"); lab.value = x.label || ""; lab.disabled = now !== "other"; lab.title = now === "other" ? "" : "Only Other has a label of its own; the rest are named by their type, in order";
       document.querySelectorAll("[data-kind]").forEach(y => y.setAttribute("aria-pressed", y === b));
       $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now];
       head(); changed();

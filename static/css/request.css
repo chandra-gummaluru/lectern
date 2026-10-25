@@ -81,3 +81,7 @@ body { min-height: 100vh; background: var(--paper); color: var(--ink); font: 15p
   .rq-card { padding: 20px 16px; }
   .rq-acts .rq-btn { flex: 1; }
 }
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }

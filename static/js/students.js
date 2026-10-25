@@ -126,11 +126,11 @@ export async function studentsCard(ctx, c, t) {
           <form class="lt-st-newf" id="sf-new"><input type="text" id="sf-label" placeholder="Another field, e.g. UTORid" aria-label="Another field"${dis}><button type="submit" class="lt-btn add"${dis}>${ICON.plus}Add</button></form></div>
       </div>`
       : "";
-    box.innerHTML = `<p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks. The course page's link: <code>${esc(info.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
+    box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks. The course page's link: <code>${esc(info.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
+      ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="st-add"${dis}>${ICON.plus}Add a Student</button><button type="button" class="lt-btn" id="st-import"${dis}>${ICON.upload || ""}Import a Class List</button></div>` : ""}</div>
       ${held ? `<p class="lt-note lt-st-note">${UNSAVED}</p>` : ""}
       ${lead && !info.email ? `<p class="lt-note lt-st-note">Email isn't set up on this server, so Lectern can't email students their link or a sign-in code.</p>` : ""}
       ${fields}
-      ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="st-add"${dis}>${ICON.plus}Add a Student</button><button type="button" class="lt-btn" id="st-import"${dis}>${ICON.upload || ""}Import a Class List</button></div>` : ""}
       <div class="lt-st-bar"><p class="lt-part-text lt-st-count">${all.length ? `${enrolled.length} student${enrolled.length === 1 ? "" : "s"}${all.length > enrolled.length ? ` · ${all.length - enrolled.length} dropped` : ""}` : "No students yet."}${lead && canMail ? ` · <button type="button" class="lt-link" id="st-all">Send the link to the ${waiting.length} who haven't joined</button>` : ""}</p>
         ${all.length > 8 ? `<input type="search" class="lt-st-find" id="st-find" placeholder="Find a student" value="${esc(st.find)}" aria-label="Find a student">` : ""}</div>
       ${all.length ? `<div class="lt-olist lt-st-list">${all.map(s => {

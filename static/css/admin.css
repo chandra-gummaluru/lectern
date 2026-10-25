@@ -23,3 +23,7 @@
 .lxa-menu button.lxa-danger { color: var(--danger); }
 .lxa-menu button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .lt-olist.lxa-users { overflow: visible; }
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }

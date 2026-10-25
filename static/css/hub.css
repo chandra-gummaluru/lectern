@@ -446,3 +446,7 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 
 /* Main buttons: white with a black outline (not solid black). */
 .hb .hb-btn.primary, .hb a.hb-file:first-child { background: var(--card) !important; border: 1.5px solid var(--ink) !important; color: var(--ink) !important; opacity: 1 !important; }
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }

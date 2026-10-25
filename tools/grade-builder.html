@@ -14,6 +14,12 @@
 .wp-time .wp-trow > label:first-child input { width: 0; flex: 1; min-width: 0; }
 .wp-trow button.wp-clear.wp-clear { flex: none; height: 32px; padding: 0 12px; border: 1px solid #d4d5d8 !important; border-radius: 7px; background: #fff !important; color: #1f2329 !important; font: 600 12.5px var(--font-ui); cursor: pointer; }
 .wp-trow button.wp-clear.wp-clear:hover { background: #fdf8e8 !important; border-color: #c99a06 !important; }
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+.pf input:disabled { background: var(--bg) !important; color: var(--ink-3) !important; cursor: default; }
+.erow .er-main p.er-kind .er-sh { letter-spacing: .06em; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -1894,7 +1900,11 @@ function normalizeBook(x) {
     e.label = m ? m[1] : n; e.title = m && m[2] ? m[2].trim() : "";
     e.type = /test|midterm|exam|quiz/i.test(e.label) ? "test" : /lab/i.test(e.label) ? "lab" : /project/i.test(e.label) ? "project" : "assignment";
   });
-  b.evals.forEach(e => { if (!E_TYPES.some(([v]) => v === e.type)) e.type = "assignment"; ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto; });
+  b.evals.forEach(e => { if (!E_TYPES.some(([v]) => v === e.type)) e.type = "assignment"; });
+  // Only Other has a label of its own; the rest are named by their type (Test 1, Test 2…). An older label that
+  // isn't its type's moves into the title, so nothing is lost: a Test labelled Midterm becomes Test 1: Midterm.
+  b.evals.forEach(e => typeLabel(e));
+  b.evals.forEach(e => { ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto; });
   // Splits are always custom shares now: older "by weight" / "equal" splits become the same shares.
   const keepModel = typeof model === "undefined" ? undefined : model;
   const toShares = p => {
@@ -2000,7 +2010,13 @@ const counted = () => model.evals.filter(e => !e.makeupFor);   // evaluations th
 // that was never typed follows the name (Lab 2 → L2); a typed one stays as typed.
 const E_TYPES = [["assignment", "Assignment"], ["test", "Test"], ["project", "Project"], ["lab", "Lab"], ["other", "Other"]];
 const TYPE_NAME = Object.fromEntries(E_TYPES);
-const isDue = e => e.type !== "test";   // everything but a test is handed in by a due date
+const isDue = e => e.type !== "test";
+function typeLabel(e) {
+  if (e.type === "other") return;
+  const lab = String(e.label || "").trim(), name = TYPE_NAME[e.type] || "Assignment";
+  if (lab && labelKey(lab) !== labelKey(name)) { const t = String(e.title || "").trim(); e.title = t ? `${lab}: ${t}` : lab; }
+  e.label = name;
+}   // everything but a test is handed in by a due date
 // Each type's icon (the same drawing style as Lectern's Activities); no colours.
 const evi = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const TYPE_ICON = {
@@ -2870,10 +2886,9 @@ function evalsHTML() {
 function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a makeup for
   const g = sub && groupOf(e);
   return `<div class="erow${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
-    ${evIcon(e, true)}<div class="er-main"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(TYPE_NAME[e.type] || "Assignment")}</p><h3>${esc(e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
+    ${evIcon(e, true)}<div class="er-main"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(TYPE_NAME[e.type] || "Assignment")}${e.short ? `<span class="er-sh"> / ${esc(e.short)}</span>` : ""}</p><h3>${esc(e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
       <p class="er-when">${esc(whenSentence(e))}</p>
-      <p>Out of ${outOf(e)} points.${sub ? "" : of ? ` Only for students who don't submit ${esc(shortName(of))}.` : ` ${policySentence(e)}`}</p></div>
-    <div class="er-side">${of ? "" : `<span class="er-w" title="${sub ? `Each counted one of ${esc(g.name)}` : "Of the course grade"}">${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%</span>`}</div></div>`;
+      <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div></div>`;
 }
 // Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
 function buildBtn(e) {
@@ -2886,8 +2901,8 @@ function groupRowHTML(g) {
   return `<div class="egroup" style="--c:${colorOf(g)}" draggable="true" data-unit="g:${esc(g.id)}">
     <div class="erow grp" data-act="ed-group" data-id="${esc(g.id)}" role="button" tabindex="0">
       ${evIcon(g, true)}<div class="er-main"><div class="er-top"><div class="er-tt"><p class="er-kind">Group${g.members.length ? ` of ${esc(typeOf(g) === "other" ? "Evaluations" : TYPE_NAME[typeOf(g)] + "s")}` : ""}</p><h3>${esc(g.name)}</h3></div></div>
-        <p>${n ? `The best ${fmtNum(keep)} of ${n} count, ${fmtNum(Math.round(each * 100) / 100)}% each.` : "No evaluations in it yet."}</p></div>
-      <div class="er-side"><span class="er-w" title="Of the course grade">${fmtNum(num(g.weight))}%</span>${n ? `<div class="grp-viz">${g.members.map((id, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}</div>` : ""}</div></div>
+        <p>Worth ${fmtNum(num(g.weight))}%${n ? `: the best ${fmtNum(keep)} of ${n} count, ${fmtNum(Math.round(each * 100) / 100)}% each.` : ". No evaluations in it yet."}</p></div>
+      <div class="er-side">${n ? `<div class="grp-viz">${g.members.map((id, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}</div>` : ""}</div></div>
     ${n ? `<div class="esubs">${g.members.map(evalById).filter(Boolean).map(e => evalRowHTML(e, true)).join("")}</div>` : ""}
   </div>`;
 }
@@ -2962,7 +2977,7 @@ function drawEvalEditor() {
   $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
-      ${fld("label", "Label", e.label, "text", ' list="ev-labels" placeholder="e.g. Lab" autocomplete="off"')}
+      ${fld("label", "Label", e.type === "other" ? e.label : TYPE_NAME[e.type], "text", e.type === "other" ? ' list="ev-labels" placeholder="e.g. Quiz" autocomplete="off"' : ' disabled title="Only Other has a label of its own; the rest are named by their type"')}
       ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Flip-flops" autocomplete="off"')}
       <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button></div></div>
     <datalist id="ev-labels">${labels.map(l => `<option value="${esc(l)}">`).join("")}</datalist>
@@ -3177,7 +3192,9 @@ document.addEventListener("click", ev => {
   if (a === "sremove") { const n = m.dataset.student, s = model.students.find(x => x.num === n); ui.student = ""; change(() => { model.students = model.students.filter(x => x.num !== n); delete model.marks[n]; delete model.overrides[n]; delete model.finals[n]; }); return toast(`${s.name || n} removed, with their marks.`, true); }
   if (a === "mode") change(() => { e.missed.mode = b.dataset.v; e.missed.split = "custom"; });
   if (a === "etype") change(() => {   // an assignment is due at 23:59 unless it says otherwise; a test has no such default
-    e.type = b.dataset.v;
+    const was = e.type; e.type = b.dataset.v;
+    if (e.type === "other" && was !== "other") e.label = "";   // Other: its own label, typed in
+    typeLabel(e); syncNames();
     if (isDue(e) && !e.time) e.time = "23:59";
     if (e.type === "test" && e.time === "23:59") e.time = "";
   });

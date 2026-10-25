@@ -685,16 +685,16 @@ function offeringPage(c, t) {
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
     ${role === "staff" ? `<p class="lt-note">As staff you can look at everything here (the gradebook, evaluations, exams, lectures and students), but not change anything.</p>` : ""}
     ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook, and look at the evaluations and exams. Changes to anything else (weights, students, settings, exams, the course page) are for the instructors: Lectern won't save them.</p>` : ""}
-    <div class="lt-three lt-four">
+    <div class="lt-three lt-off-parts">
+      <section class="lt-part lt-wide">
+        <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>
+        <p class="lt-part-text">News for the class. Each one goes in the week of its date on the course page.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-anns">${edit ? "Open Announcements" : "See Announcements"}</button></div>
+      </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.lectures}<h2>Activities</h2></div>
         <p class="lt-part-text">The weeks of the term and each week's activities (lectures, tutorials, labs), with their files and links.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-lectures">${edit ? "Open Activities" : "See Activities"}</button></div>
-      </section>
-      <section class="lt-part">
-        <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>
-        <p class="lt-part-text">News for the class. Each one goes in the week of its date on the course page.</p>
-        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-anns">${edit ? "Open Announcements" : "See Announcements"}</button></div>
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.evals}<h2>Evaluations</h2></div>
@@ -805,7 +805,7 @@ async function teamPart(c, t) {
   const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["instructor", "Instructor"], ["ta", "TA"], ["staff", "Staff"]].map(([v, n]) =>
     `<button type="button" role="radio" ${attrs} data-v="${v}" aria-checked="${cur === v}" aria-pressed="${cur === v}">${n}</button>`).join("")}</span>`;
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
-  box.innerHTML = `<p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams. Staff see everything and change nothing." : "The people who work on this offering."}</p>
+  box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams. Staff see everything and change nothing." : "The people who work on this offering."}</p>${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div>` : ""}</div>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
         <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag lt-owner">Owner</span>`
@@ -814,7 +814,7 @@ async function teamPart(c, t) {
       </div>`).join("")}
       ${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited as ${A_ROLE[i.role] || "an instructor"}: waiting for them to accept</span></div>
         <span class="lt-orow-r"><button type="button" class="lt-link" data-uninvite="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>
-    ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div><div id="lt-team-msg"></div>` : ""}`;
+    ${lead ? `<div id="lt-team-msg"></div>` : ""}`;
   const again = () => teamPart(c, t);
   const call = async (what, body) => { try { await Auth.api(`${base}/${what}`, body); return true; } catch (e) { toast(e.message); again(); return false; } };
   box.querySelectorAll("button[data-role]").forEach(b => {

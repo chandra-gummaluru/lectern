@@ -167,3 +167,7 @@
     .m-pill, .m-hrs { display: none; } .c1 .mkc-b { gap: 4px; } .m-wk { padding: 4px 6px; } .m-wk b { font-size: 11px; } .m-wk > span:first-child { gap: 3px; } .m-avg b { font-size: 19px; } .m-avg span { font-size: 12px; } .m-sheet { width: 94%; }
     .sp-watermark { width: 160vw; right: -50vw; bottom: -10vh; }
 }
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }

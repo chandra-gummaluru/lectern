@@ -3117,7 +3117,7 @@ function drawGroupEditor() {
     ${n ? `<div class="grp-viz big" style="--c:#c99a06">${g.members.map((x, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}<small>${n - keep > 0 ? `the lowest ${n - keep} ${n - keep === 1 ? "is" : "are"} dropped` : "none dropped"}</small></div>` : ""}
     <h3 class="ed-sec">In the Group</h3>
     <p class="ed-help">Tick the evaluations that make up the group: they show inside it, like a week's activities.</p>
-    <div class="mem-cards">${cands.map(e => `<label class="mem-card${g.members.includes(e.id) ? " on" : ""}"><input type="checkbox" data-ed="member" data-v="${esc(e.id)}"${g.members.includes(e.id) ? " checked" : ""}>${evIcon(e, true)}<span class="mem-t"><small>${esc(TYPE_NAME[e.type] || "Assignment")}${e.short ? ` / ${esc(e.short)}` : ""}</small><b>${esc(e.name)}</b><span>${esc(whenSentence(e))}</span></span><span class="mem-out">Out of ${outOf(e)}</span></label>`).join("") || `<p class="ed-help">Add evaluations first.</p>`}</div>`;
+    <div class="mem-cards">${cands.map(e => `<label class="mem-card${g.members.includes(e.id) ? " on" : ""}"><input type="checkbox" data-ed="member" data-v="${esc(e.id)}"${g.members.includes(e.id) ? " checked" : ""}>${evIcon(e, true)}<span class="mem-t"><small>${esc(TYPE_NAME[e.type] || "Assignment")}${e.short ? ` / ${esc(e.short)}` : ""}</small><b>${esc(e.name)}</b><span>${esc(whenSentence(e))}</span></span></label>`).join("") || `<p class="ed-help">Add evaluations first.</p>`}</div>`;
 }
 
 // Editing in the windows: typing updates as you go; choices redraw the window.

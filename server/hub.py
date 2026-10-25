@@ -280,10 +280,17 @@ def week_range(w, year):
     return a.isoformat(), b.isoformat()
 
 
+def _groups(x):
+    """An activity's or announcement's activity groups (only their students see it; none: everyone).
+    Older ones had one, "group"."""
+    gs = x.get("groups") if isinstance(x.get("groups"), list) else ([x.get("group")] if x.get("group") else [])
+    return [_s(g, 40) for g in gs[:50] if isinstance(g, (str, int)) and str(g)]
+
+
 def _week(w):
     cards = [{"kind": _s(c.get("kind"), 20), "label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
               "date": _s(c.get("date"), 60), "dates": [_s(d, 60) for d in _list(c.get("dates"))[:20] if isinstance(d, str) and d.strip()], "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
-              "files": _files(c.get("files")), "id": _s(c.get("id"), 40), "group": _s(c.get("group"), 40)}
+              "files": _files(c.get("files")), "id": _s(c.get("id"), 40), "groups": _groups(c)}
              for c in _list(w.get("cards")) if isinstance(c, dict)]
     if w.get("isBreak"):
         return {"isBreak": True, "label": _s(w.get("text"), 200) or _s(w.get("label"), 200), "cards": [], "deadlines": []}
@@ -363,7 +370,7 @@ def buckets(page, year=None, book_files=None, lectures=None, team=None, announce
             act = next((c for x in weeks for c in x["cards"] if on.startswith("act:") and c["id"] and c["id"] == on[4:]), None)
             anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60), "on": on,
                          # about an activity: for whoever the activity is for
-                         "group": act["group"] if act else ("" if on.startswith("act:") else _s(a.get("group"), 40)),
+                         "groups": act["groups"] if act else ([] if on.startswith("act:") else _groups(a)),
                          "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
                          "week": wk["label"] if wk else _s(w.get("label"), 200), "wi": wk["i"] if wk else -1})
     # The gradebook's course rules (its Settings choose which the course page shows).
@@ -457,7 +464,7 @@ def hub_api(handle, course, term):
         if student:
             from .students import roster
             mine = set((roster(o["id"], offering).get(student) or {}).get("groups") or [])
-        ok = lambda x: not x.get("group") or x["group"] in mine
+        ok = lambda x: not x.get("groups") or bool(set(x["groups"]) & mine)
         for w in all_b["lectures"]["weeks"]:
             w["cards"] = [c for c in w["cards"] if ok(c)]
         all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a)]

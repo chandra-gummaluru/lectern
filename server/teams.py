@@ -97,10 +97,17 @@ def _json(b):
         return None
 
 
+def _gs(x):
+    """An activity's or announcement's activity groups (older ones had one, "group")."""
+    gs = x.get("groups") if isinstance(x.get("groups"), list) else ([x.get("group")] if x.get("group") else [])
+    return [str(g) for g in gs]
+
+
 def within_groups(path, old, new, mine, lectures=None):
     """An instructor's change to lectures.json or announcements.json: only to the ones for their groups.
     Leaving out every activity (or announcement) for one of `mine`, before and after, nothing else may differ."""
     a, b = _json(old) or {}, _json(new)
+    ours_ = lambda gs: bool(gs) and all(x in mine for x in gs)   # for their groups only (not everyone's, or others' too)
     if not isinstance(b, dict):
         return False
     if path.endswith("/lectures.json"):
@@ -110,18 +117,17 @@ def within_groups(path, old, new, mine, lectures=None):
                 if isinstance(w, dict):
                     # (an activity's label and type are its numbering: adding one renumbers the others)
                     ws.append({**w, "cards": [{k: v for k, v in c.items() if k not in ("label", "kind")} if isinstance(c, dict) else c
-                                              for c in (w.get("cards") or []) if not (isinstance(c, dict) and str(c.get("group") or "") in mine)]})
+                                              for c in (w.get("cards") or []) if not (isinstance(c, dict) and ours_(_gs(c)))]})
             return {**d, "weeks": ws}
         return json.dumps(rest(a), sort_keys=True) == json.dumps(rest(b), sort_keys=True)
     groups = {}   # an announcement about an activity is for that activity's group
     for w in ((lectures or {}).get("weeks") or []):
         for c in ((w or {}).get("cards") or []) if isinstance(w, dict) else []:
             if isinstance(c, dict):
-                groups[str(c.get("id"))] = str(c.get("group") or "")
+                groups[str(c.get("id"))] = _gs(c)
     def ours(x):
         on = str(x.get("on") or "")
-        g_ = groups.get(on[4:], "") if on.startswith("act:") else str(x.get("group") or "")
-        return g_ in mine
+        return ours_(groups.get(on[4:], []) if on.startswith("act:") else _gs(x))
     def rest(d):
         return {**d, "items": [x for x in (d.get("items") if isinstance(d.get("items"), list) else []) if not (isinstance(x, dict) and ours(x))]}
     return json.dumps(rest(a), sort_keys=True) == json.dumps(rest(b), sort_keys=True)

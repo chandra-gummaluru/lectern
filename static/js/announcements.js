@@ -16,6 +16,9 @@
 import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
 import { richText } from "./richtext.js";
+import { pickMany } from "./pick.js";
+// Its activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
+const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
 const COLOR = "#c99a06";
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -40,8 +43,8 @@ export function announcementsPage(ctx, r) {
   // An instructor writes only for their activity groups (the ones they run an activity of): one for one of
   // those groups, or about one of those groups' activities. Everyone's, and other groups', are the coordinators'.
   const lim = () => { const L = new Set(); if (!edit) (st.groups || []).forEach(g => { if ((g.items || []).some(x => (x.people || []).map(String).includes(String(ctx.me)))) L.add(g.id); }); return L; };
-  const groupOf = x => { const on = String(x.on || ""); if (on.startsWith("act:")) { const a = (st.acts || []).find(y => `act:${y.id}` === on); return a ? a.group || "" : ""; } return x.group || ""; };
-  const mayAnn = x => edit || lim().has(groupOf(x));
+  const forOf = x => { const on = String(x.on || ""); if (on.startsWith("act:")) { const a = (st.acts || []).find(y => `act:${y.id}` === on); return a ? a.groups || [] : []; } return groupsOf(x); };
+  const mayAnn = x => { if (edit) return true; const L = lim(), G = forOf(x); return G.length > 0 && G.every(g => L.has(g)); };
   // (Instructors write theirs into the course's announcements, once a coordinator has started them.)
   const mayAdd = () => edit || (lim().size > 0 && st.sha !== null);
   const key = `${r.o || ""}/${c}/${t}`;
@@ -111,7 +114,7 @@ export function announcementsPage(ctx, r) {
       st.data.items.push(y); changed(); go({ page: "announcements", c, t, a: y.id });
     }; });
     $("#an-new").onclick = () => {
-      const x = { id: uid(), title: "", date: stampOf(new Date()), at: Date.now(), body: "", ...(edit ? {} : { group: [...lim()][0] }) };
+      const x = { id: uid(), title: "", date: stampOf(new Date()), at: Date.now(), body: "", ...(edit ? {} : { groups: [...lim()].slice(0, 1) }) };
       st.data.items.push(x); changed(); go({ page: "announcements", c, t, a: x.id });
     };
   }
@@ -133,11 +136,10 @@ export function announcementsPage(ctx, r) {
         <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
         <div class="lx-grid two">
           <label class="lx-f">About<select id="an-on"${dis}><option value="">Nothing in particular</option>
-            ${(st.acts || []).length ? `<optgroup label="Activities">${st.acts.filter(a => canEdit(c, t) || !edit || L.has(a.group) || x.on === `act:${a.id}`).map(a => `<option value="act:${esc(a.id)}"${x.on === `act:${a.id}` ? " selected" : ""}>${esc(a.week)} · ${esc(a.name)}</option>`).join("")}</optgroup>` : ""}
+            ${(st.acts || []).length ? `<optgroup label="Activities">${st.acts.filter(a => canEdit(c, t) || !edit || ((a.groups || []).length && a.groups.every(g => L.has(g))) || x.on === `act:${a.id}`).map(a => `<option value="act:${esc(a.id)}"${x.on === `act:${a.id}` ? " selected" : ""}>${esc(a.week)} · ${esc(a.name)}</option>`).join("")}</optgroup>` : ""}
             ${(st.evals || []).length ? `<optgroup label="Evaluations">${st.evals.map(e => `<option value="eval:${esc(e.id)}"${x.on === `eval:${e.id}` ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</optgroup>` : ""}</select></label>
-          <label class="lx-f">For<select id="an-group"${dis}></select></label>
+          <div class="lx-f">For<div id="an-groups"></div></div>
         </div>
-        <p class="lx-help" id="an-for-help"></p>
         <h3 class="lx-sec">Message</h3>
         <div id="an-body"></div>
       </div>
@@ -145,23 +147,22 @@ export function announcementsPage(ctx, r) {
     whenField($("#an-when-f"), { date: when.date, time: when.time, id: "an-when", label: "When", empty: "Choose a date", timeLabel: "At", disabled: !edit,
       onChange: ({ date, time }) => { x.date = date ? writeStamp(date, time) : ""; changed(); } });
     richText($("#an-body"), { value: x.body, placeholder: "Write it here.", label: "Message", disabled: !edit, onChange: v => { x.body = v; changed(); } });
-    // Who it's for: everyone, or one activity group; about an activity, the activity's own students.
+    // Who it's for: everyone, or activity groups (several, if need be); about an activity, the activity's own students.
     const forSel = () => {
       const act = String(x.on || "").startsWith("act:") ? (st.acts || []).find(a => `act:${a.id}` === x.on) : null;
       const G = (st.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })), gname = id => ((G.find(g => g.id === id) || {}).name || "");
-      const sel = $("#an-group");
+      const host = $("#an-groups");
       if (act) {
-        sel.innerHTML = `<option>${act.group ? `${esc(gname(act.group))} only, as its activity is` : "Everyone, as its activity is"}</option>`; sel.disabled = true;
-        $("#an-for-help").textContent = "About an activity, it's for whoever the activity is for. The course page shows it with the activity too.";
+        pickMany(host, { options: [], value: [], empty: (act.groups || []).length ? `${act.groups.map(gname).filter(Boolean).join(", ")}, as its activity is` : "Everyone, as its activity is", id: "an-group", disabled: true });
       } else {
-        sel.innerHTML = `${canEdit(c, t) || !edit ? `<option value="">Everyone in the course</option>` : ""}${G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}`; sel.disabled = !edit;
-        $("#an-for-help").textContent = String(x.on || "").startsWith("eval:") ? "The course page shows it with the evaluation too. For one activity group, only its students see it." : "For one activity group, only its students see it on the course page.";
+        pickMany(host, { options: G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => [g.id, g.name || "Untitled group"]), value: groupsOf(x), id: "an-group", label: "For",
+          empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", disabled: !edit,
+          onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
       }
     };
     forSel();
     if (!edit) return;
-    $("#an-on").onchange = e => { if (e.target.value) x.on = e.target.value; else delete x.on; if (String(x.on || "").startsWith("act:")) delete x.group; else if (!canEdit(c, t) && !L.has(x.group)) x.group = [...L][0]; forSel(); changed(); };
-    $("#an-group").onchange = e => { if (e.target.value) x.group = e.target.value; else delete x.group; changed(); };
+    $("#an-on").onchange = e => { if (e.target.value) x.on = e.target.value; else delete x.on; if (String(x.on || "").startsWith("act:")) { delete x.group; delete x.groups; } else if (!canEdit(c, t) && !groupsOf(x).length) x.groups = [...L].slice(0, 1); forSel(); changed(); };
     let shown = x.title || "New announcement";
     const head = () => { const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };
     $("#an-title").oninput = $("#an-title").onchange = e => { x.title = e.target.value.trim(); head(); changed(); };

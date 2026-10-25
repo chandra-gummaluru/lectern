@@ -106,8 +106,8 @@ function lockedPage(id, title) {
 }
 const annsOn = key => ((data("announcements") || {}).items || []).filter(a => a.on === key).sort((x, y) => annTime(y) - annTime(x));
 // For the teaching team: what's only for one activity group says which.
-const groupTag = id => { if (!id || !D.viewer.staff) return ""; const g = (((data("about") || {}).groups) || []).find(x => x.id === id); return `<span class="hs-tag hs-gtag" title="Only its students see this">${esc(g ? g.name : "One group")} only</span>`; };
-const annCard = a => `<article class="hs-card hs-ann"><p class="hs-kick">${esc(stampText(a.date))}${groupTag(a.group)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
+const groupTag = ids => { if (!(ids || []).length || !D.viewer.staff) return ""; const G = ((data("about") || {}).groups) || [], n = ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean); return `<span class="hs-tag hs-gtag" title="Only their students see this">${esc(n.length ? n.join(", ") : "Some groups")} only</span>`; };
+const annCard = a => `<article class="hs-card hs-ann"><p class="hs-kick">${esc(stampText(a.date))}${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
 function weekRow(w, now) {
   if (w.isBreak) return `<p class="hs-break">${esc(w.label || "Break")}</p>`;
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");
@@ -129,7 +129,7 @@ const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${
 function activityCard(c) {
   const k = kindOf(c), D_ = datesOf(c).map(stampText).join(" · ");
   const anns = c.id ? annsOn(`act:${c.id}`) : [];
-  return `<article class="hs-card hs-act"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.group)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
+  return `<article class="hs-card hs-act"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 function requestHTML(e) {

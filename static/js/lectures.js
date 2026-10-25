@@ -23,6 +23,9 @@
 
 import { richText } from "./richtext.js";
 import { whenField } from "./when.js";
+import { pickMany } from "./pick.js";
+// An activity's activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
+export const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
 const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];
 const KIND_COLOR = { lecture: "#c99a06", tutorial: "#c99a06", lab: "#c99a06", other: "#c99a06" };   // one colour: types show by their icons
@@ -144,7 +147,7 @@ export function lecturesPage(ctx, r) {
   // An instructor (ctx.myGroups: the activity groups they run an activity of) adds and changes only those
   // groups' activities; the weeks, and everyone's activities, are the coordinators'.
   const lim = edit ? null : new Set();   // (filled once the groups are read)
-  const mayCard = x => edit || !!(lim && x && lim.has(x.group));
+  const mayCard = x => edit || !!(lim && x && groupsOf(x).length && groupsOf(x).every(g => lim.has(g)));
   const mine = () => { if (lim) { lim.clear(); (st.groups || []).forEach(g => { if ((g.items || []).some(x => (x.people || []).map(String).includes(String(ctx.me)))) lim.add(g.id); }); } };
   // (Instructors add theirs to the course's weeks, once a coordinator has set them up here.)
   const mayAdd = () => edit || !!(lim && lim.size && st.sha !== null);
@@ -222,7 +225,7 @@ export function lecturesPage(ctx, r) {
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}${groupName(x.group) ? ` · ${esc(groupName(x.group))}` : ""}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
+      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}${groupsOf(x).map(groupName).filter(Boolean).length ? ` · ${esc(groupsOf(x).map(groupName).filter(Boolean).join(", "))}` : ""}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
   // An activity for one activity group (e.g. LEC0101) is only for its students; without one, it's everyone's.
   const groupName = id => (id && ((st.groups || []).find(g => g.id === id) || {}).name) || "";
   const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };
@@ -357,7 +360,7 @@ export function lecturesPage(ctx, r) {
     toWeek(w);
   }
   function addLecture(w, kind = "lecture") {
-    const x = { id: uid(), kind, label: nextLabel(weeks(), kind, w), title: "", description: "", files: [], ...(edit ? {} : { group: [...lim][0] }) };
+    const x = { id: uid(), kind, label: nextLabel(weeks(), kind, w), title: "", description: "", files: [], ...(edit ? {} : { groups: [...lim].slice(0, 1) }) };
     (w.cards = w.cards || []).push(x); changed();
     toLec(w, x);
   }
@@ -432,9 +435,7 @@ export function lecturesPage(ctx, r) {
           <div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div>
         </div>
 
-        <p class="lx-help">The date and time are optional: with a date, This week shows it on its day. One held on several days (e.g. a lab's sections) can have more than one.</p>
-        <div class="lx-grid one"><label class="lx-f">For<select id="lw-group"${dis}>${canEdit(c, t) || !edit ? `<option value="">Everyone in the course</option>` : ""}${(st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}</select></label></div>
-        <p class="lx-help">For one activity group, only its students see it on the course page (and its announcements).</p>
+        <div class="lx-grid one"><div class="lx-f">For<div id="lw-groups"></div></div></div>
         <h3 class="lx-sec">Description</h3>
         <div id="lw-desc"></div>
         <h3 class="lx-sec">Files and Links</h3>
@@ -459,6 +460,10 @@ export function lecturesPage(ctx, r) {
       const add = $("#lw-when-add"); if (add) add.onclick = () => { W.push(""); whens(); const f = host.querySelector(`[data-wi="${W.length - 1}"] button`); if (f) f.click(); };
     };
     whens();
+    // For: its activity groups (none: everyone). An instructor picks among theirs (at least one).
+    const G = (st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    pickMany($("#lw-groups"), { options: G.map(g => [g.id, g.name || "Untitled group"]), value: groupsOf(x), empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", label: "For", id: "lw-group", disabled: !edit,
+      onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
     richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;
     let shown = titleOf(x);
@@ -475,7 +480,7 @@ export function lecturesPage(ctx, r) {
       $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now];
       head(); changed();
     }; });
-    $("#lw-group").onchange = e => { if (e.target.value) x.group = e.target.value; else delete x.group; changed(); };
+
     $("#lw-week").onchange = () => {
       const to = weekById($("#lw-week").value); if (!to || to === w) return;
       w.cards = w.cards.filter(z => z !== x); (to.cards = to.cards || []).push(x); changed();

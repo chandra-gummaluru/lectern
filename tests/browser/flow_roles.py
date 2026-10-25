@@ -58,13 +58,13 @@ def main():
         assert not ip.query_selector("[data-add-week]")
         ip.locator(".lx-row.grp").first.click(); ip.wait_for_selector("[data-add-activity]")
         ip.click("[data-add-activity]"); ip.wait_for_selector("#lw-title")
-        expect(ip.locator("#lw-group")).to_have_value("g1")
-        assert ip.eval_on_selector_all("#lw-group option", "o => o.map(x => x.textContent)") == ["LEC0101 only"]
+        expect(ip.locator("#lw-group")).to_have_text("LEC0101")   # For: a dropdown of tick boxes, theirs only
+        ip.click("#lw-group"); assert ip.eval_on_selector_all("#lw-groups .pk-opt", "o => o.map(x => x.textContent)") == ["LEC0101"]; ip.keyboard.press("Escape")
         ip.fill("#lw-title", "Section review"); ip.wait_for_timeout(1500)
         expect(ip.locator("#lw-status")).to_have_text("Saved")
         lec = json.loads(srv.text("priv", "csc258/f26/lectures.json"))
         mine = [c for w in lec["weeks"] for c in w.get("cards", []) if c.get("title") == "Section review"]
-        assert mine and mine[0]["group"] == "g1", mine
+        assert mine and mine[0]["groups"] == ["g1"], mine
         ip.screenshot(path=f"{OUT}/r01-instructor-activity.png", full_page=True)
         ip.locator("#lt-path button", has_text="Week 1").click(); ip.wait_for_timeout(500)
         ip.locator(".lx-lec[data-lec]").first.click(); ip.wait_for_selector("#lw-title")
@@ -75,11 +75,11 @@ def main():
         ip.evaluate("location.hash = '#/~chandra/csc258/f26/announcements'"); ip.wait_for_selector("#an-new")
         ip.click("#an-new"); ip.wait_for_selector("#an-title")
         ip.fill("#an-title", "LEC0101: room change")
-        assert ip.eval_on_selector_all("#an-group option", "o => o.map(x => x.textContent)") == ["LEC0101 only"]
+        ip.click("#an-group"); assert ip.eval_on_selector_all("#an-groups .pk-opt", "o => o.map(x => x.textContent)") == ["LEC0101"]; ip.keyboard.press("Escape")
         ip.wait_for_timeout(1500)
         expect(ip.locator("#an-status")).to_have_text("Saved")
         a = [x for x in json.loads(srv.text("priv", "csc258/f26/announcements.json"))["items"] if x.get("title") == "LEC0101: room change"]
-        assert a and a[0]["group"] == "g1", a
+        assert a and a[0]["groups"] == ["g1"], a
         print("2 instructor: an announcement for LEC0101")
 
         # 3. The TA: everyone's marks; students not in their groups say so.

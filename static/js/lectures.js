@@ -178,8 +178,7 @@ export function lecturesPage(ctx, r) {
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(x.title ? kindLabel(x) : kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${whenText(x.date, true) ? `<p class="lx-when">${esc(whenText(x.date, true))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div>
-      ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm lx-quiet" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
+      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${whenText(x.date, true) ? `<p class="lx-when">${esc(whenText(x.date, true))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No activities this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 
   // ── Every week ──

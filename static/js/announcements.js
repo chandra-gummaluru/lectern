@@ -83,8 +83,7 @@ export function announcementsPage(ctx, r) {
       ${taNote()}
       ${list.length ? `<div class="lx-list">${list.map(x => `<div class="lx-row" style="--c:${COLOR}" data-an="${esc(x.id)}" role="button" tabindex="0">
           <div class="lx-main"><div class="lx-top"><h3>${esc(x.title || "Untitled")}</h3></div>
-            <p class="lx-when">${esc(whenOf(x))}</p>${plain(x.body) ? `<p class="lx-clip">${esc(plain(x.body))}</p>` : ""}</div>
-          ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm" data-dup="${esc(x.id)}" title="A copy of it, dated now">${COPY}Duplicate</button></div>` : ""}</div>`).join("")}</div>`
+            <p class="lx-when">${esc(whenOf(x))}</p>${plain(x.body) ? `<p class="lx-clip">${esc(plain(x.body))}</p>` : ""}</div></div>`).join("")}</div>`
         : `<div class="lx-empty">No announcements yet.${edit ? " Write the first one: the course page shows it in the week of its date." : ""}</div>`}
     </div></div>`);
     document.querySelectorAll("[data-an]").forEach(b => {

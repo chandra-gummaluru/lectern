@@ -1205,6 +1205,8 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .erow .ec-mk { margin-top: 4px; }
 .er-side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .er-side .ec-acts { margin-top: 0; }
+.er-tt { min-width: 0; }
+.erow .er-main p.er-kind { margin: 0 0 1px; font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #80848b; }
 .er-w { font: 600 22px/1 var(--font-ui); color: #1f2329; font-variant-numeric: tabular-nums; }
 .erow.sub .er-w { font-size: 16px; color: #5f6166; }
 .dot.ic.ic { width: auto !important; height: auto !important; background: none !important; border-radius: 0 !important; box-shadow: none !important; margin-top: 0 !important; display: inline-grid; place-items: center; color: var(--ink-2); }
@@ -2039,7 +2041,7 @@ function fmtWhen(e) {
   const day = d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
   return e.time ? `${day} at ${e.time}` : day;
 }
-const whenSentence = e => (e.type === "test" ? `Test${fmtWhen(e) ? `, ${fmtWhen(e)}` : ", no date yet"}` : `${TYPE_NAME[e.type] || "Assignment"}${fmtWhen(e) ? `, due ${fmtWhen(e)}` : ", no due date yet"}`);
+const whenSentence = e => (e.type === "test" ? fmtWhen(e) || "No date yet" : fmtWhen(e) ? `Due ${fmtWhen(e)}` : "No due date yet");
 const groupOf = e => (model.groups || []).find(g => g.members.includes(e.id));
 // What the course's weight is split into: evaluations on their own, and groups (in place of their members).
 function units() {
@@ -2858,11 +2860,10 @@ function evalsHTML() {
 function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a makeup for
   const g = sub && groupOf(e);
   return `<div class="erow${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
-    <div class="er-main"><div class="er-top">${evIcon(e, true)}<h3>${esc(e.name)}</h3>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
+    <div class="er-main"><div class="er-top">${evIcon(e, true)}<div class="er-tt"><p class="er-kind">${esc(TYPE_NAME[e.type] || "Assignment")}</p><h3>${esc(e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
       <p class="er-when">${esc(whenSentence(e))}</p>
       <p>Out of ${outOf(e)} points.${sub ? "" : of ? ` Only for students who don't submit ${esc(shortName(of))}.` : ` ${policySentence(e)}`}</p></div>
-    <div class="er-side">${of ? "" : `<span class="er-w" title="${sub ? `Each counted one of ${esc(g.name)}` : "Of the course grade"}">${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%</span>`}
-      <span class="ec-acts"><button type="button" class="ec-btn2 ec-ic" data-act="ev-dup" data-id="${esc(e.id)}" title="A copy of ${esc(e.name)}, right after it">${PIC.copy}Duplicate</button></span></div></div>`;
+    <div class="er-side">${of ? "" : `<span class="er-w" title="${sub ? `Each counted one of ${esc(g.name)}` : "Of the course grade"}">${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%</span>`}</div></div>`;
 }
 // Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
 function buildBtn(e) {
@@ -2874,7 +2875,7 @@ function groupRowHTML(g) {
   const n = g.members.length, keep = num(g.keep), each = num(g.weight) / Math.max(1, keep);
   return `<div class="egroup" style="--c:${colorOf(g)}" draggable="true" data-unit="g:${esc(g.id)}">
     <div class="erow grp" data-act="ed-group" data-id="${esc(g.id)}" role="button" tabindex="0">
-      <div class="er-main"><div class="er-top">${evIcon(g, true)}<h3>${esc(g.name)}</h3></div>
+      <div class="er-main"><div class="er-top">${evIcon(g, true)}<div class="er-tt"><p class="er-kind">Group${g.members.length ? ` of ${esc(typeOf(g) === "other" ? "Evaluations" : TYPE_NAME[typeOf(g)] + "s")}` : ""}</p><h3>${esc(g.name)}</h3></div></div>
         <p>${n ? `The best ${fmtNum(keep)} of ${n} count, ${fmtNum(Math.round(each * 100) / 100)}% each.` : "No evaluations in it yet."}</p></div>
       <div class="er-side"><span class="er-w" title="Of the course grade">${fmtNum(num(g.weight))}%</span>${n ? `<div class="grp-viz">${g.members.map((id, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}</div>` : ""}</div></div>
     ${n ? `<div class="esubs">${g.members.map(evalById).filter(Boolean).map(e => evalRowHTML(e, true)).join("")}</div>` : ""}

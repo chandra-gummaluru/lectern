@@ -57,11 +57,6 @@ def main():
         print("a1 rows:", page.eval_on_selector_all(G + "#rw-rows .rw-row.on", "e => e.map(x => x.innerText.replace(/\\n/g,' ').replace(/\\s+/g,' '))"))
         page.locator("#lt-path button.lt-step", has_text="Evaluations").click(); page.wait_for_timeout(500)
         print("list now:", page.eval_on_selector_all(G + ".erow", "e => e.map(x => x.querySelector('h3').textContent + (x.classList.contains('mkrow') ? ' [makeup]' : ''))"))
-        # Duplicate the midterm from its row, then a lab-like assignment from its page
-        page.locator(G + ".erow", has=page.locator("h3", has_text="Final Exam")).first.locator("[data-act='ev-dup']").click(); page.wait_for_timeout(600)
-        print("dup page:", page.inner_text("#lt-path").replace("\n", " "))
-        page.locator("#lt-path button.lt-step", has_text="Evaluations").click(); page.wait_for_timeout(500)
-        print("after dup:", page.eval_on_selector_all(G + ".erow", "e => e.map(x => x.querySelector('h3').textContent)"))
         page.locator(G + ".erow", has_text="Midterm").first.click(); page.wait_for_timeout(500)
         page.screenshot(path=f"{OUT}/152-makeup-ui.png", full_page=True)
         print("kinds:", page.eval_on_selector_all(G + "#rw-rows .rw-row.on", "e => e.map(x => [...x.querySelectorAll('.rw-kind button')].map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join('/'))"))

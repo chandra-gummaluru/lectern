@@ -905,3 +905,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 
 /* A week's number, in its circle, as the Activities list has it (the Week dropdown). */
 .pk1-wk { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.3px color-mix(in srgb, #c99a06 55%, var(--lx-line)); font: 500 12px/1 var(--font-serif); color: var(--home-ink); }
+/* pickMany's rows: a tick box, the icon, the small grey line over the name; "Everyone" first. */
+.pk-chk input { flex: none; width: 16px !important; height: 16px !important; margin: 0; padding: 0; accent-color: var(--home-ink); }
+.pk-chk { cursor: pointer; }
+.pk-all + .pk1-h { margin-top: 10px; }

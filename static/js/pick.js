@@ -1,7 +1,8 @@
 /* A dropdown of tick boxes: a button saying what's ticked ("LEC0101, LEC0201", or what none means), and a
    list under it to tick and untick. For choosing several of a few things, e.g. an activity's groups.
 
-     pickMany(host, { options: [[value, label]…], value: [values], empty: "Everyone in the course",
+     pickMany(host, { options: [[value, label] or { value, label, kick, icon }…], value: [values], empty: "Everyone in the course",
+                      emptyHint, emptyIcon, icon,
                       label, disabled, onChange(values) }) → { get, set }
 
    pickOne: a dropdown for choosing one of many, each with its icon, a small grey line over its name, under
@@ -17,26 +18,41 @@ let open = null;   // the list that's open: { host, close }
 document.addEventListener("mousedown", e => { if (open && !open.host.contains(e.target)) open.close(); }, true);
 document.addEventListener("keydown", e => { if (open && e.key === "Escape") { const b = open.host.querySelector("button"); open.close(); if (b) b.focus(); } }, true);
 
-export function pickMany(host, { options = [], value = [], empty = "None", label = "", id = "", disabled = false, onChange = () => {} } = {}) {
+const PEOPLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.3 6-5.3s5.4 2 6 5.3"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.7 14.6c1.7.7 2.9 2.4 3.3 4.9"/></svg>';
+// Options as [value, label] or { value, label, kick, icon }.
+const asOpt = o => (Array.isArray(o) ? { value: String(o[0]), label: o[1] } : { ...o, value: String(o.value) });
+
+export function pickMany(host, { options = [], value = [], empty = "None", emptyHint = "", emptyIcon = PEOPLE, icon = "", allowEmpty = true, label = "", id = "", disabled = false, onChange = () => {} } = {}) {
   let v = value.map(String);
-  host.classList.add("pk");
-  host.innerHTML = `<button type="button" class="pk-btn"${id ? ` id="${esc(id)}"` : ""} aria-haspopup="listbox" aria-expanded="false"${label ? ` aria-label="${esc(label)}"` : ""}${disabled ? " disabled" : ""}><span></span>${CARET}</button>`;
+  const O = options.map(asOpt);
+  host.classList.add("pk", "pk1");
+  host.innerHTML = `<button type="button" class="pk-btn pk1-btn"${id ? ` id="${esc(id)}"` : ""} aria-haspopup="listbox" aria-expanded="false"${label ? ` aria-label="${esc(label)}"` : ""}${disabled ? " disabled" : ""}><span class="pk1-cur"></span>${CARET}</button>`;
   const btn = host.firstElementChild;
-  const text = () => { const n = options.filter(([k]) => v.includes(String(k))).map(([, l]) => l); return n.length ? n.join(", ") : empty; };
-  const show = () => { btn.querySelector("span").textContent = text(); host.dataset.value = v.join(","); };
+  const ico = x => (x ? `<span class="pk1-ic">${x}</span>` : "");
+  const row = o => `${ico(o.icon || icon)}<span class="pk1-t">${o.kick ? `<small>${esc(o.kick)}</small>` : ""}<b>${esc(o.label)}</b></span>`;
+  const show = () => {
+    const on = O.filter(o => v.includes(o.value));
+    btn.querySelector(".pk1-cur").innerHTML = !on.length ? `${ico(emptyIcon)}<span class="pk1-t${disabled ? "" : " pk1-empty"}"><b>${esc(empty)}</b>${emptyHint && allowEmpty && !disabled ? `<small>${esc(emptyHint)}</small>` : ""}</span>`
+      : on.length === 1 ? row(on[0]) : `${ico(icon || on[0].icon)}<span class="pk1-t"><small>${on.length} groups</small><b>${esc(on.map(o => o.label).join(", "))}</b></span>`;
+    host.dataset.value = v.join(",");
+  };
   const close = () => { const p = host.querySelector(".pk-pop"); if (p) p.remove(); btn.setAttribute("aria-expanded", "false"); if (open && open.host === host) open = null; };
   btn.onclick = () => {
     if (open && open.host === host) return close();
     if (open) open.close();
     const pop = document.createElement("div");
-    pop.className = "pk-pop"; pop.setAttribute("role", "listbox"); pop.setAttribute("aria-multiselectable", "true");
-    pop.innerHTML = options.map(([k, l]) => `<label class="pk-opt"><input type="checkbox" value="${esc(k)}"${v.includes(String(k)) ? " checked" : ""}><span>${esc(l)}</span></label>`).join("")
-      || `<p class="pk-none">Nothing to choose yet.</p>`;
+    pop.className = "pk-pop pk1-pop"; pop.setAttribute("role", "listbox"); pop.setAttribute("aria-multiselectable", "true");
+    const draw = () => {
+      pop.innerHTML = `<div class="pk1-list">${O.length && allowEmpty ? `<button type="button" class="pk1-opt pk-all" aria-selected="${!v.length}">${ico(emptyIcon)}<span class="pk1-t pk1-empty"><b>${esc(empty)}</b>${emptyHint ? `<small>${esc(emptyHint)}</small>` : ""}</span>${!v.length ? CHECK : ""}</button><p class="pk1-h">Or only</p>` : ""}
+        ${O.map(o => `<label class="pk1-opt pk-chk"><input type="checkbox" value="${esc(o.value)}"${v.includes(o.value) ? " checked" : ""}>${row(o)}</label>`).join("") || `<p class="pk-none">Nothing to choose yet.</p>`}</div>`;
+    };
     pop.addEventListener("change", e => {
       const k = e.target.value;
       v = e.target.checked ? [...new Set([...v, k])] : v.filter(x => x !== k);
-      show(); onChange(v.slice());
+      show(); draw(); onChange(v.slice());
     });
+    pop.addEventListener("click", e => { if (!e.target.closest(".pk-all")) return; if (!v.length) return close(); v = []; show(); draw(); onChange([]); });
+    draw();
     host.append(pop); btn.setAttribute("aria-expanded", "true");
     open = { host, close };
   };
@@ -55,7 +71,7 @@ export function pickOne(host, { options = [], value = "", empty = "None", emptyH
   const row = o => `<span class="pk1-ic">${o.icon || ""}</span><span class="pk1-t">${o.kick ? `<small>${esc(o.kick)}</small>` : ""}<b>${esc(o.label)}</b></span>`;
   const show = () => {
     const o = options.find(x => String(x.value) === v);
-    btn.querySelector(".pk1-cur").innerHTML = o ? row(o) : `<span class="pk1-ic">${NONE}</span><span class="pk1-t pk1-empty"><b>${esc(empty)}</b></span>`;
+    btn.querySelector(".pk1-cur").innerHTML = o ? row(o) : `<span class="pk1-ic">${NONE}</span><span class="pk1-t pk1-empty"><b>${esc(empty)}</b>${emptyHint ? `<small>${esc(emptyHint)}</small>` : ""}</span>`;
     host.dataset.value = v;
   };
   const close = () => { const p = host.querySelector(".pk-pop"); if (p) p.remove(); btn.setAttribute("aria-expanded", "false"); if (open && open.host === host) open = null; };

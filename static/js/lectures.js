@@ -24,6 +24,7 @@
 import { richText } from "./richtext.js";
 import { whenField } from "./when.js";
 import { pickMany } from "./pick.js";
+import { GROUP_ICON, groupSummary } from "./groups.js";
 // An activity's activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
 export const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
@@ -463,7 +464,7 @@ export function lecturesPage(ctx, r) {
     whens();
     // For: its activity groups (none: everyone). An instructor picks among theirs (at least one).
     const G = (st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    pickMany($("#lw-groups"), { options: G.map(g => [g.id, g.name || "Untitled group"]), value: groupsOf(x), empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", label: "For", id: "lw-group", disabled: !edit,
+    pickMany($("#lw-groups"), { options: G.map(g => ({ value: g.id, label: g.name || "Untitled group", kick: groupSummary(g).split(" · ")[0], icon: GROUP_ICON })), value: groupsOf(x), empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it", label: "For", id: "lw-group", disabled: !edit,
       onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
     richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;

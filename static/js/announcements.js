@@ -17,6 +17,7 @@ import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
 import { richText } from "./richtext.js";
 import { pickMany, pickOne } from "./pick.js";
+import { GROUP_ICON, groupSummary } from "./groups.js";
 import { KIND_ICON, EV_ICON, EV_TYPES } from "./lectures.js";
 // Its activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
 const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
@@ -154,7 +155,7 @@ export function announcementsPage(ctx, r) {
       if (act) {
         pickMany(host, { options: [], value: [], empty: (act.groups || []).length ? `${act.groups.map(gname).filter(Boolean).join(", ")}, as its activity is` : "Everyone, as its activity is", id: "an-group", disabled: true });
       } else {
-        pickMany(host, { options: G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => [g.id, g.name || "Untitled group"]), value: groupsOf(x), id: "an-group", label: "For",
+        pickMany(host, { options: G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => ({ value: g.id, label: g.name || "Untitled group", kick: groupSummary(g).split(" · ")[0], icon: GROUP_ICON })), value: groupsOf(x), id: "an-group", label: "For", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it",
           empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", disabled: !edit,
           onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
       }

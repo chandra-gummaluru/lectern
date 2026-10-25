@@ -131,15 +131,15 @@ export function announcementsPage(ctx, r) {
       <div class="lx-editor" style="--c:${COLOR}">
         <div class="lx-ed-head"><h2 id="an-h">${esc(x.title || "New announcement")}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
-        <div class="lx-grid ann">
-          <label class="lx-f">Title<input type="text" id="an-title" value="${esc(x.title)}" placeholder="e.g. Midterm rooms posted"${dis}></label>
-          <div class="lx-f">When<div id="an-when-f"></div></div>
-        </div>
-        <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
-        <div class="lx-grid two">
+        <h3 class="lx-sec lx-first">General</h3>
+        <div class="lx-grid one"><label class="lx-f">Title<input type="text" id="an-title" value="${esc(x.title)}" placeholder="e.g. Midterm rooms posted"${dis}></label></div>
+        <div class="lx-grid two an-row">
           <div class="lx-f">About<div id="an-on-f"></div></div>
           <div class="lx-f">For<div id="an-groups"></div></div>
         </div>
+        <h3 class="lx-sec">Date</h3>
+        <div class="lx-grid two"><div class="lx-f">When<div id="an-when-f"></div></div></div>
+        <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
         <h3 class="lx-sec">Message</h3>
         <div id="an-body"></div>
       </div>

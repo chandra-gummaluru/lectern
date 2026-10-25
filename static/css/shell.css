@@ -1007,3 +1007,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-sf-row input:disabled { background: var(--home-strip); }
 .lx-sec.lx-first { margin-top: 6px; padding-top: 0; border-top: 0; }
 .lt-req-facts .lt-link { padding: 0; font: inherit; text-align: left; }
+.lx-grid.an-row { margin-top: 14px; }

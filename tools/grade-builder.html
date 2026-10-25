@@ -2039,19 +2039,22 @@ const evIcon = (x, box) => `<i class="dot ic${box ? " box" : ""}" title="${esc(x
 const LABEL_IDEAS = ["Assignment", "Lab", "Quiz", "Problem set", "Project", "Test", "Midterm", "Final exam"];
 const labelKey = l => String(l || "").trim().toLowerCase();
 const labelNum = new WeakMap();   // evaluation → its number among the same label (kept out of the saved file)
-const autoShort = e => `${String(e.label || "").trim().split(/\s+/).map(w => (w.match(/[A-Za-z0-9]/) || [""])[0]).join("").toUpperCase() || "E"}${labelNum.get(e) || ""}`;
+const autoShort = e => `${String(String(e.title || "").trim() || e.label || "").trim().split(/\s+/).map(w => (w.match(/[A-Za-z0-9]/) || [""])[0]).join("").toUpperCase() || "E"}${labelNum.get(e) || ""}`;
 function syncNames(b = model) {
   // A group never counts more of its evaluations than it has (e.g. after one is taken out of it or deleted).
   (b.groups || []).forEach(g => { g.members = g.members.filter(id => b.evals.some(e => e.id === id)); g.keep = Math.max(1, Math.min(num(g.keep) || 1, g.members.length || 1)); });
   const evs = b.evals, count = {}, seen = {};   // makeups too: they are named from their labels like the rest
-  evs.forEach(e => { const k = labelKey(e.label); if (k) count[k] = (count[k] || 0) + 1; });
+  // One with a title is named by its title alone (Midterm, Final Exam); the rest by their label, numbered
+  // in course order when there's more than one (Lab 1, Lab 2…).
+  const untitled = evs.filter(e => !String(e.title || "").trim());
+  untitled.forEach(e => { const k = labelKey(e.label); if (k) count[k] = (count[k] || 0) + 1; });
   evs.forEach(e => {
     const lab = String(e.label || "").trim(), k = labelKey(lab), title = String(e.title || "").trim();
+    if (title) { labelNum.set(e, null); e.name = title; return; }
     if (k) seen[k] = (seen[k] || 0) + 1;
     const n = k && count[k] > 1 ? seen[k] : null;
     labelNum.set(e, n);
-    const base = lab ? (n ? `${lab} ${n}` : lab) : "";
-    e.name = base && title ? `${base}: ${title}` : base || title || "Untitled evaluation";
+    e.name = lab ? (n ? `${lab} ${n}` : lab) : "Untitled evaluation";
   });
   const typed = new Set(b.evals.filter(e => !e.shortAuto).map(e => String(e.short || "").toLowerCase()));
   evs.filter(e => e.shortAuto).forEach(e => {
@@ -2978,7 +2981,7 @@ function drawEvalEditor() {
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
       ${fld("label", "Label", e.type === "other" ? e.label : TYPE_NAME[e.type], "text", e.type === "other" ? ' list="ev-labels" placeholder="e.g. Quiz" autocomplete="off"' : ' disabled title="Only Other has a label of its own; the rest are named by their type"')}
-      ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Flip-flops" autocomplete="off"')}
+      ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Midterm" autocomplete="off"')}
       <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button></div></div>
     <datalist id="ev-labels">${labels.map(l => `<option value="${esc(l)}">`).join("")}</datalist>
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
@@ -3050,7 +3053,8 @@ function setAccom(e, k, v) {
 }
 // How the name comes about, under the label and title.
 function nameHelp(e) {
-  const k = labelKey(e.label), same = counted().filter(x => labelKey(x.label) === k);
+  if (String(e.title || "").trim()) return `Named <b>${esc(e.name)}</b>, its title. Without a title it's named by its type, numbered: ${esc(String(e.label || "").trim() || "Assignment")} 1, 2…`;
+  const k = labelKey(e.label), same = counted().filter(x => labelKey(x.label) === k && !String(x.title || "").trim());
   if (!k) return "Give it a label, like Lab or Midterm: its name comes from the label.";
   return same.length > 1 ? `Named <b>${esc(e.name)}</b>: number ${labelNum.get(e)} of the ${same.length} labelled ${esc(String(e.label).trim())}, in course order.` : `Named <b>${esc(e.name)}</b>. Add another ${esc(String(e.label).trim())} and they're numbered 1, 2…`;
 }

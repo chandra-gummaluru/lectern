@@ -33,6 +33,8 @@
 .mem-t b { font: 500 19px/1.25 "EB Garamond", Garamond, Georgia, serif; color: #1f2329; }
 .mem-t > span { font: 500 13.5px/1.4 var(--font-ui); color: #4a4f57; }
 .mem-out { flex: none; white-space: nowrap; font: 500 13.5px var(--font-ui); color: #80848b; }
+tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
+.nm-tag { display: inline-block; padding: 0 7px; border-radius: 99px; background: #f1f1ef; box-shadow: inset 0 0 0 1px #d4d5d8; font: 600 11px/17px var(--font-ui); color: #5f6166; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -1698,6 +1700,10 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 // Inside Lectern, each evaluation can have a linked exam or handout (Build), whose total marks are its "out of".
 const HOSTED = !!(window.Lectern && window.Lectern.hosting);
+// In Lectern, for a TA or instructor: the activity groups they run an activity of. A student in none of them
+// is someone else's: the grid says so (their marks can still be entered).
+let MINE = null;
+const notMine = s => !!(MINE && MINE.size && s && !(s.groups || []).some(g => MINE.has(g)));
 let docLinks = new Map();   // evaluation id → { folder, total, layout }, from Lectern (not saved in the gradebook)
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -1960,7 +1966,8 @@ function normalizeBook(x) {
     if (old) ["utorid", "email", "section"].forEach(k => { if (s[k]) f[k] = s[k]; });
     if (fromId && f[fromId] != null) { if (!f.email) f.email = f[fromId]; delete f[fromId]; }
     if (f.email) f.email = String(f.email).trim();
-    return withName({ num: String(s.num || "").trim(), first: first || "", last: last || "", f, ...(s.dropped ? { dropped: true } : {}), ...(noteList(s.notes).length ? { notes: noteList(s.notes) } : {}) });
+    return withName({ num: String(s.num || "").trim(), first: first || "", last: last || "", f, ...(s.dropped ? { dropped: true } : {}), ...(noteList(s.notes).length ? { notes: noteList(s.notes) } : {}),
+      ...(Array.isArray(s.groups) && s.groups.length ? { groups: s.groups.map(String) } : {}) });   // their activity groups (Lectern's class list sets them)
   }).filter(s => s.num);
   b.marks = b.marks || {}; b.overrides = b.overrides || {};
   const P = b.policies || {};
@@ -2673,7 +2680,7 @@ function gridHTML() {
   const head = `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th>${evs.map(e => `<th class="c-ev${e.makeupFor ? " mk-col" : ""}" data-e="${esc(e.id)}" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n">${evIcon(e)}${esc(shortName(e))}${sortArrow(e.id)}</span><span class="h-t">/${outOf(e)}</span></th>`).join("")}<th class="c-grade" ${sortable("grade", "grade")}>${sortArrow("grade")}Grade</th></tr>`;
   const rows = list.map(s => {
     const res = studentResult(s.num);
-    return `<tr data-s="${esc(s.num)}"${s.dropped ? ' class="dropped"' : ""}><td class="c-name"><button type="button" data-act="student" data-s="${esc(s.num)}"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}${s.dropped ? " · Dropped" : ""}</small></button></td>
+    return `<tr data-s="${esc(s.num)}"${s.dropped || notMine(s) ? ` class="${[s.dropped ? "dropped" : "", notMine(s) ? "notmine" : ""].join(" ").trim()}"` : ""}><td class="c-name"><button type="button" data-act="student" data-s="${esc(s.num)}"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}${s.dropped ? " · Dropped" : ""}${notMine(s) ? ` · <span class="nm-tag">Not your group</span>` : ""}</small></button></td>
       ${evs.map(e => { const m = markOf(s.num, e.id), r = res.rows[e.id];
         const reg = e.makeupFor && markOf(s.num, e.makeupFor), unused = reg && (reg.pts != null || ["aiv", "excused"].includes(statusOf(reg)));   // the regular one is settled: the makeup doesn't apply
         return `<td class="c-cell ${cellClass(s.num, e, r)}${unused ? " mk-unused" : ""}"><input class="mk" data-s="${esc(s.num)}" data-e="${esc(e.id)}" value="${esc(cellView(m, r))}" inputmode="decimal" spellcheck="false" autocomplete="off" aria-label="${esc(s.name || s.num)}, ${esc(shortName(e))}${statusOf(m) ? `, ${STATUSES[statusOf(m)].toLowerCase()}` : ""}"${unused ? ' readonly tabindex="-1" title="Not needed: the regular one is settled"' : ""}>${statusOf(m) ? statusIco(statusOf(m)) : ""}</td>`; }).join("")}
@@ -2730,7 +2737,7 @@ function focusHTML() {
     ? `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n" title="${esc(e.name)}">${evIcon(e)}<span class="h-nt">${esc(String(e.name).split(":")[0])}</span>${sortArrow(e.id)}</span><span class="h-t">${ui.fxPct ? "%" : `/${outOf(e)}`}</span></th></tr>`
     : `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:#5f6166" ${sortable("grade", "course grade")}><span class="h-n">${evIcon("grade")}Course Grade${sortArrow("grade")}</span><span class="h-t">%</span></th></tr>`;
   const rows = list.map(st => {
-    const res = studentResult(st.num), who = `<td class="c-name"><button type="button" data-act="student" data-s="${esc(st.num)}"><b>${esc(st.name) || "<i>No name</i>"}</b><small>${esc(st.num)}${st.dropped ? " · Dropped" : ""}</small></button></td>`;
+    const res = studentResult(st.num), who = `<td class="c-name${notMine(st) ? " notmine" : ""}"><button type="button" data-act="student" data-s="${esc(st.num)}"><b>${esc(st.name) || "<i>No name</i>"}</b><small>${esc(st.num)}${st.dropped ? " · Dropped" : ""}${notMine(st) ? ` · <span class="nm-tag">Not your group</span>` : ""}</small></button></td>`;
     if (!e) return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="fx-pct fx-gcell" data-grade="${esc(st.num)}" title="${res.final != null ? "Final" : `${res.pending} still to come`}">${gradeCell(st.num)}</td></tr>`;
     const m = markOf(st.num, e.id), r = res.rows[e.id], reg = e.makeupFor && markOf(st.num, e.makeupFor), unused = reg && (reg.pts != null || ["aiv", "excused"].includes(statusOf(reg)));
     if (ui.fxPct) return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="fx-pct fx-pcell" data-pct="${esc(st.num)}">${fxPct(st.num, e) || '<span class="none">—</span>'}</td></tr>`;
@@ -4280,6 +4287,7 @@ if (!(window.Lectern && window.Lectern.hosting)) (() => {
 const lectern = window.Lectern && window.Lectern.hosting ? window.Lectern : null;
 if (lectern) {
   render();
+  if (lectern.myGroups) addEventListener("hashchange", () => { MINE = null; });
   setTb();
   lectern.register("grades", {
     connect(c) {
@@ -4288,6 +4296,7 @@ if (lectern) {
     async open(folder, has) {
       const path = `${folder}/${BOOK_FILE}`, [c, t] = folder.split("/");
       if (has) { const { book, sha } = await fetchBook(path); loadBook(book, path, sha); }
+      if (lectern.myGroups) lectern.myGroups().then(m => { MINE = m; render(); }).catch(() => {});
       else { const b = BLANK_BOOK(); b.course.code = c.toUpperCase(); b.course.term = termName(t); loadBook(b, path, null); }
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }

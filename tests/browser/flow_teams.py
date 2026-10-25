@@ -1,6 +1,6 @@
 """Teaching teams, end to end against the real server: the owner adds a TA (who has an account) and
-invites an instructor (who doesn't); the TA sees the offering on Home, enters a mark that saves, and
-can't save a change to an evaluation; the new instructor makes their account from the link and lands
+invites a coordinator (who doesn't); the TA sees the offering on Home, enters a mark that saves, and
+can't save a change to an evaluation; the new coordinator makes their account from the link and lands
 on the offering. Asserts as it goes; screenshots in shots/.
 
 Run:  python tests/browser/flow_teams.py
@@ -48,7 +48,7 @@ def main():
             invite.last = own.input_value("#lt-team-msg .lt-linkbox input")
             return invite.last
         ta_link = invite("ta@utoronto.ca", "ta")
-        link = invite("new.prof@utoronto.ca", "instructor")
+        link = invite("new.prof@utoronto.ca", "coordinator")
         expect(own.locator("#lt-team")).to_contain_text("waiting for them to accept")
         own.screenshot(path=f"{OUT}/t02-team-added.png", full_page=True)
         print("invite link:", link[:60] + "…")
@@ -105,7 +105,7 @@ def main():
             assert json.loads(srv.text("priv", "csc258/f26/grades.json"))["evals"] == before["evals"]
             print("weight on the server:", [e.get("weight") for e in json.loads(srv.text("priv", "csc258/f26/grades.json"))["evals"]][:3])
 
-        # 3. The invited instructor makes an account and lands on the offering.
+        # 3. The invited coordinator makes an account and lands on the offering.
         ip = browser("instructor")
         ip.goto(link); ip.wait_for_selector("#jn-new"); ip.click("#jn-new"); ip.wait_for_selector("#iv-name")
         print("invite says:", ip.inner_text("#sp-iv p").strip())

@@ -444,7 +444,7 @@ def decide():
         if d.get("owner"):
             from .teams import role_of
             owner = _owner(d.get("owner"))
-            if role_of(g.user["id"], owner, o) not in ("owner", "instructor"):
+            if role_of(g.user["id"], owner, o) not in ("owner", "coordinator", "staff"):   # staff decide any group's
                 raise Refusal(404 if not role_of(g.user["id"], owner, o) else 403, "Only the offering's instructors can decide requests.")
         rid = str(d.get("id") or "")
         decision = d.get("decision")

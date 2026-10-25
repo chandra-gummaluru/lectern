@@ -50,12 +50,13 @@ def main():
         me.click(".lxw-days [data-day='2026-10-27']")
         me.fill(".lxw-t", "9:30 am"); me.press(".lxw-t", "Enter")
         expect(me.locator("#an-when")).to_have_text("Tue, Oct 27, 2026 · 09:30")
-        me.fill("#an-body", "Rooms by **last name**:\n\n- A–L: EX 100\n- M–Z: EX 200")
+        me.click("#an-body .rt-ed")   # the message: rich text (bold, italic, links, lists)
+        me.keyboard.type("Rooms by "); me.keyboard.press("Control+b"); me.keyboard.type("last name"); me.keyboard.press("Control+b"); me.keyboard.type(": see the list.")
         me.wait_for_timeout(1500)
         expect(me.locator("#an-status")).to_have_text("Saved")
         me.screenshot(path=f"{OUT}/201-announcement.png")
         items = json.loads(srv.text("priv", "csc258/f26/announcements.json"))["items"]
-        assert [a["title"] for a in items] == ["Welcome to CSC258!", "Midterm rooms posted"] and items[1]["date"] == "Oct 27, 2026, 09:30", items
+        assert [a["title"] for a in items] == ["Welcome to CSC258!", "Midterm rooms posted"] and items[1]["date"] == "Oct 27, 2026, 09:30" and "**last name**" in items[1]["body"], items
         print("1 announcements:", [a["title"] for a in items])
 
         # 2. The offering's page: title and description under the code

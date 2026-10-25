@@ -3,12 +3,18 @@
 A course offering (e.g. csc258/f26) lives in one account's files: its owner's. The owner can add
 others to its team, each as
 
-  instructor   everything the owner can do with that offering (its course page, evaluations,
+  coordinator  everything the owner can do with that offering (its course page, evaluations,
                gradebook, exams, accommodation requests, its team), except remove the owner
-  ta           sees the gradebook and exams and enters marks (grades.json's "marks", nothing else);
-               can't change evaluations, settings or students, publish the course page, see
-               accommodation requests, or change the team (but can leave it)
-  staff        sees what a TA sees, and changes nothing (not even marks); can leave the team
+  instructor   runs one or more activity groups (groups.json: the activities they run): adds and
+               changes the activities and announcements for their groups (lectures.json,
+               announcements.json, and the files of activities), and nothing else of anyone's
+  ta           sees the gradebook and exams and enters marks for anyone (grades.json's "marks",
+               nothing else); can't change activities, announcements, evaluations, settings or
+               students, publish the course page, see accommodation requests, or change the team
+  staff        sees what a TA sees, and decides accommodation requests (any group's); changes
+               nothing else (not even marks); can leave the team
+
+(Before activity groups, "instructor" meant what coordinator does now: those members became coordinators.)
 
 Members reach the owner's files for that offering only, through the same store API as the owner
 (/api/store/<owner handle>.<pub|priv>/…, see store.py), so every rule here is enforced on the server.
@@ -42,9 +48,10 @@ from .auth import (Refusal, _EMAIL, body, handle_problem, handles, limit, limite
 
 teams_bp = Blueprint("teams", __name__)
 
-ROLES = ("instructor", "ta", "staff")
-ROLE_NAME = {"owner": "owner", "instructor": "instructor", "ta": "TA", "staff": "staff"}
-A_ROLE = {"instructor": "an instructor", "ta": "a TA", "staff": "staff"}
+ROLES = ("coordinator", "instructor", "ta", "staff")
+LEAD = ("owner", "coordinator")   # who may do everything with an offering (and change its team)
+ROLE_NAME = {"owner": "owner", "coordinator": "coordinator", "instructor": "instructor", "ta": "TA", "staff": "staff"}
+A_ROLE = {"coordinator": "a coordinator", "instructor": "an instructor", "ta": "a TA", "staff": "staff"}
 _SLUG = re.compile(r"^[\w.-]{1,64}$")
 
 
@@ -68,8 +75,60 @@ def owner_by_handle(handle):
     return u
 
 
+def my_groups(user_id, owner_id, offering):
+    """The activity groups someone runs an activity of (groups.json), by id."""
+    from .store import Repo
+    raw = Repo(owner_id, "priv").read(f"{offering}/groups.json")
+    try:
+        d = json.loads(raw.decode("utf-8")) if raw else {}
+    except (ValueError, UnicodeDecodeError):
+        d = {}
+    out = set()
+    for gr in (d.get("groups") if isinstance(d, dict) and isinstance(d.get("groups"), list) else []):
+        if isinstance(gr, dict) and any(isinstance(x, dict) and str(user_id) in [str(p) for p in (x.get("people") or [])] for x in (gr.get("items") or [])):
+            out.add(str(gr.get("id")))
+    return out
+
+
+def _json(b):
+    try:
+        return json.loads(b.decode("utf-8")) if b else None
+    except (ValueError, UnicodeDecodeError):
+        return None
+
+
+def within_groups(path, old, new, mine, lectures=None):
+    """An instructor's change to lectures.json or announcements.json: only to the ones for their groups.
+    Leaving out every activity (or announcement) for one of `mine`, before and after, nothing else may differ."""
+    a, b = _json(old) or {}, _json(new)
+    if not isinstance(b, dict):
+        return False
+    if path.endswith("/lectures.json"):
+        def rest(d):
+            ws = []
+            for w in (d.get("weeks") if isinstance(d.get("weeks"), list) else []):
+                if isinstance(w, dict):
+                    # (an activity's label and type are its numbering: adding one renumbers the others)
+                    ws.append({**w, "cards": [{k: v for k, v in c.items() if k not in ("label", "kind")} if isinstance(c, dict) else c
+                                              for c in (w.get("cards") or []) if not (isinstance(c, dict) and str(c.get("group") or "") in mine)]})
+            return {**d, "weeks": ws}
+        return json.dumps(rest(a), sort_keys=True) == json.dumps(rest(b), sort_keys=True)
+    groups = {}   # an announcement about an activity is for that activity's group
+    for w in ((lectures or {}).get("weeks") or []):
+        for c in ((w or {}).get("cards") or []) if isinstance(w, dict) else []:
+            if isinstance(c, dict):
+                groups[str(c.get("id"))] = str(c.get("group") or "")
+    def ours(x):
+        on = str(x.get("on") or "")
+        g_ = groups.get(on[4:], "") if on.startswith("act:") else str(x.get("group") or "")
+        return g_ in mine
+    def rest(d):
+        return {**d, "items": [x for x in (d.get("items") if isinstance(d.get("items"), list) else []) if not (isinstance(x, dict) and ours(x))]}
+    return json.dumps(rest(a), sort_keys=True) == json.dumps(rest(b), sort_keys=True)
+
+
 def role_of(viewer_id, owner_id, offering):
-    """owner | instructor | ta | None."""
+    """owner | coordinator | instructor | ta | staff | None."""
     if viewer_id == owner_id:
         return "owner"
     r = db.one("SELECT role FROM members WHERE owner_id = ? AND offering = ? AND user_id = ?", (owner_id, offering, viewer_id))
@@ -100,9 +159,9 @@ class Access:
 
     def can_read(self, path):
         r = self.role(path)
-        if r in ("owner", "instructor"):
+        if r in LEAD or (r == "staff"):   # staff decide accommodation requests
             return True
-        if r in ("ta", "staff"):   # not the students' accommodation requests (they can hold medical details)
+        if r in ("instructor", "ta"):   # not the students' accommodation requests (they can hold medical details)
             return not (self.area == "priv" and path.split("/")[2:] == ["accommodations.json"])
         return False
 
@@ -116,7 +175,7 @@ class Access:
     def may_upload(self, size):
         """A save's pieces (uploads) into this area: only where the role can write something.
         A TA writes only a gradebook (priv), so only that size of thing."""
-        if self.own or "instructor" in self.roles.values():
+        if self.own or any(r in ("coordinator", "instructor") for r in self.roles.values()):
             return
         if self.area == "priv" and "ta" in self.roles.values() and size <= TA_UPLOAD:
             return
@@ -125,10 +184,16 @@ class Access:
     def may_change(self, path, deleting=False):
         """Early check, as a save is put together (the full check is check_write, when it lands)."""
         r = self.role(path)
-        if r in ("owner", "instructor"):
+        if r in LEAD:
             return
-        if r == "ta" and self.area == "priv" and not deleting and path == f"{offering_of(path)}/grades.json":
+        o = offering_of(path)
+        if r == "ta" and self.area == "priv" and not deleting and path == f"{o}/grades.json":
             return
+        if r == "instructor" and ((self.area == "priv" and not deleting and path in (f"{o}/lectures.json", f"{o}/announcements.json"))
+                                  or (self.area == "pub" and path.startswith(f"{o}/lectures/"))):
+            return
+        if r == "instructor":
+            raise Refusal(403, "As an instructor you can change your groups' activities and announcements, and nothing else.", "ta")
         if r == "staff":
             raise Refusal(403, "As staff you can look, but not change anything.", "ta")
         raise Refusal(403, "As a TA you can only save marks." if r == "ta" else "You're not on this course offering's teaching team.", "ta" if r == "ta" else "not-member")
@@ -137,9 +202,21 @@ class Access:
         """What to write for this change (old/new: bytes or None): new as it is, or for a TA's gradebook,
         the gradebook as it was with the TA's marks in it. Raises a Refusal if viewer may not change it."""
         r = self.role(path)
-        if r in ("owner", "instructor"):
+        if r in LEAD:
             return new
         o = offering_of(path)
+        if r == "instructor":
+            if self.area == "pub" and path.startswith(f"{o}/lectures/") and new is not None:
+                return new   # an activity's file
+            if self.area == "priv" and path in (f"{o}/lectures.json", f"{o}/announcements.json") and new is not None:
+                from .store import Repo
+                mine = my_groups(self.viewer, self.owner, o)
+                lec = _json(Repo(self.owner, "priv").read(f"{o}/lectures.json")) if path.endswith("announcements.json") else None
+                if mine and within_groups(path, old, new, mine, lec):
+                    return new
+                raise Refusal(403, "As an instructor you can change only the activities and announcements for your activity groups "
+                                   "(the ones you run an activity of)." if mine else "You don't run an activity in any activity group yet: a coordinator sets that.", "ta")
+            raise Refusal(403, "As an instructor you can change your groups' activities and announcements, and nothing else.", "ta")
         if r == "ta" and self.area == "priv" and path == f"{o}/grades.json" and old is not None and new is not None:
             merged = with_marks(old, new)
             if merged is not None:
@@ -217,8 +294,8 @@ def _where(owner, course, term):
 
 
 def _instructor(role):
-    if role not in ("owner", "instructor"):
-        raise Refusal(403, "Only the offering's instructors can change its team.")
+    if role not in LEAD:
+        raise Refusal(403, "Only the offering's coordinators can change its team.")
 
 
 def offering_url(owner, off):
@@ -243,7 +320,7 @@ def team(owner, course, term):
         "SELECT u.id, u.name, u.email, m.role FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? ORDER BY m.role, u.name",
         (o["id"], off))]
     invites = []
-    if role in ("owner", "instructor"):
+    if role in LEAD:
         invites = [{"id": r["token_hash"][:16], "email": r["email"], "role": r["role"], "expires": r["expires"]} for r in db.all_(
             "SELECT * FROM team_invites WHERE owner_id = ? AND offering = ? AND used = 0 AND expires > ? ORDER BY created", (o["id"], off, time.time()))]
     return jsonify(you=role, me=g.user["id"], people=people, invites=invites)
@@ -282,7 +359,7 @@ def add(owner, course, term):
     d = body()
     email, new_role = norm_email(text(d, "email")), text(d, "role", 20)
     if new_role not in ROLES:
-        raise Refusal(400, "Choose instructor, TA or staff.")
+        raise Refusal(400, "Choose coordinator, instructor, TA or staff.")
     if not _EMAIL.match(email):
         raise Refusal(400, "Enter an email address.")
     if email == o["email"] or db.one("SELECT 1 FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? AND u.email = ?", (o["id"], off, email)):
@@ -315,10 +392,10 @@ def change_role(owner, course, term):
     d = body()
     uid, new_role = int(d.get("user") or 0), text(d, "role", 20)
     if new_role not in ROLES:
-        raise Refusal(400, "Choose instructor, TA or staff.")
+        raise Refusal(400, "Choose coordinator, instructor, TA or staff.")
     if db.run("UPDATE members SET role = ? WHERE owner_id = ? AND offering = ? AND user_id = ?", (new_role, o["id"], off, uid)).rowcount != 1:
         raise Refusal(404, "They're not on this team.")
-    if new_role != "instructor":   # their waiting invitations stop working too
+    if new_role != "coordinator":   # their waiting invitations stop working too
         db.run("DELETE FROM team_invites WHERE owner_id = ? AND offering = ? AND created_by = ? AND used = 0", (o["id"], off, uid))
     log(g.user["id"], "team-role", f"{o['handle']}/{off} {uid} {new_role}")
     return jsonify(ok=True)
@@ -361,7 +438,7 @@ def _join_row(tok):
     sender = role_of(r["created_by"], r["owner_id"], r["offering"])
     owner = db.one("SELECT * FROM users WHERE id = ?", (r["owner_id"],))
     by = db.one("SELECT disabled FROM users WHERE id = ?", (r["created_by"],))
-    if sender not in ("owner", "instructor") or not owner or owner["disabled"] or not by or by["disabled"] or not offering_exists(owner["id"], r["offering"]):
+    if sender not in LEAD or not owner or owner["disabled"] or not by or by["disabled"] or not offering_exists(owner["id"], r["offering"]):
         raise gone
     return r, owner
 

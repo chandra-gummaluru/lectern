@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS members (          -- teaching teams: who else works 
   owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,   -- whose files the offering is in
   offering  TEXT NOT NULL,                                             -- <course>/<term>, e.g. csc258/f26
   user_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role      TEXT NOT NULL,                                             -- instructor | ta | staff
+  role      TEXT NOT NULL,                                             -- coordinator | instructor | ta | staff
   added_by  INTEGER,
   added     REAL NOT NULL,
   PRIMARY KEY (owner_id, offering, user_id)
@@ -245,6 +245,11 @@ def _migrate(c):
     for table, col, kind in MIGRATIONS:
         if col not in {r[1] for r in c.execute(f"PRAGMA table_info({table})")}:
             c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {kind}")
+    # Activity groups (teams.py): an "instructor" could do everything with an offering; that's a coordinator now.
+    if not c.execute("SELECT 1 FROM settings WHERE key = 'roles-v2'").fetchone():
+        c.execute("UPDATE members SET role = 'coordinator' WHERE role = 'instructor'")
+        c.execute("UPDATE team_invites SET role = 'coordinator' WHERE role = 'instructor'")
+        c.execute("INSERT INTO settings (key, value) VALUES ('roles-v2', '1')")
 
 
 def conn():

@@ -91,10 +91,10 @@ const okey = (c, t, o = curOwner()) => `${o}|${c}/${t}`;
 const offering = (c, t, o = curOwner()) => (S.offerings && S.offerings.get(okey(c, t, o))) || { c, t, o, page: false, grades: false, exams: [] };
 // Your role in an offering: owner (your own), instructor or ta.
 const roleIn = (c, t, o = curOwner()) => !o ? "owner" : ((S.shared.find(x => x.owner === o && x.offering === `${c}/${t}`) || {}).role || "");
-const canEdit = (c, t, o) => ["owner", "instructor"].includes(roleIn(c, t, o));
+const canEdit = (c, t, o) => ["owner", "coordinator"].includes(roleIn(c, t, o));   // everything (instructors: their groups' activities and announcements)
 const area = (which, o = curOwner()) => (o ? `${o}.${which}` : which);
-const ROLE_NAME = { owner: "Owner", instructor: "Instructor", ta: "TA", staff: "Staff" };
-const A_ROLE = { instructor: "an instructor", ta: "a TA", staff: "staff" };
+const ROLE_NAME = { owner: "Owner", coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
+const A_ROLE = { coordinator: "a coordinator", instructor: "an instructor", ta: "a TA", staff: "staff" };
 const ownerName = o => ((S.shared.find(x => x.owner === o) || {}).ownerName || o);
 
 // ── Messages and windows ─────────────────────────────────────────────
@@ -393,7 +393,7 @@ async function saveAll() {
       const t = Lectern.tools[u.name], ta = roleIn(p[0], p[1], t.owner || "") === "ta";
       // A TA saves marks only: not exams or the course page, and only the marks in a gradebook (the server
       // keeps everything else as it was, so say so first if they changed anything else).
-      if (roleIn(p[0], p[1], t.owner || "") === "staff") { failed.push({ u, error: "As staff you can look, but not change anything: ask an instructor." }); continue; }
+      if (["staff", "instructor"].includes(roleIn(p[0], p[1], t.owner || ""))) { failed.push({ u, error: "Your role can look at this, but not change it: ask a coordinator." }); continue; }
       if (ta && u.name !== "grades") { failed.push({ u, error: "As a TA you can't save changes here: ask an instructor." }); continue; }
       if (ta && t.taBase && t.taBase !== noMarks(api.book())
           && !await confirmBox("Only marks are saved", "As a TA, only your marks are saved. Your other changes here (evaluations, students or settings) will be undone. Save the marks?", "Save the marks", "Cancel")) {
@@ -532,9 +532,9 @@ function renderPage() {
     // The gradebook's evaluations: each week shows the ones dated in it, and opens one in the Evaluations.
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", short: e.short || "", date: e.date || "", time: e.time || "" })) : []; },
     openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
-    groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups) }, r);
+    groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups), me: S.user.id }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
-    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s),
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id,
     // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups),
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation" })) : []; },
@@ -683,20 +683,21 @@ const INSTITUTION = () => ($(".sp-inst") && $(".sp-inst").textContent.trim()) ||
 
 function offeringPage(c, t) {
   const o = offering(c, t), loading = !S.offerings && !S.listError;
-  const role = roleIn(c, t), edit = role === "owner" || role === "instructor", ta = role === "ta", own = !curOwner();
+  const role = roleIn(c, t), edit = role === "owner" || role === "coordinator", ta = role === "ta", own = !curOwner();
   const book = path => ` data-part="${path}"${!o.grades && loading ? " disabled" : ""}`;
   pageHTML(`<div class="lt-in">
     <div class="lt-off-head">
       <div class="lt-off-id"><h1 class="lt-off-h1"><span>${esc(c.toUpperCase())}</span><span id="lt-h1-title"></span></h1>
         <p class="lt-term-line">${esc(termName(t))}</p>
-        ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "an instructor"}</p>` : ""}</div>
+        ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "a coordinator"}</p>` : ""}</div>
       <div class="lt-off-acts"><a class="lt-btn primary" id="lt-view-page" href="${esc(hubURL(c, t))}" target="_blank" rel="noopener" title="The course page, as students see it">${ICON.page}View Course Page</a>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
     <div class="lt-about" id="lt-about"></div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
-    ${role === "staff" ? `<p class="lt-note">As staff you can look at everything here (the gradebook, evaluations, exams, lectures and students), but not change anything.</p>` : ""}
-    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook, and look at the evaluations and exams. Changes to anything else (weights, students, settings, exams, the course page) are for the instructors: Lectern won't save them.</p>` : ""}
+    ${role === "staff" ? `<p class="lt-note">As staff you decide accommodation requests (any activity group's), and can look at everything else here, but not change it.</p>` : ""}
+    ${role === "instructor" ? `<p class="lt-note">As an instructor you add and change the activities and announcements for your activity groups (the ones you run an activity of). Everything else is the coordinators'.</p>` : ""}
+    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook for every student, and look at the evaluations and exams. Changes to anything else are for the coordinators: Lectern won't save them.</p>` : ""}
     <div class="lt-three lt-off-parts">
       <section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>
@@ -719,7 +720,7 @@ function offeringPage(c, t) {
         <p class="lt-part-text">${o.grades ? (edit ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation). Its Settings button has the grade ranges, rounding and course rules.` : "Enter marks, and see every student's grade.") : "No gradebook for this term yet: it starts with the evaluations, or the students."}</p>
         <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button>` : ""}</div>
       </section>
-      ${edit ? `<section class="lt-part lt-wide">
+      ${edit || role === "staff" ? `<section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>
         <p class="lt-part-text" id="lt-accom-sum">Requests students make with the course page's Request Accommodation buttons. Approve or reject each one; the student gets an email.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-accom"${!o.grades && loading ? " disabled" : ""}>Open Accommodations</button></div>
@@ -830,12 +831,12 @@ async function teamPart(c, t) {
   let d;
   try { d = await Auth.api(base); } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">${esc(e.message)}</p>`; return; }
   if (!here()) return;
-  const lead = d.you === "owner" || d.you === "instructor";
-  // Instructor, TA or staff: a switch, like Lectern's other choices.
-  const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["instructor", "Instructor"], ["ta", "TA"], ["staff", "Staff"]].map(([v, n]) =>
+  const lead = d.you === "owner" || d.you === "coordinator";
+  // Coordinator, instructor, TA or staff: a switch, like Lectern's other choices.
+  const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["coordinator", "Coordinator"], ["instructor", "Instructor"], ["ta", "TA"], ["staff", "Staff"]].map(([v, n]) =>
     `<button type="button" role="radio" ${attrs} data-v="${v}" aria-checked="${cur === v}" aria-pressed="${cur === v}">${n}</button>`).join("")}</span>`;
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
-  box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">${lead ? "Instructors can do everything here (the team too). TAs enter marks and see the gradebook and exams. Staff see everything and change nothing." : "The people who work on this offering."}</p>${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div>` : ""}</div>
+  box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">${lead ? "Coordinators do everything here (the team too). Instructors add and change their activity groups' activities and announcements. TAs enter marks for every student. Staff decide accommodation requests." : "The people who work on this offering."}</p>${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div>` : ""}</div>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
         <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag lt-owner">Owner</span>`
@@ -875,7 +876,7 @@ async function teamPart(c, t) {
       <p class="lt-err" id="tm-new-err"></p>
       <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Send the Invitation</button></div>`, (m, close) => {
     let newRole = "ta";
-    const HELP = { instructor: "Can do everything here, the team too.", ta: "Enters marks, and sees the gradebook and exams.", staff: "Sees everything, and changes nothing." };
+    const HELP = { coordinator: "Does everything here, the team too.", instructor: "Adds and changes the activities and announcements for the activity groups they run an activity of (set on a group's page).", ta: "Enters marks for every student, and sees the gradebook and exams.", staff: "Decides accommodation requests from any activity group; changes nothing else." };
     const help = () => { m.querySelector("#tm-new-help").textContent = HELP[newRole]; };
     help();
     m.querySelectorAll("button[data-newrole]").forEach(b => { b.onclick = () => { newRole = b.dataset.v; m.querySelectorAll("button[data-newrole]").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); }); help(); }; });
@@ -1136,6 +1137,12 @@ function schemeOf(b, from, requests = null) {
 
 // An evaluation's file, uploaded from Evaluations: into the offering's public files (<course>/<term>/evaluations/),
 // under a name not taken yet. → its public address, for the course page's button.
+// For the gradebook: a TA's or instructor's activity groups (the ones they run an activity of), or null.
+Lectern.myGroups = async () => {
+  const r = S.route; if (!r.c || !r.t || !["ta", "instructor"].includes(roleIn(r.c, r.t))) return null;
+  const G = await readGroups(Store, area(Store.PRIV), r.c, r.t);
+  return new Set(G.data.groups.filter(g => (g.items || []).some(x => (x.people || []).map(String).includes(String(S.user.id)))).map(g => g.id));
+};
 Lectern.uploadPublic = async (file, into = "evaluations") => {
   const r = S.route; if (!r.c || !r.t) throw new Error("Open a course offering first.");
   const repo = area(Store.PUB), folder = `${r.c}/${r.t}/${into === "lectures" ? "lectures" : "evaluations"}`;
@@ -1157,7 +1164,7 @@ async function teamFor(c, t) {
   const fromGroups = id => (G ? G.data.groups.flatMap(g => g.items.filter(x => (x.people || []).includes(String(id))).map(x => ({ kind: x.kind, section: g.name, day: x.day, start: x.start, end: x.end, where: x.where }))) : null);
   return d.people.filter(p => (info[p.id] || {}).show !== false).map(p => {
     const me = info[p.id] || {};
-    return { name: p.name || p.email, role: p.role === "ta" || p.role === "staff" ? p.role : "instructor", email: me.email || p.email, office: me.office || "",
+    return { name: p.name || p.email, role: ["coordinator", "ta", "staff"].includes(p.role) ? p.role : "instructor", email: me.email || p.email, office: me.office || "",
       times: [...(fromGroups(p.id) || []), ...(me.times || []).filter(x => !G || x.kind === "office")].map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "" })) };
   });
 }

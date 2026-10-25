@@ -101,7 +101,7 @@ def test_only_instructors(client, course, smtp):
     other = app.test_client()
     make_user(other, email="o@x.ca", name="O", handle="other")
     assert other.get(U).status_code == 404
-    db.run("UPDATE members SET role = 'instructor'")
+    db.run("UPDATE members SET role = 'coordinator'")
     assert ta.get(U).status_code == 200
 
 

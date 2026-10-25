@@ -164,7 +164,7 @@ function meetings() {
 
 // The teaching team's activities (Lectern → Teaching Team → each person), by group: each group (a lecture
 // section, a tutorial, a lab…) with its times and who runs it; then office hours; then how to reach each person.
-const ROLE = { instructor: "Instructor", ta: "TA", staff: "Staff" };
+const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
 const when = x => [DAY3[x.day] || "", hhmm(x.start, x.end)].filter(Boolean).join(" ");
 // The activity groups (LEC0101…): each a card with its weekly activities and who runs them.
 function groupsHTML(G) {

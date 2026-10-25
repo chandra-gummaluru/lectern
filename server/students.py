@@ -65,7 +65,7 @@ def _staff(owner, course, term, lead=True):
     from .teams import role_of
     o, off = _offering(owner, course, term)
     r = role_of(g.user["id"], o["id"], off)
-    if r not in (("owner", "instructor") if lead else ("owner", "instructor", "ta", "staff")):
+    if r not in (("owner", "coordinator") if lead else ("owner", "coordinator", "instructor", "ta", "staff")):
         raise Refusal(403, "Only the course's instructors can change its class list." if r in ("ta", "staff") else "You're not on this course offering's teaching team.")
     return o, off
 

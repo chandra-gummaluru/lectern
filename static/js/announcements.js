@@ -37,6 +37,13 @@ function fromCoursePage(page) {
 export function announcementsPage(ctx, r) {
   const { $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, steps, markdown } = ctx;
   const { c, t } = r, path = `${c}/${t}/announcements.json`, repo = area(Store.PRIV), edit = canEdit(c, t);
+  // An instructor writes only for their activity groups (the ones they run an activity of): one for one of
+  // those groups, or about one of those groups' activities. Everyone's, and other groups', are the coordinators'.
+  const lim = () => { const L = new Set(); if (!edit) (st.groups || []).forEach(g => { if ((g.items || []).some(x => (x.people || []).map(String).includes(String(ctx.me)))) L.add(g.id); }); return L; };
+  const groupOf = x => { const on = String(x.on || ""); if (on.startsWith("act:")) { const a = (st.acts || []).find(y => `act:${y.id}` === on); return a ? a.group || "" : ""; } return x.group || ""; };
+  const mayAnn = x => edit || lim().has(groupOf(x));
+  // (Instructors write theirs into the course's announcements, once a coordinator has started them.)
+  const mayAdd = () => edit || (lim().size > 0 && st.sha !== null);
   const key = `${r.o || ""}/${c}/${t}`;
   const here = () => { const x = ctx.route(); return x.page === "announcements" && x.c === c && x.t === t; };
   const st = (announcementsPage.state = announcementsPage.state && announcementsPage.state.key === key ? announcementsPage.state : { key, data: null, sha: undefined });
@@ -59,19 +66,20 @@ export function announcementsPage(ctx, r) {
     if (here()) draw();
   }
 
-  let timer = 0, saving = null, again = false;
-  function changed() { status("Saving…"); clearTimeout(timer); timer = setTimeout(save, 500); }
+  // Saving: a moment after each change, one save at a time, kept with the offering's announcements (not this
+  // drawing of the page: opening another announcement mustn't start a second save beside the first).
+  function changed() { status("Saving…"); clearTimeout(st.timer); st.timer = setTimeout(save, 500); }
   async function save() {
-    if (saving) { again = true; return; }
-    saving = (async () => {
+    if (st.saving) { st.again = true; return; }
+    st.saving = (async () => {
       try { st.sha = await Store.writeText(repo, path, JSON.stringify(st.data, null, 1) + "\n", "Announcements", st.sha); status("Saved"); }
       catch (e) { status("Not saved", true); toast(e.conflict ? "The announcements were changed somewhere else. Reload this page to see them; your last change wasn't saved." : `Couldn't save. ${e.message}`); }
-      finally { saving = null; if (again) { again = false; save(); } }
+      finally { st.saving = null; if (st.again) { st.again = false; save(); } }
     })();
   }
   function status(text, bad) { const el = $("#an-status"); if (el) { el.textContent = text; el.classList.toggle("bad", !!bad); } }
-  const status$ = () => (edit ? `<span class="lx-status" id="an-status"></span>` : "");
-  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can read the announcements; the instructors write them.</p>`);
+  const status$ = () => (mayAdd() ? `<span class="lx-status" id="an-status"></span>` : "");
+  const taNote = (x = null) => (!edit && !x && lim().size && st.sha === null ? `<p class="lt-note lx-note">You can write announcements for your activity groups once a coordinator has written the course's first one here.</p>` : (edit || (x ? mayAnn(x) : mayAdd()) ? (edit || x ? "" : `<p class="lt-note lx-note">You can write announcements for your activity groups; the coordinators write everyone's.</p>`) : `<p class="lt-note lx-note">You can read ${x ? "this announcement" : "the announcements"}; ${x ? "it's someone else's" : "the coordinators and instructors write them"}.</p>`));
   const whenOf = x => whenText(x.date, true) || "No date yet";
 
   function draw() {
@@ -83,7 +91,7 @@ export function announcementsPage(ctx, r) {
     renderPath([...steps, { label: "Announcements" }]);
     const list = st.data.items.slice().sort((x, y) => timeOf(y) - timeOf(x));
     pageHTML(`<div class="lt-in"><div class="lx">
-      <div class="lx-head"><h1>Announcements</h1><span class="spacer"></span>${status$()}${edit ? `<button type="button" class="lx-btn add" id="an-new">${ICON.plus}New Announcement</button>` : ""}</div>
+      <div class="lx-head"><h1>Announcements</h1><span class="spacer"></span>${status$()}${mayAdd() ? `<button type="button" class="lx-btn add" id="an-new">${ICON.plus}New Announcement</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list">${list.map(x => `<div class="lx-row" style="--c:${COLOR}" data-an="${esc(x.id)}" role="button" tabindex="0">
           <div class="lx-main"><div class="lx-top"><h3>${esc(x.title || "Untitled")}</h3></div>
@@ -95,7 +103,7 @@ export function announcementsPage(ctx, r) {
       b.onclick = e => { if (e.target.closest("a, button")) return; open(); };
       b.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === b) { e.preventDefault(); open(); } };
     });
-    if (!edit) return;
+    if (!mayAdd()) return;
     document.querySelectorAll("[data-dup]").forEach(b => { b.onclick = e => {
       e.stopPropagation();
       const x = st.data.items.find(y => y.id === b.dataset.dup); if (!x) return;
@@ -103,7 +111,7 @@ export function announcementsPage(ctx, r) {
       st.data.items.push(y); changed(); go({ page: "announcements", c, t, a: y.id });
     }; });
     $("#an-new").onclick = () => {
-      const x = { id: uid(), title: "", date: stampOf(new Date()), at: Date.now(), body: "" };
+      const x = { id: uid(), title: "", date: stampOf(new Date()), at: Date.now(), body: "", ...(edit ? {} : { group: [...lim()][0] }) };
       st.data.items.push(x); changed(); go({ page: "announcements", c, t, a: x.id });
     };
   }
@@ -111,9 +119,10 @@ export function announcementsPage(ctx, r) {
   function drawOne(x) {
     const crumbs = () => renderPath([...steps, { label: "Announcements", go: () => go({ page: "announcements", c, t }) }, { label: x.title || "New announcement" }]);
     crumbs();
+    const edit = mayAnn(x), L = lim();   // (here: may this one be changed)
     const when = readStamp(x.date), dis = edit ? "" : " disabled";
     pageHTML(`<div class="lt-in"><div class="lx ed">
-      ${taNote()}
+      ${taNote(x)}
       <div class="lx-editor" style="--c:${COLOR}">
         <div class="lx-ed-head"><h2 id="an-h">${esc(x.title || "New announcement")}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
@@ -124,7 +133,7 @@ export function announcementsPage(ctx, r) {
         <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
         <div class="lx-grid two">
           <label class="lx-f">About<select id="an-on"${dis}><option value="">Nothing in particular</option>
-            ${(st.acts || []).length ? `<optgroup label="Activities">${st.acts.map(a => `<option value="act:${esc(a.id)}"${x.on === `act:${a.id}` ? " selected" : ""}>${esc(a.week)} · ${esc(a.name)}</option>`).join("")}</optgroup>` : ""}
+            ${(st.acts || []).length ? `<optgroup label="Activities">${st.acts.filter(a => canEdit(c, t) || !edit || L.has(a.group) || x.on === `act:${a.id}`).map(a => `<option value="act:${esc(a.id)}"${x.on === `act:${a.id}` ? " selected" : ""}>${esc(a.week)} · ${esc(a.name)}</option>`).join("")}</optgroup>` : ""}
             ${(st.evals || []).length ? `<optgroup label="Evaluations">${st.evals.map(e => `<option value="eval:${esc(e.id)}"${x.on === `eval:${e.id}` ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</optgroup>` : ""}</select></label>
           <label class="lx-f">For<select id="an-group"${dis}></select></label>
         </div>
@@ -145,13 +154,13 @@ export function announcementsPage(ctx, r) {
         sel.innerHTML = `<option>${act.group ? `${esc(gname(act.group))} only, as its activity is` : "Everyone, as its activity is"}</option>`; sel.disabled = true;
         $("#an-for-help").textContent = "About an activity, it's for whoever the activity is for. The course page shows it with the activity too.";
       } else {
-        sel.innerHTML = `<option value="">Everyone in the course</option>${G.map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}`; sel.disabled = !edit;
+        sel.innerHTML = `${canEdit(c, t) || !edit ? `<option value="">Everyone in the course</option>` : ""}${G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}`; sel.disabled = !edit;
         $("#an-for-help").textContent = String(x.on || "").startsWith("eval:") ? "The course page shows it with the evaluation too. For one activity group, only its students see it." : "For one activity group, only its students see it on the course page.";
       }
     };
     forSel();
     if (!edit) return;
-    $("#an-on").onchange = e => { if (e.target.value) x.on = e.target.value; else delete x.on; if (String(x.on || "").startsWith("act:")) delete x.group; forSel(); changed(); };
+    $("#an-on").onchange = e => { if (e.target.value) x.on = e.target.value; else delete x.on; if (String(x.on || "").startsWith("act:")) delete x.group; else if (!canEdit(c, t) && !L.has(x.group)) x.group = [...L][0]; forSel(); changed(); };
     $("#an-group").onchange = e => { if (e.target.value) x.group = e.target.value; else delete x.group; changed(); };
     let shown = x.title || "New announcement";
     const head = () => { const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };

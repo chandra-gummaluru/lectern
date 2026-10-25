@@ -141,8 +141,16 @@ export function lecturesPage(ctx, r) {
   const path = `${c}/${t}/lectures.json`, repo = area(Store.PRIV);
   const key = `${r.o || ""}/${c}/${t}`;
   const edit = canEdit(c, t);
+  // An instructor (ctx.myGroups: the activity groups they run an activity of) adds and changes only those
+  // groups' activities; the weeks, and everyone's activities, are the coordinators'.
+  const lim = edit ? null : new Set();   // (filled once the groups are read)
+  const mayCard = x => edit || !!(lim && x && lim.has(x.group));
+  const mine = () => { if (lim) { lim.clear(); (st.groups || []).forEach(g => { if ((g.items || []).some(x => (x.people || []).map(String).includes(String(ctx.me)))) lim.add(g.id); }); } };
+  // (Instructors add theirs to the course's weeks, once a coordinator has set them up here.)
+  const mayAdd = () => edit || !!(lim && lim.size && st.sha !== null);
   const here = () => { const x = ctx.route(); return x.page === "lectures" && x.c === c && x.t === t && (x.o || "") === (r.o || ""); };
   const st = (lecturesPage.state = lecturesPage.state && lecturesPage.state.key === key ? lecturesPage.state : { key, data: null, sha: undefined, saving: null, dirty: false });
+  if (st.groups) mine();
 
   async function load() {
     pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading the activities…</div></div>`);
@@ -158,6 +166,7 @@ export function lecturesPage(ctx, r) {
     } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the activities. ${esc(e.message)}</p></div>`); return; }
     try { st.evals = ctx.evaluations ? await ctx.evaluations() : []; } catch (_) { st.evals = []; }
     try { st.groups = ctx.groups ? await ctx.groups() : []; } catch (_) { st.groups = []; }
+    mine();
     if (here()) draw();
   }
 
@@ -197,8 +206,8 @@ export function lecturesPage(ctx, r) {
   // Under the title: when it is, as Announcements says it (if it has a date); its description; then what goes with it.
   const plain = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`#>]+/g, "").replace(/^\s*([-+]|\d+[.)])\s+/gm, "").replace(/\s+/g, " ").trim();
   const lecMeta = x => { const n = (x.files || []).length; return [n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
-  const status$ = () => (edit ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
-  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the activities; the instructors change them.</p>`);
+  const status$ = () => (mayAdd() ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
+  const taNote = () => (edit ? "" : lim && lim.size && st.sha === null ? `<p class="lt-note lx-note">You can add activities for your activity groups once a coordinator has set up the weeks here.</p>` : mayAdd() ? `<p class="lt-note lx-note">You can add and change the activities for your activity groups (${esc([...lim].map(groupName).filter(Boolean).join(", "))}); the coordinators change the weeks and everyone's.</p>` : `<p class="lt-note lx-note">You can look at the activities; the coordinators change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
   const toLec = (w, x) => go({ page: "lectures", c, t, w: w.id, l: x.id });
 
@@ -348,7 +357,7 @@ export function lecturesPage(ctx, r) {
     toWeek(w);
   }
   function addLecture(w, kind = "lecture") {
-    const x = { id: uid(), kind, label: nextLabel(weeks(), kind, w), title: "", description: "", files: [] };
+    const x = { id: uid(), kind, label: nextLabel(weeks(), kind, w), title: "", description: "", files: [], ...(edit ? {} : { group: [...lim][0] }) };
     (w.cards = w.cards || []).push(x); changed();
     toLec(w, x);
   }
@@ -377,7 +386,7 @@ export function lecturesPage(ctx, r) {
         <h3 class="lx-sec">Activities</h3>
         <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
         ${subsHTML(w)}${evsHTML(w)}
-        ${edit ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add-activity>${ICON.plus}Add an Activity</button></div>` : ""}
+        ${mayAdd() ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add-activity>${ICON.plus}Add an Activity</button></div>` : ""}
       </div>
     </div></div>`);
     const root = $(".lx");
@@ -386,12 +395,12 @@ export function lecturesPage(ctx, r) {
     whenField($("#lw-start-f"), { date: w.start, withTime: false, id: "lw-start", label: "Starts", empty: "Choose a date", disabled: !edit,
       onChange: ({ date }) => { w.start = date; if (w.start && (!w.end || w.end < w.start)) { w.end = addDays(w.start, 4); endF.set({ date: w.end }); } changed(); } });
     endF = whenField($("#lw-end-f"), { date: w.end, withTime: false, id: "lw-end", label: "Ends", empty: "Choose a date", disabled: !edit, onChange: ({ date }) => { w.end = date; changed(); } });
+    root.querySelectorAll("[data-add-activity]").forEach(b => { b.onclick = () => { const last = (w.cards || []).filter(mayCard).at(-1); addLecture(w, last ? kindOf(last) : "lecture"); }; });
     if (!edit) return;
     const bind = (id, k, after) => { const el = $(id); el.oninput = el.onchange = () => { w[k] = el.value.trim(); if (after) after(); changed(); }; };
     let shown = w.label || "Week";
     bind("#lw-label", "label", () => { if ((w.label || "Week") === shown) return; shown = w.label || "Week"; $("#lw-h").textContent = shown; $("#lw-wnum").textContent = weekNum(w); renderPath(weekSteps(w)); });
     bind("#lw-topic", "topic");
-    root.querySelectorAll("[data-add-activity]").forEach(b => { b.onclick = () => { const last = (w.cards || []).at(-1); addLecture(w, last ? kindOf(last) : "lecture"); }; });
     $("#lw-del").onclick = async () => {
       const n = (w.cards || []).length;
       if (!await confirmBox("Delete this week?", `${esc(w.label || "This week")}${n ? ` and its ${n} activit${n === 1 ? "y" : "ies"}` : ""} go${n ? "" : "es"} from the course page.`, "Delete")) return;
@@ -404,6 +413,7 @@ export function lecturesPage(ctx, r) {
   const namedHTML = x => `Shown as <b>${esc(nameOf(x))}</b>.${kindOf(x) === "other" ? "" : ` ${esc(kindName(kindOf(x)))}s are numbered in course order.`}`;
   function drawLecture(w, x) {
     renderPath(lecSteps(w, x));
+    const edit = mayCard(x);   // (here: may this one be changed)
     const dis = edit ? "" : " disabled", k = kindOf(x);
     const files = x.files || [];
     pageHTML(`<div class="lt-in"><div class="lx ed">
@@ -421,7 +431,7 @@ export function lecturesPage(ctx, r) {
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""}>${esc([y.label || "Week", rangeText(y.start, y.end)].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>
           <div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div>
         </div>
-        <div class="lx-grid one"><label class="lx-f">For<select id="lw-group"${dis}><option value="">Everyone in the course</option>${(st.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}</select></label></div>
+        <div class="lx-grid one"><label class="lx-f">For<select id="lw-group"${dis}>${canEdit(c, t) || !edit ? `<option value="">Everyone in the course</option>` : ""}${(st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}</select></label></div>
         <p class="lx-help">For one activity group, only its students see it on the course page (and its announcements).</p>
         <p class="lx-help">The date and time are optional: with a date, This week shows it on its day. One held on several days (e.g. a lab's sections) can have more than one.</p>
         <h3 class="lx-sec">Description</h3>

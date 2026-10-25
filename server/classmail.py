@@ -61,7 +61,7 @@ def _settings_json(owner_id, off):
 
 
 def _instructor(role):
-    if role not in ("owner", "instructor"):
+    if role not in ("owner", "coordinator"):
         raise Refusal(403, "Only the offering's instructors can email the class.")
 
 

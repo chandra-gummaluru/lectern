@@ -67,13 +67,13 @@ def test_join_needs_the_invited_email(client, course):
 
 
 def test_invitation_makes_an_account_on_the_team(client, course):
-    tok = add(client, "new@x.ca", "instructor").get_json()["link"].split("#join=")[1]
+    tok = add(client, "new@x.ca", "coordinator").get_json()["link"].split("#join=")[1]
     c = app.test_client()
     info = c.post("/api/teams/join/check", json={"token": tok}, headers=H).get_json()
     assert info["handle"] == "new" and info["canCreate"]
     d = c.post("/api/teams/join/create", json={"token": tok, "name": "New Person", "handle": "newp", "password": PASSWORD}, headers=H).get_json()
     assert d["team"] == {"owner": "chandra", "offering": "csc258/f26"}
-    assert c.get("/api/teams/mine").get_json()["shared"][0]["role"] == "instructor"
+    assert c.get("/api/teams/mine").get_json()["shared"][0]["role"] == "coordinator"
 
 
 def test_the_answer_doesnt_reveal_accounts(client, course):
@@ -85,14 +85,14 @@ def test_the_answer_doesnt_reveal_accounts(client, course):
 
 def test_no_invitations_for_offerings_that_dont_exist(client, course):
     s, _ = member("s@x.ca", "someone")
-    r = s.post("/api/teams/someone/zzz/q99/add", json={"email": "stranger@evil.example", "role": "instructor"}, headers=H)
+    r = s.post("/api/teams/someone/zzz/q99/add", json={"email": "stranger@evil.example", "role": "coordinator"}, headers=H)
     assert r.status_code == 409
 
 
 def test_a_removed_instructors_invitations_stop_working(client, course):
     ins, iu = member("ins@x.ca", "ins")
-    add(client, "ins@x.ca", "instructor", who=ins)
-    tok = add(ins, "alt@x.ca", "instructor").get_json()["link"].split("#join=")[1]
+    add(client, "ins@x.ca", "coordinator", who=ins)
+    tok = add(ins, "alt@x.ca", "coordinator").get_json()["link"].split("#join=")[1]
     client.post("/api/teams/chandra/csc258/f26/remove", json={"user": iu["id"]}, headers=H)
     c = app.test_client()
     assert c.post("/api/teams/join/check", json={"token": tok}, headers=H).status_code == 410
@@ -155,7 +155,7 @@ def test_ta_can_enter_marks_only(client, course):
 
 def test_instructor_can_do_everything_in_the_offering(client, course):
     ins, _ = member("ins@x.ca", "ins")
-    add(client, "ins@x.ca", "instructor", who=ins)
+    add(client, "ins@x.ca", "coordinator", who=ins)
     assert save(ins, "chandra.pub", {"csc258/f26/info.html": "<h1>new</h1>"}).status_code == 200
     assert save(ins, "chandra.priv", {"csc258/f26/midterm/exam.json": "{\"v\": 2}"}).status_code == 200
     assert read(ins, "chandra.priv", "csc258/f26/accommodations.json") is not None
@@ -165,7 +165,7 @@ def test_instructor_can_do_everything_in_the_offering(client, course):
 
 def test_a_copy_by_sha_cant_reach_other_offerings(client, course):
     ins, _ = member("ins@x.ca", "ins")
-    add(client, "ins@x.ca", "instructor", who=ins)
+    add(client, "ins@x.ca", "coordinator", who=ins)
     sha = client.get("/api/store/priv/contents/csc108/w26/grades.json").get_json()["sha"]
     R = "/api/store/chandra.priv"
     head = ins.get(f"{R}/git/ref/heads/main").get_json()["object"]["sha"]
@@ -185,9 +185,9 @@ def test_only_instructors_manage_the_team(client, course):
     ta, tu = member("ta@x.ca", "ta")
     ins, iu = member("ins@x.ca", "ins")
     add(client, "ta@x.ca", "ta", who=ta)
-    add(client, "ins@x.ca", "instructor", who=ins)
+    add(client, "ins@x.ca", "coordinator", who=ins)
     assert add(ta, "y@x.ca", "ta").status_code == 403
-    assert ta.post("/api/teams/chandra/csc258/f26/role", json={"user": tu["id"], "role": "instructor"}, headers=H).status_code == 403
+    assert ta.post("/api/teams/chandra/csc258/f26/role", json={"user": tu["id"], "role": "coordinator"}, headers=H).status_code == 403
     assert add(ins, "y@x.ca", "ta").status_code == 200                                   # an instructor can
     assert ins.post("/api/teams/chandra/csc258/f26/remove", json={"user": course["id"]}, headers=H).status_code == 400   # not the owner
     assert ta.post("/api/teams/chandra/csc258/f26/remove", json={"user": tu["id"]}, headers=H).status_code == 200      # leaving
@@ -197,7 +197,7 @@ def test_only_instructors_manage_the_team(client, course):
 def test_instructors_decide_accommodations_tas_cant(client, course):
     ta, _ = member("ta@x.ca", "ta")
     ins, _ = member("ins@x.ca", "ins")
-    add(client, "ta@x.ca", "ta", who=ta); add(client, "ins@x.ca", "instructor", who=ins)
+    add(client, "ta@x.ca", "ta", who=ta); add(client, "ins@x.ca", "coordinator", who=ins)
     store.Repo(course["id"], "priv").write_text("csc258/f26/accommodations.json",
         json.dumps({"requests": [{"id": "r-1", "student": "1001", "evalName": "Midterm", "kind": "alternate", "details": "x",
                                   "first": "Maya", "email": "m@x.ca", "status": "pending"}]}),
@@ -255,7 +255,7 @@ def test_staff_see_but_change_nothing(client, course):
     assert [p["role"] for p in team["people"] if p["email"] == "staff@x.ca"] == ["staff"]
     assert read(st, "chandra.priv", "csc258/f26/grades.json") is not None
     assert read(st, "chandra.pub", "csc258/f26/info.html") == "<h1>258</h1>"
-    assert read(st, "chandra.priv", "csc258/f26/accommodations.json") is None    # students' requests: instructors only
+    assert read(st, "chandra.priv", "csc258/f26/accommodations.json") is not None    # staff decide accommodation requests
     def mark(b):
         b["marks"] = {"1001": {"mt": {"pts": 20}}}
     r = save(st, "chandra.priv", {"csc258/f26/grades.json": book_with(st, "chandra.priv", "csc258/f26/grades.json", mark)})
@@ -265,3 +265,33 @@ def test_staff_see_but_change_nothing(client, course):
     uid = [p["id"] for p in team["people"] if p["email"] == "staff@x.ca"][0]
     assert client.post("/api/teams/chandra/csc258/f26/role", json={"user": uid, "role": "ta"}, headers=H).status_code == 200
     assert client.post("/api/teams/chandra/csc258/f26/role", json={"user": uid, "role": "staff"}, headers=H).status_code == 200
+
+
+def test_an_instructor_changes_only_their_groups_activities_and_announcements(client, course, user):
+    """An instructor runs an activity of LEC0101 (groups.json): they can add and change its activities and
+    announcements, and nothing for another group, for everyone, or anywhere else."""
+    ins, iu = member("ins@x.ca", "ins")
+    add(client, "ins@x.ca", "instructor", who=ins)
+    groups = {"groups": [{"id": "g1", "name": "LEC0101", "items": [{"id": "i", "kind": "lecture", "day": 1, "people": [str(iu["id"])]}]},
+                         {"id": "g2", "name": "LEC0201", "items": []}]}
+    lec = {"weeks": [{"id": "w", "label": "Week 1", "cards": [{"id": "a", "title": "Everyone's"}, {"id": "b", "title": "0201's", "group": "g2"}]}]}
+    r = store.Repo(user["id"], "priv")
+    r.commit({"csc258/f26/groups.json": json.dumps(groups).encode(), "csc258/f26/lectures.json": json.dumps(lec).encode(),
+              "csc258/f26/announcements.json": b'{"items": []}'}, "seed", r.head())
+    def lectures(change):
+        return save(ins, "chandra.priv", {"csc258/f26/lectures.json": book_with(ins, "chandra.priv", "csc258/f26/lectures.json", change)})
+    assert lectures(lambda d: d["weeks"][0]["cards"].append({"id": "c", "title": "Mine", "group": "g1"})).status_code == 200
+    assert lectures(lambda d: d["weeks"][0]["cards"][-1].update(title="Mine, renamed")).status_code == 200
+    assert lectures(lambda d: d["weeks"][0]["cards"][0].update(title="Changed")).status_code == 403          # everyone's
+    assert lectures(lambda d: d["weeks"][0]["cards"].append({"id": "d", "title": "x", "group": "g2"})).status_code == 403   # another group's
+    assert lectures(lambda d: d["weeks"][0].update(label="Week One")).status_code == 403                     # the weeks
+    def anns(change):
+        return save(ins, "chandra.priv", {"csc258/f26/announcements.json": book_with(ins, "chandra.priv", "csc258/f26/announcements.json", change)})
+    assert anns(lambda d: d["items"].append({"id": "1", "title": "For 0101", "group": "g1"})).status_code == 200
+    assert anns(lambda d: d["items"].append({"id": "2", "title": "About my activity", "on": "act:c"})).status_code == 200
+    assert anns(lambda d: d["items"].append({"id": "3", "title": "For everyone"})).status_code == 403
+    def mark(b):
+        b["marks"] = {"1001": {"mt": {"pts": 20}}}
+    assert save(ins, "chandra.priv", {"csc258/f26/grades.json": book_with(ins, "chandra.priv", "csc258/f26/grades.json", mark)}).status_code == 403
+    assert read(ins, "chandra.priv", "csc258/f26/accommodations.json") is None
+    assert ins.post("/api/teams/chandra/csc258/f26/add", json={"email": "x@y.ca", "role": "ta"}, headers=H).status_code == 403

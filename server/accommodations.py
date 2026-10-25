@@ -519,7 +519,7 @@ def decide():
                 raise Refusal(404 if not role_of(g.user["id"], owner, o) else 403, "Only the offering's instructors can decide requests.")
         rid = str(d.get("id") or "")
         decision = d.get("decision")
-        note = str(d.get("note") or "").strip()[:MAX_DETAILS]
+        note = clean_details(d.get("note"))[:MAX_DETAILS]
         if decision not in ("approved", "rejected"):
             raise Refusal(400, "Approve or reject.")
         who = g.user["name"] or g.user["email"]

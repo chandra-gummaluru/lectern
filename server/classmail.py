@@ -233,3 +233,62 @@ def send(owner, course, term):
     else:
         threading.Thread(target=run, daemon=True).start()
     return jsonify(ok=True, id=sid, total=len(people), to=label)
+
+
+# ── An announcement, emailed when it's saved ─────────────────────────
+#   POST /api/mail/<owner>/<course>/<term>/announcement   { title, body, groups: [section ids] }
+# To the students it's for: everyone (no sections), or the students in those sections. The coordinators
+# email anyone; instructors and TAs, the students of sections they run. Without email set up, nothing
+# is sent (and it says so): the announcement is saved either way.
+@mail_bp.post("/api/mail/<owner>/<course>/<term>/announcement")
+@signed_in
+def announce(owner, course, term):
+    from .students import roster as class_list, hub_url
+    from .teams import LEAD, my_groups
+    o, off, role = _where(owner, course, term)
+    d = body()
+    title = text(d, "title", MAX_SUBJECT + 50).strip() or "Announcement"
+    msg = text(d, "body", MAX_BODY + 1000).replace("\r\n", "\n").strip()
+    groups = [str(x)[:64] for x in (d.get("groups") if isinstance(d.get("groups"), list) else []) if str(x).strip()][:50]
+    if role not in LEAD:
+        mine = my_groups(g.user["id"], o["id"], off) if role in ("instructor", "ta") else set()
+        if not groups or not set(groups) <= mine:
+            raise Refusal(403, "You can email the students of the sections you run.")
+    if len(title) > MAX_SUBJECT or len(msg) > MAX_BODY:
+        raise Refusal(400, f"That's too long to email: a title up to {MAX_SUBJECT} characters, a message up to {MAX_BODY}.")
+    cfg = settings_for(o["id"], off)
+    if not cfg.get("host"):
+        return jsonify(ok=True, emailed=False, total=0, why="Email isn't set up for this offering, so it wasn't emailed.")
+    by_email = class_list(o["id"], off)   # each student's sections
+    people = [x["email"] for x in roster(_book(o["id"], off))["students"]
+              if not groups or set((by_email.get(x["email"]) or {}).get("groups") or []) & set(groups)]
+    if not people:
+        return jsonify(ok=True, emailed=False, total=0, why="Nobody to email: no student it's for has an email yet.")
+    if len(people) > MAX_RECIPIENTS:
+        raise Refusal(413, f"That's more than {MAX_RECIPIENTS} people.")
+    if not limiter.ok(f"class-mail:{o['id']}:{off}", SENDS_PER_HOUR, 3600):
+        raise Refusal(429, f"That's {SENDS_PER_HOUR} emails to the class this hour. It's saved; email it later.", "rate")
+    subject = f"{course.upper()}: {title}"[:MAX_SUBJECT + 20]
+    text_ = f"{msg}\n\n—\nOn the course page: {hub_url(o, off)}#announcements\n"
+    label = "Everyone" if not groups else f"{len(groups)} section{'s' if len(groups) > 1 else ''}"
+    with db.transaction() as c:
+        sid = c.execute("""INSERT INTO mail_sends (owner_id, offering, by_user, by_name, at, subject, to_label, total)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (o["id"], off, g.user["id"], g.user["name"] or g.user["email"], time.time(), subject, label, len(people))).lastrowid
+    log(g.user["id"], "announcement-mail", f"{off} {label} {len(people)}")
+    reply = g.user["email"]
+
+    def run():
+        counts = {"sent": 0, "failed": 0}
+
+        def done(addr, err):
+            counts["failed" if err else "sent"] += 1
+        failed = mailer.deliver_many(people, subject, text_, reply_to=reply, cfg=cfg, done=done)
+        db.run("UPDATE mail_sends SET sent = ?, failed = ?, done = 1, errors = ? WHERE id = ?",
+               (counts["sent"], counts["failed"], json.dumps(dict(list(failed.items())[:50])), sid))
+
+    if mailer.keep:
+        run()
+    else:
+        threading.Thread(target=run, daemon=True).start()
+    return jsonify(ok=True, emailed=True, total=len(people), to=label)

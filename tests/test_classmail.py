@@ -109,3 +109,27 @@ def test_accommodation_emails_use_the_offerings_settings(client, course, smtp):
     client.post("/api/mail/chandra/csc258/f26/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
     cfg = classmail.settings_for(course["id"], "csc258/f26")
     assert cfg["from"] == CFG["from"] and cfg["host"] == CFG["host"]
+
+
+def test_a_saved_announcement_is_emailed_to_its_students(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26/announcement"
+    r = client.post(U, json={"title": "Midterm rooms", "body": "**BA 1130**"}, headers=H)
+    assert r.status_code == 200 and r.get_json()["emailed"] is False      # no email set up: saved, not emailed
+    client.post("/api/mail/chandra/csc258/f26/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    r = client.post(U, json={"title": "Midterm rooms", "body": "**BA 1130**"}, headers=H)
+    assert r.get_json()["emailed"] and r.get_json()["total"] == 2
+    m = smtp["many"][-1]
+    assert m["subject"] == "CSC258: Midterm rooms" and "BA 1130" in m["body"] and "/c/chandra/csc258/f26/#announcements" in m["body"]
+    # For one section: its students.
+    b = json.loads(json.dumps(BOOK)); b["students"][0]["groups"] = ["g1"]; b["students"][1]["groups"] = ["g2"]
+    r_ = store.Repo(course["id"], "priv"); r_.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "x", r_.head())
+    r = client.post(U, json={"title": "Tutorial", "body": "Moved.", "groups": ["g2"]}, headers=H)
+    assert r.get_json()["total"] == 1 and smtp["many"][-1]["to"] == ["alan@mail.utoronto.ca"]
+    # A TA: only for sections they run.
+    ta = app.test_client()
+    t = make_user(ta, email="ta@x.ca", name="T A", handle="ta")
+    db.run("INSERT INTO members (owner_id, offering, user_id, role, added) VALUES (?, 'csc258/f26', ?, 'ta', 0)", (course["id"], t["id"]))
+    assert ta.post(U, json={"title": "x", "body": "y"}, headers=H).status_code == 403
+    r_.commit({"csc258/f26/groups.json": json.dumps({"format": "lectern-groups/1", "groups": [{"id": "g2", "name": "TUT1", "kind": "tutorial", "people": [str(t["id"])], "items": []}]}).encode()}, "g", r_.head())
+    assert ta.post(U, json={"title": "x", "body": "y", "groups": ["g2"]}, headers=H).status_code == 200
+    assert ta.post(U, json={"title": "x", "body": "y", "groups": ["g1"]}, headers=H).status_code == 403

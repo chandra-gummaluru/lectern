@@ -127,7 +127,7 @@ def main():
         page.click("#lt-accom"); page.wait_for_timeout(1500); shot(page, "acc-10-list")
         print("path:", page.inner_text("#lt-path").replace("\n", " "), "| cards:", page.locator(".lt-req").count())
         page.click(".lt-req:has-text('Standard accommodation') [data-decide=approved]"); page.wait_for_timeout(300)
-        page.fill("#dc-note", "See you Thursday at 6 in BA 2135."); shot(page, "acc-11-dialog")
+        page.fill("#dc-note .rt-ed", "See you Thursday at 6 in BA 2135."); shot(page, "acc-11-dialog")
         page.click(".lt-modal [data-ok]"); page.wait_for_timeout(1200)
         print("toast:", page.inner_text("#lt-toast-root"))
         print("decision email:", mailer.sent[-1]["subject"], "|", "BA 2135" in mailer.sent[-1]["body"])

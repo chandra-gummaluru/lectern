@@ -52,9 +52,10 @@ def main():
         expect(me.locator("#an-when")).to_have_text("Tue, Oct 27, 2026 · 09:30")
         me.click("#an-body .rt-ed")   # the message: rich text (bold, italic, links, lists)
         me.keyboard.type("Rooms by "); me.keyboard.press("Control+b"); me.keyboard.type("last name"); me.keyboard.press("Control+b"); me.keyboard.type(": see the list.")
-        me.wait_for_timeout(1500)
-        expect(me.locator("#an-status")).to_have_text("Saved")
+        expect(me.locator("#an-status")).to_have_text("Not saved yet")   # kept only when it's saved
+        assert len(json.loads(srv.text("priv", "csc258/f26/announcements.json") or '{"items":[1]}')["items"]) != 2
         me.screenshot(path=f"{OUT}/201-announcement.png")
+        me.click("#an-save"); me.wait_for_timeout(1500)
         items = json.loads(srv.text("priv", "csc258/f26/announcements.json"))["items"]
         assert [a["title"] for a in items] == ["Welcome to CSC258!", "Midterm rooms posted"] and items[1]["date"] == "Oct 27, 2026, 09:30" and "**last name**" in items[1]["body"], items
         print("1 announcements:", [a["title"] for a in items])

@@ -11,7 +11,8 @@
        "items": [ { "id", "title", "date": "Oct 24, 2026, 13:48", "at": 1792860000000, "body": "Markdown" } ] }
 
    An offering without one starts from its course page's announcements (course.json), and becomes an
-   announcements.json with the first change. Changes save by themselves. Instructors write them; TAs see them. */
+   announcements.json with the first change. A new announcement, and changes to one, are kept only when
+   they're saved (Save); saving can email it to the students it's for (server/classmail.py). */
 
 import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
@@ -40,7 +41,7 @@ function fromCoursePage(page) {
 }
 
 export function announcementsPage(ctx, r) {
-  const { $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, steps, markdown } = ctx;
+  const { $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, steps, markdown, api, owner } = ctx;
   const { c, t } = r, path = `${c}/${t}/announcements.json`, repo = area(Store.PRIV), edit = canEdit(c, t);
   // An instructor writes only for their sections (the ones they run): one for one of
   // those groups, or about one of those groups' activities. Everyone's, and other groups', are the coordinators'.
@@ -88,7 +89,7 @@ export function announcementsPage(ctx, r) {
   const whenOf = x => whenText(x.date, true) || "No date yet";
 
   function draw() {
-    const a = r.a && st.data.items.find(x => x.id === r.a);
+    const a = r.a && (st.data.items.find(x => x.id === r.a) || (st.draft && st.draft.id === r.a ? st.draft : null));
     return a ? drawOne(a) : drawList();
   }
 
@@ -112,16 +113,22 @@ export function announcementsPage(ctx, r) {
     document.querySelectorAll("[data-dup]").forEach(b => { b.onclick = e => {
       e.stopPropagation();
       const x = st.data.items.find(y => y.id === b.dataset.dup); if (!x) return;
-      const y = { ...x, id: uid(), title: x.title ? `${x.title} (copy)` : "", date: stampOf(new Date()), at: Date.now() };
-      st.data.items.push(y); changed(); go({ page: "announcements", c, t, a: y.id });
+      st.draft = { ...JSON.parse(JSON.stringify(x)), id: uid(), title: x.title ? `${x.title} (copy)` : "", date: stampOf(new Date()), at: Date.now() };
+      go({ page: "announcements", c, t, a: st.draft.id });
     }; });
     $("#an-new").onclick = () => {
-      const x = { id: uid(), title: "", date: stampOf(new Date()), at: Date.now(), body: "", ...(edit ? {} : { groups: [...lim()].slice(0, 1) }) };
-      st.data.items.push(x); changed(); go({ page: "announcements", c, t, a: x.id });
+      st.draft = { id: uid(), title: "", date: stampOf(new Date()), at: Date.now(), body: "", ...(edit ? {} : { groups: [...lim()].slice(0, 1) }) };
+      go({ page: "announcements", c, t, a: st.draft.id });
     };
   }
 
-  function drawOne(x) {
+  // One announcement, worked on as a copy: kept (and emailed, if ticked) only when it's saved.
+  function drawOne(orig) {
+    const isNew = orig === st.draft;
+    if (!isNew && (!st.work || st.work.id !== orig.id)) st.work = { id: orig.id, x: JSON.parse(JSON.stringify(orig)), dirty: false };
+    const x = isNew ? orig : st.work.x;
+    const changed = () => { if (!isNew) st.work.dirty = true; mark(); };
+    const mark = () => { const b = $("#an-save"); if (b) b.disabled = !(isNew || st.work.dirty); status(isNew ? "Not saved yet" : st.work.dirty ? "Unsaved changes" : ""); };
     const crumbs = () => renderPath([...steps, { label: "Announcements", go: () => go({ page: "announcements", c, t }) }, { label: x.title || "New announcement" }]);
     crumbs();
     const edit = mayAnn(x), L = lim();   // (here: may this one be changed)
@@ -130,13 +137,12 @@ export function announcementsPage(ctx, r) {
       ${taNote(x)}
       <div class="lx-editor" style="--c:${COLOR}">
         <div class="lx-ed-head"><h2 id="an-h">${esc(x.title || "New announcement")}</h2>
-          <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
+          <span class="lx-acts">${status$()}${edit && !isNew ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
         <h3 class="lx-sec lx-first">General</h3>
         <div class="lx-grid ann">
           <label class="lx-f">Title<input type="text" id="an-title" value="${esc(x.title)}" placeholder="e.g. Midterm rooms posted"${dis}></label>
           <div class="lx-f">When<div id="an-when-f"></div></div>
         </div>
-        <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
         <div class="lx-grid two an-row">
           <div class="lx-f">About<div id="an-on-f"></div></div>
           <div class="lx-f">For<div id="an-groups"></div></div>
@@ -144,6 +150,8 @@ export function announcementsPage(ctx, r) {
 
         <h3 class="lx-sec">Message</h3>
         <div id="an-body"></div>
+        ${edit ? `<div class="an-foot"><label class="lt-check"><input type="checkbox" id="an-mail"${isNew ? " checked" : ""}> Email it to the students it's for</label><span class="spacer"></span>
+          <button type="button" class="lx-btn" id="an-cancel">${isNew ? "Discard" : "Undo Changes"}</button><button type="button" class="lx-btn main" id="an-save">${isNew ? "Save" : "Save Changes"}</button></div>` : ""}
       </div>
     </div></div>`);
     whenField($("#an-when-f"), { date: when.date, time: when.time, id: "an-when", label: "When", empty: "Choose a date", timeLabel: "At", disabled: !edit,
@@ -173,13 +181,33 @@ export function announcementsPage(ctx, r) {
     pickOne($("#an-on-f"), { options: aboutOpts, value: x.on || "", empty: "Nothing in particular", emptyHint: "A general announcement", search: "Search activities and evaluations", id: "an-on", label: "About",
       disabled: !edit, onChange: v => onChange(v) });
     if (!edit) return;
+    mark();
+    $("#an-cancel").onclick = () => {
+      if (isNew) { st.draft = null; go({ page: "announcements", c, t }); return; }
+      st.work = null; drawOne(orig);
+    };
+    $("#an-save").onclick = async () => {
+      const b = $("#an-save"); b.disabled = true;
+      if (isNew) { st.data.items.push(x); st.draft = null; }
+      else { Object.keys(orig).forEach(k => delete orig[k]); Object.assign(orig, JSON.parse(JSON.stringify(x))); st.work.dirty = false; }
+      status("Saving…");
+      clearTimeout(st.timer); await save(); if (st.saving) await st.saving;
+      if ($("#an-status") && $("#an-status").classList.contains("bad")) return;
+      if ($("#an-mail") && $("#an-mail").checked) {
+        try {
+          const res = await api(`/api/mail/${encodeURIComponent(owner())}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/announcement`, { title: x.title, body: x.body, groups: forOf(x) });
+          toast(res.emailed ? `Saved, and emailed to ${res.total} student${res.total === 1 ? "" : "s"}.` : `Saved. ${res.why}`);
+        } catch (e) { toast(`Saved, but not emailed: ${e.message}`); }
+      } else toast("Saved.");
+      if (isNew) go({ page: "announcements", c, t, a: x.id }, { replace: true }); else drawOne(orig);
+    };
     const onChange = val => { if (val) x.on = val; else delete x.on; if (String(x.on || "").startsWith("act:")) { delete x.group; delete x.groups; } else if (!canEdit(c, t) && !groupsOf(x).length) x.groups = [...L].slice(0, 1); forSel(); changed(); };
     let shown = x.title || "New announcement";
     const head = () => { const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };
     $("#an-title").oninput = $("#an-title").onchange = e => { x.title = e.target.value.trim(); head(); changed(); };
-    $("#an-del").onclick = async () => {
+    if ($("#an-del")) $("#an-del").onclick = async () => {
       if (!await confirmBox("Delete this announcement?", "It goes from the course page.", "Delete")) return;
-      st.data.items = st.data.items.filter(y => y !== x); changed(); go({ page: "announcements", c, t });
+      st.data.items = st.data.items.filter(y => y !== orig); st.work = null; status("Saving…"); save(); go({ page: "announcements", c, t });
     };
   }
 

@@ -76,8 +76,7 @@ def main():
         ip.click("#an-new"); ip.wait_for_selector("#an-title")
         ip.fill("#an-title", "LEC0101: room change")
         ip.click("#an-group"); assert ip.eval_on_selector_all("#an-groups .pk-chk b", "o => o.map(x => x.textContent)") == ["LEC0101"]; ip.keyboard.press("Escape")
-        ip.wait_for_timeout(1500)
-        expect(ip.locator("#an-status")).to_have_text("Saved")
+        ip.click("#an-save"); ip.wait_for_timeout(1500)
         a = [x for x in json.loads(srv.text("priv", "csc258/f26/announcements.json"))["items"] if x.get("title") == "LEC0101: room change"]
         assert a and a[0]["groups"] == ["g1"], a
         print("2 instructor: an announcement for LEC0101")

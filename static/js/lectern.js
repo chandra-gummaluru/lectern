@@ -538,7 +538,7 @@ function renderPage() {
     openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups), me: S.user.id }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
-    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id,
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id, api: Auth.api, owner: () => curOwner() || S.user.handle,
     // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups),
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim() })) : []; },
@@ -1078,7 +1078,7 @@ async function accomPage(c, t, q = "") {
   const decisionsOf = r => [...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])];
   const decisionHTML = r => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
       <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
-        ${r.note ? `<p class="lt-cmt-n">${esc(r.note)}</p>` : ""}</div></div>`;
+        ${r.note ? `<div class="lt-cmt-n lt-cmt-md">${window.HubView ? window.HubView.markdown(r.note) : esc(r.note)}</div>` : ""}</div></div>`;
   const lastWord = r => r.status === "pending" ? "Waiting for a decision" : `${STATUS[r.status]}${r.decidedBy ? ` by ${r.decidedBy}` : ""}${r.decided ? ` · ${fmtStamp(r.decided)}` : ""}${(r.history || []).length ? ` · changed ${r.history.length} time${r.history.length > 1 ? "s" : ""}` : ""}`;
   const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
@@ -1096,15 +1096,17 @@ async function accomPage(c, t, q = "") {
     const yes = decision === "approved", same = r.status === decision;
     modal(`<h2>${same ? "Change the note?" : `${yes ? "Approve" : "Reject"} this request?`}</h2>
       <p>${esc(r.first)} ${esc(r.last)}, ${esc(r.evalName)}: ${r.kind === "standard" ? `the standard accommodation (${esc(r.standard)})` : "an alternate accommodation"}. ${cfg.email ? `They're emailed at <b>${esc(r.email)}</b>.` : "The server has no SMTP settings, so no email is sent."}</p>
-      <div class="lt-form"><label>Note to the student<textarea id="dc-note" rows="4" placeholder="${yes ? "e.g. Write it Thursday at 6 in BA 2135." : "e.g. Please come to office hours to talk about it."}">${esc(r.status === "pending" ? "" : r.note || "")}</textarea><small>Optional. It goes in the email.</small></label></div>
+      <div class="lt-form"><div class="lt-f-rt"><span class="lt-f-l">Note to the student</span><div id="dc-note"></div><small>Optional. It goes in the email.</small></div></div>
       <p class="lt-err" id="dc-err"></p>
       <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn ${yes ? "primary" : "lt-btn-danger"}" data-ok>${same ? "Save the Note" : yes ? "Approve" : "Reject"}</button></div>`, (m, close) => {
       m.querySelector("[data-no]").onclick = close;
+      const note = richText(m.querySelector("#dc-note"), { value: r.status === "pending" ? "" : r.note || "", placeholder: yes ? "e.g. Write it Thursday at 6 in BA 2135." : "e.g. Please come to office hours to talk about it.", label: "Note to the student" });
+      setTimeout(() => note.el.focus(), 0);
       const ok = m.querySelector("[data-ok]");
       ok.onclick = async () => {
         ok.disabled = true; ok.textContent = yes ? "Approving…" : "Rejecting…";
         try {
-          const d = await Auth.api("/api/accommodations/decide", { owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision, note: m.querySelector("#dc-note").value });
+          const d = await Auth.api("/api/accommodations/decide", { owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision, note: note.get() });
           Object.assign(r, d.request);
           close();
           toast(`${yes ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);

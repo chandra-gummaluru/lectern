@@ -70,6 +70,15 @@ export function groupSummary(g) {
   const L = timeLines(g);
   return L.length ? L.map(l => [l.when, l.where].filter(Boolean).join(" · ")).join("; ") : "No meeting times yet";
 }
+// A section in one quiet line, for lists: its days, its time, its place ("Mon, Wed, Fri · 11:00–12:00 ·
+// GB302, Galbraith Building"; "3 places" when they differ). Its page has each time.
+export function sectionLine(g) {
+  const I = (g.items || []).slice().sort((a, b) => (a.day || 9) - (b.day || 9));
+  if (!I.length) return "No meeting times yet";
+  const days = [...new Set(I.map(x => DAY3[x.day]).filter(Boolean))].join(", ");
+  const T = [...new Set(I.map(hm).filter(Boolean))], W = [...new Set(I.map(x => x.where || "").filter(Boolean))];
+  return [days, T.length === 1 ? T[0] : T.length ? "different times" : "", W.length === 1 ? W[0] : W.length ? `${W.length} places` : ""].filter(Boolean).join(" · ");
+}
 export function timesHTML(g, esc) {
   const L = timeLines(g);
   return L.length ? `<span class="lt-sec-times">${L.map(l => `<span class="lt-sec-time"><b>${esc(l.days || "No day yet")}</b><em>${esc(l.time || "")}</em><i>${esc(l.where || "")}</i></span>`).join("")}</span>` : `<span class="lt-sec-none">No meeting times yet</span>`;
@@ -154,7 +163,7 @@ export async function groupsCard(ctx, c, t) {
   const groups = sortSections(G.data.groups);
   box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">The course's lecture, tutorial and lab sections, e.g. LEC0101, with their weekly times. A student is in one section of each type; who runs each is set on their page in the teaching team.</p>
       ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-group-new">${ICON.plus}Add a Section</button></div>` : ""}</div>
-    ${groups.length ? `<div class="lt-olist lt-groups">${groups.map(g => { const n = count(g.id), k = sectionKind(g); return `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[k]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[k])}</small><b>${esc(sectionLabel(g))}</b>${timesHTML(g, esc)}</span></button>
+    ${groups.length ? `<div class="lt-olist lt-groups">${groups.map(g => { const n = count(g.id), k = sectionKind(g); return `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[k]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[k])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(sectionLine(g))}</span></span></button>
       <span class="lt-orow-r lt-group-n">${n} student${n === 1 ? "" : "s"}</span></div>`; }).join("")}</div>` : `<p class="lt-hint">No sections yet.</p>`}`;
   box.querySelectorAll("[data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
   const add = box.querySelector("#lt-group-new");

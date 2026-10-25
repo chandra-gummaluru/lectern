@@ -17,7 +17,7 @@ export const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", 
 import { parseTime } from "./when.js";
 import { pickMany } from "./pick.js";
 import { placeField, placeOf } from "./place.js";
-import { SECTION_ICON, SECTION_NAME, sectionKind, sectionLabel, groupSummary, timesHTML, runsSection, runnersOf, changeGroups, sortSections } from "./groups.js";
+import { SECTION_ICON, SECTION_NAME, sectionKind, sectionLabel, groupSummary, timesHTML, sectionLine, runsSection, runnersOf, changeGroups, sortSections } from "./groups.js";
 const KIND_LABEL = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab", other: "Other" };
 const DAY3 = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const itemLine = x => [[DAY3[x.day] || "", x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : ""].filter(Boolean).join(" "), x.where].filter(Boolean).join(" · ") || "No time yet";
@@ -80,7 +80,7 @@ export function teamMemberPage(ctx, r) {
       </div>
       <h2 class="lw-h2">Sections They Run</h2>
       <div class="lw-card">${G.length ? `<div class="lt-form tm-run-pick"><label>Sections<div id="tm-runs-pick"></div><small>The lecture, tutorial and lab sections they teach. Instructors and TAs see and change things for their sections' students.</small></label></div>` : ""}
-        ${run.length ? `<div class="lt-olist tm-runs">${run.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b>${timesHTML(g, esc)}</span></button></div>`).join("")}</div>`
+        ${run.length ? `<div class="lt-olist tm-runs">${run.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(sectionLine(g))}</span></span></button></div>`).join("")}</div>`
         : G.length ? "" : `<p class="lt-part-text lw-help">The offering has no sections yet: add them in Sections, on the offering's page.</p>`}</div>
       <h2 class="lw-h2">Office Hours</h2>
       <div class="lw-card"><p class="lt-part-text lw-help">Every week of the term. The course page shows them with their details, and on their days.</p>
@@ -108,7 +108,7 @@ export function teamMemberPage(ctx, r) {
           const { data } = await changeGroups(Store, repo, c, t, d => { d.groups.forEach(g => { const on = v.includes(g.id), was = runnersOf(g); g.people = on ? [...new Set([...was, id])] : was.filter(p => p !== id); }); }, "Sections: who runs them");
           st.groups = data.groups; status("Saved");
           const list = document.querySelector(".tm-runs"), now = sortSections(data.groups).filter(g => runsSection(g, id));
-          const html = now.length ? `<div class="lt-olist tm-runs">${now.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b>${timesHTML(g, esc)}</span></button></div>`).join("")}</div>` : "";
+          const html = now.length ? `<div class="lt-olist tm-runs">${now.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(sectionLine(g))}</span></span></button></div>`).join("")}</div>` : "";
           if (list) list.outerHTML = html || '<div class="tm-runs" hidden></div>'; else if (html) pick.closest(".lw-card").insertAdjacentHTML("beforeend", html);
           document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
         } catch (e) { status("Not saved", true); toast(`Couldn't save who runs the sections. ${e.message}`); }

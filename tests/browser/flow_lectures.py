@@ -36,7 +36,7 @@ def main():
         me.click("#lt-lectures")
         me.wait_for_selector(".lx-group")
         assert me.locator(".lx-group").count() == 12 and me.locator(".lx-break").count() == 1
-        assert "Lectures" in me.inner_text("#lt-path")
+        assert "Activities" in me.inner_text("#lt-path")
         me.screenshot(path=f"{OUT}/181-lectures.png")
         assert srv.text("priv", "csc258/f26/lectures.json") is None   # nothing saved until something changes
 
@@ -57,7 +57,7 @@ def main():
         print("1 a lecture changed and its slides uploaded; saved by itself")
 
         # A new week, with a lecture in it.
-        me.locator("#lt-path button", has_text="Lectures").click()
+        me.locator("#lt-path button", has_text="Activities").click()
         me.click("[data-add-week]")
         me.wait_for_selector("#lw-topic")
         expect(me.locator("#lw-label")).to_have_value("Week 13")
@@ -69,7 +69,7 @@ def main():
         expect(me.locator("#lw-label")).to_have_value("Lecture 25")
         me.fill("#lw-title", "Course review")
         me.wait_for_timeout(1500)
-        me.locator("#lt-path button", has_text="Lectures").click()
+        me.locator("#lt-path button", has_text="Activities").click()
         me.wait_for_selector(".lx-group")
         expect(me.locator(".lx-group").last).to_contain_text("Course review")
         # Drag it to Week 12, before that week's first lecture; and drag Week 13 above Week 12.
@@ -113,7 +113,7 @@ def main():
         srv.sign_in(tp, email="ta@utoronto.ca", hash="#/~chandra/csc258/f26/lectures")
         tp.wait_for_selector(".lx-group")
         assert not tp.query_selector("[data-add-week]")
-        expect(tp.locator(".lt-note")).to_contain_text("You can look at the lectures")
+        expect(tp.locator(".lt-note")).to_contain_text("You can look at the activities")
         print("4 a TA sees Lectures, read-only")
         b.close()
     print("\n".join(errors) or "no page errors")

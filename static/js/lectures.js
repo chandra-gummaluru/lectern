@@ -1,11 +1,13 @@
-/* Lectures: an offering's weeks and the lectures in them, made and changed here; the course page
-   (Lectures and This week) shows them. It looks and works like the Gradebook's Evaluations: each week
-   is a group card with its lectures as sub-cards, and you drag a lecture to another place or another
+/* Activities: an offering's weeks and the activities in them (lectures, tutorials, labs and other ones), made and
+   changed here; the course page (Activities and This week) shows them. An activity can go with one of the
+   gradebook's evaluations (e.g. a lab with its lab report). (The file and its addresses keep the older name:
+   lectures.json, #/<course>/<term>/lectures or /activities.) It looks and works like the Gradebook's Evaluations: each week
+   is a group card with its activities as sub-cards, and you drag an activity to another place or another
    week, and a week (or a divider) to another place in the term.
 
-     #/<course>/<term>/lectures                  every week, each with its lectures
-     #/<course>/<term>/lectures/<week>           a week: its name, dates and topic, and its lectures
-     #/<course>/<term>/lectures/<week>/<lecture> a lecture: its type, label, title, when, description, files and links
+     #/<course>/<term>/activities                   every week, each with its activities
+     #/<course>/<term>/activities/<week>            a week: its name, dates and topic, and its activities
+     #/<course>/<term>/activities/<week>/<activity> an activity: its type, label, title, when, evaluation, description, files
 
    Kept in the offering's private files, <course>/<term>/lectures.json (the hub reads it; nothing else of
    the private files reaches students):
@@ -13,7 +15,7 @@
      { "format": "lectern-lectures/1",
        "weeks": [ { "id", "label": "Week 1", "start": "2026-09-07", "end": "2026-09-11", "topic",
                     "cards": [ { "id", "kind": "lecture", "label": "Lecture 01", "title", "description",
-                                 "date": "Sep 9, 2026, 10:00", "files": [ { "label", "url" } ] } ] },
+                                 "date": "Sep 9, 2026, 10:00", "files": [ { "label", "url" } ], "eval": "<evaluation id>"? } ] },
                   { "id", "isBreak": true, "text": "Reading Week" } ] }
 
    An offering without one starts from its course page's weeks (course.json), and becomes a lectures.json
@@ -24,6 +26,14 @@ import { whenField } from "./when.js";
 
 const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];
 const KIND_COLOR = { lecture: "#3b7dd8", tutorial: "#2e9b6a", lab: "#8a5cd1", other: "#8b8f96" };
+const ic = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+// Each type's icon: a lecture's board, a tutorial's conversation, a lab's flask, and a dot for the rest.
+export const KIND_ICON = {
+  lecture: ic('<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/>'),
+  tutorial: ic('<path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v3l-3-3h-3"/>'),
+  lab: ic('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>'),
+  other: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
+};
 const WEEK_COLOR = "#c99a06";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
 const DAYS3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -102,7 +112,7 @@ export function lecturesPage(ctx, r) {
   const st = (lecturesPage.state = lecturesPage.state && lecturesPage.state.key === key ? lecturesPage.state : { key, data: null, sha: undefined, saving: null, dirty: false });
 
   async function load() {
-    pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading the lectures…</div></div>`);
+    pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading the activities…</div></div>`);
     try {
       const f = await Store.readFile(repo, path);
       if (f) { st.data = JSON.parse(f.text); st.sha = f.sha; }
@@ -112,7 +122,8 @@ export function lecturesPage(ctx, r) {
         st.data = fromCoursePage(page); st.sha = null;
       }
       if (!Array.isArray(st.data.weeks)) st.data.weeks = [];
-    } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the lectures. ${esc(e.message)}</p></div>`); return; }
+    } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the activities. ${esc(e.message)}</p></div>`); return; }
+    try { st.evals = ctx.evaluations ? await ctx.evaluations() : []; } catch (_) { st.evals = []; }
     if (here()) draw();
   }
 
@@ -127,12 +138,12 @@ export function lecturesPage(ctx, r) {
     st.saving = (async () => {
       try {
         st.dirty = false;
-        st.sha = await Store.writeText(repo, path, JSON.stringify(st.data, null, 1) + "\n", "Lectures", st.sha);
+        st.sha = await Store.writeText(repo, path, JSON.stringify(st.data, null, 1) + "\n", "Activities", st.sha);
         status("Saved");
       } catch (e) {
         st.dirty = true;
         status(e.conflict ? "Not saved: changed elsewhere" : "Not saved", true);
-        toast(e.conflict ? "The lectures were changed somewhere else (another window, or someone on the team). Reload this page to see them; your last change wasn't saved." : `Couldn't save the lectures. ${e.message}`);
+        toast(e.conflict ? "The activities were changed somewhere else (another window, or someone on the team). Reload this page to see them; your last change wasn't saved." : `Couldn't save the activities. ${e.message}`);
       } finally { st.saving = null; if (st.again) { st.again = false; save(); } }
     })();
   }
@@ -142,15 +153,16 @@ export function lecturesPage(ctx, r) {
   const weekById = id => weeks().find(w => w.id === id);
   const realWeeks = () => weeks().filter(w => !w.isBreak);
   const allCards = () => new Map(weeks().flatMap(w => (w.cards || []).map(x => [x.id, x])));
-  const weekLine = w => { const n = (w.cards || []).length; return [rangeText(w.start, w.end) || "No dates yet", w.topic, `${n} lecture${n === 1 ? "" : "s"}`].filter(Boolean).join(" · "); };
+  const weekLine = w => { const n = (w.cards || []).length; return [rangeText(w.start, w.end) || "No dates yet", w.topic, `${n} activit${n === 1 ? "y" : "ies"}`].filter(Boolean).join(" · "); };
   const titleOf = x => x.title || x.label || "Untitled";
   const nameOf = x => (x.title && x.label ? `${x.label}: ${x.title}` : titleOf(x));
   const PAPERCLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.5 7"/></svg>';
   const kindLabel = x => x.label || kindName(kindOf(x));   // above the title, e.g. LECTURE 07
   // Under the title: when it is (if it has a date) and its files; nothing about what it doesn't have.
-  const lecMeta = x => { const n = (x.files || []).length, w = whenText(x.date); return [w ? esc(w) : "", n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
+  const evalName = x => { const e = x.eval && (st.evals || []).find(y => y.id === x.eval); return e ? e.name : ""; };
+  const lecMeta = x => { const n = (x.files || []).length, w = whenText(x.date), ev = evalName(x); return [w ? esc(w) : "", ev ? `For ${esc(ev)}` : "", n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
   const status$ = () => (edit ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
-  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the lectures; the instructors change them.</p>`);
+  const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the activities; the instructors change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
   const toLec = (w, x) => go({ page: "lectures", c, t, w: w.id, l: x.id });
 
@@ -163,16 +175,17 @@ export function lecturesPage(ctx, r) {
 
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
+      <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
       <div class="lx-main"><p class="lx-kind">${esc(x.title ? kindLabel(x) : kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div>
       ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm lx-quiet" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
-  const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No lectures this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
+  const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No activities this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 
   // ── Every week ──
   function drawList() {
-    renderPath([...steps, { label: "Lectures" }]);
+    renderPath([...steps, { label: "Activities" }]);
     const list = weeks();
     pageHTML(`<div class="lt-in"><div class="lx">
-      <div class="lx-head"><h1>Lectures</h1><span class="spacer"></span>${status$()}
+      <div class="lx-head"><h1>Activities</h1><span class="spacer"></span>${status$()}
         ${edit ? `<button type="button" class="lx-btn main" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list" data-units>${list.map(w => (w.isBreak ? breakHTML(w) : weekHTML(w))).join("")}</div>` : `<div class="lx-empty">No weeks yet.${edit ? " Add the term's first week." : ""}</div>`}
@@ -289,7 +302,7 @@ export function lecturesPage(ctx, r) {
   }
 
   // ── A week ──
-  const weekSteps = w => [...steps, { label: "Lectures", go: () => go({ page: "lectures", c, t }) }, { label: w.label || "Week" }];
+  const weekSteps = w => [...steps, { label: "Activities", go: () => go({ page: "lectures", c, t }) }, { label: w.label || "Week" }];
   function drawWeek(w) {
     renderPath(weekSteps(w));
     const dis = edit ? "" : " disabled";
@@ -305,8 +318,8 @@ export function lecturesPage(ctx, r) {
         </div>
         <p class="lx-help">Its class days, e.g. Monday to Friday. On the course page, This week runs to the Sunday after.</p>
         <div class="lx-grid one"><label class="lx-f">Topic<input type="text" id="lw-topic" value="${esc(w.topic)}" placeholder="What this week covers"${dis}></label></div>
-        <h3 class="lx-sec">Lectures</h3>
-        <p class="lx-help">Its lectures, tutorials and labs, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
+        <h3 class="lx-sec">Activities</h3>
+        <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
         ${subsHTML(w)}
         ${edit ? `<div class="lx-adds">${KINDS.map(([k, n]) => `<button type="button" class="lx-add" data-add-kind="${k}">${ICON.plus}${k === "other" ? "Something Else" : `Add a ${n}`}</button>`).join("")}</div>` : ""}
       </div>
@@ -325,13 +338,13 @@ export function lecturesPage(ctx, r) {
     root.querySelectorAll("[data-add-kind]").forEach(b => { b.onclick = () => addLecture(w, b.dataset.addKind); });
     $("#lw-del").onclick = async () => {
       const n = (w.cards || []).length;
-      if (!await confirmBox("Delete this week?", `${esc(w.label || "This week")}${n ? ` and its ${n} lecture${n === 1 ? "" : "s"}` : ""} go${n ? "" : "es"} from the course page.`, "Delete")) return;
+      if (!await confirmBox("Delete this week?", `${esc(w.label || "This week")}${n ? ` and its ${n} activit${n === 1 ? "y" : "ies"}` : ""} go${n ? "" : "es"} from the course page.`, "Delete")) return;
       st.data.weeks = weeks().filter(x => x !== w); changed(); go({ page: "lectures", c, t });
     };
   }
 
   // ── A lecture ──
-  const lecSteps = (w, x) => [...steps, { label: "Lectures", go: () => go({ page: "lectures", c, t }) }, { label: w.label || "Week", go: () => toWeek(w) }, { label: titleOf(x) }];
+  const lecSteps = (w, x) => [...steps, { label: "Activities", go: () => go({ page: "lectures", c, t }) }, { label: w.label || "Week", go: () => toWeek(w) }, { label: titleOf(x) }];
   const namedHTML = x => `Shown as <b>${esc(nameOf(x))}</b>.${x.label && /\d/.test(x.label) ? ` Add another ${esc(kindName(kindOf(x)).toLowerCase())} and it's numbered after this one.` : ""}`;
   function drawLecture(w, x) {
     renderPath(lecSteps(w, x));
@@ -340,8 +353,8 @@ export function lecturesPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" id="lw-ed" style="--c:${KIND_COLOR[k]}">
-        <div class="lx-ed-head"><h2 id="lw-h">${esc(titleOf(x))}</h2>
-          <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this lecture" aria-label="Delete this lecture">${ICON.trash}</button>` : ""}</span></div>
+        <div class="lx-ed-head"><span class="lx-kicon big" id="lw-kicon">${KIND_ICON[k]}</span><h2 id="lw-h">${esc(titleOf(x))}</h2>
+          <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this activity" aria-label="Delete this activity">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid">
           <div class="lx-f">Type<span class="lx-seg" role="group" aria-label="Type">${KINDS.map(([v, n]) => `<button type="button" data-kind="${v}" aria-pressed="${v === k}"${dis}>${n}</button>`).join("")}</span></div>
           <label class="lx-f">Label<input type="text" id="lw-label" value="${esc(x.label)}" placeholder="e.g. Lecture 07"${dis}></label>
@@ -353,10 +366,11 @@ export function lecturesPage(ctx, r) {
           <div class="lx-f">When<div id="lw-when-f"></div></div>
         </div>
         <p class="lx-help">The date and time are optional: with a date, This week shows it on its day.</p>
+        <div class="lx-grid one"><label class="lx-f">Evaluation <small>Optional: the one it goes with (e.g. a lab and its report). The course page links to it.</small><select id="lw-eval"${dis}><option value="">None</option>${(st.evals || []).map(e => `<option value="${esc(e.id)}"${e.id === x.eval ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</select></label></div>
         <h3 class="lx-sec">Description</h3>
         <div id="lw-desc"></div>
         <h3 class="lx-sec">Files and Links</h3>
-        <p class="lx-help">Each one is a button students click on the course page, with this lecture. With none, it says Coming soon.</p>
+        <p class="lx-help">Each one is a button students click on the course page, with this activity. With none, it says Coming soon.</p>
         <div id="lw-files">${files.map((f, i) => `<div class="lx-frow"><input type="text" data-fl="${i}" value="${esc(f.label)}" placeholder="Button text, e.g. Slides" aria-label="Button text"${dis}><input type="url" data-fu="${i}" value="${esc(f.url)}" placeholder="https://…" aria-label="Link"${dis}>${edit ? `<button type="button" class="lx-ic quiet" data-fdel="${i}" aria-label="Remove it">${ICON.trash}</button>` : ""}</div>`).join("") || (edit ? "" : `<p class="lx-help">None.</p>`)}</div>
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
       </div>
@@ -375,9 +389,10 @@ export function lecturesPage(ctx, r) {
       x.kind = now;
       if (!x.label || new RegExp(`^${kindName(was)}\\b`, "i").test(x.label)) { x.label = nextLabel(weeks().map(y => (y === w ? { ...y, cards: y.cards.filter(z => z !== x) } : y)), now, w); $("#lw-label").value = x.label; }
       document.querySelectorAll("[data-kind]").forEach(y => y.setAttribute("aria-pressed", y === b));
-      $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]);
+      $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now];
       head(); changed();
     }; });
+    $("#lw-eval").onchange = e => { if (e.target.value) x.eval = e.target.value; else delete x.eval; changed(); };
     $("#lw-week").onchange = () => {
       const to = weekById($("#lw-week").value); if (!to || to === w) return;
       w.cards = w.cards.filter(z => z !== x); (to.cards = to.cards || []).push(x); changed();
@@ -403,12 +418,13 @@ export function lecturesPage(ctx, r) {
       if (here()) drawLecture(w, x);
     };
     $("#lw-del").onclick = async () => {
-      if (!await confirmBox("Delete this lecture?", `${esc(titleOf(x))} goes from the course page, with its files and links (uploaded files stay in the course's files).`, "Delete")) return;
+      if (!await confirmBox("Delete this activity?", `${esc(titleOf(x))} goes from the course page, with its files and links (uploaded files stay in the course's files).`, "Delete")) return;
       w.cards = w.cards.filter(z => z !== x); changed(); toWeek(w);
     };
   }
 
-  if (st.data) draw(); else load();
+  if (st.data) { draw(); if (ctx.evaluations) ctx.evaluations().then(e => { st.evals = e; }).catch(() => {}); }   // (an evaluation added meanwhile)
+  else load();
 }
 
 /** Is a save still to happen (leaving the page)? */

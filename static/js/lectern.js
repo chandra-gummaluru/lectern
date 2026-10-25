@@ -232,7 +232,7 @@ function parseHash() {
     if (part) return { page: "tool", tool: "grades", part, c, t, o };
     if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e, o };
     if (tool === "accommodations") return { page: "accom", c, t, o };
-    if (tool === "lectures") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
+    if (tool === "lectures" || tool === "activities") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
     if (tool === "team" && e) return { page: "team", c, t, o, p: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
     return { page: "offering", c, t, o };
@@ -246,7 +246,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/lectures${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -526,7 +526,9 @@ function renderPage() {
   if (r.page === "offering") { renderPath([HOME_STEP, { label: offeringLabel(r.c, r.t) }]); return offeringPage(r.c, r.t); }
   if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
-    steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic }, r);
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic,
+    // The gradebook's evaluations, for an activity to go with one (optional).
+    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation" })) : []; } }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s) }, r);
   if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
@@ -686,7 +688,7 @@ function offeringPage(c, t) {
     <div class="lt-three lt-four">
       <section class="lt-part">
         <div class="lt-part-head">${ICON.lectures}<h2>Activities</h2></div>
-        <p class="lt-part-text">The weeks of the term and each week's lectures, tutorials and labs, with their files and links.</p>
+        <p class="lt-part-text">The weeks of the term and each week's activities (lectures, tutorials, labs), with their files and links.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-lectures">${edit ? "Open Activities" : "See Activities"}</button></div>
       </section>
       <section class="lt-part">

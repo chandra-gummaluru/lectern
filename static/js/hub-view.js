@@ -113,8 +113,13 @@ function lectureCard(c, drag) {
   const when = c.date ? esc(String(c.date).replace(/, \d{4}/, "")) : "";
   const dr = EDIT && drag ? ` draggable="true" data-ldrag="${esc(drag.week)}" data-lj="${drag.j}"` : "";
   return `<article class="hb-card${edCls(c._p)}${EDIT && !c.title ? " hb-untitled" : ""}"${opens(c._p, "Edit this lecture: its title, description, files and links")}${dr}><div class="hb-card-top"><span>${esc(c.label)}</span><span>${when}</span></div>
-    <h3>${esc(c.title || (EDIT ? "Untitled" : c.label) || "Untitled")}</h3>${c.description ? `<div class="hb-card-desc">${markdown(c.description)}</div>` : ""}
+    <h3>${esc(c.title || (EDIT ? "Untitled" : c.label) || "Untitled")}</h3>${c.description ? `<div class="hb-card-desc">${markdown(c.description)}</div>` : ""}${evalFor(c)}
     ${files ? `<div class="hb-files">${files}</div>` : `<div class="hb-soon">Coming soon</div>`}</article>`;
+}
+// An activity that goes with an evaluation (e.g. a lab and its report): a link to it on the Evaluations tab.
+function evalFor(c) {
+  const E = data("evaluations"), e = c.eval && E && (E.evals || []).find(x => x.id === c.eval);
+  return e ? `<p class="hb-card-ev">For <a href="#evaluations">${esc(e.name)}</a></p>` : "";
 }
 function evalWhen(e) {
   const d = fromIso(e.date); if (!d) return "";
@@ -218,7 +223,7 @@ const DRAW = {
 
   week(arg) {
     const cal = (data("week").weeks || []), dated = cal.filter(w => !w.isBreak && w.start);
-    if (!dated.length) return `<h2 class="hb-h2">This week</h2><p class="hb-empty">The term's weeks don't have dates yet.${EDIT ? " Give them dates on the Lectures tab (open a week)." : ""}</p>`;
+    if (!dated.length) return `<h2 class="hb-h2">This week</h2><p class="hb-empty">The term's weeks don't have dates yet.${EDIT ? " Give them dates in Activities (open a week)." : ""}</p>`;
     const now = today();
     const { k, note } = currentWeek(cal, now);   // always the week we're in (or, between weeks, the next)
     const w = dated[k], mon = mondayOf(w.start), next = dated[k + 1];
@@ -248,7 +253,7 @@ const DRAW = {
     let main = "";
     const latest = A && !anns.length ? A.items.filter(a => a.wi < w.i).sort((a, b) => annTime(b) - annTime(a))[0] : null;
     if (anns.length || latest) main += `<h3 class="hb-h3">Announcements</h3>${anns.length ? anns.map(a => annHTML(a, "")).join("") : annHTML(latest, `Latest · ${latest.week}`)}`;
-    if (lw && (lw.cards.length || lw.noClass)) main += `<h3 class="hb-h3">Lectures</h3><div class="hb-grid">${lw.cards.map(c => lectureCard(c)).join("")}${lw.noClass ? `<div class="hb-card nocl">No class${lw.noClass > 1 ? ` (${lw.noClass} hours)` : ""}</div>` : ""}</div>`;
+    if (lw && (lw.cards.length || lw.noClass)) main += `<h3 class="hb-h3">Activities</h3><div class="hb-grid">${lw.cards.map(c => lectureCard(c)).join("")}${lw.noClass ? `<div class="hb-card nocl">No class${lw.noClass > 1 ? ` (${lw.noClass} hours)` : ""}</div>` : ""}</div>`;
 
     // One column, so it reads the same whatever the week has: the days that have something on them (side by side),
     // then the week's announcements, then its lectures. A part with nothing in it isn't shown.
@@ -261,7 +266,7 @@ const DRAW = {
 
   lectures() {
     const L = data("lectures"), E = data("evaluations"), now = today();
-    const head = `<h2 class="hb-h2">Lectures</h2><p class="hb-lede">Every week of the term, its lectures and their files.</p>`;
+    const head = `<h2 class="hb-h2">Activities</h2><p class="hb-lede">Every week of the term: its lectures, tutorials and labs, and their files.</p>`;
     const adds = list => (EDIT ? `<div class="hbe-adds"><button type="button" class="hbe-add" data-act="add" data-path="${esc(list)}" data-kind="week">+ Add Week</button><button type="button" class="hbe-add" data-act="add" data-path="${esc(list)}" data-kind="break">+ Add Section Divider</button></div>` : "");
     if (!L.weeks.length) return head + (EDIT && L.lists && L.lists.length ? adds(L.lists[0]) : `<p class="hb-empty">No lectures yet.</p>`);
     const cw = L.weeks.some(w => !w.isBreak && w.start) ? currentWeek(L.weeks, now) : null, cur = cw ? cw.dated[cw.k].i : -1;
@@ -280,7 +285,7 @@ const DRAW = {
       const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("");
       const add = EDIT ? `<div class="hbe-adds sm"><button type="button" class="hbe-add" data-act="lec-add" data-path="${esc(w._p)}" data-lfree="${esc(w._p)}" title="Add a lecture at the end of this week (or drop a lecture here to move it to the end)">+ Add Lecture</button></div>` : "";
       return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}${w.i === cur ? `<span class="hb-now">This week</span>` : ""}<h3 title="${esc(w.label || "")}">${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}</div>
-        <div class="hb-week-b">${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No lectures this week.</p>`}${add}</div></section>${tail}`;
+        <div class="hb-week-b">${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No activities this week.</p>`}${add}</div></section>${tail}`;
     }).join("") + `</div>`;
   },
 
@@ -363,7 +368,7 @@ function partWeeks(lectures, year) {
     if (w.isBreak) return { i, isBreak: true, label: str(w.text), cards: [], deadlines: [] };
     const [start, end] = weekRange(w, year);
     return { i, isBreak: false, label: str(w.label), dates: str(w.dates) || rangeText(start, end), start, end, topic: str(w.topic), deadlines: [], noClass: 0,
-      cards: arr(w.cards).map(c => ({ kind: str(c.kind), label: str(c.label), title: str(c.title), description: str(c.description), date: str(c.date), files: filesOf(c.files) })) };
+      cards: arr(w.cards).map(c => ({ kind: str(c.kind), label: str(c.label), title: str(c.title), description: str(c.description), date: str(c.date), files: filesOf(c.files), eval: str(c.eval) })) };
   });
 }
 // The week a day is in (the last week whose Monday is on or before it).
@@ -394,7 +399,7 @@ function fromPage(page, year, lectures, extra) {
       });
     });
   });
-  if (lectures && Array.isArray(lectures.weeks)) {   // the Lectures part's weeks; the announcements go to the week of their date
+  if (lectures && Array.isArray(lectures.weeks)) {   // the Activities part's weeks; the announcements go to the week of their date
     const part = partWeeks(lectures, year);
     weeks.length = 0; weeks.push(...part); lists.length = 0;
     anns.forEach(a => { const d = stampDay(a.date), w = (d && weekOfDay(d, weeks)) || weeks.find(x => !x.isBreak && x.label === a.week); a.wi = w ? w.i : -1; if (w) a.week = w.label; });

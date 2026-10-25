@@ -24,7 +24,7 @@ DEMO = os.path.join(ROOT, "sample-data/demo-courses/csc258/f26")
 OLD = open(os.path.join(DEMO, "info.html"), encoding="utf-8").read()
 DATA = open(os.path.join(DEMO, "course.json"), encoding="utf-8").read()
 C = "[data-lt-tool='course'] "
-TABS = ["This week", "Announcements", "Lectures", "Evaluations", "About", "My accommodations"]
+TABS = ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"]
 
 
 def main():
@@ -52,7 +52,7 @@ def main():
         me.click(C + ".hbe-tab[data-v=lectures]")
         me.click(C + ".hbe-tab[data-v=lectures] .hbe-vis")
         expect(me.locator(C + ".hbe-tab[data-v=lectures] .hbe-vis")).to_have_class("hbe-vis on")
-        assert "Lectures" in me.inner_text("#lt-path")
+        assert "Activities" in me.inner_text("#lt-path")
         me.keyboard.press("Control+s")
         me.wait_for_timeout(2500)
         saved = json.loads(srv.text("pub", "csc258/f26/course.json"))["page"]
@@ -79,8 +79,8 @@ def main():
         assert v.eval_on_selector_all(".hb-tab", "els => els.map(e => e.textContent.trim())") == TABS
         expect(v.locator(".hb-tab[aria-selected=true]")).to_have_text("This week")
         v.screenshot(path=f"{OUT}/164-hub-week-visitor.png", full_page=True)
-        v.click(".hb-tab:has-text('Lectures')")
-        expect(v.locator(".hb-locked h2")).to_have_text("Lectures")
+        v.click(".hb-tab:has-text('Activities')")
+        expect(v.locator(".hb-locked h2")).to_have_text("Activities")
         assert "lec03.pdf" not in v.content()
         v.click(".hb-tab:has-text('About')")
         expect(v.locator(".hb-main")).to_contain_text("From transistors to processors")

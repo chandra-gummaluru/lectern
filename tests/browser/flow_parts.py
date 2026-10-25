@@ -62,7 +62,7 @@ def main():
         me.locator("#lt-path button", has_text="csc258 / f26").click()
         me.wait_for_selector("#lt-desc")
         assert not me.query_selector("#lt-about-open, [data-go=course], [data-part=settings].lt-off-acts, .lt-off-acts [data-part]"), "old cards or Settings are still there"
-        assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Lectures", "Announcements", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
+        assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Activities", "Announcements", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
         expect(me.locator("#lt-title")).to_have_text("Computer Organization")
         me.fill("#lt-title", "Computer Organization and Design")
         me.fill("#lt-desc .rt-ed", "From transistors to processors.")
@@ -76,7 +76,7 @@ def main():
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
         v.goto(srv.base + "c/chandra/csc258/f26/"); v.wait_for_selector(".hb-tab")
         tabs = v.eval_on_selector_all(".hb-tab", "els => els.map(e => e.textContent.trim())")
-        assert tabs == ["This week", "Announcements", "Lectures", "Evaluations", "About", "My accommodations"], tabs
+        assert tabs == ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"], tabs
         expect(v.locator(".hb-tab[aria-selected=true]")).to_have_text("This week")
         expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # Oct 27 is in Week 7, this week
         v.click(".hb-tab:has-text('About')")

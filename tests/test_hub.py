@@ -216,3 +216,13 @@ def test_an_offering_made_in_lectern_has_a_course_page_without_course_json(clien
     assert j["course"]["title"] == "Operating Systems" and all(t["open"] for t in j["tabs"] if t["id"] != "accommodations")
     assert anon.get("/c/chandra/csc369/f26/sign-in").status_code == 200
     assert anon.get("/c/chandra/nothing/f26/").status_code == 404
+
+
+def test_an_activity_can_go_with_an_evaluation(client, user, anon):
+    publish(user)
+    lec = {"format": "lectern-lectures/1", "weeks": [{"id": "a", "label": "Week 1", "start": "2026-09-07", "end": "2026-09-11",
+                                                     "cards": [{"id": "x", "kind": "lab", "label": "Lab 1", "title": "Gates", "eval": "l1"}]}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/lectures.json": json.dumps(lec).encode()}, "seed", r.head())
+    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
+    assert j["data"]["lectures"]["weeks"][0]["cards"][0]["eval"] == "l1"
+    assert [t["title"] for t in j["tabs"]][2] == "Activities"

@@ -441,3 +441,5 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 /* Test / Due beside a name: a soft, quiet label */
 .hb-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; letter-spacing: .01em; text-transform: none; line-height: 1; background: var(--strip); color: var(--ink-2); box-shadow: none; }
 .hb-tag.dk { background: var(--accent-bg); color: var(--accent); }
+.hb-card-ev { margin: 6px 0 0 !important; font-size: 13.5px !important; }
+.hb-card.test .hb-card-ev a { color: inherit; }

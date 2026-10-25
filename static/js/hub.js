@@ -273,7 +273,9 @@ function evalCard(u, group, E) {
   if ((u.dates || []).length) rows.push(rows.shift());   // the sections' own first, then everyone else's
   // Its facts, together in one area (no boxes): when (each section's, if they differ), what it's worth, its points.
   const tile = (k, v, sub = "", cls = "") => `<div class="ec-fact${cls}"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`;
-  const dates = rows.map(r => `${due && r.release ? tile("Released", at(r.release, r.releaseTime), r.who) : ""}${tile(due ? "Due" : "Date", at(r.date, r.time), r.who)}`).join("");
+  // Its dates, as a table: whose (when sections differ), released (an assignment), and due (or its date).
+  const rel = due && rows.some(r => r.release), whoCol = rows.some(r => r.who) && rows.length > 1;
+  const dates = `<table class="ec-dates"><thead><tr>${whoCol ? "<th>For</th>" : ""}${rel ? "<th>Released</th>" : ""}<th>${due ? "Due" : "Date"}</th></tr></thead><tbody>${rows.map(r => `<tr>${whoCol ? `<td class="ec-dwho">${esc(r.who)}</td>` : ""}${rel ? `<td>${esc(r.release ? at(r.release, r.releaseTime) : "—")}</td>` : ""}<td>${esc(at(r.date, r.time))}</td></tr>`).join("")}</tbody></table>`;
   // Grading: what it's worth, and its points (theirs, once it's marked).
   const m = (D.viewer.marks || {})[u.id], total = u.total;
   const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
@@ -296,7 +298,8 @@ function evalCard(u, group, E) {
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1></div>${req ? `<span class="ec-acts">${req}</span>` : ""}</header>
-      <div class="ec-facts">${dates}${grading}</div>
+      ${sec("When")}${dates}
+      ${sec("Grading")}<div class="ec-facts">${grading}</div>
       ${policy || acc ? `${sec("If You Miss It")}${policy}${acc}` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}

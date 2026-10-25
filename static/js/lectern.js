@@ -619,6 +619,12 @@ function newOfferingDialog() {
         <label>Term<select id="no-s"><option value="f">Fall</option><option value="w">Winter</option><option value="s">Summer</option></select></label>
         <label>Year<input type="text" id="no-y" value="20${String(y).padStart(2, "0")}" inputmode="numeric" autocomplete="off"></label>
       </div>
+      <p class="lt-form-h">What each student has</p>
+      <div class="two">
+        <label>Identifier<input type="text" id="no-id" value="Student Number" autocomplete="off"><small>Unique for each student.</small></label>
+        <label>Email domain<input type="text" id="no-dom" placeholder="e.g. mail.utoronto.ca" spellcheck="false" autocomplete="off"><small>They sign in with it. Blank: any.</small></label>
+      </div>
+      <label>More fields<input type="text" id="no-more" placeholder="e.g. UTORid" autocomplete="off"><small>Besides their name and email; separate them with commas. Fixed once there are students.</small></label>
     </div>
     <p class="lt-err" id="no-err"></p>
     <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Continue</button></div>`, (m, close) => {
@@ -637,6 +643,16 @@ function newOfferingDialog() {
       m.querySelector("[data-ok]").disabled = true;
       try {   // its folder starts with its title (about.json): an offering that's there already keeps its own
         if (!await Store.readFile(repo, path)) await Store.writeText(repo, path, JSON.stringify({ format: "lectern-about/2", title, description: "" }, null, 1) + "\n", `New course offering ${c} ${t}`, null);
+        // Its class list's fields (the gradebook's): what each student has, set here once.
+        const gpath = `${c}/${t}/grades.json`;
+        if (!await Store.readFile(repo, gpath)) {
+          const dom = m.querySelector("#no-dom").value.trim().toLowerCase().replace(/^@/, "");
+          const more = [...new Set(m.querySelector("#no-more").value.split(",").map(x => x.trim()).filter(x => x && !/^(e-?mail|first ?name|last ?name)$/i.test(x)))];
+          const book = { format: "grade-builder/1", course: { code: c.toUpperCase(), term: termName(t) },
+            fields: { idLabel: m.querySelector("#no-id").value.trim() || "Student Number", emailDomain: dom, custom: [{ id: "email", label: "Email" }, ...more.map(label => ({ id: Math.random().toString(36).slice(2, 10), label }))] },
+            evals: [], groups: [], students: [], marks: {}, overrides: {}, finals: {} };
+          await Store.writeText(repo, gpath, JSON.stringify(book, null, 2) + "\n", `New course offering ${c} ${t}: its gradebook`, null);
+        }
       } catch (e) { err.textContent = `Couldn't make it. ${e.message}`; m.querySelector("[data-ok]").disabled = false; return; }
       close();
       aboutCache.delete(`/${c}/${t}`);

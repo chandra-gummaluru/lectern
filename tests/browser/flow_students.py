@@ -42,11 +42,10 @@ def main():
         srv.sign_in(me, hash="#/csc258/f26")
 
         # 1. What each student has
-        me.wait_for_selector("#sf-id")   # right in the card: each field a row
-        me.fill("#sf-id", "Student Number"); me.press("#sf-id", "Tab"); me.wait_for_timeout(700)
-        me.fill("#sf-dom", "@Mail.UToronto.ca"); me.press("#sf-dom", "Tab"); me.wait_for_timeout(700)
-        me.click("#sf-add"); me.fill("#sf-new", "UTORid"); me.press("#sf-new", "Enter"); me.wait_for_timeout(900)
-        expect(me.locator("[data-sf-name]")).to_have_value("UTORid")
+        # (set when an offering is made: the New Course Offering dialog; here, as it would have written them)
+        srv.put("priv", {"csc258/f26/grades.json": json.dumps({"format": "grade-builder/1", "fields": {"idLabel": "Student Number", "emailDomain": "mail.utoronto.ca",
+            "custom": [{"id": "email", "label": "Email"}, {"id": "utorid", "label": "UTORid"}]}, "evals": [], "groups": [], "students": [], "marks": {}})})
+        me.reload(); me.wait_for_selector("#st-add")
         F = book()["fields"]
         assert F["idLabel"] == "Student Number" and F["emailDomain"] == "mail.utoronto.ca" and [f["label"] for f in F["custom"]] == ["Email", "UTORid"], F
         me.locator("#lt-students").scroll_into_view_if_needed()
@@ -61,8 +60,7 @@ def main():
         expect(me.locator("#sd-err")).to_contain_text("@mail.utoronto.ca")
         me.fill("#sd-email", "maya.castillo@mail.utoronto.ca"); me.click(".lt-modal [data-ok]")
         me.wait_for_selector(S + ".lt-st-list .lt-orow")
-        assert not me.query_selector("#sf-id"), "the fields can still change"
-        expect(me.locator(".lt-st-fieldrow")).to_contain_text("Student Number, First Name, Last Name, Email (@mail.utoronto.ca), UTORid")
+
         me.click("#st-import"); me.wait_for_selector(".lt-st-drop")
         me.set_input_files(".lt-st-drop input", files=[{"name": "classlist.csv", "mimeType": "text/csv", "buffer": CSV.encode()}])
         me.wait_for_selector("#im-sum")

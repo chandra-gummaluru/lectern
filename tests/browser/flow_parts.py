@@ -100,11 +100,16 @@ def main():
         me.click("#lt-home"); me.wait_for_selector("#lt-new"); me.click("#lt-new")
         me.fill("#no-c", "csc369"); me.click(".lt-modal [data-ok]")
         expect(me.locator("#no-err")).to_contain_text("title")
-        me.fill("#no-title", "Operating Systems"); me.click(".lt-modal [data-ok]")
+        me.fill("#no-title", "Operating Systems")
+        me.fill("#no-dom", "@mail.utoronto.ca"); me.fill("#no-more", "UTORid, Email")   # what each student has (Email they have already)
+        me.screenshot(path=f"{OUT}/204-new-offering-dialog.png")
+        me.click(".lt-modal [data-ok]")
         me.wait_for_selector("#lt-title")
         expect(me.locator("#lt-title")).to_have_text("Operating Systems")
         t = me.evaluate("location.hash").split("/")[-1]
         assert json.loads(srv.text("priv", f"csc369/{t}/about.json"))["title"] == "Operating Systems"
+        F = json.loads(srv.text("priv", f"csc369/{t}/grades.json"))["fields"]
+        assert F["idLabel"] == "Student Number" and F["emailDomain"] == "mail.utoronto.ca" and [f["label"] for f in F["custom"]] == ["Email", "UTORid"], F
         me.screenshot(path=f"{OUT}/205-new-offering.png")
         print("5 new offering made with its title:", t)
         b.close()

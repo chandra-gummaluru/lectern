@@ -124,16 +124,8 @@ export async function studentsCard(ctx, c, t) {
     const fieldNames = [F.idLabel, "First Name", "Last Name", `Email${F.emailDomain ? ` (@${F.emailDomain})` : ""}`, ...custom.map(f => f.label)];
     const open = lead && !locked;
     const fixedRow = (n, note) => `<div class="lt-orow lt-sf-row fixed"><span class="lt-sf-n">${esc(n)}</span><span class="lt-sf-note">${esc(note)}</span></div>`;
-    const fields = !lead ? "" : open ? `<div class="lt-st-fieldbox">
-      <div class="lt-olist lt-sf-list">
-        <div class="lt-orow lt-sf-row"><label class="lt-sf-l" for="sf-id">Identifier</label><input type="text" id="sf-id" value="${esc(F.idLabel)}" placeholder="e.g. Student Number" autocomplete="off"${dis}><span class="lt-sf-note">Unique for each student</span></div>
-        ${fixedRow("First Name", "Every student has it")}${fixedRow("Last Name", "Every student has it")}
-        <div class="lt-orow lt-sf-row"><label class="lt-sf-l" for="sf-dom">Email</label><span class="lt-sf-at">@</span><input type="text" id="sf-dom" value="${esc(F.emailDomain)}" placeholder="Any domain, e.g. mail.utoronto.ca" spellcheck="false" autocomplete="off"${dis}><span class="lt-sf-note">They sign in with it</span></div>
-        ${custom.map(f => `<div class="lt-orow lt-sf-row"><span class="lt-sf-n">Field</span><input type="text" data-sf-name="${esc(f.id)}" value="${esc(f.label)}" placeholder="e.g. UTORid" aria-label="Field name" autocomplete="off"${dis}><button type="button" class="lt-btn lt-trash" data-sf-del="${esc(f.id)}" aria-label="Remove the field ${esc(f.label)}"${dis}>${ICON.trash}</button></div>`).join("")}
-        ${st.newField ? `<div class="lt-orow lt-sf-row"><span class="lt-sf-n">New field</span><input type="text" id="sf-new" placeholder="The field's name, e.g. UTORid" aria-label="New field" autocomplete="off"${dis}><button type="button" class="lt-btn lt-trash" id="sf-new-x" aria-label="Don't add it">${ICON.trash}</button></div>` : ""}
-      </div>
-      <div class="lt-sf-add"><button type="button" class="lt-btn add" id="sf-add"${dis}>${ICON.plus}Add a Field</button></div></div>`
-      : `<div class="lt-olist lt-st-fieldrow"><div class="lt-orow lt-user lt-sec-row"><div class="lt-user-who"><span class="lt-sec-ic" aria-hidden="true">${IDCARD}</span><span class="lt-sec-t"><small>What Each Student Has</small><b>${esc(fieldNames.join(", "))}</b><span>Fixed now that there are students.</span></span></div></div></div>`;
+    const fields = "";   // (what each student has is set when the offering is made)
+
     box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks.</p>
       ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="st-add"${dis}>${ICON.plus}Add a Student</button><button type="button" class="lt-btn" id="st-import"${dis}>${ICON.upload || ""}Import a Class List</button></div>` : ""}</div>
       ${held ? `<p class="lt-note lt-st-note">${UNSAVED}</p>` : ""}

@@ -50,7 +50,7 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .st-approved .rq-v { color: #2f8f5b; } .st-rejected .rq-v { color: #c0392b; }
 .rq-n { display: inline-block; margin: 5px 0 0; padding: 7px 11px; border-radius: 4px 12px 12px 12px; background: #fff; box-shadow: inset 0 0 0 1px #cfd0d3; font-size: 13.5px; color: #1f2329; white-space: pre-wrap; }
 .rq-mini { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; font: 600 12.5px var(--font-ui); color: #b58a00; } .rq-mini svg { width: 16px; height: 16px; }
-.rq-foot { margin: 8px 0 18px; }
+.rq-foot { display: flex; justify-content: flex-end; margin: 10px 0 18px; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -3715,7 +3715,7 @@ function reqsHTML(s, e) {
         ${r.kind === "standard" ? `<p class="rq-t">${esc(r.standard || "")}</p>` : `<blockquote class="rq-q">${esc(r.details || "")}</blockquote>`}
         ${r.status !== "pending" ? `<div class="rq-c"><span class="rq-av">${esc(ini(r.decidedBy))}</span><div><p class="rq-ch"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="rq-v">${esc(REQ_STATUS[r.status])}</span><span>${esc(stampOf(r.decided))}</span></p>${r.note ? `<p class="rq-n">${esc(r.note)}</p>` : ""}</div></div>` : ""}
       </div></div>`).join("")}</div>
-    ${window.Lectern && window.Lectern.openAccom ? `<div class="rq-foot"><button type="button" class="link" data-ed="open-accom">${L.some(r => r.status === "pending") ? "Decide it in Accommodations" : "Open Accommodations"}</button></div>` : ""}`;
+    ${window.Lectern && window.Lectern.openAccom ? `<div class="rq-foot"><button type="button" class="ec-btn2" data-ed="open-accom">${L.some(r => r.status === "pending") ? "Decide it in Accommodations" : "Open Accommodations"}</button></div>` : ""}`;
 }
 let reqsOf = "";   // whose page the requests were read for (read again on another student's: they may have changed)
 function drawStudentEditor() {

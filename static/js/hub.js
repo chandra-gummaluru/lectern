@@ -148,21 +148,25 @@ const PAGES = {
   home() {
     const c = D.course, a = data("about"), out = [];
     if (a && a.description) out.push(`<div class="hs-desc">${markdown(a.description)}</div>`);
-    // Announcements: the newest in full, then all of them.
-    if (!open("announcements")) out.push(lockedSec("announcements", "Announcements"));
-    else {
+    // The newest announcement in full, then this week opened (the first week, before the term starts).
+    if (open("announcements")) {
       const items = (data("announcements").items || []).slice().sort((x, y) => annTime(y) - annTime(x));
-      out.push(`<section class="hs-sec">${secHead("Announcements", "#announcements")}${items.length ? annCard(items[0]) + (items.length > 1 ? `<a class="hs-more" href="#announcements">All ${items.length} announcements ${CHEV}</a>` : "") : `<p class="hs-empty">No announcements yet.</p>`}</section>`);
+      if (items.length) out.push(`<section class="hs-sec">${annCard(items[0])}</section>`);
     }
-    // Activities: the weeks.
-    if (!open("lectures")) out.push(lockedSec("lectures", "Activities"));
-    else {   // just this week (the first, before the term starts); the rest are a click away
-      const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0], n = realWeeks().length;
-      out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `${weekOpen(w, now)}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
+    if (open("lectures")) {
+      const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0];
+      if (w) out.push(`<section class="hs-sec">${weekOpen(w, now)}</section>`);
     }
-    // More: Evaluations, About, My accommodations.
-    const more = [["evaluations", "Evaluations", "Every evaluation, its weight and when it is."], ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."], ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."]].filter(([id]) => tab(id));
-    if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s]) => `<a class="hs-row" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${open(id) ? "" : LOCK}${CHEV}</a>`).join("")}</div></section>`);
+    // Then everything else, each a page of its own.
+    const ann = open("announcements") ? ((data("announcements") || {}).items || []).length : 0;
+    const more = [
+      ["announcements", "Announcements", ann ? `All ${ann} announcement${ann === 1 ? "" : "s"}, newest first.` : "News for the class, newest first."],
+      ["activities", "Activities", "The term, week by week: lectures, tutorials and labs, with their files.", "lectures"],
+      ["evaluations", "Evaluations", "Every evaluation, its weight and when it is."],
+      ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
+      ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."],
+    ].filter(([id, , , t]) => tab(t || id));
+    if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${open(tb || id) ? "" : LOCK}${CHEV}</a>`).join("")}</div></section>`);
     document.title = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
     return out.join("");
   },

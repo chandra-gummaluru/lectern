@@ -128,7 +128,7 @@ def main():
         stu.fill("#si-c", code); stu.click("#si-code button[type=submit]")
         stu.wait_for_selector(".hs-sec")
         expect(stu.locator(".hb-who")).to_contain_text("maya.castillo@mail.utoronto.ca")
-        stu.click("a.hs-sec-h:has-text('Activities')")
+        stu.click("a.hs-link:has-text('Activities')")
         stu.wait_for_selector(".hs-wk")
         stu.screenshot(path=f"{OUT}/214-signed-in.png")
         me.locator("#lt-path button", has_text="csc258 / f26").click(); me.wait_for_selector(S + ".lt-st-list")

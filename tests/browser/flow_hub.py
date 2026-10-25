@@ -24,7 +24,7 @@ DEMO = os.path.join(ROOT, "sample-data/demo-courses/csc258/f26")
 OLD = open(os.path.join(DEMO, "info.html"), encoding="utf-8").read()
 DATA = open(os.path.join(DEMO, "course.json"), encoding="utf-8").read()
 C = "[data-lt-tool='course'] "
-HOME = ["Announcements", "Activities"]   # the home page's sections
+HOME = ["Announcements", "Activities", "Evaluations", "About the Course", "My Accommodations"]   # the home page's links
 TABS = ["This week", "Announcements", "Activities", "Evaluations", "About", "My accommodations"]   # the course page builder (Lectern) still has its tabs
 
 
@@ -77,9 +77,9 @@ def main():
         v.goto(srv.base + "p/chandra/csc258/f26/info.html")
         v.wait_for_selector(".hs-sec")
         assert v.url.endswith("/c/chandra/csc258/f26/"), v.url
-        assert v.eval_on_selector_all(".hs-sec-h h2", "els => els.map(e => e.textContent.trim())") == HOME
+        assert v.eval_on_selector_all(".hs-link b", "els => els.map(e => e.textContent.trim())") == HOME
         v.screenshot(path=f"{OUT}/164-hub-home-visitor.png", full_page=True)
-        assert v.query_selector(".hs-sec-h.hs-off h2:has-text('Activities')"), "Activities isn't locked on the home page"
+        assert v.query_selector(".hs-link:has-text('Activities') svg + svg, .hs-link:has-text('Activities') .hs-t + svg"), "Activities isn't locked on the home page"
         v.goto(srv.base + "c/chandra/csc258/f26/#activities")
         expect(v.locator(".hb-locked h2")).to_have_text("Activities")
         assert "lec03.pdf" not in v.content()

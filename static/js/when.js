@@ -2,7 +2,8 @@
    ("Wed, Oct 28, 2026 · 18:10"), and a calendar under it, with the time typed in (18:30, 6:30 pm, noon…).
 
      whenField(host, { date: "2026-10-28", time: "18:10", withTime, empty, timeLabel, timeHolder, id, label,
-                       near, disabled, onChange({ date, time }) }) → { get, set }
+                       near, min, max, disabled, onChange({ date, time }) }) → { get, set }
+   (min, max: the first and last day that can be chosen, e.g. an activity's week; others are greyed.)
 
    host gets the button (with id, if given) and data-date / data-time saying what's chosen. */
 
@@ -30,7 +31,7 @@ document.addEventListener("mousedown", e => { if (open && !open.pop.contains(e.t
 document.addEventListener("keydown", e => { if (open && e.key === "Escape") { e.preventDefault(); const b = open.btn; closeOpen(); b.focus(); } }, true);
 addEventListener("resize", closeOpen);
 
-export function whenField(host, { date = "", time = "", withTime = true, empty = "Choose a date", timeLabel = "Time", timeHolder = "No time", id = "", label = "", near = "", disabled = false, onChange = () => {} } = {}) {
+export function whenField(host, { date = "", time = "", withTime = true, empty = "Choose a date", timeLabel = "Time", timeHolder = "No time", id = "", label = "", near = "", min = "", max = "", disabled = false, onChange = () => {} } = {}) {
   let v = { date: date || "", time: withTime ? time || "" : "" };
   host.classList.add("lxw");
   host.innerHTML = `<button type="button" class="lxw-btn"${id ? ` id="${esc(id)}"` : ""}${label ? ` aria-label="${esc(label)}"` : ""}${disabled ? " disabled" : ""}>${CAL}<span></span></button>`;
@@ -49,7 +50,7 @@ export function whenField(host, { date = "", time = "", withTime = true, empty =
   btn.onclick = () => {
     if (open && open.btn === btn) return closeOpen();
     closeOpen();
-    let shown = new Date(`${v.date || near || iso(new Date())}T12:00`);   // near: where to open with no date (e.g. its week) shown.setDate(1);
+    let shown = new Date(`${v.date || near || min || iso(new Date())}T12:00`); shown.setDate(1);   // near: where to open with no date (e.g. its week)
     const pop = document.createElement("div");
     pop.className = "lxw-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", label || "Choose a date");
     const draw = () => {
@@ -57,7 +58,7 @@ export function whenField(host, { date = "", time = "", withTime = true, empty =
       const today = iso(new Date()), days = [];
       for (let k = 0; k < 42; k++) { const d = new Date(start); d.setDate(start.getDate() + k); days.push(d); }
       pop.innerHTML = `<div class="lxw-head"><button type="button" data-w="prev" aria-label="Previous month">${PREV}</button><b>${first.toLocaleDateString("en-CA", { month: "long", year: "numeric" })}</b><button type="button" data-w="next" aria-label="Next month">${NEXT}</button></div>
-        <div class="lxw-days">${["S", "M", "T", "W", "T", "F", "S"].map(x => `<i>${x}</i>`).join("")}${days.map(d => `<button type="button" data-day="${iso(d)}" class="${d.getMonth() !== first.getMonth() ? "out" : ""}${iso(d) === today ? " today" : ""}${iso(d) === v.date ? " on" : ""}">${d.getDate()}</button>`).join("")}</div>
+        <div class="lxw-days">${["S", "M", "T", "W", "T", "F", "S"].map(x => `<i>${x}</i>`).join("")}${days.map(d => `<button type="button" data-day="${iso(d)}"${(min && iso(d) < min) || (max && iso(d) > max) ? " disabled" : ""} class="${d.getMonth() !== first.getMonth() ? "out" : ""}${iso(d) === today ? " today" : ""}${iso(d) === v.date ? " on" : ""}">${d.getDate()}</button>`).join("")}</div>
         <div class="lxw-time">${withTime ? `<label>${esc(timeLabel)}<input type="text" class="lxw-t" value="${esc(v.time)}" placeholder="${esc(timeHolder)}" autocomplete="off"></label>` : `<span class="grow"></span>`}<button type="button" class="lxw-clear" data-w="clear">Clear</button></div>`;
     };
     draw();

@@ -431,9 +431,10 @@ export function lecturesPage(ctx, r) {
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""}>${esc([y.label || "Week", rangeText(y.start, y.end)].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>
           <div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div>
         </div>
+
+        <p class="lx-help">The date and time are optional: with a date, This week shows it on its day. One held on several days (e.g. a lab's sections) can have more than one.</p>
         <div class="lx-grid one"><label class="lx-f">For<select id="lw-group"${dis}>${canEdit(c, t) || !edit ? `<option value="">Everyone in the course</option>` : ""}${(st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}</select></label></div>
         <p class="lx-help">For one activity group, only its students see it on the course page (and its announcements).</p>
-        <p class="lx-help">The date and time are optional: with a date, This week shows it on its day. One held on several days (e.g. a lab's sections) can have more than one.</p>
         <h3 class="lx-sec">Description</h3>
         <div id="lw-desc"></div>
         <h3 class="lx-sec">Files and Links</h3>
@@ -442,6 +443,9 @@ export function lecturesPage(ctx, r) {
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn add" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn add" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
       </div>
     </div></div>`);
+    // Its dates: a field for each (at least one), and another one added with Add a Date; only days in its week
+    // (its Monday to the day before the next week's, or that Sunday).
+    const weekSpan = w => { if (!w.start) return {}; const R = realWeeks(), nx = R.slice(R.indexOf(w) + 1).find(y => y.start); return { min: mondayOf(w.start), max: nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.end || w.start), 6) }; };
     // Its dates: a field for each (at least one), and another one added with Add a Date.
     let W = datesOf(x).slice(); if (!W.length) W = [""];
     const whens = () => {
@@ -449,7 +453,7 @@ export function lecturesPage(ctx, r) {
       host.innerHTML = W.map((_, i) => `<div class="lx-when-row"><div data-wi="${i}"></div>${edit && W.length > 1 ? `<button type="button" class="lx-ic quiet" data-wdel="${i}" title="Remove this date" aria-label="Remove this date">${ICON.trash}</button>` : ""}</div>`).join("")
         + (edit && W.some(Boolean) ? `<button type="button" class="lx-btn add sm" id="lw-when-add">${ICON.plus}Add a Date</button>` : "");
       W.forEach((s, i) => { const v = readStamp(s);
-        whenField(host.querySelector(`[data-wi="${i}"]`), { date: v.date, time: v.time, id: i ? `lw-when-${i}` : "lw-when", label: i ? `Date ${i + 1}` : "When", empty: "Choose a date", timeLabel: "Starts At", near: (readStamp(W[0]).date || w.start), disabled: !edit,
+        whenField(host.querySelector(`[data-wi="${i}"]`), { date: v.date, time: v.time, id: i ? `lw-when-${i}` : "lw-when", label: i ? `Date ${i + 1}` : "When", empty: "Choose a date", timeLabel: "Starts At", near: (readStamp(W[0]).date || w.start), ...weekSpan(w), disabled: !edit,
           onChange: ({ date, time }) => { W[i] = date ? writeStamp(date, time) : ""; setDates(x, W); changed(); if (!date && W.length > 1) { W.splice(i, 1); whens(); } else if (!$("#lw-when-add") && date) whens(); } }); });
       host.querySelectorAll("[data-wdel]").forEach(b => { b.onclick = () => { W.splice(+b.dataset.wdel, 1); if (!W.length) W = [""]; setDates(x, W); changed(); whens(); }; });
       const add = $("#lw-when-add"); if (add) add.onclick = () => { W.push(""); whens(); const f = host.querySelector(`[data-wi="${W.length - 1}"] button`); if (f) f.click(); };

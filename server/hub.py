@@ -171,7 +171,7 @@ def team_of(owner_id, course, term):
     return out
 
 
-SECTION_KINDS = ("lecture", "tutorial", "lab", "custom")
+SECTION_KINDS = ("lecture", "tutorial", "lab")
 
 
 def section_kind(g):
@@ -185,13 +185,13 @@ def section_kind(g):
             return kind
     ks = [x.get("kind") for x in _list(g.get("items")) if isinstance(x, dict)] if isinstance(g, dict) else []
     k = max(set(ks), key=ks.count) if ks else None
-    return k if k in ("lecture", "tutorial", "lab") else "custom"
+    return k if k in SECTION_KINDS else "lecture"
 
 
 def _kind_of(g, x):
-    """A meeting time's kind, for the team's times: its section's (custom ones as other)."""
+    """A meeting time's kind, for the team's times: its section's."""
     k = section_kind(g)
-    return k if k in TEAM_KINDS and k != "custom" else "other"
+    return k
 
 
 def groups_of(owner_id, course, term):
@@ -225,7 +225,7 @@ def groups_of(owner_id, course, term):
                           "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
         who = [names[p] for p in names if runs_section(g, p)]
         out.append({"id": _s(g.get("id"), 40), "name": _s(g.get("name"), 100), "kind": section_kind(g), "items": items,
-                    "who": who, **({"label": _s(g.get("label"), 60)} if section_kind(g) == "custom" and g.get("label") else {})})
+                    "who": who})
     return out
 
 

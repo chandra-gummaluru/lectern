@@ -95,7 +95,7 @@ export function teamMemberPage(ctx, r) {
     document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
     const pick = $("#tm-runs-pick");
     if (pick) pickMany(pick, { options: G.map(g => ({ value: g.id, label: sectionLabel(g), kick: SECTION_NAME[sectionKind(g)], icon: SECTION_ICON[sectionKind(g)] })), value: run.map(g => g.id),
-      empty: "None", emptyHint: "They don't run a section", emptyIcon: SECTION_ICON.custom, allowEmpty: true, label: "Sections they run", id: "tm-runs", disabled: !canChange,
+      empty: "None", emptyHint: "They don't run a section", emptyIcon: SECTION_ICON.none, allowEmpty: true, label: "Sections they run", id: "tm-runs", disabled: !canChange,
       onChange: async v => {
         status("Saving…");
         try {

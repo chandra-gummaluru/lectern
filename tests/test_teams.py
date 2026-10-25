@@ -311,4 +311,4 @@ def test_section_kinds_from_older_files():
     assert section_kind({"kind": "lab"}) == "lab"
     assert section_kind({"name": "TUT0102"}) == "tutorial" and section_kind({"name": "PRA0101"}) == "lab"
     assert section_kind({"name": "Group A", "items": [{"kind": "lecture"}, {"kind": "lecture"}, {"kind": "tutorial"}]}) == "lecture"
-    assert section_kind({"name": "Seminars"}) == "custom"
+    assert section_kind({"name": "Seminars"}) == "lecture"   # a name that doesn't say: a lecture section

@@ -167,13 +167,13 @@ function meetings() {
 const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
 const when = x => [DAY3[x.day] || "", hhmm(x.start, x.end)].filter(Boolean).join(" ");
 // The sections (LEC0101…): each a card with its type, its weekly times and who runs it.
-const SECTION_NAME = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section", custom: "Section" };
+const SECTION_NAME = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
 function groupsHTML(G) {
-  const order = { lecture: 0, tutorial: 1, lab: 2, custom: 3 };
+  const order = { lecture: 0, tutorial: 1, lab: 2 };
   const cards = (G || []).filter(g => (g.items || []).length).slice().sort((a, b) => (order[a.kind] ?? 3) - (order[b.kind] ?? 3) || String(a.name).localeCompare(String(b.name), undefined, { numeric: true })).map(g => {
     const I = g.items.slice().sort((a, b) => (a.day || 9) - (b.day || 9) || String(a.start).localeCompare(String(b.start)));
     const who = g.who || [...new Set(I.flatMap(x => x.who || []))];
-    return `<article class="hb-card hb-sec"><div class="hb-card-top"><span>${esc(g.label || SECTION_NAME[g.kind] || "Section")}</span></div><h3>${esc(g.name || "Section")}</h3>
+    return `<article class="hb-card hb-sec"><div class="hb-card-top"><span>${esc(SECTION_NAME[g.kind] || "Section")}</span></div><h3>${esc(g.name || "Section")}</h3>
       ${I.map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
       ${who.length ? `<p class="hb-sec-who">${esc(who.join(", "))}</p>` : ""}</article>`;
   }).join("");

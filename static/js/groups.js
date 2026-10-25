@@ -1,4 +1,4 @@
-/* Sections: an offering's lecture, tutorial, lab (and other) sections, e.g. LEC0101, meeting Monday and
+/* Sections: an offering's lecture, tutorial and lab sections, e.g. LEC0101, meeting Monday and
    Wednesday at 13:00 in BA 1170. Each section has a type; a student is in at most one section of each type
    (one lecture section, one tutorial section…: the class list says which). Who runs a section is set on
    each person's page in the teaching team (the sections they run, a dropdown).
@@ -18,7 +18,7 @@
 
 import { parseTime } from "./when.js";
 
-export const SECTION_KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["custom", "Custom"]];
+export const SECTION_KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"]];
 export const SECTION_NAME = Object.fromEntries(SECTION_KINDS.map(([k, n]) => [k, `${n} Section`]));
 export const GROUP_KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];   // (team.js's older times)
 export const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -30,20 +30,22 @@ export const SECTION_ICON = {
   lecture: ic('<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/>'),
   tutorial: ic('<path d="M4 5h11a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"/><path d="M19 9h1a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v3l-3-3h-3"/>'),
   lab: ic('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>'),
-  custom: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
+  none: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
 };
 export const GROUP_ICON = ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>');
-// A section's type: its own, or (older files) from its name (LEC…, TUT…, PRA… or LAB…), or its times' kinds.
-export function sectionKind(g) {
+// A section's type: its own, or (older files) from its name (LEC…, TUT…, PRA… or LAB…), or its times' kinds;
+// else a lecture section.
+export function sectionKind(g) { const k = guessKind(g); return k || "lecture"; }
+function guessKind(g) {
   if (g && KIND_SHORT[g.kind]) return g.kind;
   const n = String((g && g.name) || "").trim().toUpperCase();
   for (const [pre, k] of [["LEC", "lecture"], ["TUT", "tutorial"], ["PRA", "lab"], ["LAB", "lab"]]) if (n.startsWith(pre)) return k;
   const ks = ((g && g.items) || []).map(x => x && x.kind).filter(k => ["lecture", "tutorial", "lab"].includes(k));
-  if (!ks.length) return "custom";
+  if (!ks.length) return "";
   const n2 = {}; ks.forEach(k => { n2[k] = (n2[k] || 0) + 1; });
   return Object.entries(n2).sort((a, b) => b[1] - a[1])[0][0];
 }
-export const kindFromName = name => sectionKind({ name });
+export const kindFromName = name => guessKind({ name });   // "" when its name doesn't say
 // Who runs it: its people (or, older files, everyone its times listed).
 export const runnersOf = g => (Array.isArray(g.people) ? g.people.map(String) : [...new Set((g.items || []).flatMap(x => (x.people || []).map(String)))]);
 export const runsSection = (g, id) => runnersOf(g).includes(String(id));
@@ -114,7 +116,7 @@ export async function groupIdsFor(Store, repo, c, t, names) {
     want.forEach(({ name, kind }) => {
       if (d.groups.some(g => g.name.toLowerCase() === name.toLowerCase())) return;
       const k0 = kindFromName(name);
-      d.groups.push({ id: uid(), name, kind: k0 !== "custom" ? k0 : kind || "custom", people: [], items: [] }); added = true;
+      d.groups.push({ id: uid(), name, kind: k0 || (KIND_SHORT[kind] ? kind : "lecture"), people: [], items: [] }); added = true;
     });
     return added ? undefined : false;
   }, "Sections (from a class list)");
@@ -150,7 +152,7 @@ export async function groupsCard(ctx, c, t) {
     const inp = m.querySelector("#gr-name"), kind = m.querySelector("#gr-kind"), err = m.querySelector("#gr-err");
     let typed = false;
     kind.addEventListener("change", () => { typed = true; });
-    inp.addEventListener("input", () => { const k = kindFromName(inp.value); if (!typed && k !== "custom") kind.value = k; });
+    inp.addEventListener("input", () => { const k = kindFromName(inp.value); if (!typed && k) kind.value = k; });
     m.querySelector("[data-no]").onclick = close;
     const ok = async () => {
       const name = inp.value.trim(); if (!name) { err.textContent = "Give it a name, e.g. LEC0101."; return inp.focus(); }

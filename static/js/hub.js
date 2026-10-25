@@ -384,7 +384,7 @@ const PAGES = {
     const an = anns.map(a => item(MEGAPHONE, `${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}`, a.title || "Announcement", stampText(a.date), `<div class="hs-body">${markdown(a.body)}</div>`)).join("");
     return `${path([["Activities", "#activities"], [w.label || "Week"]])}
       <article class="ec-card wk-card">
-        <header class="ec-head"><span class="hs-num">${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}${now ? ` <span class="hs-tag">This week</span>` : ""}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
+        <header class="ec-head"><span class="hs-num">${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
         ${[acts, due, an].filter(Boolean).map(x => `<div class="wk-group"><div class="wk-list">${x}</div></div>`).join("") || `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`}
       </article>
       <nav class="hs-pn">${prev ? `<a href="#week/${prev.i}">‹ ${esc(prev.label || "Previous week")}</a>` : "<span></span>"}${next ? `<a href="#week/${next.i}">${esc(next.label || "Next week")} ›</a>` : ""}</nav>`;

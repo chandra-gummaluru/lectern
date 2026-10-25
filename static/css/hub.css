@@ -704,3 +704,12 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-p { margin: 0 0 6px; color: var(--ink-2); font-size: 14.5px; }
 .ec-by { color: var(--ink-3); font-size: 13.5px; }
 @media (max-width: 640px) { .ec-card { padding: 18px 16px; } .ec-head { flex-wrap: wrap; } .ec-acts { width: 100%; justify-content: flex-start; } .ec-opts { grid-template-columns: 1fr; } .ec-tt h1 { font-size: 26px; } }
+.ec-opts.ec-one { grid-template-columns: 1fr; }
+.ec-one .ec-opt.on { border: 1px solid var(--line-2); }
+.ec-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px 24px; margin: 18px 0 4px; padding-top: 18px; border-top: 1px solid var(--line); }
+.ec-fact { display: grid; gap: 2px; align-content: start; }
+.ec-fact small { font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.ec-fact b { font: 500 21px/1.25 var(--font-serif); color: var(--ink); }
+.ec-fact span { font-size: 13.5px; color: var(--ink-2); }
+.ec-pol b { color: var(--ink); font-weight: 600; }
+.ec-pol + .ec-rw { margin-top: 10px; }

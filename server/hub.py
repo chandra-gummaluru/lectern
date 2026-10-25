@@ -283,7 +283,7 @@ def week_range(w, year):
 def _week(w):
     cards = [{"kind": _s(c.get("kind"), 20), "label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
               "date": _s(c.get("date"), 60), "dates": [_s(d, 60) for d in _list(c.get("dates"))[:20] if isinstance(d, str) and d.strip()], "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
-              "files": _files(c.get("files")), "eval": _s(c.get("eval"), 64)}
+              "files": _files(c.get("files")), "id": _s(c.get("id"), 40), "group": _s(c.get("group"), 40)}
              for c in _list(w.get("cards")) if isinstance(c, dict)]
     if w.get("isBreak"):
         return {"isBreak": True, "label": _s(w.get("text"), 200) or _s(w.get("label"), 200), "cards": [], "deadlines": []}
@@ -359,7 +359,11 @@ def buckets(page, year=None, book_files=None, lectures=None, team=None, announce
             wk = _week_of(day, weeks) if day else None
             if not wk:
                 wk = next((x for x in weeks if not x["isBreak"] and x["label"] == _s(w.get("label"), 200)), None)
-            anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60),
+            on = _s(a.get("on"), 60)
+            act = next((c for x in weeks for c in x["cards"] if on.startswith("act:") and c["id"] and c["id"] == on[4:]), None)
+            anns.append({"title": _s(a.get("title"), 500), "body": _s(a.get("body")), "date": _s(a.get("date"), 60), "on": on,
+                         # about an activity: for whoever the activity is for
+                         "group": act["group"] if act else ("" if on.startswith("act:") else _s(a.get("group"), 40)),
                          "at": a.get("at") if isinstance(a.get("at"), (int, float)) else 0,
                          "week": wk["label"] if wk else _s(w.get("label"), 200), "wi": wk["i"] if wk else -1})
     # The gradebook's course rules (its Settings choose which the course page shows).
@@ -447,6 +451,16 @@ def hub_api(handle, course, term):
     all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term), team_of(o["id"], course, term),
                     announcements_of(o["id"], course, term), about)
     all_b["about"]["groups"] = groups_of(o["id"], course, term)
+    # An activity or announcement for one activity group is only for its students (and the teaching team).
+    if not (role in STAFF and not preview):
+        mine = set()
+        if student:
+            from .students import roster
+            mine = set((roster(o["id"], offering).get(student) or {}).get("groups") or [])
+        ok = lambda x: not x.get("group") or x["group"] in mine
+        for w in all_b["lectures"]["weeks"]:
+            w["cards"] = [c for c in w["cards"] if ok(c)]
+        all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a)]
     head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:

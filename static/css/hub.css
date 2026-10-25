@@ -568,3 +568,11 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb-head-in.hb-head-in { padding-bottom: 14px; }
 @media (max-width: 640px) { .hb-desc-h { padding-left: 16px; padding-right: 16px; } }
 .hb-desc-h .hb-md p { margin: 0 0 6px; }
+
+/* Announcements about an activity (under it) or an evaluation (on its page); what's only for one group. */
+.hs-on { display: grid; gap: 8px; margin-top: 14px; }
+.hs-mini { padding: 10px 14px; border-radius: 8px; background: var(--accent-bg); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.hs-mini b { display: block; font: 500 17px/1.3 var(--font-serif); margin: 2px 0 2px; }
+.hs-mini .hs-body { font-size: 14px; }
+.hs-sec-top { margin-top: 28px; }
+.hs-gtag { margin-left: 8px; font-size: 11px; line-height: 18px; padding: 0 8px; letter-spacing: 0; text-transform: none; vertical-align: 1px; }

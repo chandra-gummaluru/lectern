@@ -531,9 +531,15 @@ function renderPage() {
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic,
     // The gradebook's evaluations: each week shows the ones dated in it, and opens one in the Evaluations.
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", short: e.short || "", date: e.date || "", time: e.time || "" })) : []; },
-    openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }) }, r);
+    openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
+    groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups) }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
-    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s) }, r);
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s),
+    // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
+    groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups),
+    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation" })) : []; },
+    activities: async () => { const t = await readPriv(`${r.c}/${r.t}/lectures.json`).catch(() => null); let d = null; try { d = t ? JSON.parse(t) : null; } catch (_) {}
+      return ((d && d.weeks) || []).filter(w => !w.isBreak).flatMap(w => (w.cards || []).map(x => ({ id: x.id, week: w.label || "Week", name: x.title || x.label || "Untitled", group: x.group || "" }))); } }, r);
   if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], api: Auth.api, owner: () => curOwner() || S.user.handle,
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups) }, r);

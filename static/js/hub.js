@@ -104,7 +104,10 @@ function lockedPage(id, title) {
   return `${path([[title]])}<div class="hb-locked">${LOCK}<h2>${esc(title)}</h2><p>${id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p>
     <a class="hb-btn primary" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`;
 }
-const annCard = a => `<article class="hs-card hs-ann"><p class="hs-kick">${esc(stampText(a.date))}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
+const annsOn = key => ((data("announcements") || {}).items || []).filter(a => a.on === key).sort((x, y) => annTime(y) - annTime(x));
+// For the teaching team: what's only for one activity group says which.
+const groupTag = id => { if (!id || !D.viewer.staff) return ""; const g = (((data("about") || {}).groups) || []).find(x => x.id === id); return `<span class="hs-tag hs-gtag" title="Only its students see this">${esc(g ? g.name : "One group")} only</span>`; };
+const annCard = a => `<article class="hs-card hs-ann"><p class="hs-kick">${esc(stampText(a.date))}${groupTag(a.group)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
 function weekRow(w, now) {
   if (w.isBreak) return `<p class="hs-break">${esc(w.label || "Break")}</p>`;
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");
@@ -121,9 +124,12 @@ function evRow(e, weight) {
   const t = evType(e);
   return `<a class="hs-row hs-ev" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[t]}</span><span class="hs-t"><small class="hs-kick">${esc(EV_NAME[t])}</small><b>${esc(e.name)}</b>${evWhen(e) ? `<small>${esc(evWhen(e))}</small>` : ""}</span>${weight != null ? `<span class="hs-w">${fmtW(weight)}%</span>` : ""}${CHEV}</a>`;
 }
+// An announcement about an activity, under it: its date, title and message.
+const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${esc(stampText(a.date))}</p>${a.title ? `<b>${esc(a.title)}</b>` : ""}<div class="hs-body">${markdown(a.body)}</div></div>`;
 function activityCard(c) {
   const k = kindOf(c), D_ = datesOf(c).map(stampText).join(" · ");
-  return `<article class="hs-card hs-act"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b"><p class="hs-kick">${esc(KIND_NAME[k])}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}</div></article>`;
+  const anns = c.id ? annsOn(`act:${c.id}`) : [];
+  return `<article class="hs-card hs-act"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.group)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 function requestHTML(e) {
@@ -210,7 +216,8 @@ const PAGES = {
     const notes = [...(u.notes || []), u.accom && u.accom.standard && u.accom.approval ? "This applies only if you request it and it's approved." : ""].filter(Boolean);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
       <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(EV_NAME[t])}${u.short ? ` / ${esc(u.short)}` : ""}</p>${head(u.name, esc(evWhen(u) || (t === "test" ? "Date to be announced" : "Due date to be announced")))}
-      <div class="hs-card hs-facts">${worth ? `<p>${worth}</p>` : ""}${notes.map(n => `<p>${esc(n)}</p>`).join("")}${files}${requestHTML(u)}</div>`;
+      <div class="hs-card hs-facts">${worth ? `<p>${worth}</p>` : ""}${notes.map(n => `<p>${esc(n)}</p>`).join("")}${files}${requestHTML(u)}</div>
+      ${annsOn(`eval:${u.id}`).length ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Announcements</h2><div class="hs-stack">${annsOn(`eval:${u.id}`).map(annCard).join("")}</div></section>` : ""}`;
   },
   // (Its description is in the header already.)
   about() { return open("about") ? `${path([["About the Course"]])}${HubView.draw({ ...D, data: { ...D.data, about: { ...data("about"), description: "" } } }, "about")}` : lockedPage("about", "About the Course"); },

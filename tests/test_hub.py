@@ -218,11 +218,21 @@ def test_an_offering_made_in_lectern_has_a_course_page_without_course_json(clien
     assert anon.get("/c/chandra/nothing/f26/").status_code == 404
 
 
-def test_an_activity_can_go_with_an_evaluation(client, user, anon):
+def test_an_activity_or_announcement_for_one_activity_group(client, user, anon):
+    """One for an activity group (LEC0101) is only for its students: a visitor doesn't get it; an announcement
+    about such an activity is for the same students."""
     publish(user)
     lec = {"format": "lectern-lectures/1", "weeks": [{"id": "a", "label": "Week 1", "start": "2026-09-07", "end": "2026-09-11",
-                                                     "cards": [{"id": "x", "kind": "lab", "label": "Lab 1", "title": "Gates", "eval": "l1"}]}]}
-    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/lectures.json": json.dumps(lec).encode()}, "seed", r.head())
+                                                     "cards": [{"id": "x", "kind": "lab", "label": "Lab 1", "title": "Gates"},
+                                                               {"id": "y", "kind": "lecture", "label": "Lecture 01", "title": "Only 0101", "group": "g1"}]}]}
+    ann = {"format": "lectern-announcements/1", "items": [{"id": "1", "title": "For all", "date": "Sep 8, 2026, 09:00", "body": "x"},
+                                                            {"id": "2", "title": "For 0101", "date": "Sep 8, 2026, 09:00", "body": "x", "group": "g1"},
+                                                            {"id": "3", "title": "About the 0101 lecture", "date": "Sep 8, 2026, 09:00", "body": "x", "on": "act:y"}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/lectures.json": json.dumps(lec).encode(), "csc258/f26/announcements.json": json.dumps(ann).encode()}, "seed", r.head())
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
-    assert j["data"]["lectures"]["weeks"][0]["cards"][0]["eval"] == "l1"
+    assert [c["title"] for c in j["data"]["lectures"]["weeks"][0]["cards"]] == ["Gates"]
+    assert [a["title"] for a in j["data"]["announcements"]["items"]] == ["For all"]
+    j = client.get("/api/hub/chandra/csc258/f26").get_json()   # the teaching team sees them all
+    assert [c["title"] for c in j["data"]["lectures"]["weeks"][0]["cards"]] == ["Gates", "Only 0101"]
+    assert {a["title"]: a["group"] for a in j["data"]["announcements"]["items"]} == {"For all": "", "For 0101": "g1", "About the 0101 lecture": "g1"}
     assert [t["title"] for t in j["tabs"]][2] == "Activities"

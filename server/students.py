@@ -86,7 +86,8 @@ def roster(owner_id, off):
         f = x.get("f") if isinstance(x.get("f"), dict) else {}
         e = norm(f.get("email") or x.get("email"))
         if _EMAIL.match(e) and len(e) <= 254:
-            out[e] = {"num": str(x.get("num") or ""), "first": str(x.get("first") or ""), "last": str(x.get("last") or "")}
+            out[e] = {"num": str(x.get("num") or ""), "first": str(x.get("first") or ""), "last": str(x.get("last") or ""),
+                      "groups": [str(g) for g in (x.get("groups") if isinstance(x.get("groups"), list) else [])]}
     return out
 
 

@@ -807,3 +807,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 @media (max-width: 760px) { .gr-grid { grid-template-columns: 1fr 1fr; } .gr-grid label:last-child { grid-column: 1 / -1; } }
 /* Students: their groups, in the Add a Student window */
 .lt-st-groups { display: flex; flex-wrap: wrap; gap: 6px; }
+.lx-editor .lx-help + .lx-grid { margin-top: 14px; }

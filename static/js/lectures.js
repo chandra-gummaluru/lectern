@@ -157,6 +157,7 @@ export function lecturesPage(ctx, r) {
       if (!Array.isArray(st.data.weeks)) st.data.weeks = [];
     } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the activities. ${esc(e.message)}</p></div>`); return; }
     try { st.evals = ctx.evaluations ? await ctx.evaluations() : []; } catch (_) { st.evals = []; }
+    try { st.groups = ctx.groups ? await ctx.groups() : []; } catch (_) { st.groups = []; }
     if (here()) draw();
   }
 
@@ -212,7 +213,9 @@ export function lecturesPage(ctx, r) {
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
+      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}${groupName(x.group) ? ` · ${esc(groupName(x.group))}` : ""}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
+  // An activity for one activity group (e.g. LEC0101) is only for its students; without one, it's everyone's.
+  const groupName = id => (id && ((st.groups || []).find(g => g.id === id) || {}).name) || "";
   const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };
   const weekEvals = w => {
     if (!w.start) return [];
@@ -418,6 +421,8 @@ export function lecturesPage(ctx, r) {
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""}>${esc([y.label || "Week", rangeText(y.start, y.end)].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>
           <div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div>
         </div>
+        <div class="lx-grid one"><label class="lx-f">For<select id="lw-group"${dis}><option value="">Everyone in the course</option>${(st.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}</select></label></div>
+        <p class="lx-help">For one activity group, only its students see it on the course page (and its announcements).</p>
         <p class="lx-help">The date and time are optional: with a date, This week shows it on its day. One held on several days (e.g. a lab's sections) can have more than one.</p>
         <h3 class="lx-sec">Description</h3>
         <div id="lw-desc"></div>
@@ -456,6 +461,7 @@ export function lecturesPage(ctx, r) {
       $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now];
       head(); changed();
     }; });
+    $("#lw-group").onchange = e => { if (e.target.value) x.group = e.target.value; else delete x.group; changed(); };
     $("#lw-week").onchange = () => {
       const to = weekById($("#lw-week").value); if (!to || to === w) return;
       w.cards = w.cards.filter(z => z !== x); (to.cards = to.cards || []).push(x); changed();

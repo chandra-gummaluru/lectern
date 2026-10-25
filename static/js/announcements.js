@@ -15,6 +15,7 @@
 
 import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
+import { richText } from "./richtext.js";
 
 const COLOR = "#c99a06";
 const uid = () => Math.random().toString(36).slice(2, 10);
@@ -51,6 +52,9 @@ export function announcementsPage(ctx, r) {
         st.data = fromCoursePage(page); st.sha = null;
       }
       if (!Array.isArray(st.data.items)) st.data.items = [];
+      // What one can be about, and who it's for.
+      const [G, A, E] = await Promise.all([ctx.groups ? ctx.groups().catch(() => []) : [], ctx.activities ? ctx.activities().catch(() => []) : [], ctx.evaluations ? ctx.evaluations().catch(() => []) : []]);
+      st.groups = G; st.acts = A; st.evals = E;
     } catch (e) { if (here()) pageHTML(`<div class="lt-in"><p class="lt-note err">Couldn't read the announcements. ${esc(e.message)}</p></div>`); return; }
     if (here()) draw();
   }
@@ -118,17 +122,40 @@ export function announcementsPage(ctx, r) {
           <div class="lx-f">When<div id="an-when-f"></div></div>
         </div>
         <p class="lx-help">The course page shows it in the week this date is in (Announcements, and This week), newest first.</p>
+        <div class="lx-grid two">
+          <label class="lx-f">About<select id="an-on"${dis}><option value="">Nothing in particular</option>
+            ${(st.acts || []).length ? `<optgroup label="Activities">${st.acts.map(a => `<option value="act:${esc(a.id)}"${x.on === `act:${a.id}` ? " selected" : ""}>${esc(a.week)} · ${esc(a.name)}</option>`).join("")}</optgroup>` : ""}
+            ${(st.evals || []).length ? `<optgroup label="Evaluations">${st.evals.map(e => `<option value="eval:${esc(e.id)}"${x.on === `eval:${e.id}` ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</optgroup>` : ""}</select></label>
+          <label class="lx-f">For<select id="an-group"${dis}></select></label>
+        </div>
+        <p class="lx-help" id="an-for-help"></p>
         <h3 class="lx-sec">Message</h3>
-        <label class="lx-f"><textarea id="an-body" class="tall" rows="10" placeholder="Write it here. A blank line starts a new paragraph; - for bullets; **bold**, *italic*, [a link](https://…)." aria-label="Message"${dis}>${esc(x.body)}</textarea></label>
+        <div id="an-body"></div>
       </div>
     </div></div>`);
     whenField($("#an-when-f"), { date: when.date, time: when.time, id: "an-when", label: "When", empty: "Choose a date", timeLabel: "At", disabled: !edit,
       onChange: ({ date, time }) => { x.date = date ? writeStamp(date, time) : ""; changed(); } });
+    richText($("#an-body"), { value: x.body, placeholder: "Write it here.", label: "Message", disabled: !edit, onChange: v => { x.body = v; changed(); } });
+    // Who it's for: everyone, or one activity group; about an activity, the activity's own students.
+    const forSel = () => {
+      const act = String(x.on || "").startsWith("act:") ? (st.acts || []).find(a => `act:${a.id}` === x.on) : null;
+      const G = (st.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })), gname = id => ((G.find(g => g.id === id) || {}).name || "");
+      const sel = $("#an-group");
+      if (act) {
+        sel.innerHTML = `<option>${act.group ? `${esc(gname(act.group))} only, as its activity is` : "Everyone, as its activity is"}</option>`; sel.disabled = true;
+        $("#an-for-help").textContent = "About an activity, it's for whoever the activity is for. The course page shows it with the activity too.";
+      } else {
+        sel.innerHTML = `<option value="">Everyone in the course</option>${G.map(g => `<option value="${esc(g.id)}"${g.id === x.group ? " selected" : ""}>${esc(g.name || "Untitled group")} only</option>`).join("")}`; sel.disabled = !edit;
+        $("#an-for-help").textContent = String(x.on || "").startsWith("eval:") ? "The course page shows it with the evaluation too. For one activity group, only its students see it." : "For one activity group, only its students see it on the course page.";
+      }
+    };
+    forSel();
     if (!edit) return;
+    $("#an-on").onchange = e => { if (e.target.value) x.on = e.target.value; else delete x.on; if (String(x.on || "").startsWith("act:")) delete x.group; forSel(); changed(); };
+    $("#an-group").onchange = e => { if (e.target.value) x.group = e.target.value; else delete x.group; changed(); };
     let shown = x.title || "New announcement";
     const head = () => { const now = x.title || "New announcement"; if (now === shown) return; shown = now; $("#an-h").textContent = now; crumbs(); };
     $("#an-title").oninput = $("#an-title").onchange = e => { x.title = e.target.value.trim(); head(); changed(); };
-    $("#an-body").oninput = e => { x.body = e.target.value; changed(); };
     $("#an-del").onclick = async () => {
       if (!await confirmBox("Delete this announcement?", "It goes from the course page.", "Delete")) return;
       st.data.items = st.data.items.filter(y => y !== x); changed(); go({ page: "announcements", c, t });

@@ -64,7 +64,7 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .hd-row > .hd-main > .hd { grid-column: 2; grid-row: 1; min-width: 0; }
 .hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
 @media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }
-.sd-box { margin: 4px 0 6px; }
+.sd-box { margin: 14px 0 6px; }
 .sd-row.one { grid-template-columns: minmax(0, 360px); }
 .sd-gap { width: 36px; }
 .sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: start; margin-bottom: 8px; }
@@ -3119,7 +3119,7 @@ function secDatesHTML(e) {
   const D = e.dates || [], lab = e.type === "test" ? "When" : "Due", secs = SECS.length > 0;
   const row = (forHTML, btn, del) => `<div class="sd-row${secs ? "" : " one"}">${secs ? `<div class="pf sd-for"><span>For</span>${forHTML}</div>` : ""}<div class="pf"><span>${lab}</span>${btn}</div>${del}</div>`;
   const allFor = `<div class="pk pk1"><button type="button" class="pk-btn pk1-btn" disabled><span class="pk1-cur"><span class="pk1-ic">${window.Lectern && window.Lectern.sectionIcon ? PEOPLE_IC : ""}</span><span class="pk1-t"><b>${D.length ? "All other sections" : "All sections"}</b></span></span></button></div>`;
-  return `<h3 class="ed-sec">${D.length ? "Dates" : e.type === "test" ? "Date" : "Due Date"}</h3><div class="sd-box">
+  return `<div class="sd-box">
     ${row(allFor, `<button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button>`, secs ? `<span class="sd-gap"></span>` : "")}
     ${D.map((o, i) => row(`<div data-sd-for="${i}"></div>`, `<button type="button" class="when-btn${o.date ? "" : " empty"}" data-ed="sd-when" data-i="${i}" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(sdWhen(e, o)))}</span></button>`,
       `<button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button>`)).join("")}

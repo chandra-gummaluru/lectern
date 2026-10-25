@@ -124,7 +124,7 @@ export async function studentsCard(ctx, c, t) {
     const fieldNames = [F.idLabel, "First Name", "Last Name", `Email${F.emailDomain ? ` (@${F.emailDomain})` : ""}`, ...custom.map(f => f.label)];
     const open = lead && !locked;
     const fixedRow = (n, note) => `<div class="lt-orow lt-sf-row fixed"><span class="lt-sf-n">${esc(n)}</span><span class="lt-sf-note">${esc(note)}</span></div>`;
-    const fields = !lead ? "" : open ? `<div class="lt-st-fieldbox"><p class="lt-st-kick">What Each Student Has <span>Set it before adding students: once there are students, it's fixed.</span></p>
+    const fields = !lead ? "" : open ? `<div class="lt-st-fieldbox">
       <div class="lt-olist lt-sf-list">
         <div class="lt-orow lt-sf-row"><label class="lt-sf-l" for="sf-id">Identifier</label><input type="text" id="sf-id" value="${esc(F.idLabel)}" placeholder="e.g. Student Number" autocomplete="off"${dis}><span class="lt-sf-note">Unique for each student</span></div>
         ${fixedRow("First Name", "Every student has it")}${fixedRow("Last Name", "Every student has it")}

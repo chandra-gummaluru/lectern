@@ -20,6 +20,19 @@
 ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
 .pf input:disabled { background: var(--bg) !important; color: var(--ink-3) !important; cursor: default; }
 .erow .er-main p.er-kind .er-sh { letter-spacing: .06em; }
+/* A group's evaluations, as cards like a week's activities: ticked ones are in it. */
+.mem-cards { display: grid; gap: 8px; margin-top: 8px; }
+.mem-card { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid #dfe0e2; border-radius: 10px; background: #fff; cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+.mem-card:hover { box-shadow: 0 4px 16px rgb(0 0 0 / .07); }
+.mem-card:not(.on) { border-style: dashed; background: transparent; }
+.mem-card:not(.on) .mem-t, .mem-card:not(.on) > .dot.ic { opacity: .6; }
+.mem-card > .dot.ic.box { flex: none; width: 26px !important; height: 36px !important; color: #4a4f57; }
+.mem-card > input[type=checkbox] { flex: none; margin: 0; }
+.mem-t { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.mem-t small { font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #80848b; }
+.mem-t b { font: 500 19px/1.25 "EB Garamond", Garamond, Georgia, serif; color: #1f2329; }
+.mem-t > span { font: 500 13.5px/1.4 var(--font-ui); color: #4a4f57; }
+.mem-out { flex: none; white-space: nowrap; font: 500 13.5px var(--font-ui); color: #80848b; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -3101,9 +3114,10 @@ function drawGroupEditor() {
     <div class="ed-grid three"><label class="pf"><span>Name</span><input type="text" data-g="name" value="${esc(g.name)}"></label><label class="pf"><span>Short Name</span><input type="text" data-g="short" value="${esc(g.short)}" placeholder="e.g. Asgn"></label><label class="pf"><span>Weight %</span><input type="number" data-g="weight" min="0" step="any" value="${esc(g.weight)}"></label></div>
     <h3 class="ed-sec">What Counts</h3>
     <div class="keep-row">Each student's best <span class="stepper"><button type="button" data-ed="keep" data-v="-1" aria-label="Fewer"${num(g.keep) <= 1 ? " disabled" : ""}>−</button><b>${fmtNum(g.keep)}</b><button type="button" data-ed="keep" data-v="1" aria-label="More"${num(g.keep) >= n ? " disabled" : ""}>+</button></span> of ${n}, each worth <b>${fmtNum(Math.round(each * 100) / 100)}%</b>.</div>
-    ${n ? `<div class="grp-viz big" style="--c:${colorOf(g)}">${g.members.map((x, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}<small>${n - keep > 0 ? `the lowest ${n - keep} ${n - keep === 1 ? "is" : "are"} dropped` : "none dropped"}</small></div>` : ""}
+    ${n ? `<div class="grp-viz big" style="--c:#c99a06">${g.members.map((x, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}<small>${n - keep > 0 ? `the lowest ${n - keep} ${n - keep === 1 ? "is" : "are"} dropped` : "none dropped"}</small></div>` : ""}
     <h3 class="ed-sec">In the Group</h3>
-    <div class="mem-list">${cands.map(e => `<label class="rw-row${g.members.includes(e.id) ? " on" : ""}" style="--c:${colorOf(g)}"><input type="checkbox" data-ed="member" data-v="${esc(e.id)}"${g.members.includes(e.id) ? " checked" : ""}><b>${esc(e.name)}</b><span class="spacer"></span><span class="rw-was">out of ${outOf(e)}</span></label>`).join("") || `<p class="ed-help">Add evaluations first.</p>`}</div>`;
+    <p class="ed-help">Tick the evaluations that make up the group: they show inside it, like a week's activities.</p>
+    <div class="mem-cards">${cands.map(e => `<label class="mem-card${g.members.includes(e.id) ? " on" : ""}"><input type="checkbox" data-ed="member" data-v="${esc(e.id)}"${g.members.includes(e.id) ? " checked" : ""}>${evIcon(e, true)}<span class="mem-t"><small>${esc(TYPE_NAME[e.type] || "Assignment")}${e.short ? ` / ${esc(e.short)}` : ""}</small><b>${esc(e.name)}</b><span>${esc(whenSentence(e))}</span></span><span class="mem-out">Out of ${outOf(e)}</span></label>`).join("") || `<p class="ed-help">Add evaluations first.</p>`}</div>`;
 }
 
 // Editing in the windows: typing updates as you go; choices redraw the window.

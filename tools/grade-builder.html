@@ -64,7 +64,7 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .hd-row > .hd-main > .hd { grid-column: 2; grid-row: 1; min-width: 0; }
 .hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
 @media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }
-.sd-box { margin: 14px 0 6px; }
+.sd-box { margin: 4px 0 6px; }
 .sd-row.one { grid-template-columns: minmax(0, 360px); }
 .sd-gap { width: 36px; }
 .sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: start; margin-bottom: 8px; }
@@ -73,6 +73,8 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .sd-adds { display: flex; justify-content: flex-end; margin-top: 4px; }
 .er-sd { display: block; color: #80848b; }
 @media (max-width: 640px) { .sd-row { grid-template-columns: 1fr auto; } .sd-row .sd-for { grid-column: 1 / -1; } }
+.ed-sec.ed-first { margin-top: 6px !important; padding-top: 0 !important; border-top: 0 !important; }
+.ed-sub { margin: 18px 0 6px; font: 600 14px var(--font-ui); color: #1f2329; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -3085,20 +3087,23 @@ function drawEvalEditor() {
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
   $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+    <h3 class="ed-sec ed-first">General</h3>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
       ${fld("label", "Label", e.label, "text", ` data-sug="labels" placeholder="${esc(TYPE_NAME[e.type] || "Assignment")}" autocomplete="off"`)}
       ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Midterm" autocomplete="off"')}
 </div>
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
+    <h3 class="ed-sec">${(e.dates || []).length ? "Dates" : e.type === "test" ? "Date" : "Due Date"}</h3>
+    ${secDatesHTML(e)}
+    <h3 class="ed-sec">Grading</h3>
     <div class="ed-grid pw">
       ${docLinks.has(e.id) ? `<label class="pf"><span>Points</span><input type="number" value="${esc(e.total)}" disabled title="The total of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}"></label>` : fld("total", "Points", e.total == null || e.total === "" ? "?" : e.total, "text", ' inputmode="decimal" placeholder="e.g. 20, or ? for not yet" autocomplete="off"')}
       ${g ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(g)}">In ${esc(g.name)}</span></label>` : e.makeupFor ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(e)}">Makeup</span></label>` : fld("weight", "Weight %", e.weight, "number", ' min="0" step="any"')}</div>
     ${docLinks.has(e.id) ? `<p class="ed-help">Out of ${fmtNum(e.total)}: the total marks of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}, <code>${esc(docLinks.get(e.id).folder)}</code>. Change the questions there. <button type="button" class="link" data-act="ev-build" data-id="${esc(e.id)}">Open it</button></p>` : ""}
-    ${secDatesHTML(e)}
-    ${e.makeupFor && evalById(e.makeupFor) ? `<h3 class="ed-sec">A Makeup</h3>
+    ${e.makeupFor && evalById(e.makeupFor) ? `<h4 class="ed-sub">A Makeup</h4>
     <p class="ed-help">${PIC.makeup} A makeup for <b>${esc(evalById(e.makeupFor).name)}</b>: it only counts for students who don't submit ${esc(shortName(evalById(e.makeupFor)))}, for the part its policy gives it. <button type="button" class="link" data-act="ed-eval" data-id="${esc(e.makeupFor)}">Open ${esc(shortName(evalById(e.makeupFor)))}</button></p>` : `
-    <h3 class="ed-sec">If a Student Doesn't Submit It</h3>
+    <h4 class="ed-sub">If a Student Doesn't Submit It</h4>
     ${g ? `<p class="ed-help">It counts as zero, so it's usually one of the lowest, which ${esc(g.name)} doesn't count.</p>` : `
     ${policyHTML(e, p, num(e.weight), "")}`}`}
     ${accomHTML(e)}

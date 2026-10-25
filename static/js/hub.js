@@ -268,7 +268,8 @@ function evalCard(u, group, E) {
   const due = isDue(u), me = D.viewer && D.viewer.role === "student";
   const sec = title => `<h2 class="ec-sec">${esc(title)}</h2>`;
   // Dates: one row each (the course's, and each section's own), Released and Due (or its Date).
-  const rows = [{ who: (u.dates || []).length ? "All other sections" : me ? "" : "Everyone", date: u.date, time: u.time, release: u.release, releaseTime: u.releaseTime },
+  const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
+  const rows = [{ who: (u.dates || []).length ? "All other sections" : me ? "" : "Everyone", date: u.date, time: u.time, release: u.release, releaseTime: u.releaseTime, where: u.where, map: u.map, address: u.address },
     ...(u.dates || []).map(d => ({ who: (d.names || []).join(", ") || "Some sections", ...d }))];
   if ((u.dates || []).length) rows.push(rows.shift());   // the sections' own first, then everyone else's
   // Its facts, together in one area (no boxes): when (each section's, if they differ), what it's worth, its points.
@@ -280,7 +281,7 @@ function evalCard(u, group, E) {
   const whoIc = r => (r.kinds && r.kinds.length ? KIND_ICON[r.kinds[0]] || KIND_ICON.other : ALL);
   const dates = `<div class="ec-when">${rows.map(r => `<div class="ec-wrow">
       ${r.who ? `<span class="ec-wwho"><span class="hs-ic sm">${whoIc(r)}</span>${esc(r.who)}</span>` : ""}
-      <span class="ec-wat">${due && r.release ? `<span class="ec-wd"><span class="hs-ic sm">${OPEN}</span><small>Released</small>${esc(at(r.release, r.releaseTime))}</span>` : ""}<span class="ec-wd"><span class="hs-ic sm">${CAL}</span>${due ? "<small>Due</small>" : ""}${esc(at(r.date, r.time))}</span></span></div>`).join("")}</div>`;
+      <span class="ec-wat">${due && r.release ? `<span class="ec-wd"><span class="hs-ic sm">${OPEN}</span><small>Released</small>${esc(at(r.release, r.releaseTime))}</span>` : ""}<span class="ec-wd"><span class="hs-ic sm">${CAL}</span>${due ? "<small>Due</small>" : ""}${esc(at(r.date, r.time))}</span>${r.where ? `<span class="ec-wd"><span class="hs-ic sm">${PIN}</span>${r.map ? `<a href="${esc(r.map)}" target="_blank" rel="noopener" title="${esc(r.address || "On the map")}">${esc(r.where)}</a>` : esc(r.where)}</span>` : ""}</span></div>`).join("")}</div>`;
   // Grading: what it's worth, and its points (theirs, once it's marked).
   const m = (D.viewer.marks || {})[u.id], total = u.total;
   const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
@@ -301,8 +302,8 @@ function evalCard(u, group, E) {
   // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
   const w = fmtW(u.weight), mi = u.missed;
   const opt = (on, ttl, sub) => `<p class="ec-p ec-pol">${esc(sub)}</p>`;
-  const policy = !group && mi ? `<div>${mi.mode === "reweight" ? opt(true, "A makeup, or shift its weight", `Makeups and other evaluations take the ${w}%.`) : opt(true, "Counts as zero", `The ${w}% stays, with a mark of 0.`)}</div>
-    ${mi.mode === "reweight" && (mi.parts || []).length ? `<div class="ec-rw"><p class="ec-rw-h">Its ${w}% goes to…</p>${mi.parts.map(x => {
+  const policy = !group && mi ? `<div>${mi.mode === "reweight" && (mi.parts || []).length ? "" : opt(true, "", `If you miss it, it counts as zero: the ${w}% stays, with a mark of 0.`)}</div>
+    ${mi.mode === "reweight" && (mi.parts || []).length ? `<div class="ec-rw"><p class="ec-rw-h">If you miss it, its ${w}% goes to…</p>${mi.parts.map(x => {
       const it = unitOf(x.id), ic = EV_ICON[it ? evType(it.u) : "assignment"];
       return `<div class="ec-rw-row"><span class="hs-ic sm">${ic}</span><b>${esc(x.name)}</b><span class="sp"></span>${x.kind === "shift" && x.was != null ? `<s>${fmtW(x.was)}%</s><span class="ec-arrow">→</span><b>${fmtW(x.was + x.pct)}%</b>` : `<b>${fmtW(x.pct)}%</b>`}</div>`; }).join("")}
       ${mi.zero > 0 ? `<div class="ec-rw-row ec-zero"><span class="sp"></span>${fmtW(mi.zero)}% counts as zero</div>` : ""}</div>` : ""}` : (u.notes || []).map(n => `<p class="ec-p">${esc(n)}</p>`).join("");
@@ -313,8 +314,8 @@ function evalCard(u, group, E) {
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
-      ${sec("When")}${dates}
-      ${policy || acc || req ? `${sec("If You Miss It")}${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}` : ""}
+      <div class="ec-part">${dates}</div>
+      ${policy || acc || req ? `<div class="ec-part">${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}</div>` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
     </article>`;

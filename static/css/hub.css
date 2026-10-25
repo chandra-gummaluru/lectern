@@ -748,3 +748,5 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-head .ec-mk { justify-items: end; text-align: right; min-width: 0; }
 .ec-head .ec-mk b { font-size: 40px; }
 @media (max-width: 640px) { .ec-head .ec-mk { justify-items: start; text-align: left; } }
+.ec-part { margin-top: 18px; }
+.ec-part > div:first-child > .ec-rw:first-child, .ec-part > div:first-child > .ec-pol:first-child { margin-top: 0; }

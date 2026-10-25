@@ -17,7 +17,7 @@
    at /p/<handle>/…) and "priv" (grades, exams). See store.js and server/store.py.
    ============================================================ */
 import * as Auth from "./auth.js";
-import { mapUrl } from "./place.js";
+import { mapUrl, placeField, placeOf } from "./place.js";
 import { enhanceSelects } from "./select.js";
 enhanceSelects();   // every dropdown drawn as the About picker
 import * as Store from "./store.js";
@@ -1153,7 +1153,8 @@ async function syncScheme(c, t, o) {
 }
 
 // An evaluation's dates for some sections: [{ groups, date, time }] (the gradebook's).
-const secDates = e => (Array.isArray(e.dates) ? e.dates : []).filter(o => o && (o.groups || []).length && o.date).map(o => ({ groups: o.groups.map(String), date: String(o.date), time: String(o.time || ""), ...(o.release ? { release: String(o.release), releaseTime: String(o.releaseTime || "") } : {}) }));
+const whereOf_ = o => (String(o.where || "").trim() ? { where: String(o.where).trim(), ...(mapUrl(o.place) ? { map: mapUrl(o.place), address: o.place.address || "" } : {}) } : {});
+const secDates = e => (Array.isArray(e.dates) ? e.dates : []).filter(o => o && (o.groups || []).length && o.date).map(o => ({ groups: o.groups.map(String), date: String(o.date), time: String(o.time || ""), ...(o.release ? { release: String(o.release), releaseTime: String(o.releaseTime || "") } : {}), ...whereOf_(o) }));
 // What the course page shows from a gradebook: each evaluation and group with its weight, date and rules.
 // Never students or marks: only this goes to the public page.
 function schemeOf(b, from, requests = null) {
@@ -1187,7 +1188,7 @@ function schemeOf(b, from, requests = null) {
   };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -1238,6 +1239,9 @@ Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "acc
 // For the gradebook: the offering's sections (an evaluation's dates for some of them), and the dropdown to pick them.
 Lectern.sections = async () => { const r = S.route; if (!r.c || !r.t) return []; const G = await readGroups(Store, area(Store.PRIV), r.c, r.t); return sortSections(G.data.groups).map(g => ({ id: g.id, name: g.name || "Untitled section", kind: sectionKind(g) })); };
 Lectern.pickMany = pickMany;
+// For the gradebook: where a test is written (a place on the map, and a room).
+Lectern.placeField = placeField;
+Lectern.placeOf = placeOf;
 // For the gradebook: a rich text box (a student's notes), and Markdown drawn as the course page draws it.
 Lectern.richText = richText;
 Lectern.markdown = md => window.HubView.markdown(md || "");

@@ -123,6 +123,15 @@ def gradebook_policies(owner_id, course, term):
             info["missed"] = {"mode": "reweight", "zero": r2(w * max(0.0, 100 - T * k) / 100), "parts":
                               [{"id": x["id"], "name": _s(by[x["id"]].get("name"), 200), "kind": "makeup", "pct": pc(x)} for x in mk]
                               + [{"id": x["id"], "name": _s(by[x["id"]].get("name"), 200), "kind": "shift", "pct": pc(x), "was": _num(by[x["id"]].get("weight"))} for x in to]}
+        # Where it's written (a test, a lab or another): everyone's, and each section date's, with the map.
+        def where(x):
+            w = _s(x.get("where"), 300).strip()
+            return {"where": w, **_map(x)} if w else {}
+        info.update(where(e))
+        ds = [d for d in _list(e.get("dates")) if isinstance(d, dict) and _list(d.get("groups")) and d.get("date")]
+        if ds:
+            info["dates"] = [{"groups": [str(g) for g in _list(d.get("groups"))], "date": _s(d.get("date"), 10), "time": _s(d.get("time"), 5),
+                              **({"release": _s(d.get("release"), 10), "releaseTime": _s(d.get("releaseTime"), 5)} if d.get("release") else {}), **where(d)} for d in ds]
         out[e["id"]] = info
     return out
 
@@ -591,6 +600,11 @@ def hub_api(handle, course, term):
             for d in _list(e.get("dates")):
                 if isinstance(d, dict) and set(map(str, _list(d.get("groups")))) & mine and d.get("date"):
                     e["date"], e["time"] = _s(d.get("date"), 10), _s(d.get("time"), 5)
+                    for k in ("where", "map", "address"):
+                        if d.get(k):
+                            e[k] = _s(d.get(k), 500)
+                        else:
+                            e.pop(k, None)
                     if d.get("release"):
                         e["release"], e["releaseTime"] = _s(d.get("release"), 10), _s(d.get("releaseTime"), 5)
                     break

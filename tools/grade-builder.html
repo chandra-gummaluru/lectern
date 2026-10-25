@@ -77,7 +77,21 @@ button.rq-row:hover { border-color: #80848b; box-shadow: 0 4px 14px rgb(0 0 0 / 
 .sd-row.rel { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 36px; }
 .sd-row.nosec { grid-template-columns: minmax(0, 1fr) 36px; }
 .sd-row.rel.nosec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; }
-.sd-row.sd-first .sd-due { grid-column: span 2; }   /* everyone's date, without a remove button: to the end */
+.sd-row.sd-first .sd-due { grid-column: span 2; }
+/* Where: on its own line in the date's row, under For and the date. */
+.sd-row.wh .sd-where { grid-column: 1 / -2; grid-row: 2; }
+.sd-row.wh.sd-first .sd-where { grid-column: 1 / -1; }
+.sd-row.wh .sd-del { grid-row: 1; grid-column: -2 / -1; }
+.sd-row.wh { padding-bottom: 6px; }
+.sd-row.wh + .sd-row.wh { padding-top: 10px; border-top: 1px dashed var(--line); }
+.sd-where .plc { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; }
+.sd-where .plc-q { position: relative; display: block; }
+.sd-where .plc-ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--ink-3); display: grid; }
+.sd-where .plc-ic svg { width: 16px; height: 16px; }
+.sd-where input { width: 100%; height: 46px; box-sizing: border-box; padding: 0 10px; border-radius: var(--ctl-r, 8px); border: 1px solid var(--line); background: var(--field, #fff); color: var(--ink); font: 14.5px var(--font-ui); }
+.sd-where .plc-in { padding-left: 34px; }
+.sd-where input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.sd-where .on-map .plc-ic { color: #2f8f5b; }   /* everyone's date, without a remove button: to the end */
 .sd-gap { width: 36px; }
 .sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; gap: 10px; align-items: start; margin-bottom: 8px; }
 .sd-row .when-btn, .sd-row .pk-btn { min-height: 46px; height: 46px; box-sizing: border-box; }
@@ -2018,7 +2032,7 @@ function normalizeBook(x) {
   b.evals.forEach(e => { ["date", "time", "title", "release", "releaseTime"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto;
     if (e.type === "project") e.type = "assignment";   // (no Project type any more: it's an assignment)
     // Dates for some sections (e.g. a lab on each section's own day): [{ id, groups: [section ids], date, time }].
-    e.dates = (Array.isArray(e.dates) ? e.dates : []).filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), groups: (Array.isArray(o.groups) ? o.groups : []).map(String), date: String(o.date || ""), time: String(o.time || ""), release: String(o.release || ""), releaseTime: String(o.releaseTime || "") }));
+    e.dates = (Array.isArray(e.dates) ? e.dates : []).filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), groups: (Array.isArray(o.groups) ? o.groups : []).map(String), date: String(o.date || ""), time: String(o.time || ""), release: String(o.release || ""), releaseTime: String(o.releaseTime || ""), ...(o.where ? { where: String(o.where) } : {}), ...(o.room ? { room: String(o.room) } : {}), ...(o.place && typeof o.place === "object" ? { place: o.place } : {}) }));
     if (!e.dates.length) delete e.dates; });
   // Splits are always custom shares now: older "by weight" / "equal" splits become the same shares.
   const keepModel = typeof model === "undefined" ? undefined : model;
@@ -3149,17 +3163,24 @@ function secDatesHTML(e) {
   // assignment has a release date and a due date; a test, a lab or another, a date.
   const D = e.dates || [], secs = SECS.length > 0, rel = isDue(e), lab = rel ? "Due" : "Date";
   const btn = (w, act, i) => `<button type="button" class="when-btn${w.date ? "" : " empty"}" data-ed="${act}"${i != null ? ` data-i="${i}"` : ""} aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(w))}</span></button>`;
-  const row = (first, forHTML, relB, dueB, del) => `<div class="sd-row${rel ? " rel" : ""}${secs ? "" : " nosec"}${first ? " sd-first" : ""}">${secs ? `<div class="pf sd-for"><span>For</span>${forHTML}</div>` : ""}${rel ? `<div class="pf"><span>Released</span>${relB}</div>` : ""}<div class="pf sd-due"><span>${lab}</span>${dueB}</div>${del}</div>`;
+  // A test, a lab or another is written somewhere: each date has its Where (a place on the map, and a room).
+  const wh = !rel && !!(window.Lectern && window.Lectern.placeField);
+  const row = (first, forHTML, relB, dueB, del, wi) => `<div class="sd-row${rel ? " rel" : ""}${secs ? "" : " nosec"}${wh ? " wh" : ""}${first ? " sd-first" : ""}">${secs ? `<div class="pf sd-for"><span>For</span>${forHTML}</div>` : ""}${rel ? `<div class="pf"><span>Released</span>${relB}</div>` : ""}<div class="pf sd-due"><span>${lab}</span>${dueB}</div>${wh ? `<div class="pf sd-where"><span>Where</span><div data-sd-where="${wi}"></div></div>` : ""}${del}</div>`;
   const allFor = `<div class="pk pk1"><button type="button" class="pk-btn pk1-btn" disabled><span class="pk1-cur"><span class="pk1-ic">${PEOPLE_IC}</span><span class="pk1-t"><b>${D.length ? "All other sections" : "All sections"}</b></span></span></button></div>`;
   return `<div class="sd-box">
-    ${row(true, allFor, btn(relWhen(e), "rel"), btn(e, "when"), "")}
+    ${row(true, allFor, btn(relWhen(e), "rel"), btn(e, "when"), "", "e")}
     ${D.map((o, i) => row(false, `<div data-sd-for="${i}"></div>`, btn(relWhen(o), "sd-rel", i), btn(sdWhen(e, o), "sd-when", i),
-      `<button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button>`)).join("")}
+      `<button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button>`, i)).join("")}
     ${secs ? `<div class="sd-adds"><button type="button" class="add-mk" data-ed="sd-add">${svg("plus")}Add a Date for Some Sections</button></div>` : ""}</div>`;
 }
 const PEOPLE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.3 6-5.3s5.4 2 6 5.3"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.7 14.6c1.7.7 2.9 2.4 3.3 4.9"/></svg>';
 function mountSecDates(m, e) {
   const L = window.Lectern;
+  // Where: the evaluation's own (everyone's), and each section date's.
+  if (L && L.placeField) m.querySelectorAll("[data-sd-where]").forEach(h => {
+    const k = h.dataset.sdWhere, o = k === "e" ? e : (e.dates || [])[+k]; if (!o) return;
+    L.placeField(h, { ...L.placeOf(o), label: "Where", onChange: v => { pushUndo(); if (v.place) o.place = v.place; else delete o.place; if (v.room) o.room = v.room; else delete o.room; if (v.where) o.where = v.where; else delete o.where; unsaved = true; refreshSoon(); } });
+  });
   (e.dates || []).forEach((o, i) => {
     const host = $(`[data-sd-for="${i}"]`, m); if (!host || !L || !L.pickMany) return;
     const taken = new Set((e.dates || []).filter(x => x !== o).flatMap(x => x.groups));

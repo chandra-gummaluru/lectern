@@ -768,6 +768,8 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ed-kind { margin-left: auto; font: 700 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
 .ed-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.3fr; gap: 10px; }
 .ed-grid.three { grid-template-columns: 2fr 1fr 1.3fr; }
+.ed-grid.two { grid-template-columns: 2fr 1fr; }
+.ed-grid.pw { grid-template-columns: 1fr 1fr 2fr; }
 .ed-grid.what { grid-template-columns: auto 1fr 1.3fr 1.5fr; margin-bottom: 6px; }
 /* Date and time: one button, and a calendar with times under it */
 .when-btn { display: flex; align-items: center; gap: 9px; width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 500 14px var(--font-ui); cursor: pointer; text-align: left; box-sizing: border-box; }
@@ -1954,14 +1956,6 @@ function normalizeBook(x) {
   };
   b.evals.forEach(e => toShares(e.missed));
   Object.values(b.overrides || {}).forEach(o => Object.values(o).forEach(x => { if (x && x.missed) toShares(x.missed); }));
-  // Every evaluation has a short name (mark files use it): missing ones are made from the name.
-  const taken = new Set(b.evals.map(e => String(e.short || "").trim().toLowerCase()).filter(Boolean));
-  b.evals.forEach(e => {
-    if (String(e.short || "").trim()) return;
-    const words = String(e.name || "E").trim().split(/\s+/), base = (words.length > 1 ? words.map(w => /^\d+$/.test(w) ? w : w[0]).join("") : words[0].slice(0, 4)).toUpperCase() || "E";
-    let s = base, k = 2; while (taken.has(s.toLowerCase())) s = `${base}${k++}`;
-    e.short = s; taken.add(s.toLowerCase());
-  });
   const ids = new Set(b.evals.map(e => e.id)), seen = new Set();
   b.groups = (b.groups || []).map(g => Object.assign(newGroup(), g)).map(g => ({ ...g, weight: num(g.weight), keep: Math.max(1, Math.round(num(g.keep)) || 1), members: (g.members || []).filter(id => ids.has(id) && !seen.has(id) && seen.add(id)) }));
   // Fields: older gradebooks had a student number, a name, and UTORid / email / section.
@@ -2045,21 +2039,16 @@ const counted = () => model.evals.filter(e => !e.makeupFor);   // evaluations th
 // ── Names come from labels ───────────────────────────────────────────
 // An evaluation's name is its label, numbered in course order among the evaluations with the same
 // label (Lab 1, Lab 2… apart from Assignment 1, 2), without a number when the label is used once
-// (Midterm), then its title if it has one ("Lab 2: Flip-flops"). Reordering renumbers. A short name
-// that was never typed follows the name (Lab 2 → L2); a typed one stays as typed.
+// (Midterm), then its title if it has one ("Lab 2: Flip-flops"). Reordering renumbers.
 const E_TYPES = [["assignment", "Assignment"], ["test", "Test"], ["project", "Project"], ["lab", "Lab"], ["other", "Other"]];
 const TYPE_NAME = Object.fromEntries(E_TYPES);
 const isDue = e => e.type !== "test";
 function typeLabel(e) {
-  if (e.type === "other") return;
-  const lab = String(e.label || "").trim(), name = TYPE_NAME[e.type] || "Assignment";
-  // A label that's one of the types' own names (e.g. from before a change of type) isn't kept; and a title
-  // that changes of type once grew ("Project: Test: Midterm Test") loses those.
-  const own = new Set(E_TYPES.map(([, n]) => labelKey(n)));
-  if (lab && !own.has(labelKey(lab))) { const t = String(e.title || "").trim(); e.title = !t ? lab : labelKey(t).startsWith(labelKey(lab) + ":") ? t : `${lab}: ${t}`; }
+  // Every evaluation has a label (its name is the label and its number): none, its type's name. A title that
+  // changes of type once grew ("Project: Test: Midterm Test") loses those.
+  if (!String(e.label || "").trim()) e.label = TYPE_NAME[e.type] || "Assignment";
   const re = new RegExp(`^(\\s*(${E_TYPES.map(([, n]) => n).join("|")})\\s*:\\s*)+`, "i");
-  if (e.title) e.title = String(e.title).replace(re, "").replace(/^(\s*([^:]+?)\s*:\s*)(\2\s*:\s*)+/i, "$1").trim() || e.title;   // ("Quiz: Quiz: …" → "Quiz: …")
-  e.label = name;
+  if (e.title) e.title = String(e.title).replace(re, "").replace(/^(\\s*([^:]+?)\\s*:\\s*)(\\2\\s*:\\s*)+/i, "$1").trim() || e.title;
 }   // everything but a test is handed in by a due date
 // Each type's icon (the same drawing style as Lectern's Activities); no colours.
 const evi = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -2083,29 +2072,20 @@ const evIcon = (x, box) => `<i class="dot ic${box ? " box" : ""}" title="${esc(x
 const LABEL_IDEAS = ["Assignment", "Lab", "Quiz", "Problem set", "Project", "Test", "Midterm", "Final exam"];
 const labelKey = l => String(l || "").trim().toLowerCase();
 const labelNum = new WeakMap();   // evaluation → its number among the same label (kept out of the saved file)
-const autoShort = e => `${String(String(e.title || "").trim() || e.label || "").trim().split(/\s+/).map(w => (w.match(/[A-Za-z0-9]/) || [""])[0]).join("").toUpperCase() || "E"}${labelNum.get(e) || ""}`;
 function syncNames(b = model) {
   // A group never counts more of its evaluations than it has (e.g. after one is taken out of it or deleted).
   (b.groups || []).forEach(g => { g.members = g.members.filter(id => b.evals.some(e => e.id === id)); g.keep = Math.max(1, Math.min(num(g.keep) || 1, g.members.length || 1)); });
-  const evs = b.evals, count = {}, seen = {};   // makeups too: they are named from their labels like the rest
-  // One with a title is named by its title alone (Midterm, Final Exam); the rest by their label, numbered
-  // in course order when there's more than one (Lab 1, Lab 2…).
-  const untitled = evs.filter(e => !String(e.title || "").trim());
-  untitled.forEach(e => { const k = labelKey(e.label); if (k) count[k] = (count[k] || 0) + 1; });
+  // An evaluation's name is always its label and its number among the evaluations with that label, in course
+  // order (Assn 1, Assn 2…, Test 1): the name everything uses. Its title (Midterm, Logic design) goes beside it.
+  const evs = b.evals, seen = {};
   evs.forEach(e => {
-    const lab = String(e.label || "").trim(), k = labelKey(lab), title = String(e.title || "").trim();
-    if (title) { labelNum.set(e, null); e.name = title; return; }
-    if (k) seen[k] = (seen[k] || 0) + 1;
-    const n = k && count[k] > 1 ? seen[k] : null;
-    labelNum.set(e, n);
-    e.name = lab ? (n ? `${lab} ${n}` : lab) : "Untitled evaluation";
+    if (!String(e.label || "").trim()) e.label = TYPE_NAME[e.type] || "Assignment";
+    const lab = String(e.label).trim(), k = labelKey(lab);
+    seen[k] = (seen[k] || 0) + 1;
+    labelNum.set(e, seen[k]);
+    e.name = `${lab} ${seen[k]}`;
   });
-  const typed = new Set(b.evals.filter(e => !e.shortAuto).map(e => String(e.short || "").toLowerCase()));
-  evs.filter(e => e.shortAuto).forEach(e => {
-    const base = autoShort(e); let sh = base, n = 2;
-    while (typed.has(sh.toLowerCase())) sh = `${base}-${n++}`;
-    e.short = sh; typed.add(sh.toLowerCase());
-  });
+  evs.forEach(e => { e.short = e.name; });   // files that still read a short name get the name
 }
 // When: "Tue, Oct 14 at 18:10", from the date and (optional) time.
 function fmtWhen(e) {
@@ -2123,7 +2103,7 @@ function units() {
   (model.groups || []).forEach(g => { if (!done.has(g.id)) out.push({ g, w: num(g.weight) }); });
   return out;
 }
-const groupShort = g => g.short || g.name;
+const groupShort = g => g.name;
 const markOf = (s, e) => ((model.marks[s] || {})[e]) || {};
 const overrideOf = (s, e) => ((model.overrides[s] || {})[e]) || null;
 // A mark is points, or a status: not submitted (missed: true, which follows the
@@ -2149,7 +2129,8 @@ function setOverride(s, e, patch) {
   else (model.overrides[s] = model.overrides[s] || {})[e] = o;
 }
 const weightSum = () => units().reduce((t, u) => t + u.w, 0);
-const shortName = e => e.short || e.name;
+const shortName = e => e.name;   // the name (Assn 1) is what everything calls it
+const titleOf = e => String((e && e.title) || "").trim();
 
 // ── One student's grade ──────────────────────────────────────────────
 // For each evaluation: its status (graded, missed → zero, reweighted, made
@@ -2277,8 +2258,6 @@ function bookChecks() {
   const out = [], evs = counted(), W = weightSum();
   if (evs.length && Math.abs(W - 100) > 1e-6) out.push({ text: `The weights add up to ${fmtNum(W)}%, not 100%.` });
   model.evals.forEach(e => {
-    if (!String(e.short || "").trim()) out.push({ eval: e.id, text: `${e.name}: it needs a short name (mark files use it).` });
-    else if (model.evals.some(x => x !== e && String(x.short).trim().toLowerCase() === String(e.short).trim().toLowerCase()) && model.evals.find(x => String(x.short).trim().toLowerCase() === String(e.short).trim().toLowerCase()) === e) out.push({ eval: e.id, text: `Two evaluations share the short name ${e.short}.` });
     if (e.total != null && e.total !== "" && !(num(e.total) > 0)) out.push({ eval: e.id, text: `${e.name}: its total points aren't set.` });
     if (e.missed.mode === "reweight" && !(e.missed.to || []).some(t => evalById(t.id))) out.push({ eval: e.id, text: `${e.name}: reweights when missed, but to no evaluation.` });
     if (e.missed.mode === "reweight" && e.missed.split === "custom" && e.missed.to.reduce((t, x) => t + num(x.share), 0) > 100 + 1e-6) out.push({ eval: e.id, text: `${e.name}: its custom split moves ${fmtNum(e.missed.to.reduce((t, x) => t + num(x.share), 0))}% of its weight, more than all of it.` });
@@ -2482,7 +2461,7 @@ function importRosterText(text0, name0) {
 
 // ── Uploading marks: a CSV with a column that identifies the student (the
 // identifier, or any custom field such as a UTORid) and columns headed by
-// evaluations' short names, e.g.  studentid,MT,FT / gummalur,24,32.
+// evaluations' names, e.g.  studentid,Test 1,Test 2 / gummalur,24,32.
 // A cell is points, or m (not submitted), aiv, excused or deferred; blanks are skipped.
 function pickCSV(onText) {
   const i = document.createElement("input"); i.type = "file"; i.accept = ".csv,.tsv,.txt,text/csv";
@@ -2496,7 +2475,7 @@ function marksPreview(text, name, only) {
   const target = only && evalById(only), byShort = new Map(model.evals.map(e => [shortName(e).toLowerCase(), e]));
   const find = studentByKey;   // the identifier, or any custom field (UTORid, email…)
   // Starting guesses: the student ID column is the one whose values match the most students;
-  // a points column is the one headed with the evaluation's short name, or else the first numeric one.
+  // a points column is the one headed with the evaluation's name, or else the first numeric one.
   const matches = k => body.filter(r => find(cleanNum(r[k]))).length, numeric = k => body.filter(r => r[k] != null && r[k] !== "" && (Number.isFinite(parseFloat(r[k])) || /^m(issed)?$/i.test(String(r[k]).trim()))).length;
   let idCol = H.reduce((best, h, k) => (matches(k) > matches(best) ? k : best), 0);
   const map = H.map((h, k) => { const e = byShort.get(h.toLowerCase()); return k === idCol || !e ? "" : e.id; });
@@ -2513,7 +2492,7 @@ function marksPreview(text, name, only) {
       ? `<div class="map-grid"><label>Student column <select id="up-id">${colOpts(idCol)}</select></label><label>Points for ${esc(shortName(target))} <select id="up-pts"><option value="-1">Choose…</option>${colOpts(ptsCol, idCol)}</select></label></div>`
       : `<div class="map-grid one"><label>Student column <select id="up-id">${colOpts(idCol)}</select></label></div>
          <div class="map-cols"><div class="mc-h"><span>Column in the file</span><span>Fills</span></div>${H.map((h, k) => k === idCol ? "" : `<div class="mc-row"><span class="mc-col"><b>${esc(h || `Column ${k + 1}`)}</b><small>${sample(k) || "empty"}</small></span>
-           <select data-col="${k}"><option value="">Ignore</option>${model.evals.map(e => `<option value="${esc(e.id)}"${map[k] === e.id ? " selected" : ""}>${esc(shortName(e))} · ${esc(e.name)}</option>`).join("")}</select></div>`).join("")}</div>`;
+           <select data-col="${k}"><option value="">Ignore</option>${model.evals.map(e => `<option value="${esc(e.id)}"${map[k] === e.id ? " selected" : ""}>${esc(e.name)}${titleOf(e) ? ` · ${esc(titleOf(e))}` : ""}</option>`).join("")}</select></div>`).join("")}</div>`;
   };
   const plan = () => {
     const use = only ? (ptsCol >= 0 && ptsCol !== idCol ? [{ k: ptsCol, e: target }] : []) : H.map((h, k) => ({ k, e: k !== idCol && map[k] ? evalById(map[k]) : null })).filter(c => c.e);
@@ -2534,7 +2513,7 @@ function marksPreview(text, name, only) {
   };
   const drawSum = () => {
     const { P, unknown, total, twice } = plan();
-    $("#up-sum", m).innerHTML = (P.length ? `<div class="up-list">${P.map(p => `<div class="up-row" style="--c:${colorOf(p.e)}">${evIcon(p.e)}<b>${esc(shortName(p.e))}</b><span>${esc(p.e.name)}</span><span class="spacer"></span>
+    $("#up-sum", m).innerHTML = (P.length ? `<div class="up-list">${P.map(p => `<div class="up-row" style="--c:${colorOf(p.e)}">${evIcon(p.e)}<b>${esc(p.e.name)}</b><span>${esc(titleOf(p.e))}</span><span class="spacer"></span>
           <span class="up-n">${p.set.length} mark${p.set.length === 1 ? "" : "s"}</span>${p.replace ? `<span class="up-w">${p.replace} replace${p.replace === 1 ? "s" : ""} a mark already entered</span>` : ""}${p.over ? `<span class="st-pill">${svg("warn")}${p.over} above ${fmtNum(p.e.total)}</span>` : ""}${p.bad.length ? `<span class="st-pill" title="${esc(p.bad.join("\n"))}">${svg("warn")}${p.bad.length} not a number</span>` : ""}</div>`).join("")}</div>`
         : `<p class="up-note">${only ? "Choose the column with the points." : "Choose which evaluation each column fills."}</p>`)
       + (twice ? notice("<b>Two columns fill the same evaluation.</b> The one further right wins.") : "")
@@ -2560,7 +2539,7 @@ function marksPreview(text, name, only) {
 function importMenu(anchor) {
   popover(anchor, `<div class="menu-list">
     <button type="button" data-m="roster"><b>Class list</b><span>A CSV from Quercus or ACORN</span></button>
-    <button type="button" data-m="marks"${model.evals.length ? "" : " disabled"}><b>Marks</b><span>A CSV: student ID, then a column per short name</span></button></div>`, pop => {
+    <button type="button" data-m="marks"${model.evals.length ? "" : " disabled"}><b>Marks</b><span>A CSV: student ID, then a column per evaluation, headed with its name</span></button></div>`, pop => {
     pop.addEventListener("click", e => { const b = e.target.closest("[data-m]"); if (!b || b.disabled) return; closePops(); ({ roster: importRoster, marks: () => uploadMarks(null) })[b.dataset.m](); });
   }, "menu");
 }
@@ -2568,7 +2547,7 @@ function exportMenu(anchor) {
   const slug = (model.course.code || "grades").replace(/\s+/g, "") + (model.course.term ? `-${model.course.term.replace(/\s+/g, "")}` : "");
   popover(anchor, `<div class="menu-list">
     <button type="button" data-x="final"><b>Final grades</b><span>Each student's details and course grade</span></button>
-    <button type="button" data-x="all"><b>All marks</b><span>A column per short name, then each student's details and grade (uploads back as is)</span></button></div>`, pop => {
+    <button type="button" data-x="all"><b>All marks</b><span>A column per evaluation (its name), then each student's details and grade (uploads back as is)</span></button></div>`, pop => {
     pop.addEventListener("click", e => {
       const b = e.target.closest("[data-x]"); if (!b) return; closePops();
       const studs = [...model.students].sort((a, c) => a.num.localeCompare(c.num)), evs = model.evals;
@@ -2711,7 +2690,7 @@ function gridHTML() {
       <td class="c-grade" data-grade="${esc(s.num)}">${gradeCell(s.num)}</td></tr>`;
   }).join("");
   return `<div class="page-in xwide"><div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>
-      <button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>
+      <button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation, headed with its name">${svg("upload")}Upload Marks</button>
       ${HOSTED ? `<button type="button" class="btn" data-act="view" data-v="settings" title="Grade ranges, rounding and course rules">${PIC.gear || ""}Settings</button>` : ""}
       <span class="legend"><i class="lg missed"></i>zero <i class="lg rw"></i>weight moved <i class="lg mu"></i>made up <i class="lg dr"></i>not counted <i class="lg ov"></i>accommodation</span></div>
     <div class="stools"><input class="gfind" id="gfind" type="search" placeholder="Find a student" value="${esc(ui.find)}" aria-label="Find a student">
@@ -2768,7 +2747,7 @@ function focusHTML() {
     return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="c-cell ${cellClass(st.num, e, r)}${unused ? " mk-unused" : ""}"><input class="mk" data-s="${esc(st.num)}" data-e="${esc(e.id)}" value="${esc(cellView(m, r))}" inputmode="decimal" spellcheck="false" autocomplete="off" aria-label="${esc(st.name || st.num)}, ${esc(shortName(e))}"${unused ? ' readonly tabindex="-1"' : ""}>${statusOf(m) ? statusIco(statusOf(m)) : ""}${unused ? "" : `<button type="button" class="mk-st" data-act="cell-st" data-s="${esc(st.num)}" data-e="${esc(e.id)}" tabindex="-1" title="Not submitted, excused, deferred…" aria-label="Status">${svg("caret")}</button>`}</td></tr>`;
   }).join("");
   const acts = `${HOSTED ? "" : `<button type="button" class="btn" data-act="imp-roster">${svg("upload")}Import a Class List</button><button type="button" class="btn add" data-act="st-add">${svg("plus")}Add a Student</button>`}
-      ${evs.length && model.students.length ? `<button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation's short name">${svg("upload")}Upload Marks</button>` : ""}
+      ${evs.length && model.students.length ? `<button type="button" class="btn" data-act="up-marks" title="A CSV: student ID, then a column per evaluation, headed with its name">${svg("upload")}Upload Marks</button>` : ""}
       ${HOSTED ? `<button type="button" class="btn" data-act="view" data-v="settings" title="Grade ranges, rounding and course rules">${PIC.gear || ""}Settings</button>` : ""}`;
   const headBar = `<div class="pg-head"><div class="pg-title"><h1>Grades</h1></div><span class="spacer"></span>${acts}</div>`;
   if (!evs.length || !model.students.length) return `<div class="page-in wide">${headBar}
@@ -2933,7 +2912,7 @@ function evalsHTML() {
 function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a makeup for
   const g = sub && groupOf(e);
   return `<div class="erow${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
-    ${evIcon(e, true)}<div class="er-main"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(TYPE_NAME[e.type] || "Assignment")}${e.short ? `<span class="er-sh"> / ${esc(e.short)}</span>` : ""}</p><h3>${esc(e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
+    ${evIcon(e, true)}<div class="er-main"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(e.name)}</p><h3>${esc(titleOf(e) || e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
       <p class="er-when">${esc(whenSentence(e))}</p>
       <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div></div>`;
 }
@@ -3024,16 +3003,15 @@ function drawEvalEditor() {
   $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
-      ${fld("label", "Label", e.type === "other" ? e.label : TYPE_NAME[e.type], "text", e.type === "other" ? ' list="ev-labels" placeholder="e.g. Quiz" autocomplete="off"' : ' disabled title="Only Other has a label of its own; the rest are named by their type"')}
+      ${fld("label", "Label", e.label, "text", ` list="ev-labels" placeholder="${esc(TYPE_NAME[e.type] || "Assignment")}" autocomplete="off"`)}
       ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Midterm" autocomplete="off"')}
       <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button></div></div>
     <datalist id="ev-labels">${labels.map(l => `<option value="${esc(l)}">`).join("")}</datalist>
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
-    <div class="ed-grid">${fld("short", "Short Name", e.short, "text", ` placeholder="e.g. A1" required${shortProblem(e) ? ' class="bad"' : ""}`)}
+    <div class="ed-grid pw">
       ${docLinks.has(e.id) ? `<label class="pf"><span>Points</span><input type="number" value="${esc(e.total)}" disabled title="The total of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}"></label>` : fld("total", "Points", e.total == null || e.total === "" ? "?" : e.total, "text", ' inputmode="decimal" placeholder="e.g. 20, or ? for not yet" autocomplete="off"')}
       ${g ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(g)}">In ${esc(g.name)}</span></label>` : e.makeupFor ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(e)}">Makeup</span></label>` : fld("weight", "Weight %", e.weight, "number", ' min="0" step="any"')}</div>
     ${docLinks.has(e.id) ? `<p class="ed-help">Out of ${fmtNum(e.total)}: the total marks of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}, <code>${esc(docLinks.get(e.id).folder)}</code>. Change the questions there. <button type="button" class="link" data-act="ev-build" data-id="${esc(e.id)}">Open it</button></p>` : ""}
-    <p class="ed-help short-help${shortProblem(e) ? " bad" : ""}" id="short-help"${shortProblem(e) ? "" : " hidden"}>${shortProblem(e)}</p>
     ${e.makeupFor && evalById(e.makeupFor) ? `<h3 class="ed-sec">A Makeup</h3>
     <p class="ed-help">${PIC.makeup} A makeup for <b>${esc(evalById(e.makeupFor).name)}</b>: it only counts for students who don't submit ${esc(shortName(evalById(e.makeupFor)))}, for the part its policy gives it. <button type="button" class="link" data-act="ed-eval" data-id="${esc(e.makeupFor)}">Open ${esc(shortName(evalById(e.makeupFor)))}</button></p>` : `
     <h3 class="ed-sec">If a Student Doesn't Submit It</h3>
@@ -3097,10 +3075,8 @@ function setAccom(e, k, v) {
 }
 // How the name comes about, under the label and title.
 function nameHelp(e) {
-  if (String(e.title || "").trim()) return `Named <b>${esc(e.name)}</b>, its title. Without a title it's named by its type, numbered: ${esc(String(e.label || "").trim() || "Assignment")} 1, 2…`;
-  const k = labelKey(e.label), same = counted().filter(x => labelKey(x.label) === k && !String(x.title || "").trim());
-  if (!k) return "Give it a label, like Lab or Midterm: its name comes from the label.";
-  return same.length > 1 ? `Named <b>${esc(e.name)}</b>: number ${labelNum.get(e)} of the ${same.length} labelled ${esc(String(e.label).trim())}, in course order.` : `Named <b>${esc(e.name)}</b>. Add another ${esc(String(e.label).trim())} and they're numbered 1, 2…`;
+  const lab = String(e.label || "").trim(), same = model.evals.filter(x => labelKey(x.label) === labelKey(lab)).length;
+  return `Called <b>${esc(e.name)}</b> everywhere${same > 1 ? `: number ${labelNum.get(e)} of the ${same} labelled ${esc(lab)}, in course order` : ""}.${String(e.title || "").trim() ? ` Its title, <b>${esc(String(e.title).trim())}</b>, is shown under it.` : ""}`;
 }
 // What happens if it isn't submitted: two tiles, and for a move, where the weight goes.
 function policyHTML(e, p, w, pfx) {
@@ -3142,13 +3118,13 @@ function drawGroupEditor() {
   const g = (model.groups || []).find(x => x.id === m.dataset.group); if (!g) { ui.groupEd = ""; return render(); }
   const cands = counted().filter(e => !groupOf(e) || groupOf(e) === g), n = g.members.length, keep = Math.min(num(g.keep), Math.max(1, n)), each = num(g.weight) / Math.max(1, num(g.keep));
   $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(g)}">${evIcon(g, true)}<h2>${esc(g.name)}</h2><span class="ed-acts"><button type="button" class="ic trash" data-ed="gdelete" title="Delete group (its evaluations stay)" aria-label="Delete group">${svg("trash")}</button></span></div>
-    <div class="ed-grid three"><label class="pf"><span>Name</span><input type="text" data-g="name" value="${esc(g.name)}"></label><label class="pf"><span>Short Name</span><input type="text" data-g="short" value="${esc(g.short)}" placeholder="e.g. Asgn"></label><label class="pf"><span>Weight %</span><input type="number" data-g="weight" min="0" step="any" value="${esc(g.weight)}"></label></div>
+    <div class="ed-grid two"><label class="pf"><span>Name</span><input type="text" data-g="name" value="${esc(g.name)}"></label><label class="pf"><span>Weight %</span><input type="number" data-g="weight" min="0" step="any" value="${esc(g.weight)}"></label></div>
     <h3 class="ed-sec">What Counts</h3>
     <div class="keep-row">Each student's best <span class="stepper"><button type="button" data-ed="keep" data-v="-1" aria-label="Fewer"${num(g.keep) <= 1 ? " disabled" : ""}>−</button><b>${fmtNum(g.keep)}</b><button type="button" data-ed="keep" data-v="1" aria-label="More"${num(g.keep) >= n ? " disabled" : ""}>+</button></span> of ${n}, each worth <b>${fmtNum(Math.round(each * 100) / 100)}%</b>.</div>
     ${n ? `<div class="grp-viz big" style="--c:#c99a06">${g.members.map((x, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}<small>${n - keep > 0 ? `the lowest ${n - keep} ${n - keep === 1 ? "is" : "are"} dropped` : "none dropped"}</small></div>` : ""}
     <h3 class="ed-sec">In the Group</h3>
     <p class="ed-help">Tick the evaluations that make up the group: they show inside it, like a week's activities.</p>
-    <div class="mem-cards">${cands.map(e => `<label class="mem-card${g.members.includes(e.id) ? " on" : ""}"><input type="checkbox" data-ed="member" data-v="${esc(e.id)}"${g.members.includes(e.id) ? " checked" : ""}>${evIcon(e, true)}<span class="mem-t"><small>${esc(TYPE_NAME[e.type] || "Assignment")}${e.short ? ` / ${esc(e.short)}` : ""}</small><b>${esc(e.name)}</b><span>${esc(whenSentence(e))}</span></span></label>`).join("") || `<p class="ed-help">Add evaluations first.</p>`}</div>`;
+    <div class="mem-cards">${cands.map(e => `<label class="mem-card${g.members.includes(e.id) ? " on" : ""}"><input type="checkbox" data-ed="member" data-v="${esc(e.id)}"${g.members.includes(e.id) ? " checked" : ""}>${evIcon(e, true)}<span class="mem-t"><small>${esc(e.name)}</small><b>${esc(titleOf(e) || e.name)}</b><span>${esc(whenSentence(e))}</span></span></label>`).join("") || `<p class="ed-help">Add evaluations first.</p>`}</div>`;
 }
 
 // Editing in the windows: typing updates as you go; choices redraw the window.
@@ -3197,11 +3173,8 @@ document.addEventListener("input", ev => {
     if ((t.dataset.f === "label" || t.dataset.f === "title") && x.id === m.dataset.eval) {
       syncNames(); $(".ed-head h2", m).textContent = x.name; const c = $(".crumbs .cur"); if (c) c.textContent = x.name;
       const h = $("#name-help", m); if (h) h.innerHTML = nameHelp(x);
-      const sf = $('input[data-f="short"]', m); if (sf && x.shortAuto && document.activeElement !== sf) sf.value = x.short;
       refreshSoon();
     }
-    if (t.dataset.f === "short") x.shortAuto = false;
-    if (t.dataset.f === "short") { x.short = t.value.trim(); t.classList.toggle("bad", !!shortProblem(x)); const h = $("#short-help", m); if (h && x.id === m.dataset.eval) { h.classList.toggle("bad", !!shortProblem(x)); h.innerHTML = shortProblem(x); h.hidden = !shortProblem(x); } }
     const rows = $("#rw-rows", m); if (rows && t.dataset.f === "weight") rows.innerHTML = rwRowsHTML(x);
   }
   if (t.dataset.g) {
@@ -3245,8 +3218,8 @@ document.addEventListener("click", ev => {
     const was = e.type; e.type = b.dataset.v;
     // A type's label is its name; Other's is typed in. (Changing type keeps the title as it is: an older
     // label is moved into the title only when a gradebook is opened, typeLabel.)
-    if (e.type === "other" && was !== "other") e.label = "";
-    else if (e.type !== "other") e.label = TYPE_NAME[e.type] || "Assignment";
+    const lab = String(e.label || "").trim();
+    if (!lab || labelKey(lab) === labelKey(TYPE_NAME[was] || "")) e.label = TYPE_NAME[e.type] || "Assignment";
     syncNames();
     if (isDue(e) && !e.time) e.time = "23:59";
     if (e.type === "test" && e.time === "23:59") e.time = "";
@@ -3327,8 +3300,6 @@ const PIC = {
   makeup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
 };
 // Short names head the columns of mark files, so every evaluation needs its own.
-const shortProblem = e => (!String(e.short || "").trim() ? "A short name is needed: CSV files use it as the column heading." : model.evals.some(x => x !== e && String(x.short).trim().toLowerCase() === String(e.short).trim().toLowerCase()) ? `Another evaluation is also called ${esc(e.short)}; short names must be different.` : "");
-function uniqueShort(base) { let s = base, k = 2; while (model.evals.some(x => String(x.short).toLowerCase() === s.toLowerCase())) s = `${base}-${k++}`; return s; }
 // ── Date and time: one button; a calendar, and a time (or none) ─────────
 const fmtTime = t => t || "";   // 24-hour, as stored: 18:10
 function whenLabel(e) {
@@ -3392,7 +3363,7 @@ function editPolicy(m, acc, fn) {
 // A new makeup: an evaluation of its own (named from its label, like the rest), taking what's left of the weight.
 function addMakeup(ev) {
   const x = newEval();
-  Object.assign(x, { label: `${String(ev.label || ev.name).trim()} makeup`, type: ev.type, total: ev.total, weight: 0, makeupFor: ev.id, shortAuto: true });
+  Object.assign(x, { label: `${String(ev.label || "").trim() || TYPE_NAME[ev.type] || "Assignment"} Makeup`, type: ev.type, total: ev.total, weight: 0, makeupFor: ev.id, shortAuto: true });
   change(() => {
     const p = ev.missed; p.mode = "reweight"; p.makeups = p.makeups || [];
     p.makeups.push({ id: x.id, share: Math.max(0, 100 - [...p.makeups, ...(p.to || [])].reduce((t, q) => t + num(q.share), 0)) });
@@ -3874,7 +3845,7 @@ function act(b) {
     case "ed-student": return studentEditor(b.dataset.num);
     case "sec": ui.section = b.dataset.v; return render();
     case "st-what-menu": {   // what to show: the course grade or an evaluation, each with its circle
-      const opts = [["grade", "Course Grade", "#5f6166", ""], ...counted().map(e => [e.id, e.name, colorOf(e), shortName(e)])];
+      const opts = [["grade", "Course Grade", "#5f6166", ""], ...counted().map(e => [e.id, e.name, colorOf(e), titleOf(e)])];
       return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh]) => `<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.stats.what === id}">${evIcon(id)}<b>${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.stats.what === id ? svg("check") : ""}</button>`).join("")}</div>`,
         pop => pop.addEventListener("click", e => { const o = e.target.closest("[data-pick]"); if (!o) return; closePops(); ui.stats.what = o.dataset.pick; render(); }), "dd-pop");
     }
@@ -3903,7 +3874,7 @@ function act(b) {
           pop.addEventListener("click", ev => { if (!ev.target.closest("[data-fxclear]")) return; list.forEach(([k]) => delete ui.fxOff[k]); closePops(); render(); }); }, "dd-pop");
     }
     case "fx-menu": {
-      const opts = [["grade", "Course Grade", "#5f6166", ""], ...model.evals.map(x => [x.id, x.name, colorOf(x), x.makeupFor ? "makeup" : shortName(x)])];
+      const opts = [["grade", "Course Grade", "#5f6166", ""], ...model.evals.map(x => [x.id, x.name, colorOf(x), x.makeupFor ? "makeup" : titleOf(x)])];
       return popover(b, `<div class="menu-list dd-list" role="listbox">${opts.map(([id, name, c, sh], k) => `${k === 1 ? '<span class="dd-sep"></span>' : ""}<button type="button" role="option" data-pick="${esc(id)}" style="--c:${c}" aria-selected="${ui.focus === id}">${evIcon(id)}<b title="${esc(name)}">${esc(name)}</b>${sh ? `<small>${esc(sh)}</small>` : ""}${ui.focus === id ? svg("check") : ""}</button>`).join("")}</div>`,
         pop => pop.addEventListener("click", ev => { const o = ev.target.closest("[data-pick]"); if (!o) return; closePops(); ui.focus = o.dataset.pick; if (ui.sort !== "name" && ui.sort !== "grade") ui.sort = "name"; render(); }), "dd-pop");
     }

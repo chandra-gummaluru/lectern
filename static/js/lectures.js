@@ -240,7 +240,7 @@ export function lecturesPage(ctx, r) {
   // An evaluation dated this week (from the gradebook): it opens in the Evaluations.
   const evRow = e => `<div class="lx-row sub lx-lec lx-ev" data-ev="${esc(e.id)}" role="button" tabindex="0" title="Open ${esc(e.name)} in the Evaluations">
       <span class="lx-kicon" title="${esc(EV_TYPES[e.type] || "Assignment")}">${EV_ICON[e.type] || EV_ICON.assignment}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(EV_TYPES[e.type] || "Assignment")}${e.short ? ` / ${esc(e.short)}` : ""}</p><h3>${esc(e.name)}</h3><p class="lx-when">${esc(evWhen(e))}</p></div></div>`;
+      <div class="lx-main"><p class="lx-kind">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3><p class="lx-when">${esc(evWhen(e))}</p></div></div>`;
   const evsHTML = w => { const E = weekEvals(w); return E.length ? `<div class="lx-evs">${E.map(evRow).join("")}</div>` : ""; };
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No activities this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 

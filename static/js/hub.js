@@ -122,7 +122,7 @@ function weekOpen(w, now) {
 const weekList = () => { const now = thisWeek(); return `<div class="hs-list">${weeks().map(w => weekRow(w, now)).join("")}</div>`; };
 function evRow(e, weight) {
   const t = evType(e);
-  return `<a class="hs-row hs-ev" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[t]}</span><span class="hs-t"><small class="hs-kick">${esc(EV_NAME[t])}</small><b>${esc(e.name)}</b>${evWhen(e) ? `<small>${esc(evWhen(e))}</small>` : ""}</span>${weight != null ? `<span class="hs-w">${fmtW(weight)}%</span>` : ""}${CHEV}</a>`;
+  return `<a class="hs-row hs-ev" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[t]}</span><span class="hs-t"><small class="hs-kick">${esc(e.name)}</small><b>${esc(e.title || e.name)}</b>${evWhen(e) ? `<small>${esc(evWhen(e))}</small>` : ""}</span>${weight != null ? `<span class="hs-w">${fmtW(weight)}%</span>` : ""}${CHEV}</a>`;
 }
 // An announcement about an activity, under it: its date, title and message.
 const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${esc(stampText(a.date))}</p>${a.title ? `<b>${esc(a.title)}</b>` : ""}<div class="hs-body">${markdown(a.body)}</div></div>`;
@@ -215,7 +215,7 @@ const PAGES = {
     const worth = group ? `Counts in ${esc(group.name)}: the best ${group.keep} of ${group.count}, ${fmtW(group.weight / Math.max(1, group.keep))}% each.` : u.weight != null ? `Worth ${fmtW(u.weight)}% of your grade.` : "";
     const notes = [...(u.notes || []), u.accom && u.accom.standard && u.accom.approval ? "This applies only if you request it and it's approved." : ""].filter(Boolean);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
-      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(EV_NAME[t])}${u.short ? ` / ${esc(u.short)}` : ""}</p>${head(u.name, esc(evWhen(u) || (t === "test" ? "Date to be announced" : "Due date to be announced")))}
+      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(u.name)}</p>${head(u.title || u.name, esc(evWhen(u) || (t === "test" ? "Date to be announced" : "Due date to be announced")))}
       <div class="hs-card hs-facts">${worth ? `<p>${worth}</p>` : ""}${notes.map(n => `<p>${esc(n)}</p>`).join("")}${files}${requestHTML(u)}</div>
       ${annsOn(`eval:${u.id}`).length ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Announcements</h2><div class="hs-stack">${annsOn(`eval:${u.id}`).map(annCard).join("")}</div></section>` : ""}`;
   },

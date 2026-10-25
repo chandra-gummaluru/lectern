@@ -524,3 +524,4 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hs-pn a { text-decoration: none; }
 @media (max-width: 640px) { .hs-head h1 { font-size: 30px; } .hs-sec-h h2 { font-size: 24px; } .hs-row { padding: 12px 14px; } .hs-card { padding: 16px; } }
 .hb-head-in.hb-head-in, .hb-staff-in { max-width: 860px; }
+.hb-title + .hb-sub { margin: 8px 0 0; }   /* the term and school, under the course name */

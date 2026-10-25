@@ -134,7 +134,7 @@ export async function studentsCard(ctx, c, t) {
       </div>
       <div class="lt-sf-add"><button type="button" class="lt-btn add" id="sf-add"${dis}>${ICON.plus}Add a Field</button></div></div>`
       : `<div class="lt-olist lt-st-fieldrow"><div class="lt-orow lt-user lt-sec-row"><div class="lt-user-who"><span class="lt-sec-ic" aria-hidden="true">${IDCARD}</span><span class="lt-sec-t"><small>What Each Student Has</small><b>${esc(fieldNames.join(", "))}</b><span>Fixed now that there are students.</span></span></div></div></div>`;
-    box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks. The course page's link: <code>${esc(info.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
+    box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks.</p>
       ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="st-add"${dis}>${ICON.plus}Add a Student</button><button type="button" class="lt-btn" id="st-import"${dis}>${ICON.upload || ""}Import a Class List</button></div>` : ""}</div>
       ${held ? `<p class="lt-note lt-st-note">${UNSAVED}</p>` : ""}
       ${lead && !info.email ? `<p class="lt-note lt-st-note">Email isn't set up on this server, so Lectern can't email students their link or a sign-in code.</p>` : ""}
@@ -162,7 +162,6 @@ export async function studentsCard(ctx, c, t) {
 
   function wire(F) {
     const $ = s => box.querySelector(s);
-    $("#st-copy").onclick = async () => { try { await navigator.clipboard.writeText(info.link); toast("Copied the course page's link."); } catch (_) { toast(info.link); } };
     const find = $("#st-find"); if (find) find.oninput = () => { st.find = find.value; filter(); };
     box.querySelectorAll("[data-st-open]").forEach(x => { x.onclick = () => openStudent(x.dataset.stOpen); });
     if (!lead) return;

@@ -1224,6 +1224,9 @@ Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom
 // For the gradebook: the offering's sections (an evaluation's dates for some of them), and the dropdown to pick them.
 Lectern.sections = async () => { const r = S.route; if (!r.c || !r.t) return []; const G = await readGroups(Store, area(Store.PRIV), r.c, r.t); return sortSections(G.data.groups).map(g => ({ id: g.id, name: g.name || "Untitled section", kind: sectionKind(g) })); };
 Lectern.pickMany = pickMany;
+// For the gradebook: a rich text box (a student's notes), and Markdown drawn as the course page draws it.
+Lectern.richText = richText;
+Lectern.markdown = md => window.HubView.markdown(md || "");
 Lectern.sectionIcon = k => SECTION_ICON[k] || SECTION_ICON.lecture;
 // For the gradebook: a TA's or instructor's sections (the ones they run), or null.
 Lectern.myGroups = async () => {

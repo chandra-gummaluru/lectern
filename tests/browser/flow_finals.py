@@ -39,8 +39,8 @@ def main():
         # Hand-set: Maya 85, then Ken AII
         page.locator(G + ".c-name button", has_text="Castillo").click(); page.wait_for_timeout(500)
         page.click(G + ".fg-in"); page.keyboard.type("85"); page.keyboard.press("Enter"); page.wait_for_timeout(400)
-        page.fill(G + "[data-ed='nt-text']", "Remark accepted"); page.click(G + "[data-ed='nt-add']"); page.wait_for_timeout(300)
-        page.fill(G + "[data-ed='nt-text']", "Second note"); page.keyboard.press("Control+Enter"); page.wait_for_timeout(300)
+        page.fill(G + "[data-ed='nt-text'], " + G + "[data-nt-rt] .rt-ed", "Remark accepted"); page.click(G + "[data-ed='nt-add']"); page.wait_for_timeout(300)
+        page.fill(G + "[data-ed='nt-text'], " + G + "[data-nt-rt] .rt-ed", "Second note"); page.keyboard.press("Control+Enter"); page.wait_for_timeout(300)
         page.screenshot(path=f"{OUT}/201-student-grade.png")
         print("maya now:", page.input_value(G + ".fg-in"), "|", page.inner_text(G + "#fg-note"), "| notes:", page.eval_on_selector_all(G + ".nt-item", "e => e.map(x => x.innerText.replace(/\\n/g, ' / '))"))
         page.go_back(); page.wait_for_timeout(600)

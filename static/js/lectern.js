@@ -23,6 +23,7 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { studentsCard } from "./students.js";
+import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON } from "./groups.js";
 import { richText } from "./richtext.js";
 
 const Lectern = window.Lectern;
@@ -212,7 +213,7 @@ function listAll() {
     return map;
   })().catch(e => { S.listError = e; throw e; });
   // Pages that show the list draw again when it arrives (not a builder, and not your account page, which doesn't use it).
-  const redraw = () => { if (["home", "offering", "accom", "lectures", "team", "announcements"].includes(S.route.page)) renderPage(); };
+  const redraw = () => { if (["home", "offering", "accom", "lectures", "team", "groups", "announcements"].includes(S.route.page)) renderPage(); };
   S.listing.then(redraw, redraw);
   return S.listing;
 }
@@ -234,6 +235,7 @@ function parseHash() {
     if (tool === "accommodations") return { page: "accom", c, t, o };
     if (tool === "lectures" || tool === "activities") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
     if (tool === "team" && e) return { page: "team", c, t, o, p: e };
+    if (tool === "groups" && e) return { page: "groups", c, t, o, g: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
     return { page: "offering", c, t, o };
   }
@@ -246,7 +248,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/groups/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -533,7 +535,10 @@ function renderPage() {
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s) }, r);
   if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
-    steps: [HOME_STEP, offeringStep(r.c, r.t)], api: Auth.api, owner: () => curOwner() || S.user.handle }, r);
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], api: Auth.api, owner: () => curOwner() || S.user.handle,
+    groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups) }, r);
+  if (r.page === "groups") return groupPage({ $, esc, pageHTML, toast, confirmBox, go, Store, repo: area(Store.PRIV), canEdit, ICON, renderPath, route: () => S.route,
+    steps: [HOME_STEP, offeringStep(r.c, r.t)], team: () => teamPeople(r.c, r.t), students: () => getBook(r.c, r.t).then(b => (b && b.students) || []) }, r);
   const ctx = { S, pageHTML, modal, toast, setUser: u => { S.user = u; renderBar(); } };
   if (r.page === "account") { renderPath([HOME_STEP, { label: "Your Account" }]); return accountPage(ctx); }
 }
@@ -717,6 +722,10 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.team}<h2>Teaching Team</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
       </section>
+      <section class="lt-part lt-wide lt-team" id="lt-groups">
+        <div class="lt-part-head">${GROUP_ICON}<h2>Activity Groups</h2></div>
+        <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
+      </section>
       <section class="lt-part lt-wide lt-team" id="lt-students">
         <div class="lt-part-head">${ICON.user}<h2>Students</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
@@ -737,6 +746,7 @@ function offeringPage(c, t) {
   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
   aboutPart(c, t, edit);
   teamPart(c, t);
+  groupsPart(c, t);
   studentsPart(c, t);
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
   if (o.exams.length) docLinks(c, t).then(links => {
@@ -786,12 +796,25 @@ function gradebookOf(c, t, o = curOwner()) {
 function studentsPart(c, t) {
   const box = $("#lt-students .lt-team-body"), o = curOwner(), owner = o || S.user.handle;
   return studentsCard({ box, esc, toast, modal, confirmBox, Store, area: a => area(a, o), api: Auth.api, owner, lead: canEdit(c, t), ICON, termName,
+    // The activity groups (a student is in one or more), and the ones a class list names (made if they're new).
+    groups: () => readGroups(Store, area(Store.PRIV, o), c, t).then(x => x.data.groups),
+    groupIds: names => groupIdsFor(Store, area(Store.PRIV, o), c, t, names),
+    groupsChanged: () => groupsPart(c, t),
     // A student's own page, in the gradebook (their marks, accommodations, notes; dropping or deleting them).
     openStudent: num => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: num, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } }),
     here: () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box),
     gradebook: () => gradebookOf(c, t, o),
     // The file changed: an open gradebook reads it again when it next shows; a new one is on Home.
     changedBook: made => { const g = gradebookOf(c, t, o); if (g) g.stale = true; if (made) listAll().catch(() => null); } }, c, t);
+}
+
+// ── Activity groups (groups.js): the course's sections, their weekly activities and who runs them ──
+const teamPeople = (c, t) => Auth.api(`/api/teams/${encodeURIComponent(curOwner() || S.user.handle)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`).then(d => d.people.map(p => ({ id: String(p.id), name: p.name || p.email, email: p.email })));
+function groupsPart(c, t) {
+  const box = $("#lt-groups .lt-team-body"), o = curOwner();
+  return groupsCard({ box, esc, toast, modal, go, Store, repo: area(Store.PRIV, o), lead: canEdit(c, t), ICON,
+    here: () => S.route.page === "offering" && S.route.c === c && S.route.t === t && curOwner() === o && document.body.contains(box),
+    students: () => getBook(c, t).then(b => (b && b.students) || []) }, c, t);
 }
 
 async function teamPart(c, t) {
@@ -1123,12 +1146,13 @@ Lectern.uploadPublic = async (file, into = "evaluations") => {
 // page's email, office, sections and times (team.json).
 async function teamFor(c, t) {
   const owner = curOwner() || S.user.handle;
-  const [d, raw] = await Promise.all([Auth.api(`/api/teams/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`), readPriv(`${c}/${t}/team.json`).catch(() => null)]);
+  const [d, raw, G] = await Promise.all([Auth.api(`/api/teams/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`), readPriv(`${c}/${t}/team.json`).catch(() => null), readGroups(Store, area(Store.PRIV), c, t).catch(() => null)]);
   let info = {}; try { info = (JSON.parse(raw || "{}") || {}).people || {}; } catch (_) {}
+  const fromGroups = id => (G ? G.data.groups.flatMap(g => g.items.filter(x => (x.people || []).includes(String(id))).map(x => ({ kind: x.kind, section: g.name, day: x.day, start: x.start, end: x.end, where: x.where }))) : null);
   return d.people.filter(p => (info[p.id] || {}).show !== false).map(p => {
     const me = info[p.id] || {};
     return { name: p.name || p.email, role: p.role === "ta" || p.role === "staff" ? p.role : "instructor", email: me.email || p.email, office: me.office || "",
-      times: (me.times || []).map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "" })) };
+      times: [...(fromGroups(p.id) || []), ...(me.times || []).filter(x => !G || x.kind === "office")].map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "" })) };
   });
 }
 

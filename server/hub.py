@@ -132,6 +132,14 @@ def team_of(owner_id, course, term):
     except (ValueError, UnicodeDecodeError):
         d = {}
     info = d.get("people") if isinstance(d, dict) and isinstance(d.get("people"), dict) else {}
+    # The activity groups (groups.js): who runs each lecture, tutorial and lab. With them, a person's times are
+    # what they run (by group) and their own office hours; without them (older offerings), team.json's times.
+    graw = Repo(owner_id, "priv").read(f"{off}/groups.json")
+    try:
+        gd = json.loads(graw.decode("utf-8")) if graw else None
+    except (ValueError, UnicodeDecodeError):
+        gd = None
+    groups = [g for g in _list(gd.get("groups"))] if isinstance(gd, dict) else None
     o = db.one("SELECT id, name, email FROM users WHERE id = ?", (owner_id,))
     rows = [(o, "instructor")] + [(r, r["role"]) for r in db.all_(
         "SELECT u.id, u.name, u.email, m.role FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? ORDER BY m.role, u.name",
@@ -142,7 +150,15 @@ def team_of(owner_id, course, term):
         if me.get("show") is False:
             continue
         times = []
-        for x in _list(me.get("times")):
+        mine = [x for x in _list(me.get("times")) if isinstance(x, dict) and (groups is None or x.get("kind") == "office")]
+        if groups is not None:
+            for g in groups:
+                if not isinstance(g, dict):
+                    continue
+                for x in _list(g.get("items")):
+                    if isinstance(x, dict) and str(u["id"]) in [str(p) for p in _list(x.get("people"))]:
+                        mine.append({**x, "section": g.get("name")})
+        for x in mine:
             if not isinstance(x, dict):
                 continue
             day = x.get("day")
@@ -151,6 +167,39 @@ def team_of(owner_id, course, term):
                           "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
         out.append({"name": _s(u["name"], 200), "role": role if role in ("ta", "staff") else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
                     "office": _s(me.get("office"), 200), "times": times})
+    return out
+
+
+def groups_of(owner_id, course, term):
+    """The activity groups (groups.json) as the course page shows them: each group (LEC0101…) with its weekly
+    activities and who runs each one (by name). None for an offering without them (its team's times say)."""
+    off = f"{course}/{term}"
+    raw = Repo(owner_id, "priv").read(f"{off}/groups.json")
+    try:
+        d = json.loads(raw.decode("utf-8")) if raw else None
+    except (ValueError, UnicodeDecodeError):
+        d = None
+    if not isinstance(d, dict):
+        return None
+    names = {}
+    o = db.one("SELECT id, name, email FROM users WHERE id = ?", (owner_id,))
+    for u in [o] + db.all_("SELECT u.id, u.name, u.email FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ?", (owner_id, off)):
+        if u:
+            names[str(u["id"])] = _s(u["name"], 200) or _s(u["email"], 200)
+    out = []
+    for g in _list(d.get("groups")):
+        if not isinstance(g, dict):
+            continue
+        items = []
+        for x in _list(g.get("items")):
+            if not isinstance(x, dict):
+                continue
+            day = x.get("day")
+            day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
+            items.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "day": day, "start": _s(x.get("start"), 5),
+                          "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200),
+                          "who": [names[str(p)] for p in _list(x.get("people")) if str(p) in names]})
+        out.append({"id": _s(g.get("id"), 40), "name": _s(g.get("name"), 100), "items": items})
     return out
 
 
@@ -397,6 +446,7 @@ def hub_api(handle, course, term):
     about = about_of(o["id"], course, term)
     all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term), team_of(o["id"], course, term),
                     announcements_of(o["id"], course, term), about)
+    all_b["about"]["groups"] = groups_of(o["id"], course, term)
     head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:

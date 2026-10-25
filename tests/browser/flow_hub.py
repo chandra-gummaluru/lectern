@@ -85,7 +85,7 @@ def main():
         expect(v.locator(".hb-locked h2")).to_have_text("Activities")
         assert "lec03.pdf" not in v.content()
         v.goto(srv.base + "c/chandra/csc258/f26/#about")
-        expect(v.locator(".hb-main")).to_contain_text("From transistors to processors")
+        expect(v.locator("#hb-desc")).to_contain_text("From transistors to processors")   # in the header
         print("3 visitor: lectures locked, about shown")
 
         # 4. The owner on the hub, and a phone.

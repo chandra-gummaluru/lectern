@@ -781,3 +781,29 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
   .lt-team-body { min-width: 0; }
   #lt-students .lt-part-text code { word-break: break-all; }
 }
+
+/* Office hours (a person's page): day, start, end, where. */
+.tm-row.tm-oh { grid-template-columns: 150px 120px 120px minmax(120px, 1fr) 34px; min-width: 0; }
+@media (max-width: 640px) { .tm-row.tm-oh { grid-template-columns: 1fr 1fr; } .tm-row.tm-oh.tm-head { display: none; } }
+
+/* Activity groups: the card's list, and a group's page (groups.js). */
+.lt-group-n { font-size: 13.5px; color: var(--home-ink-3); white-space: nowrap; }
+.lt-part-head > svg { width: 22px; height: 22px; }
+.gr-items { display: grid; gap: 10px; margin-top: 8px; }
+.gr-item { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--lx-sub-line); border-radius: 10px; background: var(--home-card); }
+.gr-item > .lx-kicon { margin-top: 18px; }
+.gr-item > .lx-ic { margin-top: 18px; }
+.gr-item-b { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.gr-grid { display: grid; grid-template-columns: 140px 140px 110px 110px minmax(120px, 1fr); gap: 10px; }
+.gr-grid input, .gr-grid select { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--lx-line); background: var(--home-card); color: var(--home-ink); font: 14.5px var(--font-ui); }
+.gr-grid input.bad { border-color: var(--danger, #c0392b); }
+.gr-who { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.gr-who-l { font: 600 12.5px var(--font-ui); color: var(--home-ink-2); margin-right: 4px; }
+.gr-chip { height: 30px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--lx-line); background: var(--home-card); color: var(--home-ink-2); font: 500 13px var(--font-ui); cursor: pointer; }
+.gr-chip:hover:not(:disabled) { border-color: var(--home-ink-3); color: var(--home-ink); }
+.gr-chip[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent); color: var(--home-ink); font-weight: 600; }
+.gr-chip:disabled { cursor: default; }
+.gr-none { padding: 14px; border: 1.5px dashed var(--lx-sub-line); border-radius: 10px; text-align: center; color: var(--home-ink-3); }
+@media (max-width: 760px) { .gr-grid { grid-template-columns: 1fr 1fr; } .gr-grid label:last-child { grid-column: 1 / -1; } }
+/* Students: their groups, in the Add a Student window */
+.lt-st-groups { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -166,11 +166,24 @@ function meetings() {
 // section, a tutorial, a lab…) with its times and who runs it; then office hours; then how to reach each person.
 const ROLE = { instructor: "Instructor", ta: "TA", staff: "Staff" };
 const when = x => [DAY3[x.day] || "", hhmm(x.start, x.end)].filter(Boolean).join(" ");
-function teamHTML(team) {
-  if (!team || !team.length) return "";
+// The activity groups (LEC0101…): each a card with its weekly activities and who runs them.
+function groupsHTML(G) {
+  const order = { lecture: 0, tutorial: 1, lab: 2, other: 3 };
+  const cards = (G || []).filter(g => (g.items || []).length).slice().sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { numeric: true })).map(g => {
+    const I = g.items.slice().sort((a, b) => (order[a.kind] ?? 3) - (order[b.kind] ?? 3) || (a.day || 9) - (b.day || 9) || String(a.start).localeCompare(String(b.start)));
+    const who = [...new Set(I.flatMap(x => x.who || []))];
+    return `<article class="hb-card hb-sec"><div class="hb-card-top"><span>Activity group</span></div><h3>${esc(g.name || "Group")}</h3>
+      ${I.map(x => `<p class="hb-sec-t"><b>${esc(KIND[x.kind] || "Other")}</b> ${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
+      ${who.length ? `<p class="hb-sec-who">${esc(who.join(", "))}</p>` : ""}</article>`;
+  }).join("");
+  return cards ? `<h3 class="hb-h3">Activity Groups</h3><div class="hb-grid">${cards}</div>` : "";
+}
+function teamHTML(team, groups) {
+  if ((!team || !team.length) && !(groups && groups.length)) return "";
+  team = team || [];
   const secs = new Map();
   team.forEach(p => (p.times || []).forEach(x => {
-    if (x.kind === "office" || !x.day) return;
+    if (x.kind === "office" || !x.day || groups) return;   // (with activity groups, they're shown instead)
     const key = `${x.kind}|${x.section || ""}`;
     if (!secs.has(key)) secs.set(key, { kind: x.kind, section: x.section, times: [], who: [] });
     const s = secs.get(key);
@@ -185,7 +198,7 @@ function teamHTML(team) {
   const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => ({ who: p.name, day: x.day, when: `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), where: x.where, start: x.start })))
     .sort((a, b) => a.day - b.day || String(a.start).localeCompare(String(b.start)));
   const people = team.map(p => `<article class="hb-person"><span class="hb-av" aria-hidden="true">${esc(initials(p.name))}</span><div><h4>${esc(p.name)}</h4><p class="hb-person-r">${esc(ROLE[p.role] || "")}${p.office ? ` · ${esc(p.office)}` : ""}</p>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ""}</div></article>`).join("");
-  return `${cards ? `<h3 class="hb-h3">Activities</h3><div class="hb-grid">${cards}</div>` : ""}
+  return `${groups ? groupsHTML(groups) : cards ? `<h3 class="hb-h3">Activities</h3><div class="hb-grid">${cards}</div>` : ""}
     ${oh.length ? `<h3 class="hb-h3">Office Hours</h3><ul class="hb-rows">${oh.map(x => `<li><b>${esc(x.when)}</b><span>${esc(x.who)}</span><span class="hb-rows-w">${esc(x.where || "")}</span></li>`).join("")}</ul>` : ""}
     <h3 class="hb-h3">Teaching Team</h3><div class="hb-people">${people}</div>`;
 }
@@ -208,7 +221,7 @@ function currentWeek(cal, now) {
 const DRAW = {
   about() {
     const a = data("about");
-    let h = `<h2 class="hb-h2">About the course</h2>${a.description ? `<div class="hb-desc">${markdown(a.description)}</div>` : ""}${teamHTML(a.team)}`;
+    let h = `<h2 class="hb-h2">About the course</h2>${a.description ? `<div class="hb-desc">${markdown(a.description)}</div>` : ""}${teamHTML(a.team, a.groups)}`;
     (a.sections || []).forEach(s => {
       if (s.title) h += `<h3 class="hb-h3">${esc(s.title)}</h3>`;
       if (s.type === "meetings") h += (s.items || []).length ? meetingsTable(s.items) : "";

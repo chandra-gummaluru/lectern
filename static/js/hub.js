@@ -212,7 +212,8 @@ const PAGES = {
       <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(EV_NAME[t])}${u.short ? ` / ${esc(u.short)}` : ""}</p>${head(u.name, esc(evWhen(u) || (t === "test" ? "Date to be announced" : "Due date to be announced")))}
       <div class="hs-card hs-facts">${worth ? `<p>${worth}</p>` : ""}${notes.map(n => `<p>${esc(n)}</p>`).join("")}${files}${requestHTML(u)}</div>`;
   },
-  about() { return open("about") ? `${path([["About the Course"]])}${HubView.draw(D, "about")}` : lockedPage("about", "About the Course"); },
+  // (Its description is in the header already.)
+  about() { return open("about") ? `${path([["About the Course"]])}${HubView.draw({ ...D, data: { ...D.data, about: { ...data("about"), description: "" } } }, "about")}` : lockedPage("about", "About the Course"); },
   accommodations() { return open("accommodations") ? `${path([["My Accommodations"]])}${HubView.draw(D, "accommodations")}` : lockedPage("accommodations", "My Accommodations"); },
 };
 

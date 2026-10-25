@@ -665,3 +665,42 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb .rt-ed p { margin: 0 0 8px; } .hb .rt-ed ul, .hb .rt-ed ol { margin: 0 0 8px; padding-left: 22px; } .hb .rt-ed > :last-child { margin-bottom: 0; }
 .hb .rt-ed a { color: var(--accent); text-decoration: underline; }
 .hb .rt-ed.empty::before { content: attr(data-ph); color: var(--ink-3); pointer-events: none; position: absolute; }
+
+/* One evaluation's page: one card, as the gradebook's editor has it (its icon, name and title at the top,
+   Request Accommodation where the editor's buttons are, then its sections under small headings). */
+.ec-card { padding: 26px 28px 24px; background: var(--card); border: 1px solid var(--line-2); border-radius: 12px; }
+.ec-head { display: flex; align-items: center; gap: 12px; margin: 0 0 6px; }
+.ec-ic { width: 28px; } .ec-ic svg { width: 24px; height: 24px; }
+.ec-tt { flex: 1; min-width: 0; }
+.ec-tt .hs-kick { margin: 0 0 1px; }
+.ec-tt h1 { margin: 0; font: 500 32px/1.15 var(--font-serif); letter-spacing: -.01em; overflow-wrap: anywhere; }
+.ec-acts { flex: none; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.ec-closed { font-size: 13px; color: var(--ink-3); }
+.ec-sec { margin: 22px 0 10px; padding-top: 16px; border-top: 1px solid var(--line); font: 700 11.5px/1.3 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.ec-head + .ec-sec { margin-top: 14px; padding-top: 0; border-top: 0; }
+.ec-card .hs-tiles { margin: 0; }
+.ec-card .hs-tile { background: var(--paper); }
+.ec-drow + .ec-drow { margin-top: 12px; }
+.ec-who { margin: 0 0 6px; font: 600 13px var(--font-ui); color: var(--ink-2); }
+.ec-st b { color: var(--ink-2); }
+.ec-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ec-opt { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 10px; color: var(--ink-3); }
+.ec-opt b { font: 600 14.5px var(--font-ui); color: var(--ink-2); }
+.ec-opt span { font-size: 13.5px; }
+.ec-opt.on { border: 1.5px solid var(--ink); color: var(--ink-2); }
+.ec-opt.on b { color: var(--ink); }
+.ec-opt:not(.on) { opacity: .7; }
+.ec-rw { margin-top: 10px; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+.ec-rw-h { margin: 0; padding: 9px 14px; background: var(--strip); border-bottom: 1px solid var(--line); font: 600 13.5px var(--font-ui); color: var(--ink); }
+.ec-rw-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 14px; color: var(--ink-2); }
+.ec-rw-row + .ec-rw-row { border-top: 1px solid var(--line); }
+.ec-rw-row > b { color: var(--ink); font-weight: 600; }
+.ec-rw-row .sp { flex: 1; }
+.ec-rw-row s { color: var(--ink-3); }
+.ec-arrow { color: var(--ink-3); }
+.ec-tag { padding: 1px 8px; border-radius: 99px; background: var(--strip); box-shadow: inset 0 0 0 1px var(--line-2); font: 600 12px/20px var(--font-ui); color: var(--ink-2); }
+.ec-zero { background: var(--strip); color: var(--ink-3); }
+.ec-acc { margin-top: 12px; }
+.ec-p { margin: 0 0 6px; color: var(--ink-2); font-size: 14.5px; }
+.ec-by { color: var(--ink-3); font-size: 13.5px; }
+@media (max-width: 640px) { .ec-card { padding: 18px 16px; } .ec-head { flex-wrap: wrap; } .ec-acts { width: 100%; justify-content: flex-start; } .ec-opts { grid-template-columns: 1fr; } .ec-tt h1 { font-size: 26px; } }

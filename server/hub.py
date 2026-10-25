@@ -502,6 +502,16 @@ def hub_api(handle, course, term):
     all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term), team_of(o["id"], course, term),
                     announcements_of(o["id"], course, term), about)
     all_b["about"]["groups"] = groups_of(o["id"], course, term)
+    # An evaluation's dates for some sections: with those sections' names (the course page says which).
+    gname = {str(x.get("id")): x.get("name") or "" for x in all_b["about"]["groups"] or [] if isinstance(x, dict)}
+    def _named(e):
+        for d in _list(e.get("dates") if isinstance(e, dict) else None):
+            if isinstance(d, dict):
+                d["names"] = [gname[str(i)] for i in _list(d.get("groups")) if gname.get(str(i))]
+    for u in _list((all_b.get("evaluations") or {}).get("units")):
+        _named(u)
+        for m in _list(u.get("members") if isinstance(u, dict) else None):
+            _named(m)
     # An activity or announcement for one activity group is only for its students (and the teaching team).
     if not (role in STAFF and not preview):
         mine = set()
@@ -526,7 +536,7 @@ def hub_api(handle, course, term):
         all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a)]
         # An evaluation with its own dates for some sections: a student's is their section's (else its own).
         def own_date(e):
-            if not isinstance(e, dict):
+            if not isinstance(e, dict) or not student:   # a visitor sees every section's date
                 return
             for d in _list(e.get("dates")):
                 if isinstance(d, dict) and set(map(str, _list(d.get("groups")))) & mine and d.get("date"):
@@ -542,6 +552,24 @@ def hub_api(handle, course, term):
                 own_date(m)
         for e in _list(ev.get("evals")):
             own_date(e)
+    # A signed-in student's own marks (the gradebook's), for each evaluation's page: points, or what happened.
+    marks = {}
+    if student and "evaluations" in all_b:
+        from .students import roster
+        num = (roster(o["id"], offering).get(student) or {}).get("num")
+        try:
+            book = json.loads((Repo(o["id"], "priv").read(f"{offering}/grades.json") or b"{}").decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            book = {}
+        mine_m = ((book.get("marks") or {}) if isinstance(book, dict) else {}).get(str(num)) if num else None
+        for eid, m in (mine_m.items() if isinstance(mine_m, dict) else []):
+            if not isinstance(m, dict):
+                continue
+            st = m.get("status") or ("missed" if m.get("missed") else "")
+            if st in ("missed", "aiv", "excused", "deferred"):
+                marks[str(eid)[:64]] = {"status": st}
+            elif isinstance(m.get("pts"), (int, float)):
+                marks[str(eid)[:64]] = {"pts": m["pts"]}
     head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:
@@ -558,6 +586,7 @@ def hub_api(handle, course, term):
                 "offering": offering, "year": year},
         viewer={"signedIn": signed, "role": None if preview else role, "name": student or (u["name"] if u and signed else ""),
                 "staff": role in STAFF, "preview": preview,
+                **({"marks": marks} if student else {}),
                 # a student: the announcements they've seen (the others are New for them)
                 **({"seen": [r["ann_id"] for r in db.all_("SELECT ann_id FROM announcements_seen WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], offering, student))]} if student else {})},
         tabs=tabs, data=data,

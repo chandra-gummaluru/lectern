@@ -256,6 +256,58 @@ const ReqForm = (() => {
   return { start };
 })();
 
+// ── One evaluation, as one card (as the gradebook's editor and a student's page have it) ──
+// Its dates (a signed-in student's section's; everyone's otherwise), its grading (worth, and their mark),
+// what happens if it's missed (the gradebook's two choices, the chosen one marked, and where its weight goes),
+// its files and its announcements. Request Accommodation sits at the top, where the editor's buttons are.
+function evalCard(u, group, E) {
+  const t = evType(u), files = filesHTML((E.files || {})[u.id] || u.files), A = annsOn(`eval:${u.id}`);
+  const at = (d, tm) => (d ? `${day(d, true)}${tm ? ` at ${tm}` : ""}` : "To be announced");
+  const due = isDue(u), me = D.viewer && D.viewer.role === "student";
+  const sec = title => `<h2 class="ec-sec">${esc(title)}</h2>`;
+  // Dates: one row each (the course's, and each section's own), Released and Due (or its Date).
+  const rows = [{ who: (u.dates || []).length ? "All other sections" : me ? "" : "Everyone", date: u.date, time: u.time, release: u.release, releaseTime: u.releaseTime },
+    ...(u.dates || []).map(d => ({ who: (d.names || []).join(", ") || "Some sections", ...d }))];
+  if ((u.dates || []).length) rows.push(rows.shift());   // the sections' own first, then everyone else's
+  const tile = (k, v, sub = "", cls = "") => `<div class="hs-tile${cls}"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`;
+  const dates = rows.map(r => `<div class="ec-drow">${r.who ? `<p class="ec-who">${esc(r.who)}</p>` : ""}<div class="hs-tiles">${due && r.release ? tile("Released", at(r.release, r.releaseTime)) : ""}${tile(due ? "Due" : "Date", at(r.date, r.time))}</div></div>`).join("");
+  // Grading: what it's worth, and its points (theirs, once it's marked).
+  const m = (D.viewer.marks || {})[u.id], total = u.total;
+  const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
+  const pts = m && m.pts != null ? `${fmtW(m.pts)} / ${total ? fmtW(total) : "?"}` : `— / ${total ? fmtW(total) : "—"}`;
+  const ptsSub = m && m.status ? ST[m.status] : m && m.pts != null && total ? `${fmtW(Math.round(m.pts / total * 1000) / 10)}%` : me ? "Not marked yet" : "Your mark shows here once you're signed in";
+  const worth = group ? tile("Worth", `${fmtW(group.weight / Math.max(1, group.keep))}%`, `In ${group.name}: the best ${group.keep} of ${group.count} count`) : u.weight != null ? tile("Worth", `${fmtW(u.weight)}%`, "of your grade") : "";
+  const grading = `<div class="hs-tiles">${worth}${tile("Points", pts, ptsSub, m && m.status ? " ec-st" : "")}</div>`;
+  // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
+  const w = fmtW(u.weight), mi = u.missed;
+  const opt = (on, ttl, sub) => `<div class="ec-opt${on ? " on" : ""}" aria-current="${on}"><b>${esc(ttl)}</b><span>${esc(sub)}</span></div>`;
+  const policy = !group && mi ? `<div class="ec-opts">${opt(mi.mode !== "reweight", "Counts as zero", `The ${w}% stays, with a mark of 0.`)}${opt(mi.mode === "reweight", "A makeup, or shift its weight", `Makeups and other evaluations take the ${w}%.`)}</div>
+    ${mi.mode === "reweight" && (mi.parts || []).length ? `<div class="ec-rw"><p class="ec-rw-h">Its ${w}% goes to…</p>${mi.parts.map(x => {
+      const it = unitOf(x.id), ic = EV_ICON[it ? evType(it.u) : "assignment"];
+      return `<div class="ec-rw-row"><span class="hs-ic sm">${ic}</span><b>${esc(x.name)}</b><span class="ec-tag">${x.kind === "makeup" ? "Makeup" : "Shifted to it"}</span><span class="sp"></span>${x.kind === "shift" && x.was != null ? `<s>${fmtW(x.was)}%</s><span class="ec-arrow">→</span><b>${fmtW(x.was + x.pct)}%</b>` : `<b>${fmtW(x.pct)}%</b>`}</div>`; }).join("")}
+      ${mi.zero > 0 ? `<div class="ec-rw-row ec-zero"><span class="sp"></span>${fmtW(mi.zero)}% counts as zero</div>` : ""}</div>` : ""}` : (u.notes || []).map(n => `<p class="ec-p">${esc(n)}</p>`).join("");
+  // Accommodations: the standard one (if it must be asked for), and until when.
+  const a = u.accom || {}, by = a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";
+  const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-acc">${a.standard && a.approval ? `<p class="ec-p">The standard accommodation, <b>${esc(String(a.standard).replace(/\.\s*$/, ""))}</b>, applies only if you request it and it's approved.</p>` : ""}${a.alternate ? `<p class="ec-p">You can also ask for an alternate accommodation.</p>` : ""}${by ? `<p class="ec-p ec-by">Requests close ${esc(by)}.</p>` : ""}</div>` : "";
+  const req = requestBtn(u);
+  return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
+    <article class="ec-card">
+      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1></div>${req ? `<span class="ec-acts">${req}</span>` : ""}</header>
+      ${sec("When")}${dates}
+      ${sec("Grading")}${grading}
+      ${policy || acc ? `${sec("If You Miss It")}${policy}${acc}` : ""}
+      ${files ? `${sec("Files and Links")}${files}` : ""}
+      ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
+    </article>`;
+}
+// Request Accommodation, at the top of an evaluation's card: when students can ask (until its deadline).
+function requestBtn(e) {
+  const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
+  if (by && !isNaN(by) && by < new Date()) return `<span class="ec-closed">Requests closed</span>`;
+  return D.viewer.signedIn ? `<a class="hb-btn" href="#request/${encodeURIComponent(e.id)}">Request Accommodation</a>` : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request an Accommodation</a>`;
+}
+
 // ── Pages ────────────────────────────────────────────────────────────
 const PAGES = {
   home() {
@@ -316,23 +368,7 @@ const PAGES = {
       return `${path([["Evaluations", "#evaluations"], [u.name]])}<p class="hs-kick hs-kick-top">Group</p>${head(u.name, `Worth ${fmtW(u.weight)}% of your grade: the best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each.`)}
         <div class="hs-list">${(u.members || []).map(m => evRow(m)).join("")}</div>`;
     }
-    const t = evType(u), files = filesHTML((E.files || {})[u.id] || u.files);
-    const at = (d, tm) => `${day(d, true)}${tm ? ` at ${tm}` : ""}`;
-    const G = ((data("about") || {}).groups) || [], gn = ids => ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean).join(", ") || "Some sections";
-    // Its facts as tiles: when (released, due; or its date), and what it's worth.
-    const tiles = [];
-    if (isDue(u) && u.release) tiles.push(["Released", at(u.release, u.releaseTime), ""]);
-    tiles.push([isDue(u) ? "Due" : "Date", u.date ? at(u.date, u.time) : "To be announced", (u.dates || []).filter(d => d.date).map(d => `${gn(d.groups)}: ${at(d.date, d.time)}`).join(" · ")]);
-    if (group) tiles.push(["Worth", `${fmtW(group.weight / Math.max(1, group.keep))}%`, `In ${group.name}: the best ${group.keep} of ${group.count} count`]);
-    else if (u.weight != null) tiles.push(["Worth", `${fmtW(u.weight)}%`, "of your grade"]);
-    const notes = [...(u.notes || []), u.accom && u.accom.standard && u.accom.approval ? "This applies only if you request it and it's approved." : ""].filter(Boolean);
-    const req = requestHTML(u), A = annsOn(`eval:${u.id}`);
-    return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
-      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[t]}</span>${esc(u.name)}</p>${head(u.title || u.name, "")}
-      <div class="hs-tiles">${tiles.map(([k, v, sub]) => `<div class="hs-tile"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`).join("")}</div>
-      ${files ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Files and Links</h2>${files}</section>` : ""}
-      ${notes.length || req ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">If You Miss It</h2><div class="hs-card hs-facts">${notes.map(n => `<p>${esc(n)}</p>`).join("")}${req}</div></section>` : ""}
-      ${A.length ? `<section class="hs-sec hs-sec-top"><h2 class="hs-h2">Announcements</h2><div class="hs-stack">${A.map(annCard).join("")}</div></section>` : ""}`;
+    return evalCard(u, group, E);
   },
   // (Its description is in the header already.)
   about() {

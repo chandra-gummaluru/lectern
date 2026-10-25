@@ -1170,6 +1170,15 @@ function schemeOf(b, from, requests = null) {
     const rest = Math.max(0, 100 - T * k);
     return [`If it isn't submitted, ${bits.length > 1 ? `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}` : bits[0]}${rest > 1e-9 ? `; ${fmtW(w * rest / 100)}% counts as zero` : ""}.`];
   };
+  // The same, for the course page to draw as the gradebook does: where its weight goes, part by part.
+  const missedOf = e => {
+    const m = e.missed || {}, w = num(e.weight), any = id => (b.evals || []).find(x => x.id === id);
+    if (m.mode !== "reweight") return { missed: { mode: "zero" } };
+    const mk = (m.makeups || []).filter(x => any(x.id)), to = (m.to || []).filter(x => num(x.share) > 0 && byId(x.id) && !mk.some(y => y.id === x.id));
+    const T = [...mk, ...to].reduce((t, x) => t + num(x.share), 0), k = T > 100 ? 100 / T : 1, pc = x => Math.round(w * num(x.share) * k) / 100;
+    return { missed: { mode: "reweight", parts: [...mk.map(x => ({ id: x.id, name: any(x.id).name, kind: "makeup", pct: pc(x) })), ...to.map(x => ({ id: x.id, name: byId(x.id).name, kind: "shift", pct: pc(x), was: num(byId(x.id).weight) }))],
+      zero: Math.round(w * Math.max(0, 100 - T * k)) / 100 } };
+  };
   // Accommodations (Grades → an evaluation): the standard one, and whether students can ask, until when.
   const accom = e => {
     const a = e.accom || {}, standard = String(a.standard || "").trim(), approval = !!a.approval && !!standard, alternate = !!a.alternate;
@@ -1178,7 +1187,7 @@ function schemeOf(b, from, requests = null) {
   };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", date: e.date || "", time: e.time || "", ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -1187,7 +1196,7 @@ function schemeOf(b, from, requests = null) {
       seen.add(g.id);
       const mem = g.members.map(byId).filter(Boolean);
       units.push({ kind: "group", id: g.id, name: g.name, weight: num(g.weight), keep: Math.min(num(g.keep) || 1, mem.length || 1), count: mem.length, members: mem.map(m => ({ ...brief(m), notes: [] })) });
-    } else units.push({ kind: "eval", ...brief(e), weight: num(e.weight), notes: notes(e) });
+    } else units.push({ kind: "eval", ...brief(e), weight: num(e.weight), notes: notes(e), ...missedOf(e) });
   });
   // The course rules (the gradebook's Settings), worded for students, each saying whether the course page shows it
   // (its Settings choose: the rules do unless turned off; rounding and grade ranges don't unless turned on).

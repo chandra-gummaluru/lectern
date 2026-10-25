@@ -240,7 +240,8 @@ def test_an_activity_or_announcement_for_one_activity_group(client, user, anon):
 
 
 def test_an_evaluations_dates_for_some_sections(client, user, anon):
-    """Dates some sections have of their own: the teaching team gets them; anyone else, the evaluation's own date."""
+    """Dates some sections have of their own: the teaching team and visitors get them all (the page says whose);
+    a signed-in student, their own section's (test_students)."""
     page = json.loads(json.dumps(SAMPLE["page"]))
     e = page["scheme"]["evals"][0]
     e["date"], e["dates"] = "2026-10-02", [{"groups": ["g1"], "date": "2026-10-05", "time": "18:00"}]
@@ -248,7 +249,7 @@ def test_an_evaluations_dates_for_some_sections(client, user, anon):
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
     if "evaluations" in j["data"]:
         got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
-        assert got["date"] == "2026-10-02" and "dates" not in got
+        assert got["date"] == "2026-10-02" and got["dates"][0]["date"] == "2026-10-05"
     j = client.get("/api/hub/chandra/csc258/f26").get_json()
     got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
     assert got["dates"] == [{"groups": ["g1"], "date": "2026-10-05", "time": "18:00"}]

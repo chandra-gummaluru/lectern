@@ -526,3 +526,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb-head-in.hb-head-in, .hb-staff-in { max-width: 860px; }
 .hb-title + .hb-sub { margin: 8px 0 0; }   /* the term and school, under the course name */
 .hb-head .hb-title { white-space: normal; overflow: visible; font-size: 40px; }   /* the whole name, on two lines if it needs them */
+/* Who's signed in sits above the course name (on the right), so the name has the page's whole width. */
+.hb-head-in.hb-head-in { flex-wrap: wrap; row-gap: 6px; padding-top: 18px; }
+.hb-head .hb-who { order: -1; flex: 1 1 100%; padding-bottom: 0; }
+.hb-head .hb-titles { flex: 1 1 100%; }

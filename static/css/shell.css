@@ -838,3 +838,12 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .pk-opt input { flex: none; width: 16px !important; height: 16px !important; margin: 0; padding: 0; accent-color: var(--home-ink); }
 .pk-opt span { flex: 1; text-align: left; font: 400 14px var(--font-ui); }
 .pk-none { margin: 0; padding: 8px 10px; font: 400 13.5px var(--font-ui); color: var(--home-ink-3); }
+
+/* A request's state, beside it: approved (green ✓), rejected (red ✕), waiting (yellow ?). */
+.lt-req { gap: 14px; }
+.lt-req-ic { flex: none; display: grid; place-items: center; width: 28px; align-self: center; color: #b58a00; }
+.lt-req-ic svg { width: 26px; height: 26px; }
+.st-approved .lt-req-ic { color: #2f8f5b; }
+.st-rejected .lt-req-ic { color: #c0392b; }
+.lt-req-side { align-self: center; }
+@media (max-width: 640px) { .lt-req-ic { align-self: flex-start; } .lt-req-side { justify-content: flex-end; } }

@@ -1013,7 +1013,14 @@ async function accomPage(c, t) {
   };
   // A request, as the other parts' cards are: what it is above the student's name; when and who under it; what
   // they asked for; the decision; Approve and Reject (or the other way, once decided) on the right.
+  // Its state as an icon beside it, like the other parts' cards: approved ✓ (green), rejected ✕ (red), waiting ? (yellow).
+  const ST_ICON = {
+    approved: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m7.8 12.3 2.8 2.8 5.6-6"/></svg>',
+    rejected: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m8.8 8.8 6.4 6.4M15.2 8.8l-6.4 6.4"/></svg>',
+    pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01" stroke-width="2.8"/></svg>',
+  };
   const reqCard = r => `<article class="lx-row lt-req st-${esc(r.status)}" title="${esc(r.id)}">
+      <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
       <div class="lx-main">
         <p class="lx-kind">${esc(r.evalName)} · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"}</p>
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
@@ -1021,7 +1028,7 @@ async function accomPage(c, t) {
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
         ${r.status !== "pending" ? `<p class="lt-req-dec">${esc(STATUS[r.status])}${r.decidedBy ? ` by ${esc(r.decidedBy)}` : ""}${r.decided ? `, ${esc(fmtStamp(r.decided))}` : ""}.${r.note ? ` Note: “${esc(r.note)}”` : ""}</p>` : ""}
       </div>
-      <div class="lx-side lt-req-side"><span class="lt-req-st">${esc(STATUS[r.status] || r.status)}</span>
+      <div class="lx-side lt-req-side">
         <div class="lt-req-acts">${r.status === "pending"
           ? `<button type="button" class="lt-btn" data-decide="rejected" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Reject</button><button type="button" class="lt-btn primary" data-decide="approved" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Approve</button>`
           : `<button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div></div>

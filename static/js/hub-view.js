@@ -418,7 +418,7 @@ function fromPage(page, year, lectures, extra) {
   };
 }
 
-const TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
+const TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
 
 window.HubView = { draw, fromPage, currentWeek, today, esc, rich, markdown, meetingsTable, TABS, LOCK };
 })();

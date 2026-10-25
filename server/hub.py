@@ -40,7 +40,7 @@ SLUG = re.compile(r"^[\w.-]{1,64}$")
 TABS = [
     ("week", "This week"),
     ("announcements", "Announcements"),
-    ("lectures", "Lectures"),
+    ("lectures", "Activities"),   # the weeks and their lectures, tutorials, labs and the rest (the id stays: addresses keep working)
     ("evaluations", "Evaluations"),
     ("about", "About"),
     ("accommodations", "My accommodations"),
@@ -234,7 +234,7 @@ def week_range(w, year):
 def _week(w):
     cards = [{"kind": _s(c.get("kind"), 20), "label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
               "date": _s(c.get("date"), 60), "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
-              "files": _files(c.get("files"))}
+              "files": _files(c.get("files")), "eval": _s(c.get("eval"), 64)}
              for c in _list(w.get("cards")) if isinstance(c, dict)]
     if w.get("isBreak"):
         return {"isBreak": True, "label": _s(w.get("text"), 200) or _s(w.get("label"), 200), "cards": [], "deadlines": []}

@@ -145,8 +145,10 @@ export function lecturesPage(ctx, r) {
   const weekLine = w => { const n = (w.cards || []).length; return [rangeText(w.start, w.end) || "No dates yet", w.topic, `${n} lecture${n === 1 ? "" : "s"}`].filter(Boolean).join(" · "); };
   const titleOf = x => x.title || x.label || "Untitled";
   const nameOf = x => (x.title && x.label ? `${x.label}: ${x.title}` : titleOf(x));
-  const lecWhen = x => [x.title ? x.label : (new RegExp(`^${kindName(kindOf(x))}\\b`, "i").test(x.label || "") ? "" : kindName(kindOf(x))), whenText(x.date) || "no date yet"].filter(Boolean).join(", ");
-  const lecMore = x => { const n = (x.files || []).length; return n ? `${n} file${n === 1 ? "" : "s"} or link${n === 1 ? "" : "s"}.` : "No files yet: the course page says Coming soon."; };
+  const PAPERCLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.5 7"/></svg>';
+  const kindLabel = x => x.label || kindName(kindOf(x));   // above the title, e.g. LECTURE 07
+  // Under the title: when it is (if it has a date) and its files; nothing about what it doesn't have.
+  const lecMeta = x => { const n = (x.files || []).length, w = whenText(x.date); return [w ? esc(w) : "", n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
   const status$ = () => (edit ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
   const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the lectures; the instructors change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
@@ -160,10 +162,9 @@ export function lecturesPage(ctx, r) {
   }
 
   // One lecture as a sub-card, inside its week.
-  const lecRow = (w, x) => `<div class="lx-row sub" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
-      <div class="lx-main"><div class="lx-top"><h3>${esc(titleOf(x))}</h3></div>
-        <p class="lx-when">${esc(lecWhen(x))}</p><p>${esc(lecMore(x))}</p></div>
-      ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
+  const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
+      <div class="lx-main"><p class="lx-kind">${esc(x.title ? kindLabel(x) : kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div>
+      ${edit ? `<div class="lx-side"><button type="button" class="lx-btn sm lx-quiet" data-dup="${esc(x.id)}" data-w="${esc(w.id)}" title="A copy of it, right after it">${COPY}Duplicate</button></div>` : ""}</div>`;
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No lectures this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 
   // ── Every week ──
@@ -172,17 +173,19 @@ export function lecturesPage(ctx, r) {
     const list = weeks();
     pageHTML(`<div class="lt-in"><div class="lx">
       <div class="lx-head"><h1>Lectures</h1><span class="spacer"></span>${status$()}
-        ${edit ? `<button type="button" class="lx-btn" data-add-break title="A line between weeks, like Reading Week">Add a Divider</button><button type="button" class="lx-btn main" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
+        ${edit ? `<button type="button" class="lx-btn main" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list" data-units>${list.map(w => (w.isBreak ? breakHTML(w) : weekHTML(w))).join("")}</div>` : `<div class="lx-empty">No weeks yet.${edit ? " Add the term's first week." : ""}</div>`}
     </div></div>`);
     wire($(".lx"));
     if (!edit) return;
     $("[data-add-week]").onclick = addWeek;
-    $("[data-add-break]").onclick = () => { weeks().push({ id: uid(), isBreak: true, text: "Reading Week" }); changed(); draw(); };
   }
+  // A week's number, for the circle beside it: the number in its name ("Week 4"), else its place among the weeks.
+  const weekNum = w => { const m = /(\d+)/.exec(w.label || ""); return m ? m[1] : String(realWeeks().indexOf(w) + 1); };
   const weekHTML = w => `<div class="lx-group" style="--c:${WEEK_COLOR}" data-unit="${esc(w.id)}"${edit ? ' draggable="true"' : ""}>
       <div class="lx-row grp" data-week="${esc(w.id)}" role="button" tabindex="0">
+        <span class="lx-wnum" aria-hidden="true">${esc(weekNum(w))}</span>
         <div class="lx-main"><div class="lx-top"><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
       ${subsHTML(w)}
       <div class="lx-foot"></div>

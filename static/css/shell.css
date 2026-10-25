@@ -336,7 +336,7 @@ blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-li
 .lt-on, .lt-off, .lt-tag { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 99px; font: 600 11.5px/18px var(--font-ui); letter-spacing: .02em; vertical-align: 1px; }
 .lt-on, .lt-tag.ok { background: #e6f4ec; color: #1f6b43; }
 .lt-off, .lt-tag.dim { background: var(--home-strip); color: var(--home-ink-3); border: 1px solid var(--home-line); }
-.lt-tag { background: var(--accent-bg); color: #7d5c00; }
+.lt-tag { background: var(--accent-bg); color: #7d5c00; box-shadow: inset 0 0 0 1px #e3c66f; }
 .lt-tag.bad { background: var(--danger-bg); color: var(--danger); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lt-on, :root:not([data-theme="light"]) .lt-tag.ok { background: #183526; color: #7fd3a4; } :root:not([data-theme="light"]) .lt-tag { color: var(--accent); } }
 .lt-tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
@@ -699,3 +699,20 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-off-h1:focus-within { white-space: normal; overflow: visible; }
 .lt-field-l { display: block; margin: 0 0 5px; font-size: 13px; font-weight: 600; color: var(--ink); }
 .lt-role-help { display: block; margin-top: 6px; font-size: 12.5px; color: var(--ink-3); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lt-tag { box-shadow: inset 0 0 0 1px #5a4a1e; } }
+.lt-tag.dim, .lt-tag.ok, .lt-tag.bad { box-shadow: none; }
+
+/* A lecture in its week (Lectures): its label small above its title, then when and how many files */
+.lx-row.sub.lx-lec { padding: 12px 16px; align-items: center; }
+.lx-kind { margin: 0 0 1px !important; font-size: 11px !important; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--home-ink-3) !important; }
+.lx-lec h3 { margin: 0; font: 500 19px/1.25 var(--font-serif); color: var(--home-ink); }
+.lx-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; margin: 3px 0 0 !important; font-size: 13px !important; color: var(--home-ink-3) !important; }
+.lx-sep { margin: 0 6px; }
+.lx-files { display: inline-flex; align-items: center; gap: 3px; }
+.lx-files svg { width: 13px; height: 13px; }
+.lx-btn.lx-quiet { border-color: transparent; background: transparent; color: var(--home-ink-3); }
+.lx-row:hover .lx-btn.lx-quiet, .lx-btn.lx-quiet:focus-visible { border-color: var(--lx-line); background: var(--home-card); color: var(--home-ink); }
+
+/* The number circle beside each week (Lectures) */
+.lx-row.grp { gap: 16px; }
+.lx-wnum { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--home-card); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 55%, var(--lx-line)); font: 500 20px/1 var(--font-serif); color: var(--home-ink); font-variant-numeric: lining-nums; }

@@ -685,9 +685,9 @@ function offeringPage(c, t) {
     ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook, and look at the evaluations and exams. Changes to anything else (weights, students, settings, exams, the course page) are for the instructors: Lectern won't save them.</p>` : ""}
     <div class="lt-three lt-four">
       <section class="lt-part">
-        <div class="lt-part-head">${ICON.lectures}<h2>Lectures</h2></div>
+        <div class="lt-part-head">${ICON.lectures}<h2>Activities</h2></div>
         <p class="lt-part-text">The weeks of the term and each week's lectures, tutorials and labs, with their files and links.</p>
-        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-lectures">${edit ? "Open Lectures" : "See Lectures"}</button></div>
+        <div class="lt-part-acts"><button type="button" class="lt-btn${edit ? " primary" : ""}" id="lt-lectures">${edit ? "Open Activities" : "See Activities"}</button></div>
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>

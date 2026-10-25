@@ -1161,7 +1161,7 @@ const isMajor = t => /midterm|final|exam|test|quiz|demo|project|due|presentation
 // open their own page. ui.tab is the tab showing; ui.week a week chosen on This week.
 // ═════════════════════════════════════════════════════════════════════
 const HV = () => window.HubView;
-const HUB_ALL = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
+const HUB_ALL = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
 const tabTitle = id => (HUB_ALL.find(t => t[0] === id) || HUB_ALL[0])[1];
 const OVERVIEW_TYPES = ["table", "sessions", "text", "meetings"];
 const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
@@ -2125,7 +2125,7 @@ function subtitleHTML(m) {
 
 // The course hub's tabs (Lectern serves the page in tabs): which ones people must sign in to see.
 // My accommodations is always for signed-in people only, so it isn't here.
-const HUB_TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Lectures"], ["evaluations", "Evaluations"], ["about", "About"]];
+const HUB_TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"]];
 const tabVis = (m, id) => { const t = m.tabs || {}, v = id === "about" && !(id in t) ? t.overview : t[id]; return v === "signed-in" ? "signed-in" : "public"; };   // About was Overview
 function tabsPanel(m) {
   return `<div class="e-tabs"><span class="e-tabs-h">Course hub tabs</span>${HUB_TABS.map(([id, t]) => { const sg = tabVis(m, id) === "signed-in"; return `<button type="button" class="c${sg ? " on" : ""}" data-act="tab-vis" data-v="${id}" aria-pressed="${sg}" title="${sg ? "Only people in the course, signed in, see this tab: click to make it public" : "Anyone with the link sees this tab: click to make it for signed-in people only"}">${esc(t)}<small>${sg ? "Signed in" : "Public"}</small></button>`; }).join("")}

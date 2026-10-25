@@ -957,3 +957,17 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .pk-pop .pk1-opt.pk-chk { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; margin: 0; font: 400 14px var(--font-ui); color: var(--home-ink); }
 .pk-pop .pk1-opt.pk-chk .pk1-t { flex: 1; }
 .lt-form .pk-pop .pk1-t small, .lt-form .pk1-cur .pk1-t small { margin: 0; }
+
+/* Where (place.js): a place, found on the map as you type, and a room. */
+.plc { display: flex; gap: 8px; min-width: 0; }
+.plc-q { position: relative; flex: 1; min-width: 0; display: block; }
+.plc-ic { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; color: var(--home-ink-3); pointer-events: none; }
+.plc-ic svg { width: 16px; height: 16px; }
+.plc.on-map .plc-ic { color: #2f8f5b; }
+.plc .plc-in { width: 100%; padding-left: 30px !important; }
+.plc .plc-room { flex: none; width: 110px; }
+.plc-pop .plc-t small { text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 12.5px; white-space: normal; }
+.plc-pop .plc-t b { white-space: normal; }
+.plc-pop { max-width: min(460px, calc(100vw - 16px)); }
+.gr-grid.gr-grid4 { grid-template-columns: 140px 100px 100px minmax(260px, 1fr); }
+.tm-row.tm-oh { grid-template-columns: 140px 100px 100px minmax(240px, 1fr) 34px; }

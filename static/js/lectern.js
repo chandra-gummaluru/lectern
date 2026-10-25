@@ -17,6 +17,7 @@
    at /p/<handle>/…) and "priv" (grades, exams). See store.js and server/store.py.
    ============================================================ */
 import * as Auth from "./auth.js";
+import { mapUrl } from "./place.js";
 import { enhanceSelects } from "./select.js";
 enhanceSelects();   // every dropdown drawn as the About picker
 import * as Store from "./store.js";
@@ -1217,11 +1218,11 @@ async function teamFor(c, t) {
   const owner = curOwner() || S.user.handle;
   const [d, raw, G] = await Promise.all([Auth.api(`/api/teams/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`), readPriv(`${c}/${t}/team.json`).catch(() => null), readGroups(Store, area(Store.PRIV), c, t).catch(() => null)]);
   let info = {}; try { info = (JSON.parse(raw || "{}") || {}).people || {}; } catch (_) {}
-  const fromGroups = id => (G ? G.data.groups.filter(g => runsSection(g, id)).flatMap(g => g.items.map(x => ({ kind: sectionKind(g), section: g.name, day: x.day, start: x.start, end: x.end, where: x.where }))) : null);
+  const fromGroups = id => (G ? G.data.groups.filter(g => runsSection(g, id)).flatMap(g => g.items.map(x => ({ kind: sectionKind(g), section: g.name, day: x.day, start: x.start, end: x.end, where: x.where, place: x.place }))) : null);
   return d.people.filter(p => (info[p.id] || {}).show !== false).map(p => {
     const me = info[p.id] || {};
     return { name: p.name || p.email, role: ["coordinator", "ta", "staff"].includes(p.role) ? p.role : "instructor", email: me.email || p.email, office: me.office || "",
-      times: [...(fromGroups(p.id) || []), ...(me.times || []).filter(x => !G || x.kind === "office")].map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "" })) };
+      times: [...(fromGroups(p.id) || []), ...(me.times || []).filter(x => !G || x.kind === "office")].map(x => ({ kind: x.kind || "other", section: x.section || "", day: Number(x.day) || 0, start: x.start || "", end: x.end || "", where: x.where || "", ...(mapUrl(x.place) ? { map: mapUrl(x.place), address: x.place.address || "" } : {}) })) };
   });
 }
 

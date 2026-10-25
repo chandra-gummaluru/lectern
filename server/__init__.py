@@ -36,6 +36,7 @@ from .accommodations import accom_bp
 from .classmail import mail_bp
 from .hub import hub_bp
 from .students import students_bp
+from .places import places_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
@@ -47,3 +48,4 @@ app.register_blueprint(accom_bp)
 app.register_blueprint(mail_bp)
 app.register_blueprint(hub_bp)
 app.register_blueprint(students_bp)
+app.register_blueprint(places_bp)

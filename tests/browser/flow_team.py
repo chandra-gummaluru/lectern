@@ -28,7 +28,7 @@ def add_time(me, day, start, end, where=None):
     row.locator('[data-k="start"]').fill(start); row.locator('[data-k="start"]').press("Tab")
     row.locator('[data-k="end"]').fill(end); row.locator('[data-k="end"]').press("Tab")
     if where:
-        row.locator('[data-k="where"]').fill(where); row.locator('[data-k="where"]').press("Tab")
+        row.locator(".plc-room").fill(where); row.locator(".plc-room").press("Tab")
     return row
 
 
@@ -46,6 +46,8 @@ def main():
         ctx = b.new_context(viewport={"width": 1360, "height": 900}); block_cdns(ctx)
         me = ctx.new_page()
         me.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
+        me.route("**/api/places?*", lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps({"places": [
+            {"name": "Bahen Centre for Information Technology", "address": "40 St George Street, Toronto", "lat": 43.6596, "lon": -79.3972}]})))
         srv.sign_in(me, hash="#/csc258/f26")
 
         # 1. Sections: a lecture section and a tutorial section (typed from their names), with their times.
@@ -54,8 +56,13 @@ def main():
         expect(me.locator("#gr-kick")).to_have_text("Lecture Section")
         row = add_time(me, "1", "10 am", "11 am", "BA 1170")
         expect(row.locator('[data-k="start"]')).to_have_value("10:00")
-        row = add_time(me, "3", "10:00", "11:00")   # the next one starts from the last: same times, same room
-        expect(row.locator('[data-k="where"]')).to_have_value("BA 1170")
+        row.locator(".plc-in").click(); row.locator(".plc-in").type("Bahen")   # Where: a place, found on the map
+        me.wait_for_selector(".plc-pop .pk1-opt"); me.wait_for_timeout(500)
+        me.screenshot(path=f"{OUT}/190a-place.png")
+        me.locator(".plc-pop .pk1-opt", has_text="Bahen Centre").click()
+        expect(row.locator(".plc-in")).to_have_value("Bahen Centre for Information Technology")
+        row = add_time(me, "3", "10:00", "11:00")   # the next one starts from the last: same times, same place and room
+        expect(row.locator(".plc-room")).to_have_value("BA 1170")
         me.wait_for_timeout(1500); expect(me.locator("#gr-status")).to_have_text("Saved")
         me.screenshot(path=f"{OUT}/190-group.png", full_page=True)
         me.locator("#lt-path button", has_text="csc258 / f26").click()
@@ -65,13 +72,14 @@ def main():
         me.wait_for_timeout(1500); expect(me.locator("#gr-status")).to_have_text("Saved")
         g = json.loads(srv.text("priv", "csc258/f26/groups.json"))["groups"]
         got = sorted((x["name"], x["kind"], tuple((i["day"], i["start"], i["end"], i["where"]) for i in x["items"])) for x in g)
-        assert got == [("LEC0101", "lecture", ((1, "10:00", "11:00", "BA 1170"), (3, "10:00", "11:00", "BA 1170"))), ("TUT0101", "tutorial", ((4, "15:00", "16:00", "BA 2135"),))], got
+        B = "BA 1170, Bahen Centre for Information Technology"
+        assert got == [("LEC0101", "lecture", ((1, "10:00", "11:00", B), (3, "10:00", "11:00", B))), ("TUT0101", "tutorial", ((4, "15:00", "16:00", "BA 2135"),))], got
         print("1 sections saved:", got)
 
         # 2. Their page: the sections they run (a dropdown), their office and office hours.
         me.locator("#lt-path button", has_text="csc258 / f26").click()
         me.wait_for_selector("#lt-groups .lt-groups")
-        expect(me.locator("#lt-groups")).to_contain_text("Mon, Wed 10:00–11:00 · BA 1170")
+        expect(me.locator("#lt-groups")).to_contain_text("Mon, Wed 10:00–11:00 · BA 1170, Bahen Centre")
         me.click("[data-person]")
         me.wait_for_selector("#tm-office")
         me.click("#tm-runs")
@@ -118,6 +126,7 @@ def main():
         sec = v.locator(".hb-sec").first
         expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Lecture Section"); expect(sec).to_contain_text("Mon 10:00–11:00"); expect(sec).to_contain_text("Wed 10:00–11:00")
         expect(v.locator(".hb-main")).to_contain_text("Tutorial Section"); expect(v.locator(".hb-main")).to_contain_text("Thu 15:00–16:00"); expect(sec).to_contain_text("Chandra Gummaluru")
+        expect(sec.locator("a[href*='openstreetmap.org']").first).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")
         expect(v.locator(".hb-main")).to_contain_text("Office Hours")
         v.wait_for_timeout(700); v.screenshot(path=f"{OUT}/192-hub-groups.png", full_page=True)

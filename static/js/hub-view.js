@@ -166,6 +166,8 @@ function meetings() {
 // section, a tutorial, a lab…) with its times and who runs it; then office hours; then how to reach each person.
 const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
 const when = x => [DAY3[x.day] || "", hhmm(x.start, x.end)].filter(Boolean).join(" ");
+// Where, linked to the map when it was picked on one.
+const whereHTML = x => (x.map ? `<a href="${esc(x.map)}" target="_blank" rel="noopener" title="${esc(x.address || "On the map")}">${esc(x.where || "On the map")}</a>` : esc(x.where || ""));
 // The sections (LEC0101…): each a card with its type, its weekly times and who runs it.
 const SECTION_NAME = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
 function groupsHTML(G) {
@@ -174,7 +176,7 @@ function groupsHTML(G) {
     const I = g.items.slice().sort((a, b) => (a.day || 9) - (b.day || 9) || String(a.start).localeCompare(String(b.start)));
     const who = g.who || [...new Set(I.flatMap(x => x.who || []))];
     return `<article class="hb-card hb-sec"><div class="hb-card-top"><span>${esc(SECTION_NAME[g.kind] || "Section")}</span></div><h3>${esc(g.name || "Section")}</h3>
-      ${I.map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
+      ${I.map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where || x.map ? ` <span>· ${whereHTML(x)}</span>` : ""}</p>`).join("")}
       ${who.length ? `<p class="hb-sec-who">${esc(who.join(", "))}</p>` : ""}</article>`;
   }).join("");
   return cards ? `<h3 class="hb-h3">Sections</h3><div class="hb-grid">${cards}</div>` : "";
@@ -194,13 +196,13 @@ function teamHTML(team, groups) {
   const order = { lecture: 0, tutorial: 1, lab: 2, other: 3 };
   const cards = [...secs.values()].sort((a, b) => order[a.kind] - order[b.kind] || String(a.section).localeCompare(String(b.section)))
     .map(s => `<article class="hb-card hb-sec"><div class="hb-card-top"><span>${esc(KIND[s.kind] || "Other")}</span></div><h3>${esc(s.section || KIND[s.kind] || "Section")}</h3>
-      ${s.times.sort((a, b) => a.day - b.day || String(a.start).localeCompare(b.start)).map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where ? ` <span>· ${esc(x.where)}</span>` : ""}</p>`).join("")}
+      ${s.times.sort((a, b) => a.day - b.day || String(a.start).localeCompare(b.start)).map(x => `<p class="hb-sec-t">${esc(when(x))}${x.where || x.map ? ` <span>· ${whereHTML(x)}</span>` : ""}</p>`).join("")}
       <p class="hb-sec-who">${esc(s.who.join(", "))}</p></article>`).join("");
-  const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => ({ who: p.name, day: x.day, when: `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), where: x.where, start: x.start })))
+  const oh = team.flatMap(p => (p.times || []).filter(x => x.kind === "office" && x.day).map(x => ({ who: p.name, day: x.day, when: `${DAY[x.day]} ${hhmm(x.start, x.end)}`.trim(), where: x.where, map: x.map, address: x.address, start: x.start })))
     .sort((a, b) => a.day - b.day || String(a.start).localeCompare(String(b.start)));
   const people = team.map(p => `<article class="hb-person"><span class="hb-av" aria-hidden="true">${esc(initials(p.name))}</span><div><h4>${esc(p.name)}</h4><p class="hb-person-r">${esc(ROLE[p.role] || "")}${p.office ? ` · ${esc(p.office)}` : ""}</p>${p.email ? `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ""}</div></article>`).join("");
   return `${groups ? groupsHTML(groups) : cards ? `<h3 class="hb-h3">Activities</h3><div class="hb-grid">${cards}</div>` : ""}
-    ${oh.length ? `<h3 class="hb-h3">Office Hours</h3><ul class="hb-rows">${oh.map(x => `<li><b>${esc(x.when)}</b><span>${esc(x.who)}</span><span class="hb-rows-w">${esc(x.where || "")}</span></li>`).join("")}</ul>` : ""}
+    ${oh.length ? `<h3 class="hb-h3">Office Hours</h3><ul class="hb-rows">${oh.map(x => `<li><b>${esc(x.when)}</b><span>${esc(x.who)}</span><span class="hb-rows-w">${whereHTML(x)}</span></li>`).join("")}</ul>` : ""}
     <h3 class="hb-h3">Teaching Team</h3><div class="hb-people">${people}</div>`;
 }
 

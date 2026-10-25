@@ -165,7 +165,7 @@ def team_of(owner_id, course, term):
             day = x.get("day")
             day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
             times.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "section": _s(x.get("section"), 60), "day": day,
-                          "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
+                          "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200), **_map(x)})
         out.append({"name": _s(u["name"], 200), "role": role if role in ("coordinator", "ta", "staff") else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
                     "office": _s(me.get("office"), 200), "times": times})
     return out
@@ -186,6 +186,19 @@ def section_kind(g):
     ks = [x.get("kind") for x in _list(g.get("items")) if isinstance(x, dict)] if isinstance(g, dict) else []
     k = max(set(ks), key=ks.count) if ks else None
     return k if k in SECTION_KINDS else "lecture"
+
+
+def _map(x):
+    """A meeting's place on the map (picked in Lectern: static/js/place.js), as an OpenStreetMap link."""
+    p = x.get("place") if isinstance(x, dict) else None
+    try:
+        lat, lon = float(p["lat"]), float(p["lon"])
+    except (TypeError, ValueError, KeyError):
+        return {}
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        return {}
+    return {"map": f"https://www.openstreetmap.org/?mlat={lat:.6f}&mlon={lon:.6f}#map=18/{lat:.6f}/{lon:.6f}",
+            "address": _s(p.get("address"), 300)}
 
 
 def _kind_of(g, x):
@@ -222,7 +235,7 @@ def groups_of(owner_id, course, term):
             day = x.get("day")
             day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
             items.append({"kind": _kind_of(g, x), "day": day, "start": _s(x.get("start"), 5),
-                          "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
+                          "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200), **_map(x)})
         who = [names[p] for p in names if runs_section(g, p)]
         out.append({"id": _s(g.get("id"), 40), "name": _s(g.get("name"), 100), "kind": section_kind(g), "items": items,
                     "who": who})

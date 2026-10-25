@@ -16,6 +16,7 @@
 export const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["office", "Office hours"], ["other", "Other"]];
 import { parseTime } from "./when.js";
 import { pickMany } from "./pick.js";
+import { placeField, placeOf } from "./place.js";
 import { SECTION_ICON, SECTION_NAME, sectionKind, sectionLabel, groupSummary, runsSection, runnersOf, changeGroups, sortSections } from "./groups.js";
 const KIND_LABEL = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab", other: "Other" };
 const DAY3 = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -88,11 +89,16 @@ export function teamMemberPage(ctx, r) {
           <select data-k="day" aria-label="Day"${dis}>${opt(days, x.day)}</select>
           <input type="text" data-k="start" value="${esc(x.start || "")}" placeholder="e.g. 2 pm" aria-label="Starts" autocomplete="off"${dis}>
           <input type="text" data-k="end" value="${esc(x.end || "")}" placeholder="e.g. 3 pm" aria-label="Ends" autocomplete="off"${dis}>
-          <input type="text" data-k="where" value="${esc(x.where || "")}" placeholder="e.g. BA 4010" aria-label="Where"${dis}>
+          <div class="tm-where" data-plc-i="${i}"></div>
           ${canChange ? `<button type="button" class="lt-btn lt-trash lw-ic" data-del="${i}" aria-label="Remove them">${ICON.trash}</button>` : "<span></span>"}</div>`).join("") || `<p class="lt-hint">None yet.</p>`}</div>
         ${canChange ? `<div class="lw-adds"><button type="button" class="lt-btn add" data-add="office">${ICON.plus}Add Office Hours</button></div>` : ""}</div>
     </div>`);
     document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
+    // Office hours' Where: a place (picked on the map, or typed) and a room.
+    document.querySelectorAll(".tm-times [data-plc-i]").forEach(h => {
+      const x = times[+h.dataset.plcI]; if (!x) return;
+      placeField(h, { ...placeOf(x), disabled: !canChange, onChange: v => { const y = st.data.people[id].times[+h.dataset.plcI]; if (v.place) y.place = v.place; else delete y.place; y.room = v.room; y.where = v.where; changed(); } });
+    });
     const pick = $("#tm-runs-pick");
     if (pick) pickMany(pick, { options: G.map(g => ({ value: g.id, label: sectionLabel(g), kick: SECTION_NAME[sectionKind(g)], icon: SECTION_ICON[sectionKind(g)] })), value: run.map(g => g.id),
       empty: "None", emptyHint: "They don't run a section", emptyIcon: SECTION_ICON.none, allowEmpty: true, label: "Sections they run", id: "tm-runs", disabled: !canChange,

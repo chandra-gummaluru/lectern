@@ -17,6 +17,7 @@
    starts from its team's older times, team.json.) The course page (server/hub.py) shows each section. */
 
 import { parseTime } from "./when.js";
+import { placeField, placeOf } from "./place.js";
 
 export const SECTION_KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"]];
 export const SECTION_NAME = Object.fromEntries(SECTION_KINDS.map(([k, n]) => [k, `${n} Section`]));
@@ -211,7 +212,7 @@ export function groupPage(ctx, r) {
             <label class="lx-f">Day<select data-k="day"${dis}><option value="0"${x.day ? "" : " selected"}>Choose</option>${opt(days, x.day)}</select></label>
             <label class="lx-f">Starts<input type="text" data-k="start" value="${esc(x.start || "")}" placeholder="e.g. 1 pm" autocomplete="off"${dis}></label>
             <label class="lx-f">Ends<input type="text" data-k="end" value="${esc(x.end || "")}" placeholder="e.g. 2 pm" autocomplete="off"${dis}></label>
-            <label class="lx-f">Where<input type="text" data-k="where" value="${esc(x.where || "")}" placeholder="e.g. BA 1170" autocomplete="off"${dis}></label>
+            <div class="lx-f gr-where">Where<div data-plc="${esc(x.id)}"></div></div>
           </div></div>
         ${edit ? `<button type="button" class="lx-ic quiet" data-del-it="${esc(x.id)}" title="Remove this time" aria-label="Remove this time">${ICON.trash}</button>` : ""}
       </div>`;
@@ -233,6 +234,11 @@ export function groupPage(ctx, r) {
       </div>
     </div></div>`);
     document.querySelectorAll(".lx-editor [data-person]").forEach(b => { b.onclick = () => go({ page: "team", c, t, p: b.dataset.person }); });
+    // Where: a place (picked on the map, or typed) and a room.
+    document.querySelectorAll(".gr-items [data-plc]").forEach(h => {
+      const x = g.items.find(y => y.id === h.dataset.plc); if (!x) return;
+      placeField(h, { ...placeOf(x), disabled: !edit, onChange: v => { if (v.place) x.place = v.place; else delete x.place; x.room = v.room; x.where = v.where; changed(); } });
+    });
     if (!edit) return;
     const name = $("#gr-name");
     name.oninput = () => { g.name = name.value.trim(); $("#gr-h").textContent = sectionLabel(g); crumbs(); changed(); };
@@ -249,7 +255,7 @@ export function groupPage(ctx, r) {
     box.addEventListener("click", e => { const del = e.target.closest("[data-del-it]"); if (del) { g.items = g.items.filter(y => y.id !== del.dataset.delIt); changed(); draw(); } });
     $("#gr-add").onclick = () => {
       const last = g.items[g.items.length - 1];
-      const x = { id: uid(), day: 0, start: last ? last.start : "", end: last ? last.end : "", where: last ? last.where : "" };
+      const x = { id: uid(), day: 0, start: last ? last.start : "", end: last ? last.end : "", where: last ? last.where : "", ...(last && last.place ? { place: { ...last.place } } : {}), ...(last && (last.place || last.room) ? { room: last.room || "" } : {}) };
       g.items.push(x); changed(); draw();
       const sel = document.querySelector(`[data-it="${x.id}"] [data-k="day"]`); if (sel) sel.focus();
     };

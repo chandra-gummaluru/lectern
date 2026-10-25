@@ -559,3 +559,12 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hs-lock { flex: none; display: grid; place-items: center; color: var(--ink-3); }
 .hs-lock svg { width: 16px; height: 16px; }
 .hs-sec-h.hs-off svg, .hb-staff-in svg { width: 13px !important; height: 13px !important; vertical-align: -1px; }
+/* Who's signed in (or Sign in) beside the course name, level with it; the name ends in … before it. */
+.hb-head-in.hb-head-in { flex-wrap: nowrap; align-items: flex-start; padding-top: 30px; }
+.hb-head .hb-titles { flex: 1 1 auto; min-width: 0; }
+.hb-head .hb-who { order: 0; flex: none; padding-top: 4px; }
+/* The course's description, in the header (white) under the term and school. */
+.hb-desc-h { width: 100%; max-width: 860px; margin: 0 auto; padding: 0 28px 22px; color: var(--ink-2); font-size: 15px; }
+.hb-head-in.hb-head-in { padding-bottom: 14px; }
+@media (max-width: 640px) { .hb-desc-h { padding-left: 16px; padding-right: 16px; } }
+.hb-desc-h .hb-md p { margin: 0 0 6px; }

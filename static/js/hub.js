@@ -149,7 +149,6 @@ const unitOf = id => { const E = data("evaluations"); if (!E) return null; for (
 const PAGES = {
   home() {
     const c = D.course, a = data("about"), out = [];
-    if (a && a.description) out.push(`<div class="hs-desc">${markdown(a.description)}</div>`);
     const shown = new Set();   // what has a See all link already (it isn't listed again below)
     // The newest announcement in full, then this week opened (the first week, before the term starts).
     if (open("announcements")) {
@@ -239,6 +238,9 @@ function header() {
   const t = $("hb-title");
   t.innerHTML = `<a href="#">${esc([c.code, c.title].filter(Boolean).join(": ") || "Course page")}</a>`;
   t.title = t.textContent;
+  // The course's description, in the header under the term and school.
+  const a = data("about"), hin = document.querySelector(".hb-head-in");
+  if (a && a.description && hin && !$("hb-desc")) hin.insertAdjacentHTML("afterend", `<div class="hb-desc-h" id="hb-desc">${markdown(a.description)}</div>`);
   const ROLE = { owner: "Instructor", instructor: "Instructor", ta: "TA", staff: "Staff", student: "Student" };
   // Who's signed in, as Lectern's bar has it: a button with their name that opens a menu (or Sign in).
   // Students sign in to this course page (its own sign-in: email and a code); the teaching team is signed in to Lectern.

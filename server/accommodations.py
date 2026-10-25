@@ -379,6 +379,61 @@ You asked for {_what(r)}
     return f"{code}: accommodation for {r['evalName']} {'approved' if ok else 'rejected'}", body
 
 
+_IMG = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_TAG = re.compile(r"<[^>]{0,500}>")
+
+
+def clean_details(text):
+    """An alternate request's words, as Markdown (bold, italic, links, lists): no pictures or HTML; files are links."""
+    t = str(text or "").replace("\r\n", "\n").strip()
+    t = _IMG.sub("", t)
+    t = _TAG.sub("", t)
+    return re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
+def _record(uid, o, book, e, ev, a, s, email, kind, details):
+    """Check and keep one request, and email the student a receipt: (the request, whether it was emailed)."""
+    details = clean_details(details)
+    if kind == "standard" and not a["approval"]:
+        raise Refusal(400, "The standard accommodation can't be requested for this evaluation.")
+    if kind == "alternate" and not a["alternate"]:
+        raise Refusal(400, "An alternate accommodation isn't available for this evaluation.")
+    if kind not in ("standard", "alternate"):
+        raise Refusal(400, "Choose what you're asking for.")
+    if kind == "alternate" and not details:
+        raise Refusal(400, "Say what you need.")
+    if len(details) > MAX_DETAILS:
+        raise Refusal(400, f"That's too long: keep it under {MAX_DETAILS} characters.")
+    code, term = _course(book)
+    rec = {
+        "id": "r-" + secrets.token_hex(4), "eval": e, "evalName": ev.get("name") or e, "kind": kind,
+        "standard": a["standard"] if kind == "standard" else "", "details": details,
+        "student": s.get("num"), "first": s.get("first") or "", "last": s.get("last") or "", "email": email,
+        "course": code, "term": term,
+        "status": "pending", "submitted": _now(), "decided": "", "decidedBy": "", "note": "",
+    }
+
+    def add(f):
+        mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e]
+        if len(mine) >= MAX_PER_STUDENT:
+            raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
+        if kind == "standard":
+            dup = next((x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e
+                        and x.get("kind") == "standard" and x.get("status") in ("pending", "approved")), None)
+            if dup:
+                raise Refusal(409, "You've already asked for the standard accommodation for this evaluation"
+                              + (": it's been approved." if dup["status"] == "approved" else ", and it's waiting for your instructor."), "duplicate")
+        f["requests"].append(rec)
+        f["format"] = FORMAT
+        return rec
+
+    _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
+    subject, body = receipt_email(rec)
+    from .classmail import settings_for
+    emailed = mailer.send(email, subject, body, cfg=settings_for(uid, o))
+    return rec, emailed
+
+
 @accom_bp.post("/api/accommodations/submit")
 def submit():
     try:
@@ -388,46 +443,62 @@ def submit():
         book = _book(uid, o)
         ev, a = _evaluation(book, e, open_only=True)
         s, email = find_student(book, d.get("email"), d.get("id"), d.get("first"), d.get("last"))
-        kind = d.get("kind")
-        details = str(d.get("details") or "").strip()
-        if kind == "standard" and not a["approval"]:
-            raise Refusal(400, "The standard accommodation can't be requested for this evaluation.")
-        if kind == "alternate" and not a["alternate"]:
-            raise Refusal(400, "An alternate accommodation isn't available for this evaluation.")
-        if kind not in ("standard", "alternate"):
-            raise Refusal(400, "Choose what you're asking for.")
-        if kind == "alternate" and not details:
-            raise Refusal(400, "Say what you need.")
-        if len(details) > MAX_DETAILS:
-            raise Refusal(400, f"That's too long: keep it under {MAX_DETAILS} characters.")
-        code, term = _course(book)
-        rec = {
-            "id": "r-" + secrets.token_hex(4), "eval": e, "evalName": ev.get("name") or e, "kind": kind,
-            "standard": a["standard"] if kind == "standard" else "", "details": details,
-            "student": s.get("num"), "first": s.get("first") or "", "last": s.get("last") or "", "email": email,
-            "course": code, "term": term,
-            "status": "pending", "submitted": _now(), "decided": "", "decidedBy": "", "note": "",
-        }
-
-        def add(f):
-            mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e]
-            if len(mine) >= MAX_PER_STUDENT:
-                raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
-            if kind == "standard":
-                dup = next((x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e
-                            and x.get("kind") == "standard" and x.get("status") in ("pending", "approved")), None)
-                if dup:
-                    raise Refusal(409, "You've already asked for the standard accommodation for this evaluation"
-                                  + (": it's been approved." if dup["status"] == "approved" else ", and it's waiting for your instructor."), "duplicate")
-            f["requests"].append(rec)
-            f["format"] = FORMAT
-            return rec
-
-        _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
-        subject, body = receipt_email(rec)
-        from .classmail import settings_for
-        emailed = mailer.send(email, subject, body, cfg=settings_for(uid, o))
+        rec, emailed = _record(uid, o, book, e, ev, a, s, email, d.get("kind"), d.get("details"))
         return jsonify(ok=True, id=rec["id"], email=email, emailed=emailed), 201
+    except Refusal as x:
+        return _err(x)
+
+
+# ── From the course page, signed in ──────────────────────────────────
+# A student signed in to the course page (students.py) asks there. They're known by the email they signed in
+# with; to be sure it's them, they also give their identifier and name, which must match the class list.
+#
+#   GET  /api/hub/<handle>/<course>/<term>/accommodation?e=<eval id>    what can be asked for
+#   POST /api/hub/<handle>/<course>/<term>/accommodation                { e, id, first, last, kind, details }
+def _hub_student(handle, course, term):
+    from .students import _offering as hub_offering, student_of
+    from .auth import Refusal as AuthRefusal
+    try:
+        u, off = hub_offering(handle, course, term)
+    except AuthRefusal as x:
+        raise Refusal(x.status if hasattr(x, "status") else 404, str(x))
+    email = student_of(u["id"], off)
+    if not email:
+        raise Refusal(401, "Sign in to the course page to ask for an accommodation.", "signed-out")
+    return u["id"], off, email
+
+
+@accom_bp.get("/api/hub/<handle>/<course>/<term>/accommodation")
+def hub_evaluation(handle, course, term):
+    try:
+        uid, o, _ = _hub_student(handle, course, term)
+        book = _book(uid, o)
+        ev, a = _evaluation(book, _eval_id(request.args.get("e")))
+        return jsonify(_public_info(book, ev, a))
+    except Refusal as x:
+        return _err(x)
+
+
+@accom_bp.post("/api/hub/<handle>/<course>/<term>/accommodation")
+def hub_submit(handle, course, term):
+    try:
+        d = _body()
+        _limit("submit")
+        uid, o, email = _hub_student(handle, course, term)
+        book = _book(uid, o)
+        e = _eval_id(d.get("e"))
+        ev, a = _evaluation(book, e, open_only=True)
+        sid, first, last = (str(d.get(k) or "").strip() for k in ("id", "first", "last"))
+        if not (sid and first and last):
+            raise Refusal(400, f"Fill in your {_id_label(book).lower()}, first name and last name.")
+        try:
+            s, on_file = find_student(book, email, sid, first, last)
+        except Refusal as x:
+            if x.code == "not-found":
+                raise Refusal(400, f"Those don't match what your instructor has for you. Check your {_id_label(book).lower()} and your name, spelled exactly as on record.", "mismatch")
+            raise
+        rec, emailed = _record(uid, o, book, e, ev, a, s, on_file, d.get("kind"), d.get("details"))
+        return jsonify(ok=True, id=rec["id"], email=on_file, emailed=emailed), 201
     except Refusal as x:
         return _err(x)
 

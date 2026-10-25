@@ -1020,3 +1020,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .tm-ed .tm-two { align-items: start; }
 .tm-ed .tm-run-pick { margin: 0; }
 .tm-ed #tm-runs-box .tm-runs { margin-top: 10px; }
+.lt-req-md { white-space: normal !important; } .lt-req-md .hb-md > :first-child, .lt-req-md > :first-child { margin-top: 0; } .lt-req-md p { margin: 0 0 8px; } .lt-req-md ul, .lt-req-md ol { margin: 0 0 8px; padding-left: 22px; } .lt-req-md .hb-md > :last-child, .lt-req-md p:last-child { margin-bottom: 0; }

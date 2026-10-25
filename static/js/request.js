@@ -93,7 +93,7 @@
       "<h2>Hi " + esc(first) + ". What do you need?</h2>" +
       (s && !s.approval ? '<p class="rq-std">The standard accommodation for this evaluation is <b>' + esc(s.text) + "</b>. It doesn't need a request.</p>" : "<p>Choose one. For something else as well, make another request after this one.</p>") +
       '<form class="rq-form" id="f-what" novalidate><div class="rq-opts">' + opts + "</div>" +
-      '<label class="rq-more" id="rq-more" hidden>What do you need?<textarea name="details" maxlength="4000" placeholder="e.g. Writing it on a different day, because…">' + esc(k.details || "") + "</textarea><small>Your instructor reads this with your request.</small></label>" +
+      '<label class="rq-more" id="rq-more" hidden>What do you need?<textarea name="details" maxlength="4000" placeholder="e.g. Writing it on a different day, because…">' + esc(k.details || "") + "</textarea></label>" +
       '<p class="rq-err" id="rq-err">' + esc(err || "") + "</p>" +
       '<div class="rq-acts"><button type="button" class="rq-btn" id="rq-back">Back</button><span class="sp"></span><button type="submit" class="rq-btn primary">Send Request</button></div></form>';
     var f = $("#f-what"), more = $("#rq-more");

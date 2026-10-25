@@ -254,3 +254,35 @@ def test_deadline_without_time_is_end_of_day(client, gh, monkeypatch):
     with_deadline(gh, "2026-10-19")
     monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0 + 6 * 3600)   # 22:59
     assert client.get("/api/accommodations/evaluation", query_string=WHERE).get_json()["deadline"] == {"date": "2026-10-19", "time": "23:59", "text": "Monday, October 19, 2026, 23:59", "passed": False}
+
+
+# ── From the course page, signed in ──────────────────────────────────
+HUB = "/api/hub/chandra/csc258/f26"
+
+
+def hub_student(email):
+    from test_students import code_for
+    c = app.test_client()
+    assert c.post(f"{HUB}/code", json={"email": email}, headers=H).status_code == 200
+    assert c.post(f"{HUB}/verify", json={"email": email, "code": code_for(email)}, headers=H).status_code == 200
+    return c
+
+
+def test_a_signed_in_student_asks_on_the_course_page(gh):
+    # Not signed in: no.
+    assert app.test_client().get(f"{HUB}/accommodation?e=a1").status_code == 401
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    info = st.get(f"{HUB}/accommodation?e=a1").get_json()
+    assert info["alternate"] and info["idLabel"] == "Student number"
+    # Their number and name must be theirs (their email is the one they signed in with).
+    r = st.post(f"{HUB}/accommodation", json={"e": "a1", "id": "1002", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "x"}, headers=H)
+    assert r.status_code == 400 and r.get_json()["code"] == "mismatch"
+    md = "Writing it **later**, see [my note](https://example.com/note) ![pic](https://x/y.png) <script>x</script>"
+    r = st.post(f"{HUB}/accommodation", json={"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": md}, headers=H)
+    assert r.status_code == 201, r.get_json()
+    got = requests_of(gh)[-1]
+    assert got["student"] == "1001" and got["kind"] == "alternate"
+    assert got["details"] == "Writing it **later**, see [my note](https://example.com/note)  x"
+    # Someone else's number with Maya's session: no.
+    r = st.post(f"{HUB}/accommodation", json={"e": "mt", "id": "1002", "first": "Zoë", "last": "Ng", "kind": "standard"}, headers=H)
+    assert r.status_code == 400

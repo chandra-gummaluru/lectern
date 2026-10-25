@@ -155,9 +155,11 @@ function requestHTML(e) {
   const a = e.accom, E = data("evaluations"); if (!a || !(a.approval || a.alternate)) return "";
   const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null, rq = E && E.request;
   if (by && !isNaN(by) && by < new Date()) return `<p class="hs-note">The deadline for accommodation requests has passed.</p>`;
-  const url = rq && rq.url ? `${rq.url}?${new URLSearchParams({ r: rq.r, o: rq.o, e: e.id })}` : "";
-  const when = by && !isNaN(by) ? `<span class="hs-by">Request by ${esc(day(a.by))}, ${esc(a.byTime || "23:59")}</span>` : "";
-  return `<div class="hs-req">${url ? `<a class="hb-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn">Request Accommodation</span>`}${when}</div>`;
+    const when = by && !isNaN(by) ? `<span class="hs-by">Request by ${esc(day(a.by))}, ${esc(a.byTime || "23:59")}</span>` : "";
+  // Signed in: the request is made here, on the course page. Not signed in: sign in first.
+  const btn = D.viewer.signedIn ? `<a class="hb-btn" href="#request/${encodeURIComponent(e.id)}">Request Accommodation</a>`
+    : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request an Accommodation</a>`;
+  return `<div class="hs-req">${btn}${when}</div>`;
 }
 // Every evaluation (a group with its own inside it), each opening its page; the weight on the right.
 function evalList() {
@@ -172,6 +174,88 @@ const unitOf = id => { const E = data("evaluations"); if (!E) return null; for (
 
 // A row that opens a page of the course page (Evaluations, About the Course…), locked when it isn't open.
 const linkRow = (id, t, sub, tb) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`;
+// ── Requesting an accommodation ──────────────────────────────────────
+// Signed in, so the course page knows who's asking (the email they signed in with); to be sure it's them,
+// they give their identifier and name too, which must match the class list exactly (server/accommodations.py).
+const ReqForm = (() => {
+  let ev = null, info = null, rt = null, keep = {};
+  const api = (method, body) => fetch(`${root.dataset.api}/accommodation${method === "GET" ? `?e=${encodeURIComponent(ev.id)}` : ""}`, {
+    method, credentials: "same-origin", headers: method === "GET" ? {} : { "X-Lectern": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().catch(() => ({})).then(d => { if (!r.ok) { const x = new Error(d.error || "Something went wrong. Try again in a moment."); x.code = d.code; x.status = r.status; throw x; } return d; }),
+    e => { if (e.status) throw e; throw new Error("Couldn't reach the course page. Check your connection and try again."); });
+  const box = () => $("rq-box");
+  // Names as they're written: a capital at the start of each part ("jeremy o'neil-smith" → "Jeremy O'Neil-Smith").
+  const capital = v => v.replace(/(^|[\s\-'’])(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase());
+  const RADIO = '<span class="rq-dot" aria-hidden="true"></span>';
+  function start(u) {
+    ev = u; info = null; rt = null; keep = {};
+    if (!D.viewer.signedIn) { box().innerHTML = `<div class="hs-card"><p>Sign in to request an accommodation.</p><a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`; return; }
+    api("GET").then(d => { info = d; form(); }, e => { box().innerHTML = `<div class="hs-card rq-card"><p>${esc(e.message)}</p><div class="rq-acts"><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Back to ${esc(ev.name)}</a></div></div>`; });
+  }
+  function form(err) {
+    const s = info.standard, canStd = !!(s && s.approval), alt = !!info.alternate, k = keep, dl = info.deadline;
+    if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}). If you still need one, contact your instructor.</p></div>`; return; }
+    const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
+    const opt = (v, t, sub, on) => `<button type="button" class="hs-row rq-opt" data-kind="${v}" role="radio" aria-checked="${on}">${RADIO}<span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span></button>`;
+    const staff = D.viewer.role !== "student";
+    box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
+      ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
+      ${dl ? `<p class="rq-lede">Requests close <b>${esc(dl.text)}</b>.</p>` : ""}
+      <h2 class="hs-h2">Confirm It's You</h2>
+      <p class="rq-help">Give these exactly as your instructor has them on record.</p>
+      <div class="rq-grid">
+        <label class="rq-f rq-wide">${esc(info.idLabel)}<input type="text" name="id" autocomplete="off" spellcheck="false" value="${esc(k.id || "")}"></label>
+        <label class="rq-f">First Name<input type="text" name="first" autocomplete="given-name" spellcheck="false" value="${esc(k.first || "")}"></label>
+        <label class="rq-f">Last Name<input type="text" name="last" autocomplete="family-name" spellcheck="false" value="${esc(k.last || "")}"></label>
+      </div>
+      <h2 class="hs-h2 rq-h2">What You Need</h2>
+      ${s && !s.approval ? `<p class="rq-help">The standard accommodation, <b>${esc(s.text)}</b>, applies without a request.</p>` : `<p class="rq-help">Choose one. For something else as well, make another request after this one.</p>`}
+      <div class="hs-list rq-opts" role="radiogroup" aria-label="What you need">
+        ${canStd ? opt("standard", "The Standard Accommodation", s.text, kind === "standard") : ""}
+        ${alt ? opt("alternate", "An Alternate Accommodation", "Something other than the standard accommodation: say what you need.", kind === "alternate") : ""}
+      </div>
+      <div class="rq-more" id="rq-more"${kind === "alternate" ? "" : " hidden"}><span class="rq-fl">What do you need?</span><div id="rq-rt"></div>
+        <small class="rq-help">To share a document (a doctor's note, say), add a link to it. Files and pictures can't be attached.</small></div>
+      <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
+      <div class="rq-acts"><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Cancel</a><span class="sp"></span><button type="submit" class="hb-btn primary"${staff ? " disabled" : ""}>Send Request</button></div>
+    </form>`;
+    const f = $("rq-form");
+    ["first", "last"].forEach(n => { const el = f[n]; el.addEventListener("input", () => { const p = el.selectionStart, v = capital(el.value); if (v !== el.value) { el.value = v; el.setSelectionRange(p, p); } }); });
+    let chosen = kind;
+    f.querySelectorAll(".rq-opt").forEach(b => { b.onclick = () => {
+      chosen = b.dataset.kind;
+      f.querySelectorAll(".rq-opt").forEach(x => x.setAttribute("aria-checked", String(x === b)));
+      $("rq-more").hidden = chosen !== "alternate";
+      if (chosen === "alternate" && rt) rt.el.focus();
+    }; });
+    import("/static/js/richtext.js").then(m => {
+      rt = m.richText($("rq-rt"), { value: k.details || "", placeholder: "e.g. Writing it on a different day, because…", label: "What you need" });
+    }).catch(() => { $("rq-rt").innerHTML = `<textarea class="rq-ta" maxlength="4000">${esc(k.details || "")}</textarea>`; rt = { get: () => $("rq-rt").querySelector("textarea").value, el: $("rq-rt").querySelector("textarea") }; });
+    if (!err) f.id.focus();
+    f.onsubmit = ev2 => {
+      ev2.preventDefault();
+      const d = { e: ev.id, id: f.id.value.trim(), first: capital(f.first.value.trim()), last: capital(f.last.value.trim()), kind: chosen, details: chosen === "alternate" && rt ? rt.get().trim() : "" };
+      keep = { ...d };
+      const say = t => { $("rq-err").textContent = t; };
+      if (!d.id || !d.first || !d.last) return say(`Fill in your ${info.idLabel.toLowerCase()}, first name and last name.`);
+      if (!d.kind) return say("Choose what you're asking for.");
+      if (d.kind === "alternate" && !d.details) { say("Say what you need."); if (rt) rt.el.focus(); return; }
+      const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
+      api("POST", d).then(done, e => form(e.message));
+    };
+  }
+  function done(res) {
+    keep = { id: keep.id, first: keep.first, last: keep.last };
+    box().innerHTML = `<div class="hs-card rq-card rq-done"><span class="rq-tick" aria-hidden="true">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}</span>
+      <h2>Request Sent</h2>
+      <p>Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's approved or rejected.${res.emailed ? " We've emailed you a copy of your request." : ""}</p>
+      <p class="rq-ref">Reference ${esc(res.id)}</p>
+      <div class="rq-acts"><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Back to ${esc(ev.name)}</a><span class="sp"></span><button type="button" class="hb-btn" id="rq-again">Make Another Request</button></div></div>`;
+    $("rq-again").onclick = () => form();
+  }
+  return { start };
+})();
+
 // ── Pages ────────────────────────────────────────────────────────────
 const PAGES = {
   home() {
@@ -274,6 +358,16 @@ const PAGES = {
       ${secs ? `<section class="hs-sec"><h2 class="hs-h2">${mine ? "Your Sections" : "Sections"}</h2><div class="hs-list">${secs}</div></section>` : ""}
       ${people ? `<section class="hs-sec"><h2 class="hs-h2">Teaching Team</h2><div class="hs-list">${people}</div></section>` : ""}
       ${rest.replace(/\s/g, "") ? `<div class="hs-rest">${rest}</div>` : ""}`;
+  },
+  // Requesting an accommodation for one evaluation (#request/<id>): drawn once what can be asked for is in.
+  request(arg) {
+    if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
+    const f = unitOf(arg); if (!f || f.u.kind === "group") return PAGES.evaluations();
+    const { u, group } = f;
+    setTimeout(() => ReqForm.start(u), 0);
+    return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name, `#evaluation/${encodeURIComponent(u.id)}`], ["Request an Accommodation"]])}
+      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[evType(u)]}</span>${esc(u.name)}</p>${head("Request an Accommodation", "")}
+      <div id="rq-box"><p class="hs-empty">Loading…</p></div>`;
   },
   accommodations() { return open("accommodations") ? `${path([["My Accommodations"]])}${HubView.draw(D, "accommodations")}` : lockedPage("accommodations", "My Accommodations"); },
 };

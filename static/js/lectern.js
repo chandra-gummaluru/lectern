@@ -1052,7 +1052,7 @@ async function accomPage(c, t, q = "") {
           <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
         <dl class="lt-req-facts">${fact("Evaluation", r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName))}${fact("Student number", `<button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>`)}${fact("Email", r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : "")}${fact("Asked", esc(fmtStamp(r.submitted)))}</dl>
         <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
-        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
+        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision${D.length > 1 ? "s" : ""}</h3>
         ${D.length ? `<div class="lt-req-hist">${D.map(decisionHTML).join("")}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
         <div class="lt-req-acts lt-req-foot">${pend
@@ -1072,6 +1072,7 @@ async function accomPage(c, t, q = "") {
     pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01" stroke-width="2.8"/></svg>',
   };
   // The decision, as a comment: who decided (their initials), what and when, and their note to the student.
+  const plainOf = md => String(md || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`]+/g, "").replace(/^\s*(?:[-*]|\d+\.)\s+/gm, "").replace(/\s+/g, " ").trim();
   const initials = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
   // Each decision, the earlier ones first (a changed decision keeps the ones before it).
   const decisionsOf = r => [...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])];
@@ -1085,7 +1086,7 @@ async function accomPage(c, t, q = "") {
         <p class="lx-kind">${esc(r.evalName)} · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"}</p>
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
         <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)}</p></div>
-        <p class="lx-clip">${esc(r.kind === "standard" ? r.standard : r.details)}</p>
+        <p class="lx-clip">${esc(r.kind === "standard" ? r.standard : plainOf(r.details))}</p>
         <p class="lt-req-last v-${esc(r.status)}">${esc(lastWord(r))}</p>
       </div>
       <span class="lx-side hd-side lt-req-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>

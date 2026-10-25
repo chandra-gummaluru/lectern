@@ -617,3 +617,51 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 /* An announcement a student hasn't seen yet: New, with an accent edge. */
 .hs-ann.hs-new { border-color: var(--accent, #c99a06); box-shadow: inset 3px 0 0 var(--accent, #c99a06); }
 .hs-newtag { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 999px; background: var(--accent, #c99a06); color: #fff; font: 700 10px/1.5 var(--font-ui); letter-spacing: .08em; vertical-align: 1px; }
+
+/* Requesting an accommodation (#request/<id>): one card, as Lectern's editors are. */
+.rq-card { display: grid; gap: 0; }
+.rq-card .hs-h2 { margin: 0 0 4px; }
+.rq-card .rq-h2 { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.rq-help { margin: 0 0 12px; font-size: 14px; color: var(--ink-3); }
+.rq-lede { margin: 0 0 18px; font-size: 14px; color: var(--ink-2); }
+.rq-note { margin: 0 0 16px; padding: 10px 14px; border-radius: 8px; background: var(--warn-bg); box-shadow: inset 0 0 0 1px var(--warn-line); font-size: 14px; color: var(--ink-2); }
+.rq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rq-wide { grid-column: 1 / -1; max-width: calc(50% - 6px); }
+.rq-f, .rq-fl { display: grid; gap: 4px; font: 600 13px var(--font-ui); color: var(--ink-2); min-width: 0; }
+.rq-f input, .rq-ta { width: 100%; height: 40px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); font: 15px var(--font-ui); }
+.rq-ta { height: 120px; padding: 10px 12px; resize: vertical; }
+.rq-f input:focus, .rq-ta:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.hb button.hs-row.rq-opt { width: 100%; text-align: left; font: inherit; cursor: pointer; }
+.hb .rq-opt:hover { border-color: var(--ink-3); }
+.hb .rq-opt[aria-checked="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent-bg) 45%, var(--card)); }
+.rq-dot { flex: none; width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-2); background: var(--card); }
+.rq-opt[aria-checked="true"] .rq-dot { box-shadow: inset 0 0 0 1.5px var(--accent), inset 0 0 0 5px var(--card); background: var(--accent); }
+.rq-more { display: grid; gap: 6px; margin-top: 16px; }
+.rq-more .rq-help { margin: 0; font-size: 13px; }
+.rq-err { margin: 12px 0 0; min-height: 0; color: #b42318; font-size: 14px; font-weight: 600; }
+.rq-err:empty { display: none; }
+.rq-acts { display: flex; align-items: center; gap: 10px; margin-top: 22px; }
+.rq-acts .sp { flex: 1; }
+.rq-done { justify-items: start; }
+.rq-done h2 { margin: 10px 0 6px; font: 500 26px/1.2 var(--font-serif); }
+.rq-done p { margin: 0 0 8px; color: var(--ink-2); }
+.rq-ref { font-size: 13px; color: var(--ink-3) !important; }
+.rq-tick { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: color-mix(in srgb, var(--ok) 14%, var(--card)); color: var(--ok); }
+.rq-tick svg { width: 22px; height: 22px; }
+@media (max-width: 640px) { .rq-grid { grid-template-columns: 1fr; } .rq-wide { max-width: none; } }
+/* The rich text box (richtext.js), in the course page's colours. */
+.hb .rt { position: relative; border: 1px solid var(--line-2); border-radius: 8px; background: var(--card); }
+.hb .rt:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.hb .rt-bar { display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid var(--line); }
+.hb .rt-bar button { display: inline-grid; place-items: center; width: 30px; height: 28px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.hb .rt-bar button:hover, .hb .rt-bar button[aria-pressed="true"] { background: var(--strip); color: var(--ink); }
+.hb .rt-bar svg { width: 16px; height: 16px; }
+.hb .rt-link { display: flex; gap: 6px; padding: 6px; border-bottom: 1px solid var(--line); }
+.hb .rt-link[hidden] { display: none; }
+.hb .rt-link input { flex: 1; min-width: 0; height: 30px; padding: 0 9px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); font: 13.5px var(--font-ui); }
+.hb .rt-link button { height: 30px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); font: 600 12.5px var(--font-ui); cursor: pointer; }
+.hb .rt-link button[data-rt-ok] { background: var(--ink); border-color: var(--ink); color: var(--card); }
+.hb .rt-ed { min-height: 110px; padding: 10px 12px; font: 15px/1.55 var(--font-ui); color: var(--ink); outline: none; overflow-wrap: anywhere; cursor: text; }
+.hb .rt-ed p { margin: 0 0 8px; } .hb .rt-ed ul, .hb .rt-ed ol { margin: 0 0 8px; padding-left: 22px; } .hb .rt-ed > :last-child { margin-bottom: 0; }
+.hb .rt-ed a { color: var(--accent); text-decoration: underline; }
+.hb .rt-ed.empty::before { content: attr(data-ph); color: var(--ink-3); pointer-events: none; position: absolute; }

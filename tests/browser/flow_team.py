@@ -79,7 +79,8 @@ def main():
         # 2. Their page: the sections they run (a dropdown), their office and office hours.
         me.locator("#lt-path button", has_text="csc258 / f26").click()
         me.wait_for_selector("#lt-groups .lt-groups")
-        expect(me.locator("#lt-groups")).to_contain_text("Mon, Wed 10:00–11:00 · BA 1170, Bahen Centre")
+        expect(me.locator("#lt-groups .lt-sec-time").first).to_have_text("Mon, Wed 10:00–11:00BA 1170, Bahen Centre for Information Technology")
+        me.locator("#lt-groups").screenshot(path=f"{OUT}/190d-sections.png")
         me.click("[data-person]")
         me.wait_for_selector("#tm-office")
         me.click("#tm-runs")
@@ -88,7 +89,7 @@ def main():
         me.wait_for_timeout(300); me.screenshot(path=f"{OUT}/190b-run-by.png"); me.keyboard.press("Escape")
         me.wait_for_timeout(1500)
         expect(me.locator(".tm-runs")).to_contain_text("LEC0101")
-        expect(me.locator(".tm-runs")).to_contain_text("Thu 15:00–16:00 · BA 2135")
+        expect(me.locator(".tm-runs")).to_contain_text("Thu 15:00–16:00BA 2135")
         g = json.loads(srv.text("priv", "csc258/f26/groups.json"))["groups"]
         assert all(len(x["people"]) == 1 for x in g), g
         me.fill("#tm-office", "BA 4010")

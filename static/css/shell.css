@@ -971,3 +971,8 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .plc-pop { max-width: min(460px, calc(100vw - 16px)); }
 .gr-grid.gr-grid4 { grid-template-columns: 140px 100px 100px minmax(260px, 1fr); }
 .tm-row.tm-oh { grid-template-columns: 140px 100px 100px minmax(240px, 1fr) 34px; }
+/* A section's times: one row for each time and place (the days that share them together). */
+.lt-sec-times { display: grid; gap: 2px; margin-top: 3px; }
+.lt-sec-time { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 13.5px; color: var(--home-ink-3); }
+.lt-sec-time b { min-width: 150px; font-weight: 500; color: var(--home-ink-2); }
+.lt-sec-time i { font-style: normal; }

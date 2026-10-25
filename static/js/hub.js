@@ -149,7 +149,7 @@ const PAGES = {
     if (!open("lectures")) out.push(lockedSec("lectures", "Activities"));
     else {   // just this week (the first, before the term starts); the rest are a click away
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0], n = realWeeks().length;
-      out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `${weekOpen(w, now)}${n > 1 ? `<a class="hs-more" href="#activities">All ${n} weeks ${CHEV}</a>` : ""}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
+      out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `${weekOpen(w, now)}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
     }
     // Evaluations: how many, and what's next.
     if (!open("evaluations")) out.push(lockedSec("evaluations", "Evaluations"));

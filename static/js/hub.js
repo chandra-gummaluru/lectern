@@ -26,6 +26,8 @@ const { esc, LOCK, markdown, currentWeek, today } = window.HubView;
 const tab = id => (D.tabs || []).find(t => t.id === id);
 const data = id => (D.data || {})[id] || null;
 const open = id => { const t = tab(id); return !!(t && t.open); };
+// For the teaching team: a part that visitors who aren't signed in don't see (it's marked with a lock).
+const hidden = id => { const t = tab(id); return !!(t && D.viewer.staff && t.visibility === "signed-in"); };
 
 // ── Small things ─────────────────────────────────────────────────────
 const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -158,15 +160,14 @@ const PAGES = {
       if (w) out.push(`<section class="hs-sec">${weekOpen(w, now)}</section>`);
     }
     // Then everything else, each a page of its own.
-    const ann = open("announcements") ? ((data("announcements") || {}).items || []).length : 0;
     const more = [
-      ["announcements", "Announcements", ann ? `All ${ann} announcement${ann === 1 ? "" : "s"}, newest first.` : "News for the class, newest first."],
+      ["announcements", "Announcements", "News for the class, newest first."],
       ["activities", "Activities", "The term, week by week: lectures, tutorials and labs, with their files.", "lectures"],
       ["evaluations", "Evaluations", "Every evaluation, its weight and when it is."],
       ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
       ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."],
     ].filter(([id, , , t]) => tab(t || id));
-    if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${open(tb || id) ? "" : LOCK}${CHEV}</a>`).join("")}</div></section>`);
+    if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(s)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`).join("")}</div></section>`);
     document.title = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
     return out.join("");
   },

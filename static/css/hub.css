@@ -554,3 +554,8 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hs-wkopen > a.hs-row.hs-wk:hover { box-shadow: none; }
 .hs-wkopen .hs-card { padding: 14px 18px; }
 .hs-wkopen .hs-card h3 { font-size: 20px; }
+
+/* The lock on a part only signed-in people see. */
+.hs-lock { flex: none; display: grid; place-items: center; color: var(--ink-3); }
+.hs-lock svg { width: 16px; height: 16px; }
+.hs-sec-h.hs-off svg, .hb-staff-in svg { width: 13px !important; height: 13px !important; vertical-align: -1px; }

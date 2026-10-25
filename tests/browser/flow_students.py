@@ -42,10 +42,13 @@ def main():
         srv.sign_in(me, hash="#/csc258/f26")
 
         # 1. What each student has
-        me.wait_for_selector("#sf-id")
-        me.fill("#sf-id", "Student Number"); me.press("#sf-id", "Tab"); me.wait_for_timeout(700)
-        me.fill("#sf-dom", "@Mail.UToronto.ca"); me.press("#sf-dom", "Tab"); me.wait_for_timeout(700)
-        me.fill("#sf-label", "UTORid"); me.press("#sf-label", "Enter"); me.wait_for_timeout(900)
+        me.wait_for_selector("#sf-change"); me.click("#sf-change"); me.wait_for_selector("#sf-id")
+        me.fill("#sf-id", "Student Number")
+        me.fill("#sf-dom", "@Mail.UToronto.ca")
+        me.click("#sf-add"); me.locator("[data-sf]").last.fill("UTORid")
+        me.screenshot(path=f"{OUT}/210a-fields-dialog.png")
+        me.click(".lt-modal [data-ok]"); me.wait_for_timeout(900)
+        expect(me.locator(".lt-st-fieldrow")).to_contain_text("Student Number, First Name, Last Name, Email (@mail.utoronto.ca), UTORid")
         F = book()["fields"]
         assert F["idLabel"] == "Student Number" and F["emailDomain"] == "mail.utoronto.ca" and [f["label"] for f in F["custom"]] == ["Email", "UTORid"], F
         me.locator("#lt-students").scroll_into_view_if_needed()
@@ -60,7 +63,7 @@ def main():
         expect(me.locator("#sd-err")).to_contain_text("@mail.utoronto.ca")
         me.fill("#sd-email", "maya.castillo@mail.utoronto.ca"); me.click(".lt-modal [data-ok]")
         me.wait_for_selector(S + ".lt-st-list .lt-orow")
-        assert not me.query_selector("#sf-id"), "the fields can still change"
+        assert not me.query_selector("#sf-change"), "the fields can still change"
         me.click("#st-import"); me.wait_for_selector(".lt-st-drop")
         me.set_input_files(".lt-st-drop input", files=[{"name": "classlist.csv", "mimeType": "text/csv", "buffer": CSV.encode()}])
         me.wait_for_selector("#im-sum")
@@ -90,10 +93,10 @@ def main():
         me.click("[data-lt-tool=grades] [data-ed=sremove]"); me.click("[data-lt-tool=grades] [data-ed=sremove]")   # Delete takes two clicks
         me.keyboard.press("Control+s"); me.wait_for_timeout(2000)
         assert sorted(s["num"] for s in book()["students"]) == ["1001", "1002"], [s["num"] for s in book()["students"]]
-        expect(g).to_contain_text("Castillo, Maya")
+        me.wait_for_selector("#st-add")   # deleted: back on the offering's page, where the student was opened from
+        assert me.locator(S + "[data-st-open='1003']").count() == 0
         assert not me.query_selector("[data-lt-tool=grades] [data-act=imp-roster], [data-lt-tool=grades] [data-act=st-add]"), "the gradebook still adds students"
         assert not me.query_selector("[data-lt-tool=grades] #tb-view button"), "the gradebook still has Grades | Settings tabs"
-        me.locator("#lt-path button", has_text="csc258 / f26").click(); me.wait_for_selector("#st-add")
         me.click("#st-add"); me.fill("#sd-num", "1004"); me.fill("#sd-first", "Raj"); me.fill("#sd-last", "Patel"); me.fill("#sd-email", "raj.patel@mail.utoronto.ca")
         me.click(".lt-modal [data-ok]"); me.wait_for_timeout(900)
         me.click("[data-part=book]"); me.wait_for_timeout(1200)

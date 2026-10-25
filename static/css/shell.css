@@ -979,3 +979,13 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-sec-time i { font-style: normal; color: var(--home-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lt-sec-none { font-size: 13.5px; color: var(--home-ink-3); }
 @media (max-width: 640px) { .lt-sec-times { grid-template-columns: max-content minmax(0, 1fr); } .lt-sec-time i { grid-column: 1 / -1; margin-bottom: 4px; } }
+/* Students: what each student has (a row; Change opens its dialog). */
+.lt-st-fieldrow { margin-top: 14px; }
+.lt-st-fieldrow .lt-user-who { cursor: default; }
+.lt-sf-list { margin-top: 6px; }
+.lt-sf-row { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px !important; }
+.lt-sf-row.fixed span:first-child { font-size: 14px; color: var(--home-ink-2); }
+.lt-sf-row input { flex: 1; min-width: 0; }
+.lt-sf-add { display: flex; justify-content: flex-end; }
+.lt-sf-note { font-size: 13px; color: var(--home-ink-3); }
+.lt-sf-row.fixed { justify-content: space-between; }

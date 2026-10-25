@@ -17,9 +17,9 @@ import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
 import { richText } from "./richtext.js";
 import { pickMany, pickOne } from "./pick.js";
-import { GROUP_ICON, groupSummary } from "./groups.js";
+import { SECTION_ICON, SECTION_NAME, sectionKind, sortSections, runsSection } from "./groups.js";
 import { KIND_ICON, EV_ICON, EV_TYPES } from "./lectures.js";
-// Its activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
+// Its sections (only their students see it; none: everyone). (Older ones had one, "group".)
 const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
 const COLOR = "#c99a06";
@@ -42,9 +42,9 @@ function fromCoursePage(page) {
 export function announcementsPage(ctx, r) {
   const { $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, steps, markdown } = ctx;
   const { c, t } = r, path = `${c}/${t}/announcements.json`, repo = area(Store.PRIV), edit = canEdit(c, t);
-  // An instructor writes only for their activity groups (the ones they run an activity of): one for one of
+  // An instructor writes only for their sections (the ones they run): one for one of
   // those groups, or about one of those groups' activities. Everyone's, and other groups', are the coordinators'.
-  const lim = () => { const L = new Set(); if (!edit) (st.groups || []).forEach(g => { if ((g.items || []).some(x => (x.people || []).map(String).includes(String(ctx.me)))) L.add(g.id); }); return L; };
+  const lim = () => { const L = new Set(); if (!edit) (st.groups || []).forEach(g => { if (runsSection(g, ctx.me)) L.add(g.id); }); return L; };
   const forOf = x => { const on = String(x.on || ""); if (on.startsWith("act:")) { const a = (st.acts || []).find(y => `act:${y.id}` === on); return a ? a.groups || [] : []; } return groupsOf(x); };
   const mayAnn = x => { if (edit) return true; const L = lim(), G = forOf(x); return G.length > 0 && G.every(g => L.has(g)); };
   // (Instructors write theirs into the course's announcements, once a coordinator has started them.)
@@ -84,7 +84,7 @@ export function announcementsPage(ctx, r) {
   }
   function status(text, bad) { const el = $("#an-status"); if (el) { el.textContent = text; el.classList.toggle("bad", !!bad); } }
   const status$ = () => (mayAdd() ? `<span class="lx-status" id="an-status"></span>` : "");
-  const taNote = (x = null) => (!edit && !x && lim().size && st.sha === null ? `<p class="lt-note lx-note">You can write announcements for your activity groups once a coordinator has written the course's first one here.</p>` : (edit || (x ? mayAnn(x) : mayAdd()) ? (edit || x ? "" : `<p class="lt-note lx-note">You can write announcements for your activity groups; the coordinators write everyone's.</p>`) : `<p class="lt-note lx-note">You can read ${x ? "this announcement" : "the announcements"}; ${x ? "it's someone else's" : "the coordinators and instructors write them"}.</p>`));
+  const taNote = (x = null) => (!edit && !x && lim().size && st.sha === null ? `<p class="lt-note lx-note">You can write announcements for your sections once a coordinator has written the course's first one here.</p>` : (edit || (x ? mayAnn(x) : mayAdd()) ? (edit || x ? "" : `<p class="lt-note lx-note">You can write announcements for your activity groups; the coordinators write everyone's.</p>`) : `<p class="lt-note lx-note">You can read ${x ? "this announcement" : "the announcements"}; ${x ? "it's someone else's" : "the coordinators and instructors write them"}.</p>`));
   const whenOf = x => whenText(x.date, true) || "No date yet";
 
   function draw() {
@@ -147,7 +147,7 @@ export function announcementsPage(ctx, r) {
     whenField($("#an-when-f"), { date: when.date, time: when.time, id: "an-when", label: "When", empty: "Choose a date", timeLabel: "At", disabled: !edit,
       onChange: ({ date, time }) => { x.date = date ? writeStamp(date, time) : ""; changed(); } });
     richText($("#an-body"), { value: x.body, placeholder: "Write it here.", label: "Message", disabled: !edit, onChange: v => { x.body = v; changed(); } });
-    // Who it's for: everyone, or activity groups (several, if need be); about an activity, the activity's own students.
+    // Who it's for: everyone, or sections (several, if need be); about an activity, the activity's own students.
     const forSel = () => {
       const act = String(x.on || "").startsWith("act:") ? (st.acts || []).find(a => `act:${a.id}` === x.on) : null;
       const G = (st.groups || []).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })), gname = id => ((G.find(g => g.id === id) || {}).name || "");
@@ -155,8 +155,8 @@ export function announcementsPage(ctx, r) {
       if (act) {
         pickMany(host, { options: [], value: [], empty: (act.groups || []).length ? `${act.groups.map(gname).filter(Boolean).join(", ")}, as its activity is` : "Everyone, as its activity is", id: "an-group", disabled: true });
       } else {
-        pickMany(host, { options: G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => ({ value: g.id, label: g.name || "Untitled group", kick: groupSummary(g).split(" · ")[0], icon: GROUP_ICON })), value: groupsOf(x), id: "an-group", label: "For", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it",
-          empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", disabled: !edit,
+        pickMany(host, { options: G.filter(g => canEdit(c, t) || !edit || L.has(g.id)).map(g => ({ value: g.id, label: g.name || "Untitled section", kick: SECTION_NAME[sectionKind(g)], icon: SECTION_ICON[sectionKind(g)] })), value: groupsOf(x), id: "an-group", label: "For", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it",
+          empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your sections", disabled: !edit,
           onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
       }
     };

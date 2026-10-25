@@ -75,8 +75,19 @@ def owner_by_handle(handle):
     return u
 
 
+def runs_section(gr, user_id):
+    """Whether someone runs a section (groups.json): it lists them (its "people", set on their page in the
+    teaching team), or, in an older file, one of its meeting times does."""
+    if not isinstance(gr, dict):
+        return False
+    me = str(user_id)
+    if isinstance(gr.get("people"), list):
+        return me in [str(p) for p in gr["people"]]
+    return any(isinstance(x, dict) and me in [str(p) for p in (x.get("people") or [])] for x in (gr.get("items") or []))
+
+
 def my_groups(user_id, owner_id, offering):
-    """The activity groups someone runs an activity of (groups.json), by id."""
+    """The sections someone runs (groups.json), by id."""
     from .store import Repo
     raw = Repo(owner_id, "priv").read(f"{offering}/groups.json")
     try:
@@ -85,7 +96,7 @@ def my_groups(user_id, owner_id, offering):
         d = {}
     out = set()
     for gr in (d.get("groups") if isinstance(d, dict) and isinstance(d.get("groups"), list) else []):
-        if isinstance(gr, dict) and any(isinstance(x, dict) and str(user_id) in [str(p) for p in (x.get("people") or [])] for x in (gr.get("items") or [])):
+        if runs_section(gr, user_id):
             out.add(str(gr.get("id")))
     return out
 

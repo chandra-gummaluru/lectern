@@ -1,6 +1,6 @@
 /* A teaching team member's page (#/<course>/<term>/team/<user id>): what students see about them on the
-   course page's About tab. Their contact email and office, what they run (the lectures, tutorials and labs
-   the offering's activity groups say they run: groups.js), and their office hours.
+   course page's About tab. Their contact email and office, the sections they run (a dropdown of the
+   offering's sections, kept with the sections: groups.js), and their office hours.
 
    Kept in the offering's private files, <course>/<term>/team.json (the hub reads it, with the team itself):
 
@@ -9,12 +9,14 @@
                                   "times": [ { "id", "kind": "office", "day": 2, "start": "14:00", "end": "15:00",
                                                "where": "BA 4010" } ] } } }
 
-   (Older offerings kept everyone's lectures, tutorials and labs in "times" too, by group: the activity
-   groups start from those.) Their name and role come from their account and the team; email is their
+   (Older offerings kept everyone's lectures, tutorials and labs in "times" too, by section: the sections
+   start from those.) Their name and role come from their account and the team; email is their
    account's unless set here. Changes save by themselves. Instructors change anyone's; TAs see theirs. */
 
 export const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["office", "Office hours"], ["other", "Other"]];
 import { parseTime } from "./when.js";
+import { pickMany } from "./pick.js";
+import { SECTION_ICON, SECTION_NAME, sectionKind, sectionLabel, groupSummary, runsSection, runnersOf, changeGroups, sortSections } from "./groups.js";
 const KIND_LABEL = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab", other: "Other" };
 const DAY3 = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const itemLine = x => [[DAY3[x.day] || "", x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : ""].filter(Boolean).join(" "), x.where].filter(Boolean).join(" · ") || "No time yet";
@@ -61,8 +63,8 @@ export function teamMemberPage(ctx, r) {
   function draw(who, canChange) {
     renderPath([...steps, { label: who.name || who.email }]);
     const me = st.data.people[id] || {}, times = me.times || [], dis = canChange ? "" : " disabled";
-    // Their lectures, tutorials and labs: the groups' activities they run. Their office hours: their own, here.
-    const run = (st.groups || []).flatMap(g => (g.items || []).filter(x => (x.people || []).includes(id)).map(x => [g, x]));
+    // The sections they run (picked here, kept with the sections). Their office hours: their own, here.
+    const G = sortSections(st.groups || []), run = G.filter(g => runsSection(g, id));
     const office = times.map((x, i) => [x, i]).filter(([x]) => x.kind === "office");
     const opt = (list, v) => list.map(([k, n]) => `<option value="${k}"${String(v) === String(k) ? " selected" : ""}>${esc(n)}</option>`).join("");
     const days = DAYS.slice(1).map((d, k) => [String(k + 1), d]);
@@ -75,9 +77,10 @@ export function teamMemberPage(ctx, r) {
         <div class="lw-two"><label>Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${esc(who.email)}"${dis}><small>For students. Blank: ${esc(who.email)}.</small></label>
           <label>Office<input type="text" id="tm-office" value="${esc(me.office || "")}" placeholder="e.g. BA 4010"${dis}></label></div>
       </div>
-      <h2 class="lw-h2">What They Run</h2>
-      <div class="lw-card">${run.length ? `<div class="lt-olist tm-runs">${run.map(([g, x]) => `<div class="lt-orow lt-user"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><b>${esc(g.name)} · ${esc(KIND_LABEL[x.kind] || "Other")}</b><span>${esc(itemLine(x))}</span></button></div>`).join("")}</div>`
-        : `<p class="lt-part-text lw-help">Nothing yet. Their lectures, tutorials and labs are in the offering's Activity Groups: open a group and pick who runs each one.</p>`}</div>
+      <h2 class="lw-h2">Sections They Run</h2>
+      <div class="lw-card">${G.length ? `<div class="lt-form tm-run-pick"><label>Sections<div id="tm-runs-pick"></div><small>The lecture, tutorial and lab sections they teach. Instructors and TAs see and change things for their sections' students.</small></label></div>` : ""}
+        ${run.length ? `<div class="lt-olist tm-runs">${run.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(groupSummary(g))}</span></span></button></div>`).join("")}</div>`
+        : G.length ? "" : `<p class="lt-part-text lw-help">The offering has no sections yet: add them in Sections, on the offering's page.</p>`}</div>
       <h2 class="lw-h2">Office Hours</h2>
       <div class="lw-card"><p class="lt-part-text lw-help">Every week of the term. The course page shows them with their details, and on their days.</p>
         <div class="tm-times">${office.length ? `<div class="tm-row tm-head tm-oh"><span>Day</span><span>Starts</span><span>Ends</span><span>Where</span><span></span></div>` : ""}
@@ -90,6 +93,20 @@ export function teamMemberPage(ctx, r) {
         ${canChange ? `<div class="lw-adds"><button type="button" class="lt-btn add" data-add="office">${ICON.plus}Add Office Hours</button></div>` : ""}</div>
     </div>`);
     document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
+    const pick = $("#tm-runs-pick");
+    if (pick) pickMany(pick, { options: G.map(g => ({ value: g.id, label: sectionLabel(g), kick: SECTION_NAME[sectionKind(g)], icon: SECTION_ICON[sectionKind(g)] })), value: run.map(g => g.id),
+      empty: "None", emptyHint: "They don't run a section", emptyIcon: SECTION_ICON.custom, allowEmpty: true, label: "Sections they run", id: "tm-runs", disabled: !canChange,
+      onChange: async v => {
+        status("Saving…");
+        try {
+          const { data } = await changeGroups(Store, repo, c, t, d => { d.groups.forEach(g => { const on = v.includes(g.id), was = runnersOf(g); g.people = on ? [...new Set([...was, id])] : was.filter(p => p !== id); }); }, "Sections: who runs them");
+          st.groups = data.groups; status("Saved");
+          const list = document.querySelector(".tm-runs"), now = sortSections(data.groups).filter(g => runsSection(g, id));
+          const html = now.length ? `<div class="lt-olist tm-runs">${now.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(groupSummary(g))}</span></span></button></div>`).join("")}</div>` : "";
+          if (list) list.outerHTML = html || '<div class="tm-runs" hidden></div>'; else if (html) pick.closest(".lw-card").insertAdjacentHTML("beforeend", html);
+          document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
+        } catch (e) { status("Not saved", true); toast(`Couldn't save who runs the sections. ${e.message}`); }
+      } });
     if (!canChange) return;
     const P = () => (st.data.people[id] = st.data.people[id] || {});
     const bind = (sel, k) => { const el = $(sel); el.oninput = el.onchange = () => { const v = el.value.trim(); if (v) P()[k] = v; else delete P()[k]; changed(); }; };

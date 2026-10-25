@@ -105,7 +105,7 @@ function lockedPage(id, title) {
     <a class="hb-btn primary" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`;
 }
 const annsOn = key => ((data("announcements") || {}).items || []).filter(a => a.on === key).sort((x, y) => annTime(y) - annTime(x));
-// For the teaching team: what's only for one activity group says which.
+// For the teaching team: what's only for some sections says which.
 const groupTag = ids => { if (!(ids || []).length || !D.viewer.staff) return ""; const G = ((data("about") || {}).groups) || [], n = ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean); return `<span class="hs-tag hs-gtag" title="Only their students see this">${esc(n.length ? n.join(", ") : "Some groups")} only</span>`; };
 const annCard = a => `<article class="hs-card hs-ann"><p class="hs-kick">${esc(stampText(a.date))}${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
 function weekRow(w, now) {

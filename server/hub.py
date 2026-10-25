@@ -152,12 +152,13 @@ def team_of(owner_id, course, term):
         times = []
         mine = [x for x in _list(me.get("times")) if isinstance(x, dict) and (groups is None or x.get("kind") == "office")]
         if groups is not None:
+            from .teams import runs_section
             for g in groups:
-                if not isinstance(g, dict):
+                if not runs_section(g, u["id"]):
                     continue
                 for x in _list(g.get("items")):
-                    if isinstance(x, dict) and str(u["id"]) in [str(p) for p in _list(x.get("people"))]:
-                        mine.append({**x, "section": g.get("name")})
+                    if isinstance(x, dict):
+                        mine.append({**x, "kind": _kind_of(g, x), "section": g.get("name")})
         for x in mine:
             if not isinstance(x, dict):
                 continue
@@ -170,9 +171,32 @@ def team_of(owner_id, course, term):
     return out
 
 
+SECTION_KINDS = ("lecture", "tutorial", "lab", "custom")
+
+
+def section_kind(g):
+    """A section's type: its own, or (an older file) from its name (LEC…, TUT…, PRA… or LAB…) or its times."""
+    k = g.get("kind") if isinstance(g, dict) else None
+    if k in SECTION_KINDS:
+        return k
+    n = _s(g.get("name"), 100).strip().upper() if isinstance(g, dict) else ""
+    for pre, kind in (("LEC", "lecture"), ("TUT", "tutorial"), ("PRA", "lab"), ("LAB", "lab")):
+        if n.startswith(pre):
+            return kind
+    ks = [x.get("kind") for x in _list(g.get("items")) if isinstance(x, dict)] if isinstance(g, dict) else []
+    k = max(set(ks), key=ks.count) if ks else None
+    return k if k in ("lecture", "tutorial", "lab") else "custom"
+
+
+def _kind_of(g, x):
+    """A meeting time's kind, for the team's times: its section's (custom ones as other)."""
+    k = section_kind(g)
+    return k if k in TEAM_KINDS and k != "custom" else "other"
+
+
 def groups_of(owner_id, course, term):
-    """The activity groups (groups.json) as the course page shows them: each group (LEC0101…) with its weekly
-    activities and who runs each one (by name). None for an offering without them (its team's times say)."""
+    """The sections (groups.json) as the course page shows them: each section (LEC0101…) with its type, its
+    weekly meeting times and who runs it (by name). None for an offering without them (its team's times say)."""
     off = f"{course}/{term}"
     raw = Repo(owner_id, "priv").read(f"{off}/groups.json")
     try:
@@ -190,16 +214,18 @@ def groups_of(owner_id, course, term):
     for g in _list(d.get("groups")):
         if not isinstance(g, dict):
             continue
+        from .teams import runs_section
         items = []
         for x in _list(g.get("items")):
             if not isinstance(x, dict):
                 continue
             day = x.get("day")
             day = int(day) if isinstance(day, (int, str)) and str(day).isdigit() and 1 <= int(day) <= 7 else 0
-            items.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "day": day, "start": _s(x.get("start"), 5),
-                          "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200),
-                          "who": [names[str(p)] for p in _list(x.get("people")) if str(p) in names]})
-        out.append({"id": _s(g.get("id"), 40), "name": _s(g.get("name"), 100), "items": items})
+            items.append({"kind": _kind_of(g, x), "day": day, "start": _s(x.get("start"), 5),
+                          "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200)})
+        who = [names[p] for p in names if runs_section(g, p)]
+        out.append({"id": _s(g.get("id"), 40), "name": _s(g.get("name"), 100), "kind": section_kind(g), "items": items,
+                    "who": who, **({"label": _s(g.get("label"), 60)} if section_kind(g) == "custom" and g.get("label") else {})})
     return out
 
 

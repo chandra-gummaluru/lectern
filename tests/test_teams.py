@@ -295,3 +295,20 @@ def test_an_instructor_changes_only_their_groups_activities_and_announcements(cl
     assert save(ins, "chandra.priv", {"csc258/f26/grades.json": book_with(ins, "chandra.priv", "csc258/f26/grades.json", mark)}).status_code == 403
     assert read(ins, "chandra.priv", "csc258/f26/accommodations.json") is None
     assert ins.post("/api/teams/chandra/csc258/f26/add", json={"email": "x@y.ca", "role": "ta"}, headers=H).status_code == 403
+
+
+def test_who_runs_a_section_is_the_sections_people():
+    """A section lists who runs it (set on their page); an older file's meeting times did."""
+    from server.teams import runs_section
+    assert runs_section({"people": ["7"], "items": [{"people": ["8"]}]}, 7)
+    assert not runs_section({"people": ["7"], "items": [{"people": ["8"]}]}, 8)     # the section's own list wins
+    assert runs_section({"items": [{"people": ["8"]}]}, "8")                         # an older file
+    assert not runs_section({"people": []}, 7)
+
+
+def test_section_kinds_from_older_files():
+    from server.hub import section_kind
+    assert section_kind({"kind": "lab"}) == "lab"
+    assert section_kind({"name": "TUT0102"}) == "tutorial" and section_kind({"name": "PRA0101"}) == "lab"
+    assert section_kind({"name": "Group A", "items": [{"kind": "lecture"}, {"kind": "lecture"}, {"kind": "tutorial"}]}) == "lecture"
+    assert section_kind({"name": "Seminars"}) == "custom"

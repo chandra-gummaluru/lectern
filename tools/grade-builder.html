@@ -1761,7 +1761,7 @@ const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 // Inside Lectern, each evaluation can have a linked exam or handout (Build), whose total marks are its "out of".
 const HOSTED = !!(window.Lectern && window.Lectern.hosting);
-// In Lectern, for a TA or instructor: the activity groups they run an activity of. A student in none of them
+// In Lectern, for a TA or instructor: the sections they run. A student in none of them
 // is someone else's: the grid says so (their marks can still be entered).
 let MINE = null;
 const notMine = s => !!(MINE && MINE.size && s && !(s.groups || []).some(g => MINE.has(g)));
@@ -2020,7 +2020,7 @@ function normalizeBook(x) {
     if (fromId && f[fromId] != null) { if (!f.email) f.email = f[fromId]; delete f[fromId]; }
     if (f.email) f.email = String(f.email).trim();
     return withName({ num: String(s.num || "").trim(), first: first || "", last: last || "", f, ...(s.dropped ? { dropped: true } : {}), ...(noteList(s.notes).length ? { notes: noteList(s.notes) } : {}),
-      ...(Array.isArray(s.groups) && s.groups.length ? { groups: s.groups.map(String) } : {}) });   // their activity groups (Lectern's class list sets them)
+      ...(Array.isArray(s.groups) && s.groups.length ? { groups: s.groups.map(String) } : {}) });   // their sections (Lectern's class list sets them)
   }).filter(s => s.num);
   b.marks = b.marks || {}; b.overrides = b.overrides || {};
   const P = b.policies || {};
@@ -2749,7 +2749,7 @@ function gridHTML() {
   const head = `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th>${evs.map(e => `<th class="c-ev${e.makeupFor ? " mk-col" : ""}" data-e="${esc(e.id)}" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n">${evIcon(e)}${esc(shortName(e))}${sortArrow(e.id)}</span><span class="h-t">/${outOf(e)}</span></th>`).join("")}<th class="c-grade" ${sortable("grade", "grade")}>${sortArrow("grade")}Grade</th></tr>`;
   const rows = list.map(s => {
     const res = studentResult(s.num);
-    return `<tr data-s="${esc(s.num)}"${s.dropped || notMine(s) ? ` class="${[s.dropped ? "dropped" : "", notMine(s) ? "notmine" : ""].join(" ").trim()}"` : ""}><td class="c-name"><button type="button" data-act="student" data-s="${esc(s.num)}"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}${s.dropped ? " · Dropped" : ""}${notMine(s) ? ` · <span class="nm-tag">Not your group</span>` : ""}</small></button></td>
+    return `<tr data-s="${esc(s.num)}"${s.dropped || notMine(s) ? ` class="${[s.dropped ? "dropped" : "", notMine(s) ? "notmine" : ""].join(" ").trim()}"` : ""}><td class="c-name"><button type="button" data-act="student" data-s="${esc(s.num)}"><b>${esc(s.name) || "<i>No name</i>"}</b><small>${esc(s.num)}${s.dropped ? " · Dropped" : ""}${notMine(s) ? ` · <span class="nm-tag">Not your section</span>` : ""}</small></button></td>
       ${evs.map(e => { const m = markOf(s.num, e.id), r = res.rows[e.id];
         const reg = e.makeupFor && markOf(s.num, e.makeupFor), unused = reg && (reg.pts != null || ["aiv", "excused"].includes(statusOf(reg)));   // the regular one is settled: the makeup doesn't apply
         return `<td class="c-cell ${cellClass(s.num, e, r)}${unused ? " mk-unused" : ""}"><input class="mk" data-s="${esc(s.num)}" data-e="${esc(e.id)}" value="${esc(cellView(m, r))}" inputmode="decimal" spellcheck="false" autocomplete="off" aria-label="${esc(s.name || s.num)}, ${esc(shortName(e))}${statusOf(m) ? `, ${STATUSES[statusOf(m)].toLowerCase()}` : ""}"${unused ? ' readonly tabindex="-1" title="Not needed: the regular one is settled"' : ""}>${statusOf(m) ? statusIco(statusOf(m)) : ""}</td>`; }).join("")}
@@ -2806,7 +2806,7 @@ function focusHTML() {
     ? `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n" title="${esc(e.name)}">${evIcon(e)}<span class="h-nt">${esc(String(e.name).split(":")[0])}</span>${sortArrow(e.id)}</span><span class="h-t">${ui.fxPct ? "%" : `/${outOf(e)}`}</span></th></tr>`
     : `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:#5f6166" ${sortable("grade", "course grade")}><span class="h-n">${evIcon("grade")}Course Grade${sortArrow("grade")}</span><span class="h-t">%</span></th></tr>`;
   const rows = list.map(st => {
-    const res = studentResult(st.num), who = `<td class="c-name${notMine(st) ? " notmine" : ""}"><button type="button" data-act="student" data-s="${esc(st.num)}"><b>${esc(st.name) || "<i>No name</i>"}</b><small>${esc(st.num)}${st.dropped ? " · Dropped" : ""}${notMine(st) ? ` · <span class="nm-tag">Not your group</span>` : ""}</small></button></td>`;
+    const res = studentResult(st.num), who = `<td class="c-name${notMine(st) ? " notmine" : ""}"><button type="button" data-act="student" data-s="${esc(st.num)}"><b>${esc(st.name) || "<i>No name</i>"}</b><small>${esc(st.num)}${st.dropped ? " · Dropped" : ""}${notMine(st) ? ` · <span class="nm-tag">Not your section</span>` : ""}</small></button></td>`;
     if (!e) return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="fx-pct fx-gcell" data-grade="${esc(st.num)}" title="${res.final != null ? "Final" : `${res.pending} still to come`}">${gradeCell(st.num)}</td></tr>`;
     const m = markOf(st.num, e.id), r = res.rows[e.id], reg = e.makeupFor && markOf(st.num, e.makeupFor), unused = reg && (reg.pts != null || ["aiv", "excused"].includes(statusOf(reg)));
     if (ui.fxPct) return `<tr data-s="${esc(st.num)}"${st.dropped ? ' class="dropped"' : ""}>${who}<td class="fx-pct fx-pcell" data-pct="${esc(st.num)}">${fxPct(st.num, e) || '<span class="none">—</span>'}</td></tr>`;

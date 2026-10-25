@@ -22,7 +22,7 @@ const PEOPLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 // Options as [value, label] or { value, label, kick, icon }.
 const asOpt = o => (Array.isArray(o) ? { value: String(o[0]), label: o[1] } : { ...o, value: String(o.value) });
 
-export function pickMany(host, { options = [], value = [], empty = "None", emptyHint = "", emptyIcon = PEOPLE, icon = "", allowEmpty = true, label = "", id = "", disabled = false, onChange = () => {} } = {}) {
+export function pickMany(host, { options = [], value = [], empty = "None", emptyHint = "", emptyIcon = PEOPLE, icon = "", allowEmpty = true, noun = "sections", label = "", id = "", disabled = false, onChange = () => {} } = {}) {
   let v = value.map(String);
   const O = options.map(asOpt);
   host.classList.add("pk", "pk1");
@@ -33,7 +33,7 @@ export function pickMany(host, { options = [], value = [], empty = "None", empty
   const show = () => {
     const on = O.filter(o => v.includes(o.value));
     btn.querySelector(".pk1-cur").innerHTML = !on.length ? `${ico(emptyIcon)}<span class="pk1-t${disabled ? "" : " pk1-empty"}"><b>${esc(empty)}</b>${emptyHint && allowEmpty && !disabled ? `<small>${esc(emptyHint)}</small>` : ""}</span>`
-      : on.length === 1 ? row(on[0]) : `${ico(icon || on[0].icon)}<span class="pk1-t"><small>${on.length} groups</small><b>${esc(on.map(o => o.label).join(", "))}</b></span>`;
+      : on.length === 1 ? row(on[0]) : `${ico(icon || on[0].icon)}<span class="pk1-t"><small>${on.length} ${esc(noun)}</small><b>${esc(on.map(o => o.label).join(", "))}</b></span>`;
     host.dataset.value = v.join(",");
   };
   const close = () => { const p = host.querySelector(".pk-pop"); if (p) p.remove(); btn.setAttribute("aria-expanded", "false"); if (open && open.host === host) open = null; };

@@ -936,3 +936,24 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-req-ed .lt-cmt-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 5px 0 0; font-size: 13.5px; color: var(--home-ink-3); }
 .lt-req-ed .lt-cmt-n { display: inline-block; max-width: 100%; margin: 6px 0 0; padding: 8px 12px; border-radius: 4px 12px 12px 12px; background: var(--home-card); box-shadow: inset 0 0 0 1px var(--home-line-2); font-size: 14px; white-space: pre-wrap; }
 .lt-req-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+/* Sections (groups.js): a row with its type's icon, its type small and grey over its name, its times under. */
+.lt-sec-row .lt-user-who { display: flex !important; align-items: center; gap: 12px; flex-direction: row !important; }
+.lt-sec-ic { flex: none; display: grid; place-items: center; width: 24px; color: var(--home-ink-2); }
+.lt-sec-ic svg { width: 20px; height: 20px; }
+.lt-sec-t { display: grid; min-width: 0; text-align: left; line-height: 1.3; }
+.lt-sec-t small { font: 700 10.5px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--home-ink-3); }
+.lt-sec-t b { font-weight: 600; color: var(--home-ink); }
+.lt-sec-t span { font-size: 13.5px; color: var(--home-ink-3); }
+.gr-tt { flex: 1; min-width: 0; }
+.gr-tt h2 { margin: 0; font: 500 30px/1.15 var(--font-serif); }
+.gr-kind { margin: 0 0 1px; font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--home-ink-3); }
+.gr-top { grid-template-columns: auto 1fr !important; align-items: end; }
+.gr-grid.gr-grid4 { grid-template-columns: 150px 120px 120px minmax(120px, 1fr); }
+@media (max-width: 760px) { .gr-grid.gr-grid4 { grid-template-columns: 1fr 1fr; } .gr-top { grid-template-columns: 1fr !important; } }
+.lt-st-secs { gap: 10px; }
+.lt-st-secs-h { margin-top: -6px; font-size: 12.5px; color: var(--home-ink-3); }
+.tm-run-pick { margin-bottom: 12px; }
+.pk-pop .pk1-opt.pk-chk { display: flex !important; flex-direction: row !important; align-items: center; gap: 10px; margin: 0; font: 400 14px var(--font-ui); color: var(--home-ink); }
+.pk-pop .pk1-opt.pk-chk .pk1-t { flex: 1; }
+.lt-form .pk-pop .pk1-t small, .lt-form .pk1-cur .pk1-t small { margin: 0; }

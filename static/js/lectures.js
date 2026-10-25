@@ -24,8 +24,8 @@
 import { richText } from "./richtext.js";
 import { whenField } from "./when.js";
 import { pickMany } from "./pick.js";
-import { GROUP_ICON, groupSummary } from "./groups.js";
-// An activity's activity groups (only their students see it; none: everyone). (Older ones had one, "group".)
+import { SECTION_ICON, SECTION_NAME, sectionKind, sortSections, runsSection } from "./groups.js";
+// An activity's sections (only their students see it; none: everyone). (Older ones had one, "group".)
 export const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
 const KINDS = [["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["other", "Other"]];
@@ -145,11 +145,11 @@ export function lecturesPage(ctx, r) {
   const path = `${c}/${t}/lectures.json`, repo = area(Store.PRIV);
   const key = `${r.o || ""}/${c}/${t}`;
   const edit = canEdit(c, t);
-  // An instructor (ctx.myGroups: the activity groups they run an activity of) adds and changes only those
-  // groups' activities; the weeks, and everyone's activities, are the coordinators'.
+  // An instructor (ctx.myGroups: the sections they run) adds and changes only those
+  // sections' activities; the weeks, and everyone's activities, are the coordinators'.
   const lim = edit ? null : new Set();   // (filled once the groups are read)
   const mayCard = x => edit || !!(lim && x && groupsOf(x).length && groupsOf(x).every(g => lim.has(g)));
-  const mine = () => { if (lim) { lim.clear(); (st.groups || []).forEach(g => { if ((g.items || []).some(x => (x.people || []).map(String).includes(String(ctx.me)))) lim.add(g.id); }); } };
+  const mine = () => { if (lim) { lim.clear(); (st.groups || []).forEach(g => { if (runsSection(g, ctx.me)) lim.add(g.id); }); } };
   // (Instructors add theirs to the course's weeks, once a coordinator has set them up here.)
   const mayAdd = () => edit || !!(lim && lim.size && st.sha !== null);
   const here = () => { const x = ctx.route(); return x.page === "lectures" && x.c === c && x.t === t && (x.o || "") === (r.o || ""); };
@@ -212,7 +212,7 @@ export function lecturesPage(ctx, r) {
   const plain = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`#>]+/g, "").replace(/^\s*([-+]|\d+[.)])\s+/gm, "").replace(/\s+/g, " ").trim();
   const lecMeta = x => { const n = (x.files || []).length; return [n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
   const status$ = () => (mayAdd() ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
-  const taNote = () => (edit ? "" : lim && lim.size && st.sha === null ? `<p class="lt-note lx-note">You can add activities for your activity groups once a coordinator has set up the weeks here.</p>` : mayAdd() ? `<p class="lt-note lx-note">You can add and change the activities for your activity groups (${esc([...lim].map(groupName).filter(Boolean).join(", "))}); the coordinators change the weeks and everyone's.</p>` : `<p class="lt-note lx-note">You can look at the activities; the coordinators change them.</p>`);
+  const taNote = () => (edit ? "" : lim && lim.size && st.sha === null ? `<p class="lt-note lx-note">You can add activities for your sections once a coordinator has set up the weeks here.</p>` : mayAdd() ? `<p class="lt-note lx-note">You can add and change the activities for your activity groups (${esc([...lim].map(groupName).filter(Boolean).join(", "))}); the coordinators change the weeks and everyone's.</p>` : `<p class="lt-note lx-note">You can look at the activities; the coordinators change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
   const toLec = (w, x) => go({ page: "lectures", c, t, w: w.id, l: x.id });
 
@@ -228,7 +228,7 @@ export function lecturesPage(ctx, r) {
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec hd-row" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
       <div class="lx-main hd-main"><div class="hd"><p class="lx-kind">${esc(kindName(kindOf(x)))}${groupsOf(x).map(groupName).filter(Boolean).length ? ` · ${esc(groupsOf(x).map(groupName).filter(Boolean).join(", "))}` : ""}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}</div>${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
-  // An activity for one activity group (e.g. LEC0101) is only for its students; without one, it's everyone's.
+  // An activity for one section (e.g. LEC0101) is only for its students; without one, it's everyone's.
   const groupName = id => (id && ((st.groups || []).find(g => g.id === id) || {}).name) || "";
   const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };
   const weekEvals = w => {
@@ -462,9 +462,9 @@ export function lecturesPage(ctx, r) {
       const add = $("#lw-when-add"); if (add) add.onclick = () => { W.push(""); whens(); const f = host.querySelector(`[data-wi="${W.length - 1}"] button`); if (f) f.click(); };
     };
     whens();
-    // For: its activity groups (none: everyone). An instructor picks among theirs (at least one).
+    // For: its sections (none: everyone). An instructor picks among theirs (at least one).
     const G = (st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    pickMany($("#lw-groups"), { options: G.map(g => ({ value: g.id, label: g.name || "Untitled group", kick: groupSummary(g).split(" · ")[0], icon: GROUP_ICON })), value: groupsOf(x), empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your groups", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it", label: "For", id: "lw-group", disabled: !edit,
+    pickMany($("#lw-groups"), { options: sortSections(G).map(g => ({ value: g.id, label: g.name || "Untitled section", kick: SECTION_NAME[sectionKind(g)], icon: SECTION_ICON[sectionKind(g)] })), value: groupsOf(x), empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your sections", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it", label: "For", id: "lw-group", disabled: !edit,
       onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
     richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;

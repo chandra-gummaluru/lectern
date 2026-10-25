@@ -12,6 +12,7 @@
    Instructors add students here (one at a time, or from a class list), and can send the course page's link
    to anyone who hasn't joined yet. Nothing else about a student changes here: clicking one opens their page in
    the gradebook (where they're dropped or deleted). The team sees the list. Each change saves straight away. */
+import { SECTION_KINDS, SECTION_NAME, SECTION_ICON, sectionKind, sortSections, oneOfEach } from "./groups.js";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const EMAIL = /^[^\s@,;<>]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
@@ -73,7 +74,7 @@ export async function studentsCard(ctx, c, t) {
   const path = `${c}/${t}/grades.json`, repo = area(Store.PRIV), key = `${owner}/${c}/${t}`;
   const base = `/api/students/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
   const st = (ui[key] = ui[key] || { find: "" });
-  let book = null, info = null, G = [];   // G: the activity groups (a student is in one or more)
+  let book = null, info = null, G = [];   // G: the sections (a student is in one of each type)
 
   async function load() {
     try {
@@ -136,7 +137,7 @@ export async function studentsCard(ctx, c, t) {
       ${all.length ? `<div class="lt-olist lt-st-list">${all.map(s => {
         const mail = emailOf(s), ok = !s.dropped && !emailProblem(mail, F.emailDomain), q = [s.name, s.first, s.last, s.num, mail, ...custom.map(f => fieldOf(s, f.id))].join(" ").toLowerCase();
         const gs = groupNames(s);
-        const who = `<b>${esc(s.name || [s.last, s.first].filter(Boolean).join(", ") || s.num)}</b><span>${esc(s.num)}${mail ? ` · ${esc(mail)}` : ""} · <em>${esc(stateOf(s, F))}</em>${G.length ? ` · ${gs.length ? esc(gs.join(", ")) : `<em class="lt-st-nogroup">No activity group</em>`}` : ""}</span>`;
+        const who = `<b>${esc(s.name || [s.last, s.first].filter(Boolean).join(", ") || s.num)}</b><span>${esc(s.num)}${mail ? ` · ${esc(mail)}` : ""} · <em>${esc(stateOf(s, F))}</em>${G.length ? ` · ${gs.length ? esc(gs.join(", ")) : `<em class="lt-st-nogroup">No section</em>`}` : ""}</span>`;
         const sent = ((info.state || {})[mail.toLowerCase()] || {}).invited;
         return `<div class="lt-orow lt-user${s.dropped ? " lt-st-dropped" : ""}" data-q="${esc(q)}">
           <button type="button" class="lt-user-who lt-user-open" data-st-open="${esc(s.num)}" title="Their page in the gradebook">${who}</button>
@@ -191,7 +192,7 @@ export async function studentsCard(ctx, c, t) {
         <div class="two"><label>First Name<input type="text" id="sd-first" value="${v("first")}" autocomplete="off"></label><label>Last Name<input type="text" id="sd-last" value="${v("last")}" autocomplete="off"></label></div>
         <label>Email<input type="email" id="sd-email" value="${s ? esc(emailOf(s)) : ""}" placeholder="name@${esc(F.emailDomain || "example.com")}" spellcheck="false" autocomplete="off"><small>They sign in to the course page with it.</small></label>
         ${custom.map(f => `<label>${esc(f.label)}<input type="text" data-sd="${esc(f.id)}" value="${v("", f.id)}" spellcheck="false" autocomplete="off"></label>`).join("")}
-        ${G.length ? `<div class="lt-field-l">Activity Groups<div class="lt-st-groups">${G.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })).map(g => `<label class="lt-check"><input type="checkbox" data-sd-g="${esc(g.id)}"${s && (s.groups || []).includes(g.id) ? " checked" : ""}> ${esc(g.name || "Untitled group")}</label>`).join("")}</div><small>The sections they're in, e.g. their lecture and their tutorial. At least one.</small></div>` : ""}
+        ${G.length ? `<div class="two lt-st-secs">${SECTION_KINDS.filter(([k]) => G.some(g => sectionKind(g) === k)).map(([k]) => `<label>${esc(SECTION_NAME[k])}<select data-sd-k="${k}"><option value="" data-icon="${esc(SECTION_ICON[k])}">None</option>${sortSections(G.filter(g => sectionKind(g) === k)).map(g => `<option value="${esc(g.id)}" data-icon="${esc(SECTION_ICON[k])}"${s && (s.groups || []).includes(g.id) ? " selected" : ""}>${esc(g.name || "Untitled section")}</option>`).join("")}</select></label>`).join("")}</div><small class="lt-st-secs-h">One of each type, e.g. their lecture section and their tutorial section. At least one.</small>` : ""}
         ${!s && info.email ? `<label class="lt-check"><input type="checkbox" id="sd-invite" checked> Email them the course page's link</label>` : ""}
       </div>
       <p class="lt-err" id="sd-err"></p>
@@ -205,8 +206,8 @@ export async function studentsCard(ctx, c, t) {
         const p = emailProblem(email, F.emailDomain);
         if (p) { err.textContent = `${p}. Every student needs ${F.emailDomain ? `an @${F.emailDomain}` : "an"} email: they sign in with it.`; return m.querySelector("#sd-email").focus(); }
         if (list().some(x => x.num !== num && emailOf(x).toLowerCase() === email)) { err.textContent = `${email} is another student's email.`; return; }
-        const gs = [...m.querySelectorAll("[data-sd-g]:checked")].map(i => i.dataset.sdG);
-        if (G.length && !gs.length) { err.textContent = "Pick their activity groups: every student is in at least one."; return; }
+        const gs = [...m.querySelectorAll("[data-sd-k]")].map(i => i.value).filter(Boolean);
+        if (G.length && !gs.length) { err.textContent = "Pick their sections: every student is in at least one."; return; }
         const f = { email };
         m.querySelectorAll("[data-sd]").forEach(i => { if (i.value.trim()) f[i.dataset.sd] = i.value.trim(); });
         const invite = !s && m.querySelector("#sd-invite") && m.querySelector("#sd-invite").checked;
@@ -250,8 +251,9 @@ export async function studentsCard(ctx, c, t) {
           { k: "last", label: "Last Name", g: guess(H, ["last name", "surname", "family name", /last/]) },
           { k: "name", label: "Or one name column (Last, First)", g: guess(H, ["student", "name", "full name", /^student name/]) },
           { k: "email", label: "Email", g: guess(H, ["email", "e-mail", /e-?mail/]) },
-          { k: "g1", label: "Activity groups (e.g. LEC0101)", g: guess(H, ["lecture", "lecture section", "section", /^lec/, /lecture/, /section/]) },
-          { k: "g2", label: "More activity groups (e.g. TUT0102)", g: guess(H, ["tutorial", "tutorial section", /^tut/, /tutorial/, /practical|^pra/]) },
+          { k: "g1", label: "Lecture section (e.g. LEC0101)", g: guess(H, ["lecture", "lecture section", "section", /^lec/, /lecture/, /section/]) },
+          { k: "g2", label: "Tutorial section (e.g. TUT0102)", g: guess(H, ["tutorial", "tutorial section", /^tut/, /tutorial/]) },
+          { k: "g3", label: "Lab section (e.g. PRA0101)", g: guess(H, ["lab", "lab section", "practical", /^pra/, /practical/, /\blab/]) },
           ...custom.map(f => ({ k: `f:${f.id}`, label: f.label, g: guess(H, [f.label.toLowerCase(), ...(/utorid/i.test(f.label) ? ["sis login id", "login id"] : /section/i.test(f.label) ? [/section/] : [])]) })),
         ];
         const sel = (i, c) => `<select id="im-c${i}">${c.need ? "" : `<option value="-1">(none)</option>`}${H.map((h, k) => `<option value="${k}"${k === c.g ? " selected" : ""}>${esc(h || `Column ${k + 1}`)}</option>`).join("")}</select>`;
@@ -268,7 +270,7 @@ export async function studentsCard(ctx, c, t) {
             if (!first && !last && at(r, "name")) { const n = at(r, "name"); if (n.includes(",")) [last, first] = n.split(",").map(x => x.trim()); else { const w = n.split(/\s+/); last = w.length > 1 ? w.pop() : w[0]; first = w.join(" "); } }
             const f = {}; const e = at(r, "email").toLowerCase(); if (e) f.email = e;
             custom.forEach(x => { const v = at(r, `f:${x.id}`); if (v) f[x.id] = v; });
-            const gn = [at(r, "g1"), at(r, "g2")].flatMap(v => v.split(/[,;\s]+/)).map(v => v.trim()).filter(Boolean);
+            const gn = [["g1", "lecture"], ["g2", "tutorial"], ["g3", "lab"]].flatMap(([k, kind]) => at(r, k).split(/[,;\s]+/).map(v => v.trim()).filter(Boolean).map(name => ({ name, kind })));
             seen.set(num, { num, first, last, f, gn });
           });
           return [...seen.values()];
@@ -288,8 +290,9 @@ export async function studentsCard(ctx, c, t) {
           const P = people(), drop = m.querySelector("#im-drop") && m.querySelector("#im-drop").checked, invite = m.querySelector("#im-invite") && m.querySelector("#im-invite").checked;
           m.querySelector("[data-ok]").disabled = true;
           let ids = new Map();
-          if (groupIds && P.some(p => p.gn.length)) { try { ids = await groupIds(P.flatMap(p => p.gn)); } catch (e) { m.querySelector("#im-err").textContent = `Couldn't make the activity groups. ${e.message}`; m.querySelector("[data-ok]").disabled = false; return; } }
-          P.forEach(p => { p.groups = [...new Set(p.gn.map(n => ids.get(n.toLowerCase())).filter(Boolean))]; });
+          if (groupIds && P.some(p => p.gn.length)) { try { ids = await groupIds(P.flatMap(p => p.gn)); } catch (e) { m.querySelector("#im-err").textContent = `Couldn't make the sections. ${e.message}`; m.querySelector("[data-ok]").disabled = false; return; } }
+          if (ids.size) G = await groups().catch(() => G);
+          P.forEach(p => { p.groups = oneOfEach(p.gn.map(n => ids.get(n.name.toLowerCase())).filter(Boolean), G); });
           const r = await run(b => {
             const fresh = [], dropped = [];
             P.forEach(p => {

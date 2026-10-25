@@ -132,6 +132,15 @@ function requestHTML(e) {
   const when = by && !isNaN(by) ? `<span class="hs-by">Request by ${esc(day(a.by))}, ${esc(a.byTime || "23:59")}</span>` : "";
   return `<div class="hs-req">${url ? `<a class="hb-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn">Request Accommodation</span>`}${when}</div>`;
 }
+// Every evaluation (a group with its own inside it), each opening its page; the weight on the right.
+function evalList() {
+    const U = (data("evaluations").units || []);
+    const rows = U.map(u => (u.kind === "group"
+      ? `<div class="hs-group"><a class="hs-row hs-ev hs-grp" href="#evaluation/${encodeURIComponent(u.id)}"><span class="hs-ic">${EV_ICON.group}</span><span class="hs-t"><small class="hs-kick">Group</small><b>${esc(u.name)}</b><small>The best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each</small></span><span class="hs-w">${fmtW(u.weight)}%</span>${CHEV}</a>
+          <div class="hs-list">${(u.members || []).map(m => evRow(m)).join("")}</div></div>`
+      : evRow(u, u.weight))).join("");
+  return U.length ? `<div class="hs-list">${rows}</div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`;
+}
 const unitOf = id => { const E = data("evaluations"); if (!E) return null; for (const u of E.units || []) { if (u.id === id) return { u }; if (u.kind === "group") { const m = (u.members || []).find(x => x.id === id); if (m) return { u: m, group: u }; } } const e = allEvals().find(x => x.id === id); return e ? { u: e } : null; };
 
 // ── Pages ────────────────────────────────────────────────────────────
@@ -151,12 +160,10 @@ const PAGES = {
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0], n = realWeeks().length;
       out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `${weekOpen(w, now)}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
     }
-    // Evaluations: how many, and what's next.
+    // Evaluations: every one, with its weight.
     if (!open("evaluations")) out.push(lockedSec("evaluations", "Evaluations"));
     else {
-      const E = allEvals(), next = E.filter(e => e.date && e.date >= today()).sort((x, y) => `${x.date}${x.time}`.localeCompare(`${y.date}${y.time}`))[0];
-      const n = (data("evaluations").units || []).length;
-      out.push(`<section class="hs-sec">${secHead("Evaluations", "#evaluations")}${n ? `<a class="hs-row hs-sum" href="#evaluations"><span class="hs-t"><b>${n} evaluation${n === 1 ? "" : "s"} make up your grade</b>${next ? `<small>Next: ${esc(next.name)}, ${esc(evWhen(next).replace(/^Due /, "due "))}</small>` : ""}</span>${CHEV}</a>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}</section>`);
+      out.push(`<section class="hs-sec">${secHead("Evaluations", "#evaluations")}${evalList()}</section>`);
     }
     // More: About, My accommodations.
     const more = [["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."], ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."]].filter(([id]) => tab(id));
@@ -188,12 +195,7 @@ const PAGES = {
   },
   evaluations() {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
-    const U = (data("evaluations").units || []);
-    const rows = U.map(u => (u.kind === "group"
-      ? `<div class="hs-group"><a class="hs-row hs-ev hs-grp" href="#evaluation/${encodeURIComponent(u.id)}"><span class="hs-ic">${EV_ICON.group}</span><span class="hs-t"><small class="hs-kick">Group</small><b>${esc(u.name)}</b><small>The best ${u.keep} of ${u.count} count, ${fmtW(u.weight / Math.max(1, u.keep))}% each</small></span><span class="hs-w">${fmtW(u.weight)}%</span>${CHEV}</a>
-          <div class="hs-list">${(u.members || []).map(m => evRow(m)).join("")}</div></div>`
-      : evRow(u, u.weight))).join("");
-    return `${path([["Evaluations"]])}${head("Evaluations", "Every evaluation, its weight and when it is. Together they make up your course grade.")}${U.length ? `<div class="hs-list">${rows}</div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}`;
+    return `${path([["Evaluations"]])}${head("Evaluations", "Every evaluation, its weight and when it is. Together they make up your course grade.")}${evalList()}`;
   },
   evaluation(arg) {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");

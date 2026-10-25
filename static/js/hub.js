@@ -292,7 +292,10 @@ function evalCard(u, group, E) {
   const PTS = svg('<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>');
   const MARK = svg('<circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.3 2.6 2.6 5-5.2"/>');
   const fact = (ic, k, v, cls = "") => `<span class="ec-wd${cls}"><span class="hs-ic sm">${ic}</span><small>${esc(k)}</small>${esc(v)}</span>`;
-  const grading = `<div class="ec-when"><div class="ec-wrow"><span class="ec-wat">${fact(PCT, "Worth", worthV)}${fact(PTS, "Points", outOf)}${fact(MARK, "Your Mark", mark, m && (m.pts != null || m.status) ? "" : " ec-none")}</span></div>${group ? `<div class="ec-wrow ec-wnote">In ${esc(group.name)}: the best ${group.keep} of ${group.count} count.</div>` : ""}</div>`;
+  // Their mark, big (as the gradebook shows a student's): the percent, with its points under it.
+  const marked = m && m.pts != null, pc = marked && total ? Math.round(m.pts / total * 1000) / 10 : null;
+  const big = m && m.status ? `<b class="ec-mk-st">${esc(ST[m.status])}</b>` : marked ? `<b>${pc != null ? `${fmtW(pc)}%` : fmtW(m.pts)}</b><small>${fmtW(m.pts)} / ${total ? fmtW(total) : "?"}</small>` : `<b class="ec-mk-none">—</b><small>${me ? "Not marked yet" : "Sign in to see your mark"}</small>`;
+  const grading = `<div class="ec-grading"><div class="ec-mk">${big}</div><div class="ec-gf">${fact(PCT, "Worth", worthV)}${fact(PTS, "Points", outOf)}${group ? `<span class="ec-gnote">In ${esc(group.name)}: the best ${group.keep} of ${group.count} count.</span>` : ""}</div></div>`;
   // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
   const w = fmtW(u.weight), mi = u.missed;
   const opt = (on, ttl, sub) => `<p class="ec-p ec-pol">${esc(sub)}</p>`;
@@ -307,10 +310,10 @@ function evalCard(u, group, E) {
   const req = requestBtn(u);
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
-      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1></div>${req ? `<span class="ec-acts">${req}</span>` : ""}</header>
+      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1></div></header>
       ${sec("When")}${dates}
       ${sec("Grading")}${grading}
-      ${policy || acc ? `${sec("If You Miss It")}${policy}${acc}` : ""}
+      ${policy || acc || req ? `<h3 class="ec-sub">If You Miss It</h3>${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
     </article>`;

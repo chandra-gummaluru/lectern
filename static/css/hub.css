@@ -731,3 +731,15 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-wd small { font: 700 11px/1 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
 .ec-wrow .hs-ic.sm { width: 18px; color: var(--ink-3); } .ec-wrow .hs-ic.sm svg { width: 17px; height: 17px; }
 .ec-wat .ec-wd { min-width: 0; } .ec-wnote { font-size: 13.5px; color: var(--ink-3); } .ec-wd.ec-none { color: var(--ink-3); }
+.ec-grading { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.ec-mk { display: grid; min-width: 120px; }
+.ec-mk b { font: 500 44px/1.05 var(--font-serif); color: var(--ink); letter-spacing: -.01em; }
+.ec-mk b.ec-mk-none { color: var(--ink-3); }
+.ec-mk b.ec-mk-st { font-size: 28px; }
+.ec-mk small { font-size: 13.5px; color: var(--ink-3); }
+.ec-gf { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; padding-left: 28px; border-left: 1px solid var(--line); }
+.ec-gnote { flex-basis: 100%; font-size: 13.5px; color: var(--ink-3); }
+.ec-gf .hs-ic.sm { width: 18px; color: var(--ink-3); } .ec-gf .hs-ic.sm svg { width: 17px; height: 17px; }
+.ec-sub { margin: 22px 0 6px; font: 600 14px var(--font-ui); color: var(--ink); }
+.ec-req { display: flex; justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 640px) { .ec-gf { padding-left: 0; border-left: 0; } }

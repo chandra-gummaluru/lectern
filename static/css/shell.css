@@ -262,27 +262,24 @@ html.lt-has-session #splash { display: none; }
 .lt-seg button[aria-pressed="true"] { background: var(--home-ink); color: var(--home-card); }
 .lt-seg button[aria-pressed="true"] span { color: inherit; opacity: .75; }
 .lt-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.lt-reqs { display: grid; gap: 12px; }
-.lt-req { padding: 16px 18px 14px; border: 1px solid var(--home-line-2); border-left: 4px solid var(--accent); border-radius: 12px; background: var(--home-card); }
-.lt-req.st-approved { border-left-color: var(--home-ok); }
-.lt-req.st-rejected { border-left-color: var(--home-ink-3); }
-.lt-req-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.lt-req-who b { display: block; font: 500 22px/1.15 var(--font-serif); color: var(--home-ink); }
-.lt-req-who span { font-size: 13px; color: var(--home-ink-3); }
-.lt-req-who a { color: var(--home-ink-2); }
-.lt-req-st { flex: none; padding: 3px 10px; border-radius: 999px; font: 600 12px var(--font-ui); background: var(--accent-bg); color: var(--home-ink); border: 1px solid var(--accent); }
-.st-approved .lt-req-st { background: transparent; border-color: var(--home-ok); color: var(--home-ok); }
-.st-rejected .lt-req-st { background: var(--home-strip); border-color: var(--home-line-2); color: var(--home-ink-3); }
-.lt-req-what { margin: 10px 0 6px; font-size: 13.5px; color: var(--home-ink-2); }
-.lt-req-what b { color: var(--home-ink); }
-.lt-req-body { margin: 0 0 6px; font-size: 14.5px; line-height: 1.55; color: var(--home-ink); white-space: pre-wrap; }
-blockquote.lt-req-body { padding: 8px 12px; border-left: 3px solid var(--home-line-2); background: var(--home-strip); border-radius: 0 8px 8px 0; }
-.lt-req-dec { margin: 6px 0 0; font-size: 13px; color: var(--home-ink-3); }
-.lt-req-acts { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.lt-req-acts .lt-link { margin-right: auto; font-size: 13px; }
-.lt-req-acts .lt-link:disabled { opacity: .5; cursor: default; }
-.lt-req-ref { order: -1; font: 11.5px var(--font-mono); color: var(--home-ink-3); margin-right: auto; }
-.lt-req-acts .lt-link + .lt-req-ref { margin-right: 0; order: 0; }
+/* Accommodations: requests as the other parts' long cards (lx-row) */
+.lt-acc-lede { margin: 0 0 18px; }
+.lt-acc-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.lt-accom .lt-note { max-width: none; margin: 0 0 10px; }
+.lt-req { align-items: flex-start; cursor: default; }
+.lt-req:hover { box-shadow: none; }
+.lt-req h3 { margin: 0; font: 500 23px/1.2 var(--font-serif); color: var(--home-ink); }
+.lt-req .lx-kind { margin: 0 0 1px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--home-ink-3); }
+.lt-req .lx-when a { color: inherit; }
+.lt-req-body { margin: 10px 0 0 !important; font-size: 14.5px !important; line-height: 1.55; color: var(--home-ink) !important; white-space: pre-wrap; }
+blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var(--home-strip); box-shadow: inset 0 0 0 1px var(--home-line); }
+.lt-req-dec { margin: 8px 0 0 !important; font-size: 13.5px !important; color: var(--home-ink-3) !important; }
+.lt-req-side { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.lt-req-st { flex: none; padding: 4px 13px; border-radius: 999px; font: 600 14px/20px var(--font-ui); background: var(--accent-bg); color: #7d5c00; box-shadow: inset 0 0 0 1px #e3c66f; }
+.st-approved .lt-req-st { background: #e6f4ec; color: #1f6b43; box-shadow: inset 0 0 0 1px #a8d5ba; }
+.st-rejected .lt-req-st { background: var(--home-strip); color: var(--home-ink-2); box-shadow: inset 0 0 0 1px var(--home-line-2); }
+.lt-req-acts { display: flex; gap: 8px; }
+@media (max-width: 640px) { .lt-req { flex-direction: column; } .lt-req-side { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; } }
 .lt-form textarea { font: 14px/1.5 var(--font-ui); padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); box-sizing: border-box; width: 100%; resize: vertical; }
 .lt-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 

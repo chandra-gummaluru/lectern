@@ -974,11 +974,11 @@ const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLo
 const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
 
 async function accomPage(c, t) {
-  pageHTML(`<div class="lt-in lt-accom">
-    <h1>Accommodations</h1>
-    <p class="lt-lede">Requests from the <b>Request Accommodation</b> buttons on <code>${esc(c)}/${esc(t)}</code>'s course page. Approving or rejecting one emails the student.</p>
+  pageHTML(`<div class="lt-in lt-accom"><div class="lx">
+    <div class="lx-head"><h1>Accommodations</h1></div>
+    <p class="lx-help lt-acc-lede">Requests from the course page's Request Accommodation buttons. Approving or rejecting one emails the student.</p>
     <div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading requests…</div></div>
-  </div>`);
+  </div></div>`);
   const mine = () => S.route.page === "accom" && S.route.c === c && S.route.t === t;
   let data, book, cfg;
   try { [data, book, cfg] = await Promise.all([readAccom(c, t), getBook(c, t).catch(() => null), getCfg()]); }
@@ -1000,26 +1000,31 @@ async function accomPage(c, t) {
     ].join("");
     const seg = (k, label, n) => `<button type="button" data-show="${k}" aria-pressed="${accomUI.show === k}">${label}${n != null ? ` <span>${n}</span>` : ""}</button>`;
     $("#lt-acc").innerHTML = `${notes}
-      <div class="lt-sec"><div class="lt-seg" role="group" aria-label="Show">${seg("pending", "Waiting", pending.length)}${seg("decided", "Decided", decided.length)}${seg("all", "All")}</div>
+      <div class="lt-acc-bar"><div class="lx-seg" role="group" aria-label="Show">${seg("pending", "Waiting", pending.length)}${seg("decided", "Decided", decided.length)}${seg("all", "All")}</div>
         <div class="lt-filters">${evNames.length > 1 ? `<select class="lt-filter" id="acc-ev" aria-label="Evaluation"><option value="">All Evaluations</option>${evNames.map(([id, n]) => `<option value="${esc(id)}"${accomUI.ev === id ? " selected" : ""}>${esc(n || id)}</option>`).join("")}</select>` : ""}
         <button type="button" class="lt-btn" id="acc-refresh">Refresh</button></div></div>
-      ${list.length ? `<div class="lt-reqs">${list.map(reqCard).join("")}</div>`
-        : `<p class="lt-hint">${accomUI.show === "pending" ? (all.length ? "Nothing waiting: every request has a decision." : "No requests yet.") : "None."}</p>`}`;
+      ${list.length ? `<div class="lx-list lt-reqs">${list.map(reqCard).join("")}</div>`
+        : `<p class="lx-empty">${accomUI.show === "pending" ? (all.length ? "Nothing waiting: every request has a decision." : "No requests yet.") : "None."}</p>`}`;
     $("#lt-acc").querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { accomUI.show = b.dataset.show; draw(); }; });
     const f = $("#acc-ev"); if (f) f.onchange = () => { accomUI.ev = f.value; draw(); };
     $("#acc-refresh").onclick = () => accomPage(c, t);
     const ev = $("#lt-acc [data-evals]"); if (ev) ev.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t });
     $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(data.requests.find(r => r.id === b.dataset.id), b.dataset.decide); });
   };
-  const reqCard = r => `<article class="lt-req st-${esc(r.status)}">
-      <div class="lt-req-top"><div class="lt-req-who"><b>${esc(r.first)} ${esc(r.last)}</b><span>${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></span></div>
-        <span class="lt-req-st">${esc(STATUS[r.status] || r.status)}</span></div>
-      <p class="lt-req-what"><b>${esc(r.evalName)}</b> · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · <span title="${esc(r.submitted)}">${esc(fmtStamp(r.submitted))}</span></p>
-      ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
-      ${r.status !== "pending" ? `<p class="lt-req-dec">${esc(STATUS[r.status])}${r.decidedBy ? ` by ${esc(r.decidedBy)}` : ""}${r.decided ? `, ${esc(fmtStamp(r.decided))}` : ""}.${r.note ? ` Note: “${esc(r.note)}”` : ""}</p>` : ""}
-      <div class="lt-req-acts">${r.status === "pending"
-        ? `<button type="button" class="lt-btn" data-decide="rejected" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Reject</button><button type="button" class="lt-btn primary" data-decide="approved" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Approve</button>`
-        : `<button type="button" class="lt-link" data-decide="${r.status === "approved" ? "rejected" : "approved"}" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>${r.status === "approved" ? "Reject it instead" : "Approve it instead"}</button>`}<span class="lt-req-ref">${esc(r.id)}</span></div>
+  // A request, as the other parts' cards are: what it is above the student's name; when and who under it; what
+  // they asked for; the decision; Approve and Reject (or the other way, once decided) on the right.
+  const reqCard = r => `<article class="lx-row lt-req st-${esc(r.status)}" title="${esc(r.id)}">
+      <div class="lx-main">
+        <p class="lx-kind">${esc(r.evalName)} · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"}</p>
+        <h3>${esc(r.first)} ${esc(r.last)}</h3>
+        <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p>
+        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
+        ${r.status !== "pending" ? `<p class="lt-req-dec">${esc(STATUS[r.status])}${r.decidedBy ? ` by ${esc(r.decidedBy)}` : ""}${r.decided ? `, ${esc(fmtStamp(r.decided))}` : ""}.${r.note ? ` Note: “${esc(r.note)}”` : ""}</p>` : ""}
+      </div>
+      <div class="lx-side lt-req-side"><span class="lt-req-st">${esc(STATUS[r.status] || r.status)}</span>
+        <div class="lt-req-acts">${r.status === "pending"
+          ? `<button type="button" class="lt-btn" data-decide="rejected" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Reject</button><button type="button" class="lt-btn primary" data-decide="approved" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Approve</button>`
+          : `<button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div></div>
     </article>`;
   function decideDialog(r, decision) {
     if (!r) return;

@@ -468,7 +468,7 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 .hs-head h1 { margin: 0; font: 500 38px/1.15 var(--font-serif); letter-spacing: -.015em; }
 .hs-head p { margin: 6px 0 0; color: var(--ink-2); font-size: 15px; }
 .hs-kick-top { display: flex; align-items: center; gap: 7px; margin: 0 0 4px !important; }
-.hs-desc { color: var(--ink-2); margin: 0 0 30px; max-width: 68ch; }
+.hs-desc { color: var(--ink-2); margin: 0 0 30px; }
 .hs-sec { margin: 0 0 34px; }
 .hs-sec-h { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: var(--ink); text-decoration: none; width: fit-content; }
 .hb a.hs-sec-h { color: var(--ink); text-decoration: none; }

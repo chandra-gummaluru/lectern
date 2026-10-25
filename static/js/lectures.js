@@ -358,7 +358,7 @@ export function lecturesPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" style="--c:${WEEK_COLOR}">
-        <div class="lx-ed-head"><h2 id="lw-h">${esc(w.label || "Week")}</h2>
+        <div class="lx-ed-head"><span class="lx-wnum" id="lw-wnum" aria-hidden="true">${esc(weekNum(w))}</span><h2 id="lw-h">${esc(w.label || "Week")}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this week" aria-label="Delete this week">${ICON.trash}</button>` : ""}</span></div>
         <div class="lx-grid week">
           <label class="lx-f">Name<input type="text" id="lw-label" value="${esc(w.label)}" placeholder="e.g. Week 4"${dis}></label>
@@ -382,7 +382,7 @@ export function lecturesPage(ctx, r) {
     if (!edit) return;
     const bind = (id, k, after) => { const el = $(id); el.oninput = el.onchange = () => { w[k] = el.value.trim(); if (after) after(); changed(); }; };
     let shown = w.label || "Week";
-    bind("#lw-label", "label", () => { if ((w.label || "Week") === shown) return; shown = w.label || "Week"; $("#lw-h").textContent = shown; renderPath(weekSteps(w)); });
+    bind("#lw-label", "label", () => { if ((w.label || "Week") === shown) return; shown = w.label || "Week"; $("#lw-h").textContent = shown; $("#lw-wnum").textContent = weekNum(w); renderPath(weekSteps(w)); });
     bind("#lw-topic", "topic");
     root.querySelectorAll("[data-add-activity]").forEach(b => { b.onclick = () => { const last = (w.cards || []).at(-1); addLecture(w, last ? kindOf(last) : "lecture"); }; });
     $("#lw-del").onclick = async () => {

@@ -39,7 +39,7 @@ export function whenField(host, { date = "", time = "", withTime = true, empty =
     if (!v.date) return empty;
     const d = new Date(`${v.date}T12:00`); if (isNaN(d)) return v.date;
     const day = d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-    return withTime ? `${day} · ${v.time || "no time"}` : day;
+    return withTime && v.time ? `${day} · ${v.time}` : day;
   };
   const show = () => { btn.querySelector("span").textContent = text(); btn.classList.toggle("empty", !v.date); host.dataset.date = v.date; host.dataset.time = v.time; };
   const set = (k, x) => { if (v[k] === x) return; v = { ...v, [k]: x }; show(); onChange({ ...v }); };

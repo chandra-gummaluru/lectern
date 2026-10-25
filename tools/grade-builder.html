@@ -3301,7 +3301,7 @@ function whenLabel(e) {
   if (e.type === "deadline") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "End of Day"}`; }
   if (!e.date) return e.type === "test" ? "Choose a date" : "Choose a due date";
   const d = new Date(`${e.date}T12:00`); if (isNaN(d)) return e.date;
-  return `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time ? fmtTime(e.time) : "no time"}`;
+  return `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}${e.time ? ` · ${fmtTime(e.time)}` : ""}`;
 }
 // Typed times: 18:30, 1830, 9, and also 6pm, 6:30 pm, noon, midnight → "HH:MM" (null: can't read it).
 function parseTime(v) {

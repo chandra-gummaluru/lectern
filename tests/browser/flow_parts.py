@@ -62,7 +62,7 @@ def main():
         me.locator("#lt-path button", has_text="csc258 / f26").click()
         me.wait_for_selector("#lt-desc")
         assert not me.query_selector("#lt-about-open, [data-go=course], [data-part=settings].lt-off-acts, .lt-off-acts [data-part]"), "old cards or Settings are still there"
-        assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Activities", "Announcements", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
+        assert me.locator(".lt-part-head h2").all_inner_texts()[:4] == ["Announcements", "Activities", "Evaluations", "Gradebook"], me.locator(".lt-part-head h2").all_inner_texts()
         expect(me.locator("#lt-title")).to_have_text("Computer Organization")
         me.fill("#lt-title", "Computer Organization and Design")
         me.fill("#lt-desc .rt-ed", "From transistors to processors.")

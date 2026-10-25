@@ -52,6 +52,8 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .rq-mini { flex: none; display: inline-flex; align-items: center; gap: 5px; margin-right: 10px; font: 600 12.5px var(--font-ui); color: #b58a00; } .rq-mini svg { width: 16px; height: 16px; }
 .rq-foot { display: flex; justify-content: flex-end; margin: 10px 0 18px; }
 .rw-was, .rw-now { font-family: var(--font-ui); font-size: 13.5px; font-variant-numeric: tabular-nums; }   /* the reweighting table's percentages: the regular font */
+.fx-title > .dot.ic.box { flex: none; width: 26px !important; height: 28px !important; margin: 0 !important; color: #4a4f57; }   /* its icon, level with its name */
+.fx-title > .dot.ic.box svg { width: 22px !important; height: 22px !important; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -2754,7 +2756,7 @@ function focusHTML() {
   const sortArrow = k => (ui.sort === k ? `<span class="h-sort${(ui.sortDir || 1) < 0 ? " down" : ""}">${svg("up")}</span>` : "");
   const sortable = (k, label) => `data-act="sort" data-v="${esc(k)}" aria-sort="${ui.sort === k ? ((ui.sortDir || 1) > 0 ? "ascending" : "descending") : "none"}" title="Sort by ${label}"`;
   // What to show: a dropdown of the course grade and every evaluation, each with its colour
-  const picker = `<button type="button" class="dd-btn fx-dd" data-act="fx-menu" aria-haspopup="listbox" style="--c:${e ? colorOf(e) : "#5f6166"}">${evIcon(e)}<span class="fx-ddn" title="${esc(e ? e.name : "Course Grade")}">${esc(e ? e.name : "Course Grade")}</span>${svg("caret")}</button>`;
+  const picker = `<button type="button" class="dd-btn fx-dd" data-act="fx-menu" aria-haspopup="listbox" style="--c:${e ? colorOf(e) : "#5f6166"}">${evIcon(e || "grade")}<span class="fx-ddn" title="${esc(e ? e.name : "Course Grade")}">${esc(e ? e.name : "Course Grade")}</span>${svg("caret")}</button>`;
   const head = e
     ? `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:${colorOf(e)}" ${sortable(e.id, esc(e.name))}><span class="h-n" title="${esc(e.name)}">${evIcon(e)}<span class="h-nt">${esc(String(e.name).split(":")[0])}</span>${sortArrow(e.id)}</span><span class="h-t">${ui.fxPct ? "%" : `/${outOf(e)}`}</span></th></tr>`
     : `<tr><th class="c-name" ${sortable("name", "name")}>Student${sortArrow("name")}</th><th class="c-ev fx-mk" style="--c:#5f6166" ${sortable("grade", "course grade")}><span class="h-n">${evIcon("grade")}Course Grade${sortArrow("grade")}</span><span class="h-t">%</span></th></tr>`;
@@ -2797,7 +2799,7 @@ function fxStatsHTML(f) {
   if (e && missed) bits.push(`<i class="low">${missed} not submitted (as 0)</i>`);
   if (e && unmarked && all.length > sum.n + missed) bits.push(`${unmarked} not marked`);
   return `<div class="fx-card">
-      <div class="fx-title" style="--c:${e ? colorOf(e) : "#5f6166"}">${evIcon(e)}<div><h3>${esc(e ? e.name : "Course Grade")}</h3><small>${sub}</small></div></div>
+      <div class="fx-title" style="--c:${e ? colorOf(e) : "#5f6166"}">${evIcon(e || "grade", true)}<div><h3>${esc(e ? e.name : "Course Grade")}</h3><small>${sub}</small></div></div>
       <div class="fx-avg"><span>Average / Median</span><b><em class="${sum.n ? band(sum.mean) : ""}">${sum.n ? pct(sum.mean) : "—"}</em><i>/</i><em class="fx-med">${sum.n ? pct(sum.med) : "—"}</em></b><small>${bits.join(" · ")}</small></div>
       ${nf.length ? `<p class="fx-fnote">${svg("filter")}<span>${nf.map(([, l]) => esc(l)).join(" · ")}<br>${all.length} of ${everyone.length} students</span></p>` : ""}
       <div class="fx-hist"><span class="fx-l">Distribution</span>${fxHist(sum.n ? sum.vals : [], sum.n ? sum : null)}</div>

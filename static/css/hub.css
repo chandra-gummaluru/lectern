@@ -530,4 +530,20 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb-head-in.hb-head-in { flex-wrap: wrap; row-gap: 6px; padding-top: 18px; }
 .hb-head .hb-who { order: -1; flex: 1 1 100%; padding-bottom: 0; }
 .hb-head .hb-titles { flex: 1 1 100%; }
+
+/* Who's signed in: Lectern's account button (their name, a menu), or Sign in. */
+.hb-head .hb-who { display: flex; justify-content: flex-end; }
+.hb-acct-wrap { position: relative; }
+.hb .hb-acct { display: inline-flex; align-items: center; gap: 8px; max-width: 280px; height: 36px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--card); color: var(--ink); font: 500 14px var(--font-ui); text-decoration: none; cursor: pointer; transition: background .12s, border-color .12s; }
+.hb .hb-acct:hover { background: var(--accent-bg); border-color: var(--accent); }
+.hb-acct svg { width: 16px; height: 16px; flex: none; }
+.hb-acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hb-acct svg.hb-chev { width: 14px; height: 14px; margin-left: -2px; opacity: .6; transition: transform .15s; }
+.hb-acct[aria-expanded="true"] svg.hb-chev { transform: rotate(180deg); }
+.hb-menu { position: absolute; right: 0; top: 42px; min-width: 240px; padding: 6px; z-index: 40; background: var(--card); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / .18); display: flex; flex-direction: column; text-align: left; white-space: normal; }
+.hb-menu p { margin: 6px 10px 8px; font-size: 12.5px; color: var(--ink-3); line-height: 1.45; }
+.hb-menu p b { color: var(--ink); font-weight: 600; }
+.hb-menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 2px; }
+.hb-menu a, .hb-menu button { display: flex; align-items: center; height: 34px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: 14px var(--font-ui); text-decoration: none; text-align: left; cursor: pointer; }
+.hb-menu a:hover, .hb-menu button:hover { background: var(--strip); }
 .hb-head .hb-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* one line; a name too long for it ends in … (the whole name is its tooltip) */

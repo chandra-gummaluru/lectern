@@ -134,7 +134,7 @@ def main():
         me.locator("#lt-path button", has_text="csc258 / f26").click(); me.wait_for_selector(S + ".lt-st-list")
         expect(me.locator(S + ".lt-orow", has_text="Castillo, Maya")).to_contain_text("Signed in")
         print("4 the student signed in with the code, and sees Lectures")
-        stu.click("#hb-out"); stu.wait_for_timeout(800)
+        stu.click("#hb-acct"); stu.click("#hb-out"); stu.wait_for_timeout(800)
         stu.goto(srv.base + "c/chandra/csc258/f26/#activities")
         expect(stu.locator(".hb-locked")).to_be_visible()
         print("5 signed out")

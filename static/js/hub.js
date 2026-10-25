@@ -228,12 +228,29 @@ function header() {
   t.innerHTML = `<a href="#">${esc([c.code, c.title].filter(Boolean).join(": ") || "Course page")}</a>`;
   t.title = t.textContent;
   const ROLE = { owner: "Instructor", instructor: "Instructor", ta: "TA", staff: "Staff", student: "Student" };
+  // Who's signed in, as Lectern's bar has it: a button with their name that opens a menu (or Sign in).
   // Students sign in to this course page (its own sign-in: email and a code); the teaching team is signed in to Lectern.
-  $("hb-who").innerHTML = v.signedIn
-    ? `Signed in as <b>${esc(v.name)}</b>${v.role ? `<span class="hb-role">${esc(ROLE[v.role] || v.role)}</span>` : ""}${v.role === "student" ? ` <button type="button" class="hb-si-out" id="hb-out">Sign out</button>` : ""}`
-    : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a>`;
-  const out = $("hb-out");
-  if (out) out.onclick = async () => { out.disabled = true; await fetch(`${root.dataset.api}/sign-out`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" } }).catch(() => {}); location.reload(); };
+  const USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
+  const DOWN = '<svg class="hb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const who = $("hb-who");
+  if (!v.signedIn) { who.innerHTML = `<a class="hb-acct" href="${esc(D.signIn || D.lectern)}">${USER}<span>Sign in</span></a>`; }
+  else {
+    who.innerHTML = `<div class="hb-acct-wrap"><button type="button" class="hb-acct" id="hb-acct" aria-haspopup="menu" aria-expanded="false">${USER}<span>${esc(v.name)}</span>${DOWN}</button></div>`;
+    const btn = $("hb-acct"); let menu = null;
+    const close = () => { if (menu) { menu.remove(); menu = null; btn.setAttribute("aria-expanded", "false"); } };
+    btn.onclick = e => {
+      e.stopPropagation(); if (menu) return close();
+      menu = document.createElement("div"); menu.className = "hb-menu"; menu.setAttribute("role", "menu");
+      menu.innerHTML = `<p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
+        ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
+        ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
+      btn.after(menu); btn.setAttribute("aria-expanded", "true");
+      const out = $("hb-out");
+      if (out) out.onclick = async () => { out.disabled = true; await fetch(`${root.dataset.api}/sign-out`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" } }).catch(() => {}); location.reload(); };
+    };
+    document.addEventListener("click", e => { if (menu && !menu.contains(e.target)) close(); });
+    document.addEventListener("keydown", e => { if (menu && e.key === "Escape") { close(); btn.focus(); } });
+  }
   const bar = $("hb-staff");
   if (v.staff) {
     const base = location.pathname;

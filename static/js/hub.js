@@ -108,6 +108,12 @@ function weekRow(w, now) {
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");
   return `<a class="hs-row hs-wk${w.i === now ? " now" : ""}" href="#week/${w.i}"><span class="hs-num">${esc(weekNum(w))}</span><span class="hs-t"><b>${esc(w.label || "Week")}</b>${bits ? `<small>${bits}</small>` : ""}</span>${w.i === now ? `<span class="hs-tag">This week</span>` : ""}${CHEV}</a>`;
 }
+// A week, opened: its row, then its activities and what's due, inside it (as a week is in Lectern).
+function weekOpen(w, now) {
+  const evs = open("evaluations") ? evalsIn(w) : [];
+  const body = (w.cards.length ? w.cards.map(activityCard).join("") : `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`) + evs.map(e => evRow(e)).join("");
+  return `<div class="hs-group hs-wkopen">${weekRow(w, now).replace('class="hs-row hs-wk', 'class="hs-row hs-wk hs-grp')}<div class="hs-stack">${body}</div></div>`;
+}
 const weekList = () => { const now = thisWeek(); return `<div class="hs-list">${weeks().map(w => weekRow(w, now)).join("")}</div>`; };
 function evRow(e, weight) {
   const t = evType(e);
@@ -143,7 +149,7 @@ const PAGES = {
     if (!open("lectures")) out.push(lockedSec("lectures", "Activities"));
     else {   // just this week (the first, before the term starts); the rest are a click away
       const now = thisWeek(), w = realWeeks().find(x => x.i === now) || realWeeks()[0], n = realWeeks().length;
-      out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `<div class="hs-list">${weekRow(w, now)}</div>${n > 1 ? `<a class="hs-more" href="#activities">All ${n} weeks ${CHEV}</a>` : ""}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
+      out.push(`<section class="hs-sec">${secHead("Activities", "#activities")}${w ? `${weekOpen(w, now)}${n > 1 ? `<a class="hs-more" href="#activities">All ${n} weeks ${CHEV}</a>` : ""}` : `<p class="hs-empty">The weeks will appear here.</p>`}</section>`);
     }
     // Evaluations: how many, and what's next.
     if (!open("evaluations")) out.push(lockedSec("evaluations", "Evaluations"));

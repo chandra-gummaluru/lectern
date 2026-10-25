@@ -547,3 +547,10 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb-menu a, .hb-menu button { display: flex; align-items: center; height: 34px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--ink); font: 14px var(--font-ui); text-decoration: none; text-align: left; cursor: pointer; }
 .hb-menu a:hover, .hb-menu button:hover { background: var(--strip); }
 .hb-head .hb-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* one line; a name too long for it ends in … (the whole name is its tooltip) */
+
+/* The home page's week, opened: its activities and what's due inside it. */
+.hs-group > .hs-stack { padding: 12px 14px 14px; gap: 8px; }
+.hs-wkopen > a.hs-row.hs-wk { border: 0; border-radius: 0; background: color-mix(in srgb, var(--accent-bg) 60%, var(--card)); }
+.hs-wkopen > a.hs-row.hs-wk:hover { box-shadow: none; }
+.hs-wkopen .hs-card { padding: 14px 18px; }
+.hs-wkopen .hs-card h3 { font-size: 20px; }

@@ -36,6 +36,9 @@ function draw() {
   const m = $("hb-main");
   try { m.innerHTML = t.open ? HubView.draw(D, t.id, arg) : lockedHTML(t); }
   catch (e) { console.error(e); m.innerHTML = `<p class="hb-empty">Something went wrong showing this part of the page.</p>`; }
+  // #evaluations/<id> (from an evaluation in a week): open it (in its group, if it's in one) and show it.
+  const ev = t.id === "evaluations" && arg && [...m.querySelectorAll("[data-ev]")].find(x => x.dataset.ev === arg);
+  if (ev) { const g = ev.closest("details"); if (g) g.open = true; ev.classList.add("hb-hl"); requestAnimationFrame(() => scrollTo({ top: ev.getBoundingClientRect().top + scrollY - $("hb-tabs").offsetHeight - 24 })); }
   const nowWk = t.id === "lectures" && m.querySelector(".hb-week.now");
   if (nowWk && !arg) requestAnimationFrame(() => scrollTo({ top: nowWk.getBoundingClientRect().top + scrollY - $("hb-tabs").offsetHeight - 16 }));
   document.title = `${t.title} · ${D.course.code || D.course.title}`;

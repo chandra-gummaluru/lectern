@@ -35,6 +35,15 @@ export const KIND_ICON = {
   other: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
 };
 const WEEK_COLOR = "#c99a06";
+// An evaluation's icon and name, as the Gradebook's Evaluations has them.
+const EV_TYPES = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
+const EV_ICON = {
+  assignment: ic('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
+  test: ic('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/>'),
+  project: ic('<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>'),
+  lab: ic('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>'),
+  other: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),
+};
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
 const DAYS3 = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
@@ -63,6 +72,14 @@ export function whenText(stamp, year = false) {
   const { date, time } = readStamp(stamp), d = fromIso(date);
   return d ? `${DAYS3[d.getDay()]}, ${MON3[d.getMonth()]} ${d.getDate()}${year ? `, ${d.getFullYear()}` : ""}${time ? ` at ${time}` : ""}` : "";
 }
+// An activity's dates: one or more (e.g. a lab held on three days). "dates" when there are several; "date" is the first.
+export const datesOf = c => (Array.isArray(c.dates) && c.dates.filter(Boolean).length ? c.dates.filter(Boolean) : c.date ? [c.date] : []);
+function setDates(c, list) {
+  const L = list.filter(Boolean);
+  if (L.length) c.date = L[0]; else delete c.date;
+  if (L.length > 1) c.dates = L; else delete c.dates;
+}
+const datesText = c => { const D = datesOf(c).map(s => [readStamp(s), s]).sort((a, b) => (a[0].date + a[0].time).localeCompare(b[0].date + b[0].time)).map(x => x[1]); return D.length > 1 ? D.map(s => whenText(s)).join(" · ") : whenText(D[0], true); };
 const kindOf = c => c.kind || (KINDS.find(([, n]) => String(c.label || "").toLowerCase().startsWith(n.toLowerCase())) || ["lecture"])[0];
 const kindName = k => (KINDS.find(x => x[0] === k) || KINDS[0])[1];
 
@@ -96,7 +113,7 @@ function fromCoursePage(page) {
     if (w.isBreak) { weeks.push({ id: uid(), isBreak: true, text: w.text || "" }); return; }
     weeks.push({ id: uid(), label: w.label || "", start: w.start || "", end: w.end || "", topic: w.topic || "",
       cards: (w.cards || []).map(c => ({ id: uid(), kind: kindOf(c), label: c.label || "", title: c.title || "", description: c.description || "",
-        ...(c.date ? { date: c.date } : {}), files: (c.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: f.label || "", url: f.url })) })) });
+        ...(c.date ? { date: c.date } : {}), ...(Array.isArray(c.dates) && c.dates.length > 1 ? { dates: c.dates.slice() } : {}), files: (c.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: f.label || "", url: f.url })) })) });
   }));
   return { format: "lectern-lectures/1", weeks };
 }
@@ -172,10 +189,9 @@ export function lecturesPage(ctx, r) {
   const PAPERCLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7L14 4a3.3 3.3 0 0 1 4.7 4.7l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4L15.5 7"/></svg>';
   const kindLabel = x => x.label || kindName(kindOf(x));   // above the title, e.g. LECTURE 07
   // Under the title: when it is (if it has a date) and its files; nothing about what it doesn't have.
-  const evalName = x => { const e = x.eval && (st.evals || []).find(y => y.id === x.eval); return e ? e.name : ""; };
   // Under the title: when it is, as Announcements says it (if it has a date); its description; then what goes with it.
   const plain = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`#>]+/g, "").replace(/^\s*([-+]|\d+[.)])\s+/gm, "").replace(/\s+/g, " ").trim();
-  const lecMeta = x => { const n = (x.files || []).length, ev = evalName(x); return [ev ? `For ${esc(ev)}` : "", n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
+  const lecMeta = x => { const n = (x.files || []).length; return [n ? `<span class="lx-files">${PAPERCLIP}${n} file${n === 1 ? "" : "s"}</span>` : ""].filter(Boolean).join('<span class="lx-sep">·</span>'); };
   const status$ = () => (edit ? `<span class="lx-status" id="lw-status">${st.dirty || st.saving ? "Saving…" : ""}</span>` : "");
   const taNote = () => (edit ? "" : `<p class="lt-note lx-note">You can look at the activities; the instructors change them.</p>`);
   const toWeek = w => go({ page: "lectures", c, t, w: w.id });
@@ -192,7 +208,20 @@ export function lecturesPage(ctx, r) {
   // One lecture as a sub-card, inside its week.
   const lecRow = (w, x) => `<div class="lx-row sub lx-lec" style="--c:${KIND_COLOR[kindOf(x)]}" data-lec="${esc(x.id)}" data-w="${esc(w.id)}" role="button" tabindex="0"${edit ? ' draggable="true"' : ""}>
       <span class="lx-kicon" title="${esc(kindName(kindOf(x)))}">${KIND_ICON[kindOf(x)]}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${whenText(x.date, true) ? `<p class="lx-when">${esc(whenText(x.date, true))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
+      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(x)))}</p><h3>${esc(titleOf(x))}</h3>${datesText(x) ? `<p class="lx-when">${esc(datesText(x))}</p>` : ""}${plain(x.description) ? `<p class="lx-clip">${esc(plain(x.description))}</p>` : ""}${lecMeta(x) ? `<p class="lx-meta">${lecMeta(x)}</p>` : ""}</div></div>`;
+  const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };
+  const weekEvals = w => {
+    if (!w.start) return [];
+    const R = realWeeks(), nx = R.slice(R.indexOf(w) + 1).find(y => y.start);
+    const from = mondayOf(w.start), to = nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.end || w.start), 6);
+    return (st.evals || []).filter(e => e.date && e.date >= from && e.date <= to).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+  };
+  const evWhen = e => { const d = fromIso(e.date); if (!d) return ""; const day = `${DAYS3[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`; return `${e.type === "test" ? "" : "Due "}${day}${e.time ? ` at ${e.time}` : ""}`; };
+  // An evaluation dated this week (from the gradebook): it opens in the Evaluations.
+  const evRow = e => `<div class="lx-row sub lx-lec lx-ev" data-ev="${esc(e.id)}" role="button" tabindex="0" title="Open ${esc(e.name)} in the Evaluations">
+      <span class="lx-kicon" title="${esc(EV_TYPES[e.type] || "Assignment")}">${EV_ICON[e.type] || EV_ICON.assignment}</span>
+      <div class="lx-main"><p class="lx-kind">${esc(EV_TYPES[e.type] || "Assignment")}${e.short ? ` / ${esc(e.short)}` : ""}</p><h3>${esc(e.name)}</h3><p class="lx-when">${esc(evWhen(e))}</p></div></div>`;
+  const evsHTML = w => { const E = weekEvals(w); return E.length ? `<div class="lx-evs">${E.map(evRow).join("")}</div>` : ""; };
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No activities this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 
   // ── Every week ──
@@ -215,7 +244,7 @@ export function lecturesPage(ctx, r) {
       <div class="lx-row grp" data-week="${esc(w.id)}" role="button" tabindex="0">
         <span class="lx-wnum" aria-hidden="true">${esc(weekNum(w))}</span>
         <div class="lx-main"><div class="lx-top"><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
-      ${subsHTML(w)}
+      ${subsHTML(w)}${evsHTML(w)}
       <div class="lx-foot"></div>
     </div>`;
   const breakHTML = w => `<div class="lx-break" data-unit="${esc(w.id)}"${edit ? ' draggable="true"' : ""}>${edit
@@ -225,6 +254,11 @@ export function lecturesPage(ctx, r) {
   // Clicks, keys and dragging on a list of weeks (or one week's lectures).
   function wire(root) {
     const open = el => { if (el.dataset.lec) toLec(weekById(el.dataset.w), allCards().get(el.dataset.lec)); else if (el.dataset.week) toWeek(weekById(el.dataset.week)); };
+    root.querySelectorAll("[data-ev]").forEach(el => {
+      const open = () => ctx.openEval && ctx.openEval(el.dataset.ev);
+      el.onclick = e => { e.stopPropagation(); open(); };
+      el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); open(); } };
+    });
     root.querySelectorAll("[data-lec], [data-week]").forEach(el => {
       el.onclick = e => { if (e.target.closest("button, input")) return; e.stopPropagation(); open(el); };
       el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); open(el); } };
@@ -335,7 +369,7 @@ export function lecturesPage(ctx, r) {
         <div class="lx-grid one"><label class="lx-f">Topic<input type="text" id="lw-topic" value="${esc(w.topic)}" placeholder="What this week covers"${dis}></label></div>
         <h3 class="lx-sec">Activities</h3>
         <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
-        ${subsHTML(w)}
+        ${subsHTML(w)}${evsHTML(w)}
         ${edit ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add-activity>${ICON.plus}Add an Activity</button></div>` : ""}
       </div>
     </div></div>`);
@@ -363,7 +397,7 @@ export function lecturesPage(ctx, r) {
   const namedHTML = x => `Shown as <b>${esc(nameOf(x))}</b>.${kindOf(x) === "other" ? "" : ` ${esc(kindName(kindOf(x)))}s are numbered in course order.`}`;
   function drawLecture(w, x) {
     renderPath(lecSteps(w, x));
-    const dis = edit ? "" : " disabled", when = readStamp(x.date), k = kindOf(x);
+    const dis = edit ? "" : " disabled", k = kindOf(x);
     const files = x.files || [];
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
@@ -378,10 +412,9 @@ export function lecturesPage(ctx, r) {
         <p class="lx-help" id="lw-named">${namedHTML(x)}</p>
         <div class="lx-grid when">
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""}>${esc([y.label || "Week", rangeText(y.start, y.end)].filter(Boolean).join(" · "))}</option>`).join("")}</select></label>
-          <div class="lx-f">When<div id="lw-when-f"></div></div>
+          <div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div>
         </div>
-        <p class="lx-help">The date and time are optional: with a date, This week shows it on its day.</p>
-        <div class="lx-grid one"><label class="lx-f">Evaluation <small>Optional: the one it goes with (e.g. a lab and its report). The course page links to it.</small><select id="lw-eval"${dis}><option value="">None</option>${(st.evals || []).map(e => `<option value="${esc(e.id)}"${e.id === x.eval ? " selected" : ""}>${esc(e.name)}</option>`).join("")}</select></label></div>
+        <p class="lx-help">The date and time are optional: with a date, This week shows it on its day. One held on several days (e.g. a lab's sections) can have more than one.</p>
         <h3 class="lx-sec">Description</h3>
         <div id="lw-desc"></div>
         <h3 class="lx-sec">Files and Links</h3>
@@ -390,8 +423,19 @@ export function lecturesPage(ctx, r) {
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn add" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn add" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
       </div>
     </div></div>`);
-    whenField($("#lw-when-f"), { date: when.date, time: when.time, id: "lw-when", label: "When", empty: "Choose a date", timeLabel: "Starts At", near: w.start, disabled: !edit,
-      onChange: ({ date, time }) => { if (date) x.date = writeStamp(date, time); else delete x.date; changed(); } });
+    // Its dates: a field for each (at least one), and another one added with Add a Date.
+    let W = datesOf(x).slice(); if (!W.length) W = [""];
+    const whens = () => {
+      const host = $("#lw-whens");
+      host.innerHTML = W.map((_, i) => `<div class="lx-when-row"><div data-wi="${i}"></div>${edit && W.length > 1 ? `<button type="button" class="lx-ic quiet" data-wdel="${i}" title="Remove this date" aria-label="Remove this date">${ICON.trash}</button>` : ""}</div>`).join("")
+        + (edit && W.some(Boolean) ? `<button type="button" class="lx-btn add sm" id="lw-when-add">${ICON.plus}Add a Date</button>` : "");
+      W.forEach((s, i) => { const v = readStamp(s);
+        whenField(host.querySelector(`[data-wi="${i}"]`), { date: v.date, time: v.time, id: i ? `lw-when-${i}` : "lw-when", label: i ? `Date ${i + 1}` : "When", empty: "Choose a date", timeLabel: "Starts At", near: (readStamp(W[0]).date || w.start), disabled: !edit,
+          onChange: ({ date, time }) => { W[i] = date ? writeStamp(date, time) : ""; setDates(x, W); changed(); if (!date && W.length > 1) { W.splice(i, 1); whens(); } else if (!$("#lw-when-add") && date) whens(); } }); });
+      host.querySelectorAll("[data-wdel]").forEach(b => { b.onclick = () => { W.splice(+b.dataset.wdel, 1); if (!W.length) W = [""]; setDates(x, W); changed(); whens(); }; });
+      const add = $("#lw-when-add"); if (add) add.onclick = () => { W.push(""); whens(); const f = host.querySelector(`[data-wi="${W.length - 1}"] button`); if (f) f.click(); };
+    };
+    whens();
     richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;
     let shown = titleOf(x);
@@ -408,7 +452,6 @@ export function lecturesPage(ctx, r) {
       $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now];
       head(); changed();
     }; });
-    $("#lw-eval").onchange = e => { if (e.target.value) x.eval = e.target.value; else delete x.eval; changed(); };
     $("#lw-week").onchange = () => {
       const to = weekById($("#lw-week").value); if (!to || to === w) return;
       w.cards = w.cards.filter(z => z !== x); (to.cards = to.cards || []).push(x); changed();
@@ -439,7 +482,7 @@ export function lecturesPage(ctx, r) {
     };
   }
 
-  if (st.data) { draw(); if (ctx.evaluations) ctx.evaluations().then(e => { st.evals = e; }).catch(() => {}); }   // (an evaluation added meanwhile)
+  if (st.data) { draw(); if (ctx.evaluations) ctx.evaluations().then(e => { const was = JSON.stringify(st.evals || []); st.evals = e; if (JSON.stringify(e) !== was && here()) draw(); }).catch(() => {}); }   // (an evaluation added or moved meanwhile)
   else load();
 }
 

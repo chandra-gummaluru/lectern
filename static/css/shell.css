@@ -755,3 +755,15 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* One text size on the offering page: cards' text, the description, and people's names and details are all 14px. */
 .lt-part-text, .lt-part.lt-wide .lt-part-text { font-size: 14px; }
 .rt.quiet .rt-ed { font-size: 14px; }
+
+/* A week's evaluations (from the gradebook), under its activities: they open in the Evaluations. */
+.lx-evs { display: grid; gap: 8px; padding: 0 14px; margin-top: 8px; }
+.lx-editor .lx-evs { padding: 0; }
+.lx-row.lx-ev { border-style: dashed; }
+
+/* An activity's dates: one field each, a remove button beside it when there are several, then Add a Date. */
+.lx-whens { display: grid; gap: 8px; justify-items: start; }
+.lx-when-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+.lx-when-row > div { flex: 1; min-width: 0; }
+.lx-whens .lx-btn.add.sm { margin-top: 2px; }
+.lx-grid.when { align-items: start; }

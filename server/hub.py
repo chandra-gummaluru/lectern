@@ -233,7 +233,7 @@ def week_range(w, year):
 
 def _week(w):
     cards = [{"kind": _s(c.get("kind"), 20), "label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
-              "date": _s(c.get("date"), 60), "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
+              "date": _s(c.get("date"), 60), "dates": [_s(d, 60) for d in _list(c.get("dates"))[:20] if isinstance(d, str) and d.strip()], "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
               "files": _files(c.get("files")), "eval": _s(c.get("eval"), 64)}
              for c in _list(w.get("cards")) if isinstance(c, dict)]
     if w.get("isBreak"):

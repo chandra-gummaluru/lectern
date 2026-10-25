@@ -450,3 +450,9 @@ body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
 /* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
 * { scrollbar-width: none !important; }
 ::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+
+/* An evaluation among a week's activities: a dashed card that opens it on the Evaluations tab. */
+.hb a.hb-card.hb-evl { display: block; text-decoration: none; color: inherit; border: 1px dashed var(--line-2); box-shadow: none; }
+.hb a.hb-card.hb-evl:hover { border-color: var(--ink-3); }
+.hb-eval.hb-hl, .hb-eval-subs li.hb-hl { animation: hb-hl 2.4s ease-out; }
+@keyframes hb-hl { 0%, 40% { background: var(--accent-bg, #fdf3d6); } 100% { background: transparent; } }

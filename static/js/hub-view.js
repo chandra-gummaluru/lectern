@@ -108,18 +108,20 @@ const fileLinks = fs => (fs || []).map(f => [f, href(f.url)]).filter(x => x[1])
   .map(([f, h]) => `<a class="hb-file" href="${esc(h)}" target="_blank" rel="noopener">${esc(f.label || "Download")}</a>`).join("");
 const fmtW = n => String(Math.round(Number(n || 0) * 100) / 100);
 
+// An activity's dates: one or more ("dates" when it's on several days).
+const datesOfCard = c => (Array.isArray(c.dates) && c.dates.filter(Boolean).length ? c.dates.filter(Boolean) : c.date ? [c.date] : []);
 function lectureCard(c, drag) {
   const files = fileLinks(c.files);
-  const when = c.date ? esc(String(c.date).replace(/, \d{4}/, "")) : "";
+  const D = datesOfCard(c), when = esc(D.map(s => String(s).replace(/, \d{4}/, "")).join(" · "));
   const dr = EDIT && drag ? ` draggable="true" data-ldrag="${esc(drag.week)}" data-lj="${drag.j}"` : "";
   return `<article class="hb-card${edCls(c._p)}${EDIT && !c.title ? " hb-untitled" : ""}"${opens(c._p, "Edit this lecture: its title, description, files and links")}${dr}><div class="hb-card-top"><span>${esc(c.label)}</span><span>${when}</span></div>
-    <h3>${esc(c.title || (EDIT ? "Untitled" : c.label) || "Untitled")}</h3>${c.description ? `<div class="hb-card-desc">${markdown(c.description)}</div>` : ""}${evalFor(c)}
+    <h3>${esc(c.title || (EDIT ? "Untitled" : c.label) || "Untitled")}</h3>${c.description ? `<div class="hb-card-desc">${markdown(c.description)}</div>` : ""}
     ${files ? `<div class="hb-files">${files}</div>` : `<div class="hb-soon">Coming soon</div>`}</article>`;
 }
-// An activity that goes with an evaluation (e.g. a lab and its report): a link to it on the Evaluations tab.
-function evalFor(c) {
-  const E = data("evaluations"), e = c.eval && E && (E.evals || []).find(x => x.id === c.eval);
-  return e ? `<p class="hb-card-ev">For <a href="#evaluations">${esc(e.name)}</a></p>` : "";
+// An evaluation dated in a week, among its activities: it opens on the Evaluations tab.
+const EV_TYPE = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
+function evalLink(e) {
+  return `<a class="hb-card hb-evl${e.type === "test" ? " test" : ""}" href="#evaluations/${encodeURIComponent(e.id)}"><div class="hb-card-top"><span>${esc(EV_TYPE[e.type] || "Assignment")}</span><span>${esc((e.type === "test" ? "" : "Due ") + (fromIso(e.date) ? fromIso(e.date).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : ""))}</span></div><h3>${esc(e.name)}</h3></a>`;
 }
 function evalWhen(e) {
   const d = fromIso(e.date); if (!d) return "";
@@ -243,7 +245,7 @@ const DRAW = {
       const tm = (a, b) => `<span class="tm">${a ? `<b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}` : "<b>·</b>"}</span>`;
       ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev">${tm(m.start, m.end)}<span class="what"><b>${esc(meetingName(m))}${meetingSub(m) ? ` <span class="sec">${esc(meetingSub(m))}</span>` : ""}</b>${m.where ? `<small>${esc(m.where)}</small>` : ""}</span></div>` }));
       evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due">${tm(e.time, "")}<span class="what"><b>${esc(e.name)}</b><span class="hb-tag${e.type === "test" ? " dk" : ""}">${e.type === "test" ? "Test" : "Due"}</span></span></div>` }));
-      (lw ? lw.cards : []).filter(c => stampDay(c.date) === d).forEach(c => { const at = (/(\d\d:\d\d)/.exec(c.date) || [])[1] || ""; items.push({ t: at, h: `<div class="hb-ev">${tm(at, "")}<span class="what"><b>${esc(c.title || c.label)}</b>${c.title && c.label ? `<small>${esc(c.label)}</small>` : ""}</span></div>` }); });
+      (lw ? lw.cards : []).forEach(c => datesOfCard(c).filter(s => stampDay(s) === d).forEach(s => { const at = (/(\d\d:\d\d)/.exec(s) || [])[1] || ""; items.push({ t: at, h: `<div class="hb-ev">${tm(at, "")}<span class="what"><b>${esc(c.title || c.label)}</b>${c.title && c.label ? `<small>${esc(c.label)}</small>` : ""}</span></div>` }); }));
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
       if (!items.length) continue;   // only the days that have something on them
       days.push(`<li class="${d === now ? "today" : ""}"><span class="hb-tl-dot"></span><p class="hb-tl-d">${d === now ? `<i>Today</i>` : ""}${esc(DAY3[dow])} · ${esc(fmt(d, { month: "short", day: "numeric" }))}</p><div class="hb-day-items">${items.map(x => x.h).join("")}</div></li>`);
@@ -280,12 +282,12 @@ const DRAW = {
       const nx = L.weeks.slice(j + 1).find(x => !x.isBreak && x.start);
       const end = w.start ? (nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.start), 6)) : "";
       const evs = E && w.start ? (E.evals || []).filter(e => e.date && e.date >= mondayOf(w.start) && e.date <= end) : [];
-      const pills = [...evs.map(e => `<span class="hb-pill${e.type === "test" ? " dk" : ""}">${esc(String(e.name).split(":")[0])}</span>`), ...w.deadlines.map(d => `<span class="hb-pill">${esc(d)}</span>`)].join("");
+      const pills = w.deadlines.map(d => `<span class="hb-pill">${esc(d)}</span>`).join("");
       const name = EDIT ? `<button type="button" class="hbe-wname" data-act="open" data-path="${esc(w._p)}" title="Edit this week: its dates, topic, hours, deadlines and announcements">${esc(w.label || "Week")}</button>` : esc(w.label);
-      const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("");
+      const cards = w.cards.map((c, k) => lectureCard(c, { week: w._p, j: k })).join("") + evs.slice().sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))).map(evalLink).join("");
       const add = EDIT ? `<div class="hbe-adds sm"><button type="button" class="hbe-add" data-act="lec-add" data-path="${esc(w._p)}" data-lfree="${esc(w._p)}" title="Add a lecture at the end of this week (or drop a lecture here to move it to the end)">+ Add Lecture</button></div>` : "";
       return `<section class="hb-week${w.i === cur ? " now" : ""}" id="wk-${w.i}"${drag}><div class="hb-week-h">${EDIT ? GRIP : ""}${w.i === cur ? `<span class="hb-now">This week</span>` : ""}<h3 title="${esc(w.label || "")}">${name}</h3>${w.dates ? `<span class="d">${esc(w.dates)}</span>` : EDIT ? `<span class="d">No dates</span>` : ""}${w.topic ? `<span class="t">${rich(w.topic)}</span>` : ""}${pills ? `<div class="hb-pills">${pills}</div>` : ""}</div>
-        <div class="hb-week-b">${w.cards.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No activities this week.</p>`}${add}</div></section>${tail}`;
+        <div class="hb-week-b">${w.cards.length || evs.length || w.noClass ? `<div class="hb-grid">${cards}${w.noClass ? `<div class="hb-card nocl">No class</div>` : ""}</div>` : `<p class="hb-nothing">No activities this week.</p>`}${add}</div></section>${tail}`;
     }).join("") + `</div>`;
   },
 
@@ -308,9 +310,9 @@ const DRAW = {
     // A marking scheme, as a syllabus has it: one list, each evaluation a row (its name and when, its weight on the
     // right); a group's row opens to show its parts.
     const when = e => esc(evalWhen(e).replace(/^Due /, ""));
-    const one = u => `<li class="hb-eval${u.type === "test" ? " test" : ""}"><div class="hb-eval-m"><h3>${esc(u.name)}</h3>${evalWhen(u) ? `<p class="hb-eval-d">${u.type === "test" ? "" : "Due "}${when(u)}</p>` : ""}${extras(u)}</div><div class="hb-eval-w">${fmtW(u.weight)}%</div></li>`;
+    const one = u => `<li class="hb-eval${u.type === "test" ? " test" : ""}" data-ev="${esc(u.id)}"><div class="hb-eval-m"><h3>${esc(u.name)}</h3>${evalWhen(u) ? `<p class="hb-eval-d">${u.type === "test" ? "" : "Due "}${when(u)}</p>` : ""}${extras(u)}</div><div class="hb-eval-w">${fmtW(u.weight)}%</div></li>`;
     const group = u => `<li class="hb-eval grp"><details><summary><div class="hb-eval-m"><h3>${esc(u.name)}</h3><p class="hb-eval-d">${esc(`Best ${u.keep} of ${u.count}, ${fmtW(u.weight / Math.max(1, u.keep))}% each`)}</p></div><div class="hb-eval-w">${fmtW(u.weight)}%</div>${CHEV}</summary>
-        <ul class="hb-eval-subs">${u.members.map(m => `<li><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${when(m)}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></details></li>`;
+        <ul class="hb-eval-subs">${u.members.map(m => `<li data-ev="${esc(m.id)}"><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${when(m)}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></details></li>`;
     return `<h2 class="hb-h2">Evaluations</h2><p class="hb-lede">Every evaluation, its weight and when it is. Together they make up your course grade.</p>
       <ol class="hb-scheme">${E.units.map(u => (u.kind === "group" ? group(u) : one(u))).join("")}</ol>`;
   },
@@ -368,7 +370,7 @@ function partWeeks(lectures, year) {
     if (w.isBreak) return { i, isBreak: true, label: str(w.text), cards: [], deadlines: [] };
     const [start, end] = weekRange(w, year);
     return { i, isBreak: false, label: str(w.label), dates: str(w.dates) || rangeText(start, end), start, end, topic: str(w.topic), deadlines: [], noClass: 0,
-      cards: arr(w.cards).map(c => ({ kind: str(c.kind), label: str(c.label), title: str(c.title), description: str(c.description), date: str(c.date), files: filesOf(c.files), eval: str(c.eval) })) };
+      cards: arr(w.cards).map(c => ({ kind: str(c.kind), label: str(c.label), title: str(c.title), description: str(c.description), date: str(c.date), dates: arr(c.dates).map(str).filter(Boolean), files: filesOf(c.files) })) };
   });
 }
 // The week a day is in (the last week whose Monday is on or before it).

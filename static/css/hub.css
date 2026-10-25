@@ -530,3 +530,4 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb-head-in.hb-head-in { flex-wrap: wrap; row-gap: 6px; padding-top: 18px; }
 .hb-head .hb-who { order: -1; flex: 1 1 100%; padding-bottom: 0; }
 .hb-head .hb-titles { flex: 1 1 100%; }
+.hb-head .hb-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* one line; a name too long for it ends in … (the whole name is its tooltip) */

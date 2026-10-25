@@ -380,14 +380,12 @@ const PAGES = {
     const acts = w.cards.map(c => { const k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [];
       return item(KIND_ICON[k], `${esc(KIND_NAME[k])}${groupTag(c.groups)}`, c.title || c.label || "Untitled", datesOf(c).map(stampText).join(" · "),
         `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`); }).join("");
-    const due = evs.map(e => `<a class="ec-wrow wk-due" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic sm">${EV_ICON[evType(e)]}</span><span class="wk-dt"><small class="hs-kick">${esc(e.name)}</small><b>${esc(e.title || e.name)}</b></span><span class="sp"></span>${evWhen(e) ? `<span class="wk-dw">${esc(evWhen(e))}</span>` : ""}${CHEV}</a>`).join("");
+    const due = evs.map(e => `<a class="wk-item wk-link" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3>${evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${CHEV}</a>`).join("");
     const an = anns.map(a => item(MEGAPHONE, `${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}`, a.title || "Announcement", stampText(a.date), `<div class="hs-body">${markdown(a.body)}</div>`)).join("");
     return `${path([["Activities", "#activities"], [w.label || "Week"]])}
       <article class="ec-card wk-card">
         <header class="ec-head"><span class="hs-num">${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}${now ? ` <span class="hs-tag">This week</span>` : ""}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
-        <div class="wk-part">${acts ? `<div class="wk-list">${acts}</div>` : `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`}</div>
-        ${due ? `<div class="wk-part"><div class="ec-when">${due}</div></div>` : ""}
-        ${an ? `<div class="wk-part wk-line"><div class="wk-list">${an}</div></div>` : ""}
+        ${[acts, due, an].filter(Boolean).map(x => `<div class="wk-group"><div class="wk-list">${x}</div></div>`).join("") || `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`}
       </article>
       <nav class="hs-pn">${prev ? `<a href="#week/${prev.i}">‹ ${esc(prev.label || "Previous week")}</a>` : "<span></span>"}${next ? `<a href="#week/${next.i}">${esc(next.label || "Next week")} ›</a>` : ""}</nav>`;
   },

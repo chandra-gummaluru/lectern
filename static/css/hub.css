@@ -784,3 +784,10 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .wk-item > .hs-ic { align-self: flex-start; height: 24px; margin-top: 17px; }
 .wk-part { margin-top: 16px; }
 .wk-line { padding-top: 12px; border-top: 1px solid var(--line); }
+.hb a.wk-item.wk-link { color: inherit; text-decoration: none; align-items: center; }
+.hb a.wk-item.wk-link > .hs-ic { align-self: center; margin-top: 0; }
+.hb a.wk-item.wk-link:hover h3 { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.wk-link > svg:last-child { flex: none; width: 18px; height: 18px; color: var(--ink-3); }
+.wk-group { margin-top: 16px; padding: 4px 18px; border: 1px solid var(--line-2); border-radius: 10px; }
+.wk-group .wk-item:first-child { padding-top: 14px; }
+.wk-card .ec-head + .wk-group { margin-top: 18px; }

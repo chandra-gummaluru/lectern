@@ -704,8 +704,8 @@ function offeringPage(c, t) {
       </section>
       <section class="lt-part">
         <div class="lt-part-head">${ICON.grades}<h2>Gradebook</h2></div>
-        <p class="lt-part-text">${o.grades ? (edit ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation). Its settings: grade ranges, rounding and course rules.` : "Enter marks, and see every student's grade.") : "No gradebook for this term yet: it starts with the evaluations, or the students."}</p>
-        <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button>` : ""}${o.grades && edit ? `<button type="button" class="lt-btn"${book("settings")} title="Grade ranges, rounding and course rules">${ICON.gear}Grade Settings</button>` : ""}</div>
+        <p class="lt-part-text">${o.grades ? (edit ? `Enter marks, see every student's grade, and give a student their own policy (an accommodation). Its Settings button has the grade ranges, rounding and course rules.` : "Enter marks, and see every student's grade.") : "No gradebook for this term yet: it starts with the evaluations, or the students."}</p>
+        <div class="lt-part-acts">${o.grades || edit ? `<button type="button" class="lt-btn${o.grades ? " primary" : ""}"${book("book")}>${o.grades ? "Open Gradebook" : "Start a Gradebook"}</button>` : ""}</div>
       </section>
       ${edit ? `<section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>

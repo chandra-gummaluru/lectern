@@ -26,7 +26,8 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { studentsCard } from "./students.js";
-import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind } from "./groups.js";
+import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind, SECTION_ICON, sortSections } from "./groups.js";
+import { pickMany } from "./pick.js";
 import { richText } from "./richtext.js";
 
 const Lectern = window.Lectern;
@@ -533,7 +534,7 @@ function renderPage() {
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic,
     // The gradebook's evaluations: each week shows the ones dated in it, and opens one in the Evaluations.
-    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim(), date: e.date || "", time: e.time || "" })) : []; },
+    evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim(), date: e.date || "", time: e.time || "", dates: secDates(e) })) : []; },
     openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups), me: S.user.id }, r);
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
@@ -1130,6 +1131,8 @@ async function syncScheme(c, t, o) {
   if (open) cp.stale = true;   // it opens again, from the file
 }
 
+// An evaluation's dates for some sections: [{ groups, date, time }] (the gradebook's).
+const secDates = e => (Array.isArray(e.dates) ? e.dates : []).filter(o => o && (o.groups || []).length && o.date).map(o => ({ groups: o.groups.map(String), date: String(o.date), time: String(o.time || "") }));
 // What the course page shows from a gradebook: each evaluation and group with its weight, date and rules.
 // Never students or marks: only this goes to the public page.
 function schemeOf(b, from, requests = null) {
@@ -1154,7 +1157,7 @@ function schemeOf(b, from, requests = null) {
   };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), type: ["test", "project", "lab", "other"].includes(e.type) ? e.type : "assignment", date: e.date || "", time: e.time || "", ...accom(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "project", "lab", "other"].includes(e.type) ? e.type : "assignment", date: e.date || "", time: e.time || "", ...accom(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -1200,6 +1203,10 @@ Lectern.back = num => { const f = S.studentFrom; if (!f || (num != null && f.num
 // A change in a builder that isn't a step of its own (the page it was on is about to be left).
 Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); } finally { setTimeout(() => { H.applying = was && H.applying; }, 300); } };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
+// For the gradebook: the offering's sections (an evaluation's dates for some of them), and the dropdown to pick them.
+Lectern.sections = async () => { const r = S.route; if (!r.c || !r.t) return []; const G = await readGroups(Store, area(Store.PRIV), r.c, r.t); return sortSections(G.data.groups).map(g => ({ id: g.id, name: g.name || "Untitled section", kind: sectionKind(g) })); };
+Lectern.pickMany = pickMany;
+Lectern.sectionIcon = k => SECTION_ICON[k] || SECTION_ICON.lecture;
 // For the gradebook: a TA's or instructor's sections (the ones they run), or null.
 Lectern.myGroups = async () => {
   const r = S.route; if (!r.c || !r.t || !["ta", "instructor"].includes(roleIn(r.c, r.t))) return null;

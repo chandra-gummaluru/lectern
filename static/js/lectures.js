@@ -235,13 +235,16 @@ export function lecturesPage(ctx, r) {
     if (!w.start) return [];
     const R = realWeeks(), nx = R.slice(R.indexOf(w) + 1).find(y => y.start);
     const from = mondayOf(w.start), to = nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.end || w.start), 6);
-    return (st.evals || []).filter(e => e.date && e.date >= from && e.date <= to).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+    // Each of its dates: its own (everyone else's, when some sections have theirs) and its sections' own.
+    const gn = ids => ids.map(id => ((st.groups || []).find(g => g.id === id) || {}).name).filter(Boolean).join(", ");
+    const all = (st.evals || []).flatMap(e => [...(e.date ? [{ ...e, tag: (e.dates || []).length ? "Everyone else" : "" }] : []), ...(e.dates || []).map(o => ({ ...e, date: o.date, time: o.time, tag: gn(o.groups) }))]);
+    return all.filter(e => e.date && e.date >= from && e.date <= to).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
   };
   const evWhen = e => { const d = fromIso(e.date); if (!d) return ""; const day = `${DAYS3[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`; return `${e.type === "test" ? "" : "Due "}${day}${e.time ? ` at ${e.time}` : ""}`; };
   // An evaluation dated this week (from the gradebook): it opens in the Evaluations.
   const evRow = e => `<div class="lx-row sub lx-lec lx-ev" data-ev="${esc(e.id)}" role="button" tabindex="0" title="Open ${esc(e.name)} in the Evaluations">
       <span class="lx-kicon" title="${esc(EV_TYPES[e.type] || "Assignment")}">${EV_ICON[e.type] || EV_ICON.assignment}</span>
-      <div class="lx-main"><p class="lx-kind">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3><p class="lx-when">${esc(evWhen(e))}</p></div></div>`;
+      <div class="lx-main"><p class="lx-kind">${esc(e.name)}${e.tag ? ` · ${esc(e.tag)}` : ""}</p><h3>${esc(e.title || e.name)}</h3><p class="lx-when">${esc(evWhen(e))}</p></div></div>`;
   const evsHTML = w => { const E = weekEvals(w); return E.length ? `<div class="lx-evs">${E.map(evRow).join("")}</div>` : ""; };
   const subsHTML = w => `<div class="lx-subs" data-subs="${esc(w.id)}">${(w.cards || []).map(x => lecRow(w, x)).join("")}<p class="lx-none">No activities this week.${edit ? " Open the week to add one, or drag one here." : ""}</p></div>`;
 

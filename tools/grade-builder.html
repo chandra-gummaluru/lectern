@@ -64,6 +64,14 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .hd-row > .hd-main > .hd { grid-column: 2; grid-row: 1; min-width: 0; }
 .hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
 @media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }
+.sd-box { margin: 4px 0 6px; }
+.sd-lede { margin: 6px 0 8px !important; }
+.sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: start; margin-bottom: 8px; }
+.sd-row .when-btn { min-height: 46px; }
+.sd-row .sd-del { margin-top: 29px; }
+.sd-adds { display: flex; justify-content: flex-end; margin-top: 4px; }
+.er-sd { display: block; color: #80848b; }
+@media (max-width: 640px) { .sd-row { grid-template-columns: 1fr auto; } .sd-row .sd-for { grid-column: 1 / -1; } }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -1984,7 +1992,10 @@ function normalizeBook(x) {
   // Only Other has a label of its own; the rest are named by their type (Test 1, Test 2…). An older label that
   // isn't its type's moves into the title, so nothing is lost: a Test labelled Midterm becomes Test 1: Midterm.
   b.evals.forEach(e => typeLabel(e));
-  b.evals.forEach(e => { ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto; });
+  b.evals.forEach(e => { ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto;
+    // Dates for some sections (e.g. a lab on each section's own day): [{ id, groups: [section ids], date, time }].
+    e.dates = (Array.isArray(e.dates) ? e.dates : []).filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), groups: (Array.isArray(o.groups) ? o.groups : []).map(String), date: String(o.date || ""), time: String(o.time || "") }));
+    if (!e.dates.length) delete e.dates; });
   // Splits are always custom shares now: older "by weight" / "equal" splits become the same shares.
   const keepModel = typeof model === "undefined" ? undefined : model;
   const toShares = p => {
@@ -2986,7 +2997,7 @@ function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a
   const g = sub && groupOf(e);
   return `<div class="erow hd-row${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
     ${evIcon(e, true)}<div class="er-main hd-main"><div class="hd"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(e.name)}</p><h3>${esc(titleOf(e) || e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
-      <p class="er-when">${esc(whenSentence(e))}</p></div>
+      <p class="er-when">${esc(whenSentence(e))}${secDatesNote(e) ? `<span class="er-sd">${esc(secDatesNote(e))}</span>` : ""}</p></div>
       <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div></div>`;
 }
 // Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
@@ -3079,6 +3090,7 @@ function drawEvalEditor() {
       ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Midterm" autocomplete="off"')}
       <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button></div></div>
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
+    ${secDatesHTML(e)}
     <div class="ed-grid pw">
       ${docLinks.has(e.id) ? `<label class="pf"><span>Points</span><input type="number" value="${esc(e.total)}" disabled title="The total of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}"></label>` : fld("total", "Points", e.total == null || e.total === "" ? "?" : e.total, "text", ' inputmode="decimal" placeholder="e.g. 20, or ? for not yet" autocomplete="off"')}
       ${g ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(g)}">In ${esc(g.name)}</span></label>` : e.makeupFor ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(e)}">Makeup</span></label>` : fld("weight", "Weight %", e.weight, "number", ' min="0" step="any"')}</div>
@@ -3091,7 +3103,36 @@ function drawEvalEditor() {
     ${accomHTML(e)}
     ${filesHTML(e)}
 `;
+  mountSecDates(m, e);
 }
+// ── Dates for some sections ──────────────────────────────────────────
+// An evaluation's date is everyone's, unless some sections have their own (a lab each section writes on its
+// own day): each a row of the sections it's for (Lectern's tick-box dropdown) and its date and time. Students
+// see their section's date on the course page; everyone else, the evaluation's own.
+let SECS = [];   // Lectern's sections: [{ id, name, kind }]
+const SEC_KIND = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
+const secName = id => (SECS.find(x => x.id === id) || {}).name || "";
+const sdWhen = (e, o) => ({ get type() { return e.type; }, get date() { return o.date; }, set date(v) { o.date = v; }, get time() { return o.time; }, set time(v) { o.time = v; } });
+function secDatesHTML(e) {
+  const D = e.dates || [];
+  if (!SECS.length && !D.length) return "";
+  return `<div class="sd-box">${D.length ? `<p class="ed-help sd-lede">${e.type === "test" ? "When" : "Due"} above is for everyone else. These sections have their own:</p>` : ""}
+    ${D.map((o, i) => `<div class="sd-row" data-sd="${i}"><div class="pf sd-for"><span>For</span><div data-sd-for="${i}"></div></div>
+      <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${o.date ? "" : " empty"}" data-ed="sd-when" data-i="${i}" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(sdWhen(e, o)))}</span></button></div>
+      <button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button></div>`).join("")}
+    ${SECS.length ? `<div class="sd-adds"><button type="button" class="add-mk" data-ed="sd-add">${svg("plus")}A Different Date for Some Sections</button></div>` : ""}</div>`;
+}
+function mountSecDates(m, e) {
+  const L = window.Lectern;
+  (e.dates || []).forEach((o, i) => {
+    const host = $(`[data-sd-for="${i}"]`, m); if (!host || !L || !L.pickMany) return;
+    const taken = new Set((e.dates || []).filter(x => x !== o).flatMap(x => x.groups));
+    L.pickMany(host, { options: SECS.filter(x => !taken.has(x.id)).map(x => ({ value: x.id, label: x.name, kick: SEC_KIND[x.kind] || "Section", icon: L.sectionIcon ? L.sectionIcon(x.kind) : "" })),
+      value: o.groups, empty: "Pick the sections", allowEmpty: false, label: "For", onChange: v => { pushUndo(); o.groups = v; unsaved = true; refreshSoon(); } });
+  });
+}
+// "; LEC0102: Mon, Oct 5 · 23:59": an evaluation's other dates, for its card.
+const secDatesNote = e => (e.dates || []).filter(o => o.groups.length).map(o => `${o.groups.map(secName).filter(Boolean).join(", ") || "Some sections"}: ${o.date ? whenLabel(sdWhen(e, o)) : "no date yet"}`).join("; ");
 // What students get for it: files and links, each a button on the course page (Evaluations and This week).
 // An uploaded file goes into the offering's public files (Lectern.uploadPublic); a link is any address.
 function filesHTML(e) {
@@ -3297,6 +3338,9 @@ document.addEventListener("click", ev => {
     if (e.type === "test" && e.time === "23:59") e.time = "";
   });
   if (a === "when") return openWhen(b, e);
+  if (a === "sd-when") { const o = (e.dates || [])[+b.dataset.i]; return o ? openWhen(b, sdWhen(e, o)) : undefined; }
+  if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
+  if (a === "sd-del") { pushUndo(); e.dates.splice(+b.dataset.i, 1); if (!e.dates.length) delete e.dates; unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "acm-when") return openWhen(b, acmWhen(e));
   if (a === "ef-add") { change(() => { e.files = [...(e.files || []), { label: (e.files || []).length ? "" : e.type === "test" ? "Practice" : "Handout", url: "" }]; }); const ins = $$('[data-ed="ef-url"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
   if (a === "ef-del") { change(() => { e.files.splice(+b.dataset.i, 1); if (!e.files.length) delete e.files; }); return; }
@@ -4399,8 +4443,9 @@ if (lectern) {
     async open(folder, has) {
       const path = `${folder}/${BOOK_FILE}`, [c, t] = folder.split("/");
       if (has) { const { book, sha } = await fetchBook(path); loadBook(book, path, sha); }
-      if (lectern.myGroups) lectern.myGroups().then(m => { MINE = m; render(); }).catch(() => {});
       else { const b = BLANK_BOOK(); b.course.code = c.toUpperCase(); b.course.term = termName(t); loadBook(b, path, null); }
+      if (lectern.myGroups) lectern.myGroups().then(m => { MINE = m; render(); }).catch(() => {});
+      if (lectern.sections) lectern.sections().then(x => { SECS = x || []; render(); }).catch(() => {});
     },
     // Lectern's one Save: save to where it is, without the dialog. → { ok } or { conflict } or { error }
     async save(message, overwrite = false) {

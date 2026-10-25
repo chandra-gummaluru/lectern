@@ -507,6 +507,22 @@ def hub_api(handle, course, term):
         for w in all_b["lectures"]["weeks"]:
             w["cards"] = [c for c in w["cards"] if ok(c)]
         all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a)]
+        # An evaluation with its own dates for some sections: a student's is their section's (else its own).
+        def own_date(e):
+            if not isinstance(e, dict):
+                return
+            for d in _list(e.get("dates")):
+                if isinstance(d, dict) and set(map(str, _list(d.get("groups")))) & mine and d.get("date"):
+                    e["date"], e["time"] = _s(d.get("date"), 10), _s(d.get("time"), 5)
+                    break
+            e.pop("dates", None)
+        ev = all_b.get("evaluations") or {}
+        for u in _list(ev.get("units")):
+            own_date(u)
+            for m in _list(u.get("members") if isinstance(u, dict) else None):
+                own_date(m)
+        for e in _list(ev.get("evals")):
+            own_date(e)
     head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:

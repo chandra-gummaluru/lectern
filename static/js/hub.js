@@ -56,7 +56,11 @@ const addDays = (s, n) => { const d = fromIso(s); if (!d) return ""; d.setDate(d
 const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d); };
 const day = (s, year) => { const d = fromIso(s); return d ? d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", ...(year ? { year: "numeric" } : {}) }) : ""; };
 // An evaluation's when: "Due Fri, Oct 2 at 23:59", a test's "Wed, Oct 28 at 18:10".
-const evWhen = e => (e.date ? `${evType(e) === "test" ? "" : "Due "}${day(e.date)}${e.time ? ` at ${e.time}` : ""}` : "");
+const evWhen1 = e => (e.date ? `${evType(e) === "test" ? "" : "Due "}${day(e.date)}${e.time ? ` at ${e.time}` : ""}` : "");
+// (The teaching team also sees the dates some sections have of their own; a student gets their section's.)
+const evWhen = e => { const own = evWhen1(e), D = (e.dates || []).filter(d => d.date); if (!D.length) return own;
+  const G = ((data("about") || {}).groups) || [], gn = ids => ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean).join(", ") || "Some sections";
+  return [own && `${own} (everyone else)`, ...D.map(d => `${gn(d.groups)}: ${day(d.date)}${d.time ? ` at ${d.time}` : ""}`)].filter(Boolean).join(" · "); };
 // An activity's or announcement's stamp ("Oct 18, 2026, 15:42") → "Sun, Oct 18 at 15:42".
 function stampText(t) {
   const m = /([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/.exec(t || ""); if (!m) return String(t || "");

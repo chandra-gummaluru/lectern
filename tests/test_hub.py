@@ -237,3 +237,18 @@ def test_an_activity_or_announcement_for_one_activity_group(client, user, anon):
     assert [c["title"] for c in j["data"]["lectures"]["weeks"][0]["cards"]] == ["Gates", "Only 0101", "0101 and 0201"]
     assert {a["title"]: a["groups"] for a in j["data"]["announcements"]["items"]} == {"For all": [], "For 0101": ["g1"], "About the 0101 lecture": ["g1"]}
     assert [t["title"] for t in j["tabs"]][2] == "Activities"
+
+
+def test_an_evaluations_dates_for_some_sections(client, user, anon):
+    """Dates some sections have of their own: the teaching team gets them; anyone else, the evaluation's own date."""
+    page = json.loads(json.dumps(SAMPLE["page"]))
+    e = page["scheme"]["evals"][0]
+    e["date"], e["dates"] = "2026-10-02", [{"groups": ["g1"], "date": "2026-10-05", "time": "18:00"}]
+    publish(user, page)
+    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
+    if "evaluations" in j["data"]:
+        got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
+        assert got["date"] == "2026-10-02" and "dates" not in got
+    j = client.get("/api/hub/chandra/csc258/f26").get_json()
+    got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
+    assert got["dates"] == [{"groups": ["g1"], "date": "2026-10-05", "time": "18:00"}]

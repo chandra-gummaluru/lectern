@@ -126,7 +126,9 @@ function markSeen() {
   if (!ids.length) return;
   setTimeout(() => { ids.forEach(id => SEEN.add(id)); fetch(`${root.dataset.api}/seen`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {}); }, 1500);
 }
-const annCard = a => `<article class="hs-card hs-ann${isNew(a) ? " hs-new" : ""}"${note(a)}><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}${esc(stampText(a.date))}${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<div class="hs-body">${markdown(a.body)}</div></article>`;
+const MEGAPHONE = svg('<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>');
+// An announcement, as an activity's card is: its icon, ANNOUNCEMENT (and its sections), its title and date, its message.
+const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? " hs-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<p class="hs-when">${esc(stampText(a.date))}</p></div><div class="hs-body">${markdown(a.body)}</div></div></article>`;
 function weekRow(w, now) {
   if (w.isBreak) return `<p class="hs-break">${esc(w.label || "Break")}</p>`;
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");

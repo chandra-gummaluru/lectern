@@ -24,6 +24,7 @@ import { KIND_ICON, EV_ICON, EV_TYPES } from "./lectures.js";
 const groupsOf = x => (Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : []);
 
 const COLOR = "#c99a06";
+export const MEGAPHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>';
 const uid = () => Math.random().toString(36).slice(2, 10);
 const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = n => String(n).padStart(2, "0");
@@ -99,9 +100,10 @@ export function announcementsPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx">
       <div class="lx-head"><h1>Announcements</h1><span class="spacer"></span>${status$()}${mayAdd() ? `<button type="button" class="lx-btn add" id="an-new">${ICON.plus}New Announcement</button>` : ""}</div>
       ${taNote()}
-      ${list.length ? `<div class="lx-list">${list.map(x => `<div class="lx-row" style="--c:${COLOR}" data-an="${esc(x.id)}" role="button" tabindex="0">
-          <div class="lx-main"><div class="lx-top"><h3>${esc(x.title || "Untitled")}</h3></div>
-            <p class="lx-when">${esc(whenOf(x))}</p>${plain(x.body) ? `<p class="lx-clip">${esc(plain(x.body))}</p>` : ""}</div></div>`).join("")}</div>`
+      ${list.length ? `<div class="lx-list">${list.map(x => `<div class="lx-row lx-ann hd-row" style="--c:${COLOR}" data-an="${esc(x.id)}" role="button" tabindex="0">
+          <span class="lx-kicon" aria-hidden="true">${MEGAPHONE}</span>
+          <div class="lx-main hd-main"><div class="hd"><p class="lx-kind">Announcement</p><h3>${esc(x.title || "Untitled")}</h3>
+            <p class="lx-when">${esc(whenOf(x))}</p></div>${plain(x.body) ? `<p class="lx-clip">${esc(plain(x.body))}</p>` : ""}</div></div>`).join("")}</div>`
         : `<div class="lx-empty">No announcements yet.${edit ? " Write the first one: the course page shows it in the week of its date." : ""}</div>`}
     </div></div>`);
     document.querySelectorAll("[data-an]").forEach(b => {
@@ -136,7 +138,7 @@ export function announcementsPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote(x)}
       <div class="lx-editor" style="--c:${COLOR}">
-        <div class="lx-ed-head"><h2 id="an-h">${esc(x.title || "New announcement")}</h2>
+        <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${MEGAPHONE}</span><div class="gr-tt"><p class="gr-kind">Announcement</p><h2 id="an-h">${esc(x.title || "New announcement")}</h2></div>
           <span class="lx-acts">${status$()}${edit && !isNew ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
         <h3 class="lx-sec lx-first">General</h3>
         <div class="lx-grid ann">

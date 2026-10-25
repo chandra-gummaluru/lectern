@@ -65,7 +65,8 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
 @media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }
 .sd-box { margin: 4px 0 6px; }
-.sd-lede { margin: 6px 0 8px !important; }
+.sd-row.one { grid-template-columns: minmax(0, 360px); }
+.sd-gap { width: 36px; }
 .sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: start; margin-bottom: 8px; }
 .sd-row .when-btn, .sd-row .pk-btn { min-height: 46px; height: 46px; box-sizing: border-box; }
 .sd-row .sd-del { margin-top: 29px; }
@@ -793,7 +794,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ed-grid.three { grid-template-columns: 2fr 1fr 1.3fr; }
 .ed-grid.two { grid-template-columns: 2fr 1fr; }
 .ed-grid.pw { grid-template-columns: 1fr 1fr 2fr; }
-.ed-grid.what { grid-template-columns: auto 1fr 1.3fr 1.5fr; margin-bottom: 6px; }
+.ed-grid.what { grid-template-columns: auto 1fr 1.5fr; margin-bottom: 6px; }
 /* Date and time: one button, and a calendar with times under it */
 .when-btn { display: flex; align-items: center; gap: 9px; width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--field); color: var(--ink); font: 500 14px var(--font-ui); cursor: pointer; text-align: left; box-sizing: border-box; }
 .when-btn:hover { border-color: var(--ink-3); }
@@ -3088,13 +3089,13 @@ function drawEvalEditor() {
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
       ${fld("label", "Label", e.label, "text", ` data-sug="labels" placeholder="${esc(TYPE_NAME[e.type] || "Assignment")}" autocomplete="off"`)}
       ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Midterm" autocomplete="off"')}
-      <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button></div></div>
+</div>
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
-    ${secDatesHTML(e)}
     <div class="ed-grid pw">
       ${docLinks.has(e.id) ? `<label class="pf"><span>Points</span><input type="number" value="${esc(e.total)}" disabled title="The total of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}"></label>` : fld("total", "Points", e.total == null || e.total === "" ? "?" : e.total, "text", ' inputmode="decimal" placeholder="e.g. 20, or ? for not yet" autocomplete="off"')}
       ${g ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(g)}">In ${esc(g.name)}</span></label>` : e.makeupFor ? `<label class="pf"><span>Weight</span><span class="grp-pill" style="--c:${colorOf(e)}">Makeup</span></label>` : fld("weight", "Weight %", e.weight, "number", ' min="0" step="any"')}</div>
     ${docLinks.has(e.id) ? `<p class="ed-help">Out of ${fmtNum(e.total)}: the total marks of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}, <code>${esc(docLinks.get(e.id).folder)}</code>. Change the questions there. <button type="button" class="link" data-act="ev-build" data-id="${esc(e.id)}">Open it</button></p>` : ""}
+    ${secDatesHTML(e)}
     ${e.makeupFor && evalById(e.makeupFor) ? `<h3 class="ed-sec">A Makeup</h3>
     <p class="ed-help">${PIC.makeup} A makeup for <b>${esc(evalById(e.makeupFor).name)}</b>: it only counts for students who don't submit ${esc(shortName(evalById(e.makeupFor)))}, for the part its policy gives it. <button type="button" class="link" data-act="ed-eval" data-id="${esc(e.makeupFor)}">Open ${esc(shortName(evalById(e.makeupFor)))}</button></p>` : `
     <h3 class="ed-sec">If a Student Doesn't Submit It</h3>
@@ -3114,14 +3115,17 @@ const SEC_KIND = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab
 const secName = id => (SECS.find(x => x.id === id) || {}).name || "";
 const sdWhen = (e, o) => ({ get type() { return e.type; }, get date() { return o.date; }, set date(v) { o.date = v; }, get time() { return o.time; }, set time(v) { o.time = v; } });
 function secDatesHTML(e) {
-  const D = e.dates || [];
-  if (!SECS.length && !D.length) return "";
-  return `<div class="sd-box">${D.length ? `<p class="ed-help sd-lede">${e.type === "test" ? "When" : "Due"} above is for everyone else. These sections have their own:</p>` : ""}
-    ${D.map((o, i) => `<div class="sd-row" data-sd="${i}"><div class="pf sd-for"><span>For</span><div data-sd-for="${i}"></div></div>
-      <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${o.date ? "" : " empty"}" data-ed="sd-when" data-i="${i}" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(sdWhen(e, o)))}</span></button></div>
-      <button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button></div>`).join("")}
-    ${SECS.length ? `<div class="sd-adds"><button type="button" class="add-mk" data-ed="sd-add">${svg("plus")}A Different Date for Some Sections</button></div>` : ""}</div>`;
+  // Its dates: everyone's (all sections, or all the others), then any some sections have of their own.
+  const D = e.dates || [], lab = e.type === "test" ? "When" : "Due", secs = SECS.length > 0;
+  const row = (forHTML, btn, del) => `<div class="sd-row${secs ? "" : " one"}">${secs ? `<div class="pf sd-for"><span>For</span>${forHTML}</div>` : ""}<div class="pf"><span>${lab}</span>${btn}</div>${del}</div>`;
+  const allFor = `<div class="pk pk1"><button type="button" class="pk-btn pk1-btn" disabled><span class="pk1-cur"><span class="pk1-ic">${window.Lectern && window.Lectern.sectionIcon ? PEOPLE_IC : ""}</span><span class="pk1-t"><b>${D.length ? "All other sections" : "All sections"}</b></span></span></button></div>`;
+  return `<h3 class="ed-sec">${D.length ? "Dates" : e.type === "test" ? "Date" : "Due Date"}</h3><div class="sd-box">
+    ${row(allFor, `<button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button>`, secs ? `<span class="sd-gap"></span>` : "")}
+    ${D.map((o, i) => row(`<div data-sd-for="${i}"></div>`, `<button type="button" class="when-btn${o.date ? "" : " empty"}" data-ed="sd-when" data-i="${i}" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(sdWhen(e, o)))}</span></button>`,
+      `<button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button>`)).join("")}
+    ${secs ? `<div class="sd-adds"><button type="button" class="add-mk" data-ed="sd-add">${svg("plus")}Add a Date for Some Sections</button></div>` : ""}</div>`;
 }
+const PEOPLE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.3 3-5.3 6-5.3s5.4 2 6 5.3"/><path d="M15.5 4.9a3.2 3.2 0 0 1 0 6.2M17.7 14.6c1.7.7 2.9 2.4 3.3 4.9"/></svg>';
 function mountSecDates(m, e) {
   const L = window.Lectern;
   (e.dates || []).forEach((o, i) => {

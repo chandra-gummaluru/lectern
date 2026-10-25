@@ -971,8 +971,11 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .plc-pop { max-width: min(460px, calc(100vw - 16px)); }
 .gr-grid.gr-grid4 { grid-template-columns: 140px 100px 100px minmax(260px, 1fr); }
 .tm-row.tm-oh { grid-template-columns: 140px 100px 100px minmax(240px, 1fr) 34px; }
-/* A section's times: one row for each time and place (the days that share them together). */
-.lt-sec-times { display: grid; gap: 2px; margin-top: 3px; }
-.lt-sec-time { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 13.5px; color: var(--home-ink-3); }
-.lt-sec-time b { min-width: 150px; font-weight: 500; color: var(--home-ink-2); }
-.lt-sec-time i { font-style: normal; }
+/* A section's times: one row for each time and place (the days that share them together), in columns. */
+.lt-sec-times { display: grid; grid-template-columns: minmax(104px, max-content) minmax(92px, max-content) minmax(0, 1fr); column-gap: 16px; row-gap: 2px; margin-top: 4px; font-size: 13.5px; line-height: 1.4; }
+.lt-sec-time { display: contents; }
+.lt-sec-time b { font-weight: 500; color: var(--home-ink-2); }
+.lt-sec-time em { font-style: normal; font-variant-numeric: tabular-nums; color: var(--home-ink-2); }
+.lt-sec-time i { font-style: normal; color: var(--home-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-sec-none { font-size: 13.5px; color: var(--home-ink-3); }
+@media (max-width: 640px) { .lt-sec-times { grid-template-columns: max-content minmax(0, 1fr); } .lt-sec-time i { grid-column: 1 / -1; margin-bottom: 4px; } }

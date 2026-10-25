@@ -63,7 +63,7 @@ export function timeLines(g) {
     if (l) { if (DAY3[x.day] && !l.days.includes(DAY3[x.day])) l.days.push(DAY3[x.day]); }
     else L.push({ k, days: DAY3[x.day] ? [DAY3[x.day]] : [], t: hm(x), where: x.where || "" });
   });
-  return L.map(l => ({ when: [l.days.join(", "), l.t].filter(Boolean).join(" ") || "No time yet", where: l.where }));
+  return L.map(l => ({ when: [l.days.join(", "), l.t].filter(Boolean).join(" ") || "No time yet", days: l.days.join(", "), time: l.t, where: l.where }));
 }
 // The same in a line of text ("Mon, Wed 11:00–12:00 · GB302; Fri …"), or as rows (timesHTML).
 export function groupSummary(g) {
@@ -72,7 +72,7 @@ export function groupSummary(g) {
 }
 export function timesHTML(g, esc) {
   const L = timeLines(g);
-  return L.length ? `<span class="lt-sec-times">${L.map(l => `<span class="lt-sec-time"><b>${esc(l.when)}</b>${l.where ? `<i>${esc(l.where)}</i>` : ""}</span>`).join("")}</span>` : `<span>No meeting times yet</span>`;
+  return L.length ? `<span class="lt-sec-times">${L.map(l => `<span class="lt-sec-time"><b>${esc(l.days || "No day yet")}</b><em>${esc(l.time || "")}</em><i>${esc(l.where || "")}</i></span>`).join("")}</span>` : `<span class="lt-sec-none">No meeting times yet</span>`;
 }
 // "LEC0101", "TUT0102 (Tutorial)": a section's name with its type, for lists of several types.
 export const sectionLabel = g => g.name || "Untitled section";

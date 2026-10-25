@@ -119,10 +119,21 @@ export async function studentsCard(ctx, c, t) {
     const locked = all.length > 0, held = lead && busy(), dis = held ? " disabled" : "";
     const enrolled = all.filter(s => !s.dropped), waiting = enrolled.filter(s => !emailProblem(emailOf(s), F.emailDomain) && !joined(s)), canMail = info.email && waiting.length;
     const custom = F.custom.filter(f => f.id !== "email");
-    // What each student has: a row like the other lists, its Change opening a dialog (until there are students).
+    // What each student has, right here: each field a row (the identifier's name and the email domain typed
+    // in theirs), until there are students; then it's fixed, and shown as a line.
     const fieldNames = [F.idLabel, "First Name", "Last Name", `Email${F.emailDomain ? ` (@${F.emailDomain})` : ""}`, ...custom.map(f => f.label)];
-    const fields = !lead ? "" : `<div class="lt-olist lt-st-fieldrow"><div class="lt-orow lt-user lt-sec-row"><div class="lt-user-who"><span class="lt-sec-ic" aria-hidden="true">${IDCARD}</span><span class="lt-sec-t"><small>What Each Student Has</small><b>${esc(fieldNames.join(", "))}</b><span>${locked ? "Fixed now that there are students." : "Set it before adding students: once there are students, it's fixed."}</span></span></div>
-      ${lead && !locked ? `<span class="lt-orow-r"><button type="button" class="lt-btn" id="sf-change"${dis}>${ICON.edit || ""}Change</button></span>` : ""}</div></div>`;
+    const open = lead && !locked;
+    const fixedRow = (n, note) => `<div class="lt-orow lt-sf-row fixed"><span class="lt-sf-n">${esc(n)}</span><span class="lt-sf-note">${esc(note)}</span></div>`;
+    const fields = !lead ? "" : open ? `<div class="lt-st-fieldbox"><p class="lt-st-kick">What Each Student Has <span>Set it before adding students: once there are students, it's fixed.</span></p>
+      <div class="lt-olist lt-sf-list">
+        <div class="lt-orow lt-sf-row"><label class="lt-sf-l" for="sf-id">Identifier</label><input type="text" id="sf-id" value="${esc(F.idLabel)}" placeholder="e.g. Student Number" autocomplete="off"${dis}><span class="lt-sf-note">Unique for each student</span></div>
+        ${fixedRow("First Name", "Every student has it")}${fixedRow("Last Name", "Every student has it")}
+        <div class="lt-orow lt-sf-row"><label class="lt-sf-l" for="sf-dom">Email</label><span class="lt-sf-at">@</span><input type="text" id="sf-dom" value="${esc(F.emailDomain)}" placeholder="Any domain, e.g. mail.utoronto.ca" spellcheck="false" autocomplete="off"${dis}><span class="lt-sf-note">They sign in with it</span></div>
+        ${custom.map(f => `<div class="lt-orow lt-sf-row"><span class="lt-sf-n">Field</span><input type="text" data-sf-name="${esc(f.id)}" value="${esc(f.label)}" placeholder="e.g. UTORid" aria-label="Field name" autocomplete="off"${dis}><button type="button" class="lt-btn lt-trash" data-sf-del="${esc(f.id)}" aria-label="Remove the field ${esc(f.label)}"${dis}>${ICON.trash}</button></div>`).join("")}
+        ${st.newField ? `<div class="lt-orow lt-sf-row"><span class="lt-sf-n">New field</span><input type="text" id="sf-new" placeholder="The field's name, e.g. UTORid" aria-label="New field" autocomplete="off"${dis}><button type="button" class="lt-btn lt-trash" id="sf-new-x" aria-label="Don't add it">${ICON.trash}</button></div>` : ""}
+      </div>
+      <div class="lt-sf-add"><button type="button" class="lt-btn add" id="sf-add"${dis}>${ICON.plus}Add a Field</button></div></div>`
+      : `<div class="lt-olist lt-st-fieldrow"><div class="lt-orow lt-user lt-sec-row"><div class="lt-user-who"><span class="lt-sec-ic" aria-hidden="true">${IDCARD}</span><span class="lt-sec-t"><small>What Each Student Has</small><b>${esc(fieldNames.join(", "))}</b><span>Fixed now that there are students.</span></span></div></div></div>`;
     box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">The class list: each student here can sign in to the course page, with their email and a code it emails them, and the gradebook has them for marks. The course page's link: <code>${esc(info.link)}</code> <button type="button" class="lt-link" id="st-copy">Copy</button></p>
       ${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="st-add"${dis}>${ICON.plus}Add a Student</button><button type="button" class="lt-btn" id="st-import"${dis}>${ICON.upload || ""}Import a Class List</button></div>` : ""}</div>
       ${held ? `<p class="lt-note lt-st-note">${UNSAVED}</p>` : ""}
@@ -155,7 +166,22 @@ export async function studentsCard(ctx, c, t) {
     const find = $("#st-find"); if (find) find.oninput = () => { st.find = find.value; filter(); };
     box.querySelectorAll("[data-st-open]").forEach(x => { x.onclick = () => openStudent(x.dataset.stOpen); });
     if (!lead) return;
-    const ch = $("#sf-change"); if (ch) ch.onclick = () => fieldsDialog();
+    // What each student has: each change saves.
+    const saveF = fn => run(b => { b.fields = fieldsOf(b); return fn(b.fields); }, "Student fields");
+    const taken = (label, not) => /^\s*e-?mail( address)?\s*$/i.test(label) || /^(first|last) ?name$/i.test(label) || fieldsOf(book).custom.some(f => f.id !== not && f.label.toLowerCase() === label.toLowerCase());
+    const idIn = $("#sf-id"), domIn = $("#sf-dom");
+    if (idIn) idIn.onchange = () => saveF(F2 => { F2.idLabel = idIn.value.trim() || "Student Identifier"; });
+    if (domIn) domIn.onchange = () => saveF(F2 => { F2.emailDomain = cleanDomain(domIn.value); });
+    box.querySelectorAll("[data-sf-name]").forEach(i => { i.onchange = () => { const v = i.value.trim(); if (!v || taken(v, i.dataset.sfName)) { toast(v ? `There's a field called ${v} already.` : "Give the field a name, or remove it."); return; } saveF(F2 => { const f = F2.custom.find(x => x.id === i.dataset.sfName); if (f) f.label = v; }); }; });
+    box.querySelectorAll("[data-sf-del]").forEach(x => { x.onclick = () => saveF(F2 => { F2.custom = F2.custom.filter(f => f.id !== x.dataset.sfDel); }); });
+    const addB = $("#sf-add"); if (addB) addB.onclick = () => { st.newField = true; draw(); const n = $("#sf-new"); if (n) n.focus(); };
+    const nf = $("#sf-new");
+    if (nf) {
+      let done = false;
+      const commit = () => { const v = nf.value.trim(); if (!v || done) return; done = true; if (taken(v)) { done = false; toast(`Every student has ${v} already.`); return; } st.newField = false; saveF(F2 => { F2.custom.push({ id: uid(), label: v }); }).then(() => { const b2 = $("#sf-add"); if (b2) b2.focus(); }); };
+      nf.onchange = commit; nf.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); commit(); } if (e.key === "Escape") { st.newField = false; draw(); } };
+      $("#sf-new-x").onclick = () => { st.newField = false; draw(); };
+    }
     $("#st-add").onclick = () => studentDialog(null);
     $("#st-import").onclick = importDialog;
     box.querySelectorAll("[data-st-invite]").forEach(x => { x.onclick = async e => { e.stopPropagation(); try { await api(`${base}/invite`, { email: x.dataset.stInvite }); toast(`Emailed ${x.dataset.stInvite} the link.`); refreshInfo(); } catch (er) { toast(er.message); } }; });
@@ -168,41 +194,6 @@ export async function studentsCard(ctx, c, t) {
   }
 
   // Adding one student. (Once added, nothing about them changes here.)
-  // What each student has: the identifier's name, the email domain, and any more fields (UTORid…).
-  function fieldsDialog() {
-    const F = fieldsOf(book), extra = F.custom.filter(f => f.id !== "email").map(f => ({ ...f }));
-    modal(`<h2>What Each Student Has</h2>
-      <p>Set it before adding students: once there are students, it's fixed.</p>
-      <div class="lt-form">
-        <div class="two"><label>Identifier<input type="text" id="sf-id" value="${esc(F.idLabel)}" placeholder="Student Identifier"><small>Its name, e.g. Student Number. Unique for each student.</small></label>
-          <label>Email domain<input type="text" id="sf-dom" value="${esc(F.emailDomain)}" placeholder="e.g. mail.utoronto.ca" spellcheck="false"><small>Every student's email must be at it. Blank: any.</small></label></div>
-        <div class="lt-field-l">Fields<div class="lt-olist lt-sf-list" id="sf-list"></div></div>
-        <div class="lt-sf-add"><button type="button" class="lt-btn add" id="sf-add">${ICON.plus}Add a Field</button></div>
-      </div>
-      <p class="lt-err" id="sf-err"></p>
-      <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Save</button></div>`, (m, close) => {
-      const list = m.querySelector("#sf-list"), err = m.querySelector("#sf-err");
-      const draw = () => {
-        list.innerHTML = ["First Name", "Last Name", "Email"].map(n => `<div class="lt-orow lt-sf-row fixed"><span>${esc(n)}</span><span class="lt-orow-r lt-sf-note">Every student has it</span></div>`).join("")
-          + extra.map((f, i) => `<div class="lt-orow lt-sf-row"><input type="text" data-sf="${i}" value="${esc(f.label)}" placeholder="e.g. UTORid" aria-label="Field name"><button type="button" class="lt-btn lt-trash" data-sf-del="${i}" aria-label="Remove the field ${esc(f.label)}">${ICON.trash}</button></div>`).join("");
-        list.querySelectorAll("[data-sf]").forEach(i => { i.oninput = () => { extra[+i.dataset.sf].label = i.value; }; });
-        list.querySelectorAll("[data-sf-del]").forEach(b => { b.onclick = () => { extra.splice(+b.dataset.sfDel, 1); draw(); }; });
-      };
-      draw();
-      m.querySelector("#sf-add").onclick = () => { extra.push({ id: uid(), label: "" }); draw(); const ins = list.querySelectorAll("[data-sf]"); ins[ins.length - 1].focus(); };
-      m.querySelector("[data-no]").onclick = close;
-      m.querySelector("[data-ok]").onclick = async () => {
-        const fs = extra.map(f => ({ ...f, label: f.label.trim() })).filter(f => f.label);
-        const bad = fs.find(f => /^\s*e-?mail( address)?\s*$/i.test(f.label) || /^(first|last) ?name$/i.test(f.label));
-        if (bad) { err.textContent = `Every student has ${bad.label} already.`; return; }
-        if (new Set(fs.map(f => f.label.toLowerCase())).size < fs.length) { err.textContent = "Two fields have the same name."; return; }
-        m.querySelector("[data-ok]").disabled = true;
-        const idv = m.querySelector("#sf-id").value.trim() || "Student Identifier", dom = cleanDomain(m.querySelector("#sf-dom").value);
-        const ok = await run(b => { b.fields = fieldsOf(b); b.fields.idLabel = idv; b.fields.emailDomain = dom; b.fields.custom = [...b.fields.custom.filter(f => f.id === "email"), ...fs]; }, "Student fields");
-        if (ok) close(); else m.querySelector("[data-ok]").disabled = false;
-      };
-    });
-  }
   function studentDialog(s) {
     const F = fieldsOf(book), custom = F.custom.filter(f => f.id !== "email");
     const v = (id, k) => esc(s ? (k ? fieldOf(s, k) : s[id] || "") : "");

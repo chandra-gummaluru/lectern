@@ -234,7 +234,7 @@ function parseHash() {
     const part = { evaluations: "evals", gradebook: "book", grades: "book", settings: "settings" }[tool];
     if (part) return { page: "tool", tool: "grades", part, c, t, o };
     if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e, o };
-    if (tool === "accommodations") return { page: "accom", c, t, o };
+    if (tool === "accommodations") return { page: "accom", c, t, o, q: e || "" };
     if (tool === "lectures" || tool === "activities") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
     if (tool === "team" && e) return { page: "team", c, t, o, p: e };
     if (tool === "groups" && e) return { page: "groups", c, t, o, g: e };
@@ -250,7 +250,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/groups/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/groups/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -528,7 +528,7 @@ function renderPage() {
   const r = S.route;
   if (r.page === "home") { renderPath([{ label: HOME_STEP.label }]); return homePage(); }
   if (r.page === "offering") { renderPath([HOME_STEP, { label: offeringLabel(r.c, r.t) }]); return offeringPage(r.c, r.t); }
-  if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Accommodations" }]); return accomPage(r.c, r.t); }
+  if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), r.q ? { label: "Accommodations", go: () => go({ page: "accom", c: r.c, t: r.t }) } : { label: "Accommodations" }, ...(r.q ? [{ label: "Request" }] : [])]); return accomPage(r.c, r.t, r.q); }
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic,
     // The gradebook's evaluations: each week shows the ones dated in it, and opens one in the Evaluations.
@@ -975,13 +975,14 @@ const accomUI = { show: "pending", ev: "" };
 const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
 const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
 
-async function accomPage(c, t) {
-  pageHTML(`<div class="lt-in lt-accom"><div class="lx">
+async function accomPage(c, t, q = "") {
+  pageHTML(q ? `<div class="lt-in lt-accom"><div class="lx ed"><div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading the request…</div></div></div></div>`
+    : `<div class="lt-in lt-accom"><div class="lx">
     <div class="lx-head"><h1>Accommodations</h1></div>
-    <p class="lx-help lt-acc-lede">Requests from the course page's Request Accommodation buttons. Approving or rejecting one emails the student.</p>
+    <p class="lx-help lt-acc-lede">Requests from the course page's Request Accommodation buttons. Click one to see it, its decisions, and to decide. Deciding emails the student.</p>
     <div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading requests…</div></div>
   </div></div>`);
-  const mine = () => S.route.page === "accom" && S.route.c === c && S.route.t === t;
+  const mine = () => S.route.page === "accom" && S.route.c === c && S.route.t === t && (S.route.q || "") === q;
   let data, book, cfg;
   try { [data, book, cfg] = await Promise.all([readAccom(c, t), getBook(c, t).catch(() => null), getCfg()]); }
   catch (e) { if (mine()) $("#lt-acc").innerHTML = `<p class="lt-note err">Couldn't read the requests. ${esc(e.message)}</p>`; return; }
@@ -990,6 +991,7 @@ async function accomPage(c, t) {
   const asks = evals.filter(e => e.accom && ((e.accom.approval && String(e.accom.standard || "").trim()) || e.accom.alternate));
   const canDecide = true;
   const draw = () => {
+    if (q) return drawOne();
     const all = data.requests.slice().sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
     const byEv = all.filter(r => !accomUI.ev || r.eval === accomUI.ev);
     const pending = byEv.filter(r => r.status === "pending"), decided = byEv.filter(r => r.status !== "pending");
@@ -1011,8 +1013,36 @@ async function accomPage(c, t) {
     const f = $("#acc-ev"); if (f) f.onchange = () => { accomUI.ev = f.value; draw(); };
     $("#acc-refresh").onclick = () => accomPage(c, t);
     const ev = $("#lt-acc [data-evals]"); if (ev) ev.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t });
-    $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(data.requests.find(r => r.id === b.dataset.id), b.dataset.decide); });
+    $("#lt-acc").querySelectorAll("[data-req]").forEach(card => {
+      const open = () => go({ page: "accom", c, t, q: card.dataset.req });
+      card.onclick = e => { if (!e.target.closest("a")) open(); };
+      card.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+    });
   };
+  // One request, as an activity's or an evaluation's page: what they asked for, every decision (the
+  // earlier ones too), and deciding (or changing the decision, or its note).
+  const KIND = r => (r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation");
+  function drawOne() {
+    const r = data.requests.find(x => x.id === q);
+    if (!r) { $("#lt-acc").innerHTML = `<p class="lx-empty">That request isn't there any more. <button type="button" class="lt-link" id="acc-back">See all requests</button></p>`; $("#acc-back").onclick = () => go({ page: "accom", c, t }); return; }
+    renderPath([HOME_STEP, offeringStep(c, t), { label: "Accommodations", go: () => go({ page: "accom", c, t }) }, { label: `${r.first} ${r.last}`.trim() || "Request" }]);
+    const D = decisionsOf(r), pend = r.status === "pending";
+    const fact = (k, v) => v ? `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>` : "";
+    $("#lt-acc").innerHTML = `<div class="lx-editor lt-req-ed st-${esc(r.status)}">
+        <div class="lx-ed-head"><span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
+          <div class="lt-req-tt"><p class="lx-kind">${esc(r.evalName)} · ${esc(KIND(r))}</p><h2>${esc(r.first)} ${esc(r.last)}</h2></div>
+          <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
+        <dl class="lt-req-facts">${fact("Evaluation", esc(r.evalName))}${fact("Student number", esc(r.student))}${fact("Email", r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : "")}${fact("Asked", esc(fmtStamp(r.submitted)))}</dl>
+        <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
+        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
+        <h3 class="lx-sec">Decision${D.length > 1 ? "s" : ""}</h3>
+        ${D.length ? `<div class="lt-req-hist">${D.map(decisionHTML).join("")}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
+        <div class="lt-req-acts lt-req-foot">${pend
+          ? `<button type="button" class="lt-btn" data-decide="rejected">Reject</button><button type="button" class="lt-btn primary" data-decide="approved">Approve</button>`
+          : `<button type="button" class="lt-btn" data-decide="${esc(r.status)}">Change the Note</button><button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}">${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div>
+      </div>`;
+    $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(r, b.dataset.decide); });
+  }
   // A request, as the other parts' cards are: what it is above the student's name; when and who under it; what
   // they asked for; the decision; Approve and Reject (or the other way, once decided) on the right.
   // Its state as an icon beside it, like the other parts' cards: approved ✓ (green), rejected ✕ (red), waiting ? (yellow).
@@ -1028,28 +1058,26 @@ async function accomPage(c, t) {
   const decisionHTML = r => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
       <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
         ${r.note ? `<p class="lt-cmt-n">${esc(r.note)}</p>` : ""}</div></div>`;
-  const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" title="${esc(r.id)}">
+  const lastWord = r => r.status === "pending" ? "Waiting for a decision" : `${STATUS[r.status]}${r.decidedBy ? ` by ${r.decidedBy}` : ""}${r.decided ? ` · ${fmtStamp(r.decided)}` : ""}${(r.history || []).length ? ` · changed ${r.history.length} time${r.history.length > 1 ? "s" : ""}` : ""}`;
+  const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
       <div class="lx-main hd-main"><div class="hd">
         <p class="lx-kind">${esc(r.evalName)} · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"}</p>
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
-        <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)} · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></p></div>
-        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
-        ${decisionsOf(r).map(decisionHTML).join("")}
+        <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)}</p></div>
+        <p class="lx-clip">${esc(r.kind === "standard" ? r.standard : r.details)}</p>
+        <p class="lt-req-last v-${esc(r.status)}">${esc(lastWord(r))}</p>
       </div>
-      <div class="lx-side lt-req-side hd-side">
-        <div class="lt-req-acts">${r.status === "pending"
-          ? `<button type="button" class="lt-btn" data-decide="rejected" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Reject</button><button type="button" class="lt-btn primary" data-decide="approved" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>Approve</button>`
-          : `<button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}" data-id="${esc(r.id)}"${canDecide ? "" : " disabled"}>${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div></div>
+      <span class="lx-side hd-side lt-req-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
     </article>`;
   function decideDialog(r, decision) {
     if (!r) return;
-    const yes = decision === "approved";
-    modal(`<h2>${yes ? "Approve" : "Reject"} this request?</h2>
+    const yes = decision === "approved", same = r.status === decision;
+    modal(`<h2>${same ? "Change the note?" : `${yes ? "Approve" : "Reject"} this request?`}</h2>
       <p>${esc(r.first)} ${esc(r.last)}, ${esc(r.evalName)}: ${r.kind === "standard" ? `the standard accommodation (${esc(r.standard)})` : "an alternate accommodation"}. ${cfg.email ? `They're emailed at <b>${esc(r.email)}</b>.` : "The server has no SMTP settings, so no email is sent."}</p>
       <div class="lt-form"><label>Note to the student<textarea id="dc-note" rows="4" placeholder="${yes ? "e.g. Write it Thursday at 6 in BA 2135." : "e.g. Please come to office hours to talk about it."}">${esc(r.status === "pending" ? "" : r.note || "")}</textarea><small>Optional. It goes in the email.</small></label></div>
       <p class="lt-err" id="dc-err"></p>
-      <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn ${yes ? "primary" : "lt-btn-danger"}" data-ok>${yes ? "Approve" : "Reject"}</button></div>`, (m, close) => {
+      <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn ${yes ? "primary" : "lt-btn-danger"}" data-ok>${same ? "Save the Note" : yes ? "Approve" : "Reject"}</button></div>`, (m, close) => {
       m.querySelector("[data-no]").onclick = close;
       const ok = m.querySelector("[data-ok]");
       ok.onclick = async () => {

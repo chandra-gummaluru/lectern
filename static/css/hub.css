@@ -743,3 +743,4 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-sub { margin: 22px 0 6px; font: 600 14px var(--font-ui); color: var(--ink); }
 .ec-req { display: flex; justify-content: flex-end; margin-top: 12px; }
 @media (max-width: 640px) { .ec-gf { padding-left: 0; border-left: 0; } }
+.ec-subline { margin: 4px 0 0; font-size: 14.5px; color: var(--ink-2); }

@@ -295,7 +295,9 @@ function evalCard(u, group, E) {
   // Their mark, big (as the gradebook shows a student's): the percent, with its points under it.
   const marked = m && m.pts != null, pc = marked && total ? Math.round(m.pts / total * 1000) / 10 : null;
   const big = m && m.status ? `<b class="ec-mk-st">${esc(ST[m.status])}</b>` : marked ? `<b>${pc != null ? `${fmtW(pc)}%` : fmtW(m.pts)}</b><small>${fmtW(m.pts)} / ${total ? fmtW(total) : "?"}</small>` : `<b class="ec-mk-none">—</b><small>${me ? "Not marked yet" : "Sign in to see your mark"}</small>`;
-  const grading = `<div class="ec-grading"><div class="ec-mk">${big}</div><div class="ec-gf">${fact(PCT, "Worth", worthV)}${fact(PTS, "Points", outOf)}${group ? `<span class="ec-gnote">In ${esc(group.name)}: the best ${group.keep} of ${group.count} count.</span>` : ""}</div></div>`;
+  const grading = `<div class="ec-grading"><div class="ec-mk">${big}</div></div>`;
+  // Under its title: what it's worth and out of how many points, in words.
+  const subline = [worthV !== "—" ? `Worth ${worthV} of your grade` : "", total ? `${fmtW(total)} points` : "", group ? `in ${group.name}, where the best ${group.keep} of ${group.count} count` : ""].filter(Boolean).join(" · ");
   // If you miss it: the gradebook's choice (as its editor shows it, not to be changed here).
   const w = fmtW(u.weight), mi = u.missed;
   const opt = (on, ttl, sub) => `<p class="ec-p ec-pol">${esc(sub)}</p>`;
@@ -310,7 +312,7 @@ function evalCard(u, group, E) {
   const req = requestBtn(u);
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
-      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1></div></header>
+      <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div></header>
       ${sec("When")}${dates}
       ${sec("Grading")}${grading}
       ${policy || acc || req ? `<h3 class="ec-sub">If You Miss It</h3>${policy}${acc}${req ? `<div class="ec-req">${req}</div>` : ""}` : ""}

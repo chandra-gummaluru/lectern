@@ -417,7 +417,10 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); }
 .fp-acts { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .fp-acts .link { display: inline-flex; align-items: center; gap: 6px; }
 .fp-acts .link svg { width: 17px; height: 17px; }
-.pf { display: grid; gap: 4px; font: 500 12.5px var(--font-ui); color: var(--ink-3); }
+.pf { display: grid; gap: 4px; font: 500 12.5px var(--font-ui); color: var(--ink-3); position: relative; }
+.sug { position: absolute; top: 100%; left: 0; min-width: 100%; width: max-content; max-width: 280px; z-index: 30; margin-top: 4px; display: grid; gap: 1px; padding: 4px; background: #fff; border: 1px solid var(--line, #e3e1dc); border-radius: 9px; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.sug button { display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; text-align: left; font: 14px var(--font-ui); color: var(--ink, #1f2329); cursor: pointer; }
+.sug button:hover, .sug button.on { background: #f6f5f2; }
 .pf.s input { width: 100%; }
 .fpop input:not([type=checkbox]), .fpop textarea, .fpop select { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 14.5px var(--font-ui); }
 .fpop textarea { height: auto; padding: 8px 10px; resize: vertical; line-height: 1.45; }
@@ -735,6 +738,8 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ed-head { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
 .ed-head .dot { width: 12px; height: 12px; }
 .ed-head h2 { margin: 0; font: 500 28px/1.15 "EB Garamond", Garamond, Georgia, serif; }
+.ed-tt { min-width: 0; }
+.ed-head .ed-kind { margin: 0 0 1px; font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: #80848b; }
 .fg-box { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bar); margin-bottom: 8px; }
 .fg-now { display: grid; gap: 2px; min-width: 120px; flex: 1; }
 .fg-val { display: inline-flex; align-items: baseline; gap: 2px; font: 500 34px/1.1 var(--font-serif); }
@@ -2069,7 +2074,31 @@ function typeOf(x) {
   return TYPE_ICON[x.type] ? x.type : "other";
 }
 const evIcon = (x, box) => `<i class="dot ic${box ? " box" : ""}" title="${esc(x === "grade" ? "Course Grade" : x && x.members ? "Group" : TYPE_NAME[typeOf(x)] || "Other")}">${TYPE_ICON[typeOf(x)]}</i>`;
-const LABEL_IDEAS = ["Assignment", "Lab", "Quiz", "Problem set", "Project", "Test", "Midterm", "Final exam"];
+// Typing a label suggests the labels the course already uses (no browser dropdown arrow): a short list under
+// the field, of the ones that start with (or contain) what's typed. Click, or ↑/↓ and Enter/Tab, to take one.
+const usedLabels = () => [...new Map(model.evals.map(x => String(x.label || "").trim()).filter(Boolean).map(l => [labelKey(l), l])).values()];
+const sug = { box: null, input: null, i: -1 };
+function sugClose() { if (sug.box) sug.box.remove(); sug.box = null; sug.input = null; sug.i = -1; }
+function sugShow(inp) {
+  const q = labelKey(inp.value), all = usedLabels().filter(l => labelKey(l) !== q);
+  const hits = q ? [...all.filter(l => labelKey(l).startsWith(q)), ...all.filter(l => !labelKey(l).startsWith(q) && labelKey(l).includes(q))] : all;
+  if (!hits.length) return sugClose();
+  if (!sug.box || sug.input !== inp) { sugClose(); sug.box = document.createElement("div"); sug.box.className = "sug"; sug.box.setAttribute("role", "listbox"); inp.parentElement.appendChild(sug.box); sug.input = inp; }
+  sug.i = -1;
+  sug.box.innerHTML = hits.slice(0, 8).map(l => `<button type="button" role="option" tabindex="-1" data-sug-v="${esc(l)}">${esc(l)}</button>`).join("");
+}
+function sugPick(v) { const inp = sug.input; if (!inp) return; inp.value = v; sugClose(); inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true })); }
+document.addEventListener("input", e => { if (e.target.matches && e.target.matches("[data-sug]") && e.isTrusted) sugShow(e.target); });
+document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches("[data-sug]")) sugShow(e.target); else if (!(sug.box && sug.box.contains(e.target))) sugClose(); });
+document.addEventListener("focusout", e => { if (e.target === sug.input) setTimeout(() => { if (sug.input && document.activeElement !== sug.input) sugClose(); }, 150); });
+document.addEventListener("mousedown", e => { const b = e.target.closest && e.target.closest("[data-sug-v]"); if (b) { e.preventDefault(); sugPick(b.dataset.sugV); } });
+document.addEventListener("keydown", e => {
+  if (!sug.box || e.target !== sug.input) return;
+  const opts = [...sug.box.querySelectorAll("[data-sug-v]")];
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); sug.i = (sug.i + (e.key === "ArrowDown" ? 1 : -1) + opts.length + 1) % (opts.length + 1) - (0); if (sug.i >= opts.length) sug.i = -1; opts.forEach((o, k) => o.classList.toggle("on", k === sug.i)); }
+  else if ((e.key === "Enter" || e.key === "Tab") && sug.i >= 0) { e.preventDefault(); sugPick(opts[sug.i].dataset.sugV); }
+  else if (e.key === "Escape") { e.stopPropagation(); sugClose(); }
+}, true);
 const labelKey = l => String(l || "").trim().toLowerCase();
 const labelNum = new WeakMap();   // evaluation → its number among the same label (kept out of the saved file)
 function syncNames(b = model) {
@@ -2129,7 +2158,9 @@ function setOverride(s, e, patch) {
   else (model.overrides[s] = model.overrides[s] || {})[e] = o;
 }
 const weightSum = () => units().reduce((t, u) => t + u.w, 0);
-const shortName = e => e.name;   // the name (Assn 1) is what everything calls it
+const shortName = e => e.name;
+// An evaluation's heading: its name small and grey on top (TEST 1), its title (or else its name) under it.
+const edTitle = e => `<div class="ed-tt"><p class="ed-kind">${esc(e.name)}</p><h2>${esc(titleOf(e) || e.name)}</h2></div>`;   // the name (Assn 1) is what everything calls it
 const titleOf = e => String((e && e.title) || "").trim();
 
 // ── One student's grade ──────────────────────────────────────────────
@@ -2999,14 +3030,12 @@ function drawEvalEditor() {
   const e = evalById(m.dataset.eval); if (!e) { ui.evalEd = ""; return render(); }
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
-  const labels = [...new Set([...counted().map(x => String(x.label || "").trim()).filter(Boolean), ...LABEL_IDEAS])];
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2><span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
-      ${fld("label", "Label", e.label, "text", ` list="ev-labels" placeholder="${esc(TYPE_NAME[e.type] || "Assignment")}" autocomplete="off"`)}
+      ${fld("label", "Label", e.label, "text", ` data-sug="labels" placeholder="${esc(TYPE_NAME[e.type] || "Assignment")}" autocomplete="off"`)}
       ${fld("title", "Title", e.title, "text", ' placeholder="e.g. Midterm" autocomplete="off"')}
       <div class="pf"><span>${e.type === "test" ? "When" : "Due"}</span><button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button></div></div>
-    <datalist id="ev-labels">${labels.map(l => `<option value="${esc(l)}">`).join("")}</datalist>
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
     <div class="ed-grid pw">
       ${docLinks.has(e.id) ? `<label class="pf"><span>Points</span><input type="number" value="${esc(e.total)}" disabled title="The total of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}"></label>` : fld("total", "Points", e.total == null || e.total === "" ? "?" : e.total, "text", ' inputmode="decimal" placeholder="e.g. 20, or ? for not yet" autocomplete="off"')}
@@ -3171,7 +3200,7 @@ document.addEventListener("input", ev => {
     noteTyping(); x[t.dataset.f] = t.dataset.f === "total" ? (/^\s*\??\s*$/.test(t.value) ? null : num(t.value)) : t.dataset.f === "weight" ? num(t.value) : t.value;
     if (t.dataset.f === "name" && x.id === m.dataset.eval) { $(".ed-head h2", m).textContent = t.value; const c = $(".crumbs .cur"); if (c) c.textContent = t.value; }
     if ((t.dataset.f === "label" || t.dataset.f === "title") && x.id === m.dataset.eval) {
-      syncNames(); $(".ed-head h2", m).textContent = x.name; const c = $(".crumbs .cur"); if (c) c.textContent = x.name;
+      syncNames(); $(".ed-head .ed-kind", m).textContent = x.name; $(".ed-head h2", m).textContent = titleOf(x) || x.name; const c = $(".crumbs .cur"); if (c) c.textContent = x.name;
       const h = $("#name-help", m); if (h) h.innerHTML = nameHelp(x);
       refreshSoon();
     }
@@ -3717,7 +3746,7 @@ function drawStudentEditor() {
   const e = m.dataset.acc && evalById(m.dataset.acc);
   if (e) {   // one evaluation's accommodation for this student
     const { o, p, w } = accPolicy(s, e);
-    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}<h2>${esc(e.name)}</h2></div>
+    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}</div>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the course's policy.</p>
       ${reqsHTML(s, e)}
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="acc-weight" value="${o.weight != null ? esc(o.weight) : ""}" placeholder="${fmtNum(e.weight)}"></label>

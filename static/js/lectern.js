@@ -1034,7 +1034,7 @@ async function accomPage(c, t, q = "") {
         <div class="lx-ed-head"><span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
           <div class="lt-req-tt"><p class="lx-kind">${esc(r.evalName)} · ${esc(KIND(r))}</p><h2>${esc(r.first)} ${esc(r.last)}</h2></div>
           <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
-        <dl class="lt-req-facts">${fact("Evaluation", esc(r.evalName))}${fact("Student number", esc(r.student))}${fact("Email", r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : "")}${fact("Asked", esc(fmtStamp(r.submitted)))}</dl>
+        <dl class="lt-req-facts">${fact("Evaluation", r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName))}${fact("Student number", `<button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>`)}${fact("Email", r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : "")}${fact("Asked", esc(fmtStamp(r.submitted)))}</dl>
         <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body">${esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision${D.length > 1 ? "s" : ""}</h3>
@@ -1044,6 +1044,8 @@ async function accomPage(c, t, q = "") {
           : `<button type="button" class="lt-btn" data-decide="${esc(r.status)}">Change the Note</button><button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}">${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div>
       </div>`;
     $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(r, b.dataset.decide); });
+    const evB = $("#acc-ev-open"); if (evB) evB.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t }, { where: { view: "evals", evalEd: r.eval, groupEd: "", student: "", stAcc: "", stFrom: "" } });
+    const stB = $("#acc-st-open"); if (stB) stB.onclick = () => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: r.student, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } });
   }
   // A request, as the other parts' cards are: what it is above the student's name; when and who under it; what
   // they asked for; the decision; Approve and Reject (or the other way, once decided) on the right.

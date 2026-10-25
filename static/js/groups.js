@@ -243,12 +243,12 @@ export function groupPage(ctx, r) {
       <div class="lx-editor" style="--c:#c99a06">
         <div class="lx-ed-head"><span class="lx-kicon big" id="gr-ic" aria-hidden="true">${SECTION_ICON[k]}</span><div class="gr-tt"><p class="gr-kind" id="gr-kick">${esc(SECTION_NAME[k])}</p><h2 id="gr-h">${esc(sectionLabel(g))}</h2></div>
           <span class="lx-acts">${edit ? `<span class="lx-status" id="gr-status"></span><button type="button" class="lx-ic" id="gr-del" title="Delete this section" aria-label="Delete this section">${ICON.trash}</button>` : ""}</span></div>
+        <h3 class="lx-sec lx-first">General</h3>
         <div class="lx-grid gr-top">
           <div class="lx-f">Type<div class="lx-seg" role="group" aria-label="Type">${SECTION_KINDS.map(([v, l]) => `<button type="button" data-kind="${v}" aria-pressed="${k === v}"${dis}>${esc(l)}</button>`).join("")}</div></div>
           <label class="lx-f">Name<input type="text" id="gr-name" value="${esc(g.name)}" placeholder="e.g. LEC0101"${dis}></label></div>
         <p class="lx-help">${n} student${n === 1 ? " is" : "s are"} in it: the class list says who (Students, on the offering's page). A student is in one ${esc(SECTION_NAME[k].toLowerCase())}.</p>
-        <h3 class="lx-sec">Run By</h3>
-        <p class="lx-help">${who.length ? `${who.map(p => `<button type="button" class="lt-link" data-person="${esc(p.id)}">${esc(p.name || p.email)}</button>`).join(", ")}. ` : "No one yet. "}Who runs each section is set on their page: Teaching Team, on the offering's page.</p>
+        <div class="lx-f gr-run">Run By<p class="lx-help">${who.length ? `${who.map(p => `<button type="button" class="lt-link" data-person="${esc(p.id)}">${esc(p.name || p.email)}</button>`).join(", ")}. ` : "No one yet. "}Who runs each section is set on their page: Teaching Team, on the offering's page.</p></div>
         <h3 class="lx-sec">Meeting Times</h3>
         <p class="lx-help">Every week of the term. The course page shows the section with its times.</p>
         <div class="gr-items">${items.map(row).join("") || `<p class="lx-none gr-none">No meeting times yet.</p>`}</div>

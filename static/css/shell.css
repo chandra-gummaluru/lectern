@@ -441,7 +441,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-lw .lt-off-acts { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .lw-status { font-size: 13px; color: var(--home-ink-3); min-width: 60px; text-align: right; }
 .lw-status.bad { color: var(--danger); font-weight: 600; }
-.lw-adds { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.lw-adds { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; margin-top: 6px; }
 .lt-btn.lw-ic { width: 34px; height: 34px; padding: 0; }
 .lw-page { max-width: 880px; }
 .lw-card { background: var(--home-card); border: 1px solid var(--home-line-2); border-radius: 12px; padding: 18px 20px; margin: 22px 0 0; }
@@ -605,6 +605,8 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-help b { color: var(--home-ink-2); }
 .lx-sec { margin: 22px 0 4px; padding-top: 16px; border-top: 1px solid var(--home-line); font: 600 11.5px var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--home-ink-3); }
 .lx-sec + .lx-help { margin: 0 0 10px; }
+.gr-run { margin-top: 16px; }
+.gr-run .lx-help { margin: 0; font-weight: 400; }
 .lx-frow { display: grid; grid-template-columns: 200px 1fr 36px; gap: 8px; align-items: center; margin: 0 0 8px; }
 .lx-fbtns { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 4px; }
 .lx-editor .lx-subs { padding: 4px 0 0; }

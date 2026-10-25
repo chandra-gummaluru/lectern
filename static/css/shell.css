@@ -770,9 +770,14 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* Phones and narrow windows: a long card (Announcements, Accommodations) stacks with no gap under its text,
    and the offering's name gets the whole line, its buttons under it. */
 @media (max-width: 900px) {
-  .lt-part.lt-wide .lt-part-text { flex: none; }
-  .lt-part.lt-wide .lt-part-acts { padding-top: 12px; }
+  .lt-part.lt-wide > .lt-part-text { flex: none; }
+  .lt-part.lt-wide > .lt-part-acts { padding-top: 12px; }
 }
 @media (max-width: 640px) {
   .lt-off-head > :first-child { flex: 1 1 100%; min-width: 0; }
+}
+@media (max-width: 640px) {
+  .lt-st-head > .lt-part-text { flex: 1 1 100%; min-width: 0; }
+  .lt-team-body { min-width: 0; }
+  #lt-students .lt-part-text code { word-break: break-all; }
 }

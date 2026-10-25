@@ -28,7 +28,7 @@
     var d = new Date(ev.date + "T" + (ev.time || "12:00"));
     if (isNaN(d)) return "";
     var day = d.toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric" });
-    return (ev.type === "test" ? "" : "Due ") + day + (ev.time ? ", " + ev.time : "");
+    return (ev.type === "assignment" || ev.type === "project" || !ev.type ? "Due " : "") + day + (ev.time ? ", " + ev.time : "");
   }
 
   function header() {

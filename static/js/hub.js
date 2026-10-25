@@ -56,7 +56,9 @@ const addDays = (s, n) => { const d = fromIso(s); if (!d) return ""; d.setDate(d
 const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d); };
 const day = (s, year) => { const d = fromIso(s); return d ? d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", ...(year ? { year: "numeric" } : {}) }) : ""; };
 // An evaluation's when: "Due Fri, Oct 2 at 23:59", a test's "Wed, Oct 28 at 18:10".
-const evWhen1 = e => (e.date ? `${evType(e) === "test" ? "" : "Due "}${day(e.date)}${e.time ? ` at ${e.time}` : ""}` : "");
+// An assignment: released, then due; a test, a lab or another: its date.
+const isDue = e => evType(e) === "assignment" || e.type === "project";
+const evWhen1 = e => [isDue(e) && e.release ? `Released ${day(e.release)}${e.releaseTime ? ` at ${e.releaseTime}` : ""}` : "", e.date ? `${isDue(e) ? "Due " : ""}${day(e.date)}${e.time ? ` at ${e.time}` : ""}` : ""].filter(Boolean).join(" · ");
 // (The teaching team also sees the dates some sections have of their own; a student gets their section's.)
 const evWhen = e => { const own = evWhen1(e), D = (e.dates || []).filter(d => d.date); if (!D.length) return own;
   const G = ((data("about") || {}).groups) || [], gn = ids => ids.map(id => (G.find(x => x.id === id) || {}).name).filter(Boolean).join(", ") || "Some sections";

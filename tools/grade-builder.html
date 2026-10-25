@@ -65,9 +65,12 @@ tr.notmine .c-name b, td.notmine b { color: #80848b; font-weight: 500; }
 .hd-row > .hd-side { grid-column: 3; grid-row: 1; align-self: center !important; }
 @media (max-width: 640px) { .hd-row > .hd-side { grid-column: 1 / -1; grid-row: auto; justify-self: end; margin-top: 12px; } }
 .sd-box { margin: 4px 0 6px; }
-.sd-row.one { grid-template-columns: minmax(0, 360px); }
+.sd-row.rel { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 36px; }
+.sd-row.nosec { grid-template-columns: minmax(0, 1fr) 36px; }
+.sd-row.rel.nosec { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; }
+.sd-row.sd-first .sd-due { grid-column: span 2; }   /* everyone's date, without a remove button: to the end */
 .sd-gap { width: 36px; }
-.sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: start; margin-bottom: 8px; }
+.sd-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px; gap: 10px; align-items: start; margin-bottom: 8px; }
 .sd-row .when-btn, .sd-row .pk-btn { min-height: 46px; height: 46px; box-sizing: border-box; }
 .sd-row .sd-del { margin-top: 29px; }
 .sd-adds { display: flex; justify-content: flex-end; margin-top: 4px; }
@@ -1989,15 +1992,16 @@ function normalizeBook(x) {
     if (e.label != null && e.label !== "" || e.title) return;
     const n = String(e.name || "").trim(), m = /^(.*\S)\s+\d+\s*(?:[:\u2013\u2014-]\s*(.*))?$/.exec(n);
     e.label = m ? m[1] : n; e.title = m && m[2] ? m[2].trim() : "";
-    e.type = /test|midterm|exam|quiz/i.test(e.label) ? "test" : /lab/i.test(e.label) ? "lab" : /project/i.test(e.label) ? "project" : "assignment";
+    e.type = /test|midterm|exam|quiz/i.test(e.label) ? "test" : /lab/i.test(e.label) ? "lab" : "assignment";
   });
   b.evals.forEach(e => { if (!E_TYPES.some(([v]) => v === e.type)) e.type = "assignment"; });
   // Only Other has a label of its own; the rest are named by their type (Test 1, Test 2…). An older label that
   // isn't its type's moves into the title, so nothing is lost: a Test labelled Midterm becomes Test 1: Midterm.
   b.evals.forEach(e => typeLabel(e));
-  b.evals.forEach(e => { ["date", "time", "title"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto;
+  b.evals.forEach(e => { ["date", "time", "title", "release", "releaseTime"].forEach(k => { e[k] = String(e[k] || ""); }); e.shortAuto = !!e.shortAuto;
+    if (e.type === "project") e.type = "assignment";   // (no Project type any more: it's an assignment)
     // Dates for some sections (e.g. a lab on each section's own day): [{ id, groups: [section ids], date, time }].
-    e.dates = (Array.isArray(e.dates) ? e.dates : []).filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), groups: (Array.isArray(o.groups) ? o.groups : []).map(String), date: String(o.date || ""), time: String(o.time || "") }));
+    e.dates = (Array.isArray(e.dates) ? e.dates : []).filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), groups: (Array.isArray(o.groups) ? o.groups : []).map(String), date: String(o.date || ""), time: String(o.time || ""), release: String(o.release || ""), releaseTime: String(o.releaseTime || "") }));
     if (!e.dates.length) delete e.dates; });
   // Splits are always custom shares now: older "by weight" / "equal" splits become the same shares.
   const keepModel = typeof model === "undefined" ? undefined : model;
@@ -2094,9 +2098,9 @@ const counted = () => model.evals.filter(e => !e.makeupFor);   // evaluations th
 // An evaluation's name is its label, numbered in course order among the evaluations with the same
 // label (Lab 1, Lab 2… apart from Assignment 1, 2), without a number when the label is used once
 // (Midterm), then its title if it has one ("Lab 2: Flip-flops"). Reordering renumbers.
-const E_TYPES = [["assignment", "Assignment"], ["test", "Test"], ["project", "Project"], ["lab", "Lab"], ["other", "Other"]];
+const E_TYPES = [["assignment", "Assignment"], ["test", "Test"], ["lab", "Lab"], ["other", "Other"]];
 const TYPE_NAME = Object.fromEntries(E_TYPES);
-const isDue = e => e.type !== "test";
+const isDue = e => e.type === "assignment";   // an assignment is released, then due; a test, a lab or another is on a date
 function typeLabel(e) {
   // Every evaluation has a label (its name is the label and its number): none, its type's name. A title that
   // changes of type once grew ("Project: Test: Midterm Test") loses those.
@@ -2172,7 +2176,9 @@ function fmtWhen(e) {
   const day = d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric" });
   return e.time ? `${day} at ${e.time}` : day;
 }
-const whenSentence = e => (e.type === "test" ? fmtWhen(e) || "No date yet" : fmtWhen(e) ? `Due ${fmtWhen(e)}` : "No due date yet");
+// "Released Mon, Jan 4 · Due Fri, Jan 15 at 23:59" (an assignment), or its date (a test, a lab, another).
+const relOf = e => ({ date: e.release || "", time: e.releaseTime || "" });
+const whenSentence = e => (!isDue(e) ? fmtWhen(e) || "No date yet" : `${fmtWhen(relOf(e)) ? `Released ${fmtWhen(relOf(e))} · ` : ""}${fmtWhen(e) ? `Due ${fmtWhen(e)}` : "No due date yet"}`);
 const groupOf = e => (model.groups || []).find(g => g.members.includes(e.id));
 // What the course's weight is split into: evaluations on their own, and groups (in place of their members).
 function units() {
@@ -3119,14 +3125,18 @@ let SECS = [];   // Lectern's sections: [{ id, name, kind }]
 const SEC_KIND = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
 const secName = id => (SECS.find(x => x.id === id) || {}).name || "";
 const sdWhen = (e, o) => ({ get type() { return e.type; }, get date() { return o.date; }, set date(v) { o.date = v; }, get time() { return o.time; }, set time(v) { o.time = v; } });
+// An assignment's release (its own, or a section date's): a date and an optional time.
+const relWhen = o => ({ type: "release", get date() { return o.release || ""; }, set date(v) { o.release = v; }, get time() { return o.releaseTime || ""; }, set time(v) { o.releaseTime = v; } });
 function secDatesHTML(e) {
-  // Its dates: everyone's (all sections, or all the others), then any some sections have of their own.
-  const D = e.dates || [], lab = e.type === "test" ? "When" : "Due", secs = SECS.length > 0;
-  const row = (forHTML, btn, del) => `<div class="sd-row${secs ? "" : " one"}">${secs ? `<div class="pf sd-for"><span>For</span>${forHTML}</div>` : ""}<div class="pf"><span>${lab}</span>${btn}</div>${del}</div>`;
-  const allFor = `<div class="pk pk1"><button type="button" class="pk-btn pk1-btn" disabled><span class="pk1-cur"><span class="pk1-ic">${window.Lectern && window.Lectern.sectionIcon ? PEOPLE_IC : ""}</span><span class="pk1-t"><b>${D.length ? "All other sections" : "All sections"}</b></span></span></button></div>`;
+  // Its dates: everyone's (all sections, or all the others), then any some sections have of their own. An
+  // assignment has a release date and a due date; a test, a lab or another, a date.
+  const D = e.dates || [], secs = SECS.length > 0, rel = isDue(e), lab = rel ? "Due" : "Date";
+  const btn = (w, act, i) => `<button type="button" class="when-btn${w.date ? "" : " empty"}" data-ed="${act}"${i != null ? ` data-i="${i}"` : ""} aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(w))}</span></button>`;
+  const row = (first, forHTML, relB, dueB, del) => `<div class="sd-row${rel ? " rel" : ""}${secs ? "" : " nosec"}${first ? " sd-first" : ""}">${secs ? `<div class="pf sd-for"><span>For</span>${forHTML}</div>` : ""}${rel ? `<div class="pf"><span>Released</span>${relB}</div>` : ""}<div class="pf sd-due"><span>${lab}</span>${dueB}</div>${del}</div>`;
+  const allFor = `<div class="pk pk1"><button type="button" class="pk-btn pk1-btn" disabled><span class="pk1-cur"><span class="pk1-ic">${PEOPLE_IC}</span><span class="pk1-t"><b>${D.length ? "All other sections" : "All sections"}</b></span></span></button></div>`;
   return `<div class="sd-box">
-    ${row(allFor, `<button type="button" class="when-btn${e.date ? "" : " empty"}" data-ed="when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(e))}</span></button>`, secs ? `<span class="sd-gap"></span>` : "")}
-    ${D.map((o, i) => row(`<div data-sd-for="${i}"></div>`, `<button type="button" class="when-btn${o.date ? "" : " empty"}" data-ed="sd-when" data-i="${i}" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(sdWhen(e, o)))}</span></button>`,
+    ${row(true, allFor, btn(relWhen(e), "rel"), btn(e, "when"), "")}
+    ${D.map((o, i) => row(false, `<div data-sd-for="${i}"></div>`, btn(relWhen(o), "sd-rel", i), btn(sdWhen(e, o), "sd-when", i),
       `<button type="button" class="ic trash sd-del" data-ed="sd-del" data-i="${i}" title="Remove this date" aria-label="Remove this date">${svg("trash")}</button>`)).join("")}
     ${secs ? `<div class="sd-adds"><button type="button" class="add-mk" data-ed="sd-add">${svg("plus")}Add a Date for Some Sections</button></div>` : ""}</div>`;
 }
@@ -3346,12 +3356,13 @@ document.addEventListener("click", ev => {
     const lab = String(e.label || "").trim();
     if (!lab || labelKey(lab) === labelKey(TYPE_NAME[was] || "")) e.label = TYPE_NAME[e.type] || "Assignment";
     syncNames();
-    if (isDue(e) && !e.time) e.time = "23:59";
-    if (e.type === "test" && e.time === "23:59") e.time = "";
+    [e, ...(e.dates || [])].forEach(o => { if (isDue(e) && !o.time) o.time = "23:59"; if (!isDue(e) && o.time === "23:59") o.time = ""; });
   });
   if (a === "when") return openWhen(b, e);
   if (a === "sd-when") { const o = (e.dates || [])[+b.dataset.i]; return o ? openWhen(b, sdWhen(e, o)) : undefined; }
-  if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
+  if (a === "rel") return openWhen(b, relWhen(e));
+  if (a === "sd-rel") { const o = (e.dates || [])[+b.dataset.i]; return o ? openWhen(b, relWhen(o)) : undefined; }
+  if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time, release: e.release || "", releaseTime: e.releaseTime || "" }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "sd-del") { pushUndo(); e.dates.splice(+b.dataset.i, 1); if (!e.dates.length) delete e.dates; unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "acm-when") return openWhen(b, acmWhen(e));
   if (a === "ef-add") { change(() => { e.files = [...(e.files || []), { label: (e.files || []).length ? "" : e.type === "test" ? "Practice" : "Handout", url: "" }]; }); const ins = $$('[data-ed="ef-url"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
@@ -3433,7 +3444,7 @@ const fmtTime = t => t || "";   // 24-hour, as stored: 18:10
 function whenLabel(e) {
   if (e.type === "deadline" && !e.date) return "No deadline";
   if (e.type === "deadline") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "End of Day"}`; }
-  if (!e.date) return e.type === "test" ? "Choose a date" : "Choose a due date";
+  if (!e.date) return e.type === "release" ? "Not set: from the start" : isDue(e) ? "Choose a due date" : "Choose a date";
   const d = new Date(`${e.date}T12:00`); if (isNaN(d)) return e.date;
   return `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}${e.time ? ` · ${fmtTime(e.time)}` : ""}`;
 }
@@ -3458,7 +3469,7 @@ function openWhen(btn, e) {
     for (let k = 0; k < 42; k++) { const d = new Date(start); d.setDate(start.getDate() + k); days.push(d); }
     pop.innerHTML = `<div class="wp-head"><button type="button" data-w="prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><b>${first.toLocaleDateString("en-CA", { month: "long", year: "numeric" })}</b><button type="button" data-w="next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div>
       <div class="wp-days">${["S", "M", "T", "W", "T", "F", "S"].map(x => `<i>${x}</i>`).join("")}${days.map(d => `<button type="button" data-day="${iso(d)}" class="${d.getMonth() !== first.getMonth() ? "out" : ""}${iso(d) === today ? " today" : ""}${iso(d) === e.date ? " on" : ""}">${d.getDate()}</button>`).join("")}</div>
-      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" ? "Starts At" : e.type === "deadline" ? "By" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of Day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
+      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" || e.type === "lab" || e.type === "other" ? "Starts At" : e.type === "deadline" ? "By" : e.type === "release" ? "At" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of Day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
   };
   popover(btn, "", pop => {
     pop._onClose = () => render();   // the list, the name and the course page follow

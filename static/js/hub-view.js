@@ -125,7 +125,7 @@ function evalLink(e) {
 }
 function evalWhen(e) {
   const d = fromIso(e.date); if (!d) return "";
-  return `${e.type === "test" ? "" : "Due "}${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" })}${e.time ? `, ${e.time}` : ""}`;
+  return `${e.type === "assignment" || e.type === "project" || !e.type ? "Due " : ""}${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" })}${e.time ? `, ${e.time}` : ""}`;
 }
 function evalCard(e) {
   const ev = data("evaluations"), files = fileLinks(ev && ev.files[e.id]), p = "";

@@ -529,6 +529,8 @@ def hub_api(handle, course, term):
             for d in _list(e.get("dates")):
                 if isinstance(d, dict) and set(map(str, _list(d.get("groups")))) & mine and d.get("date"):
                     e["date"], e["time"] = _s(d.get("date"), 10), _s(d.get("time"), 5)
+                    if d.get("release"):
+                        e["release"], e["releaseTime"] = _s(d.get("release"), 10), _s(d.get("releaseTime"), 5)
                     break
             e.pop("dates", None)
         ev = all_b.get("evaluations") or {}

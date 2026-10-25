@@ -1150,7 +1150,7 @@ async function syncScheme(c, t, o) {
 }
 
 // An evaluation's dates for some sections: [{ groups, date, time }] (the gradebook's).
-const secDates = e => (Array.isArray(e.dates) ? e.dates : []).filter(o => o && (o.groups || []).length && o.date).map(o => ({ groups: o.groups.map(String), date: String(o.date), time: String(o.time || "") }));
+const secDates = e => (Array.isArray(e.dates) ? e.dates : []).filter(o => o && (o.groups || []).length && o.date).map(o => ({ groups: o.groups.map(String), date: String(o.date), time: String(o.time || ""), ...(o.release ? { release: String(o.release), releaseTime: String(o.releaseTime || "") } : {}) }));
 // What the course page shows from a gradebook: each evaluation and group with its weight, date and rules.
 // Never students or marks: only this goes to the public page.
 function schemeOf(b, from, requests = null) {
@@ -1175,7 +1175,7 @@ function schemeOf(b, from, requests = null) {
   };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "project", "lab", "other"].includes(e.type) ? e.type : "assignment", date: e.date || "", time: e.time || "", ...accom(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", date: e.date || "", time: e.time || "", ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));

@@ -240,7 +240,7 @@ export function lecturesPage(ctx, r) {
     const all = (st.evals || []).flatMap(e => [...(e.date ? [{ ...e, tag: (e.dates || []).length ? "Everyone else" : "" }] : []), ...(e.dates || []).map(o => ({ ...e, date: o.date, time: o.time, tag: gn(o.groups) }))]);
     return all.filter(e => e.date && e.date >= from && e.date <= to).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
   };
-  const evWhen = e => { const d = fromIso(e.date); if (!d) return ""; const day = `${DAYS3[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`; return `${e.type === "test" ? "" : "Due "}${day}${e.time ? ` at ${e.time}` : ""}`; };
+  const evWhen = e => { const d = fromIso(e.date); if (!d) return ""; const day = `${DAYS3[d.getDay()]}, ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getDate()}, ${d.getFullYear()}`; return `${e.type === "assignment" || e.type === "project" ? "Due " : ""}${day}${e.time ? ` at ${e.time}` : ""}`; };
   // An evaluation dated this week (from the gradebook): it opens in the Evaluations.
   const evRow = e => `<div class="lx-row sub lx-lec lx-ev" data-ev="${esc(e.id)}" role="button" tabindex="0" title="Open ${esc(e.name)} in the Evaluations">
       <span class="lx-kicon" title="${esc(EV_TYPES[e.type] || "Assignment")}">${EV_ICON[e.type] || EV_ICON.assignment}</span>

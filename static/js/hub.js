@@ -408,25 +408,43 @@ const PAGES = {
     if (!open("about")) return lockedPage("about", "About the Course");
     const a = data("about"), G = a.groups, T = a.team || [];
     // The rest (the course page's own sections, the rules) as it was drawn; without sections, the team's times too.
-    const rest = HubView.draw({ ...D, data: { ...D.data, about: { ...a, description: "", ...(G ? { team: [], groups: null } : {}) } } }, "about").replace(/<h2 class="hb-h2">About the course<\/h2>/, "");
+    const rest = HubView.draw({ ...D, data: { ...D.data, about: { ...a, description: "", ...(G ? { team: [], groups: null, rules: [] } : {}) } } }, "about").replace(/<h2 class="hb-h2">About the course<\/h2>/, "");
     if (!G) return `${path([["About the Course"]])}${head("About the Course", "")}${rest}`;
     const mine = D.viewer && D.viewer.role === "student";
+    // One card, as a week's page is: each section and each person a row (their kind's icon, or their initials),
+    // with their times as lines of icons: the days, the hours, and where.
+    const CAL = svg('<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>');
+    const CLOCK = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
+    const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
+    const MAIL = svg('<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>');
+    const INFO = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/>');
+    const fact = (ic, html) => `<span class="ec-wd"><span class="hs-ic sm">${ic}</span>${html}</span>`;
     const timesHTML = I => { const L = [];   // the days that share a time and a place, together
       I.slice().sort((x, y) => (x.day || 9) - (y.day || 9)).forEach(x => { const k = `${x.start}|${x.end}|${x.where || ""}`, l = L.find(y => y.k === k); if (l) l.days.push(DAY3[x.day]); else L.push({ k, days: [DAY3[x.day]].filter(Boolean), x }); });
-      return L.map(l => `<span class="hs-time"><b>${esc(l.days.join(", "))}</b><em>${esc([l.x.start, l.x.end].filter(Boolean).join("–"))}</em><i>${l.x.map ? `<a href="${esc(l.x.map)}" target="_blank" rel="noopener" title="${esc(l.x.address || "On the map")}">${esc(l.x.where || "On the map")}</a>` : esc(l.x.where || "")}</i></span>`).join(""); };
+      return `<div class="ab-times">${L.map(l => `<div class="ab-time">${fact(CAL, esc(l.days.join(", ")))}${l.x.start ? fact(CLOCK, esc([l.x.start, l.x.end].filter(Boolean).join("–"))) : ""}${l.x.where ? fact(PIN, l.x.map ? `<a href="${esc(l.x.map)}" target="_blank" rel="noopener" title="${esc(l.x.address || "On the map")}">${esc(l.x.where)}</a>` : esc(l.x.where)) : ""}</div>`).join("")}</div>`; };
     const SEC = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
+    const item = (ic, kick, title, rest) => `<div class="wk-item">${ic}<div class="wk-b"><p class="hs-kick">${kick}</p><h3>${esc(title)}</h3>${rest}</div></div>`;
     const secs = G.slice().sort((x, y) => (["lecture", "tutorial", "lab"].indexOf(x.kind) - ["lecture", "tutorial", "lab"].indexOf(y.kind)) || String(x.name).localeCompare(String(y.name), undefined, { numeric: true }))
-      .map(g => `<div class="hs-row hs-plain hd-row"><span class="hs-ic">${KIND_ICON[g.kind] || KIND_ICON.other}</span><div class="hs-t hd-main"><div class="hd"><small class="hs-kick">${esc(SEC[g.kind] || "Section")}</small><b>${esc(g.name || "Section")}</b></div>
-        ${(g.items || []).length ? `<span class="hs-times">${timesHTML(g.items)}</span>` : ""}${(g.who || []).length ? `<small class="hs-who">${esc(g.who.join(", "))}</small>` : ""}</div></div>`).join("");
+      .map(g => item(`<span class="hs-ic">${KIND_ICON[g.kind] || KIND_ICON.other}</span>`, esc(SEC[g.kind] || "Section"), g.name || "Section",
+        `${(g.items || []).length ? timesHTML(g.items) : ""}${(g.who || []).length ? `<p class="ab-who">${esc(g.who.join(", "))}</p>` : ""}`)).join("");
     const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
     const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
     const people = T.map(p => { const oh = (p.times || []).filter(x => x.kind === "office" && x.day);
-      return `<div class="hs-row hs-plain hd-row"><span class="hs-av" aria-hidden="true">${esc(ini(p.name))}</span><div class="hs-t hd-main"><div class="hd"><small class="hs-kick">${esc([ROLE[p.role] || "", p.office].filter(Boolean).join(" · "))}</small><b>${esc(p.name)}</b>
-        ${p.email ? `<small><a href="mailto:${esc(p.email)}">${esc(p.email)}</a></small>` : ""}</div>${oh.length ? `<small class="hs-oh-h">Office Hours</small><span class="hs-times">${timesHTML(oh)}</span>` : ""}</div></div>`; }).join("");
-    return `${path([["About the Course"]])}${head("About the Course", "")}
-      ${secs ? `<section class="hs-sec"><h2 class="hs-h2">${mine ? "Your Sections" : "Sections"}</h2><div class="hs-list">${secs}</div></section>` : ""}
-      ${people ? `<section class="hs-sec"><h2 class="hs-h2">Teaching Team</h2><div class="hs-list">${people}</div></section>` : ""}
-      ${rest.replace(/\s/g, "") ? `<div class="hs-rest">${rest}</div>` : ""}`;
+      return item(`<span class="hs-av ab-av" aria-hidden="true">${esc(ini(p.name))}</span>`, esc(ROLE[p.role] || ""), p.name,
+        `<div class="ab-times">${p.email ? `<div class="ab-time">${fact(MAIL, `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`)}${p.office ? fact(PIN, esc(p.office)) : ""}</div>` : ""}</div>
+        ${oh.length ? `<p class="ab-oh">Office Hours</p>${timesHTML(oh)}` : ""}`); }).join("");
+    // The course's rules (the gradebook's), a row each.
+    const RULE = svg('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>');
+    const rules = (a.rules || []).filter(r => r.title || r.text).map(r => item(`<span class="hs-ic">${RULE}</span>`, "Policy", r.title || "Policy", r.text ? `<div class="hs-body">${markdown(r.text)}</div>` : "")).join("");
+    const c = D.course;
+    return `${path([["About the Course"]])}
+      <article class="ec-card wk-card ab-card">
+        <header class="ec-head"><span class="hs-ic ec-ic">${INFO}</span><div class="ec-tt"><p class="hs-kick">${esc(c.code || "")}</p><h1>About the Course</h1>${[c.term, c.school].filter(Boolean).length ? `<p class="ec-subline">${esc([c.term, c.school].filter(Boolean).join(" · "))}</p>` : ""}</div></header>
+        ${secs ? `<div class="wk-group"><div class="wk-list">${secs}</div></div>` : ""}
+        ${people ? `<div class="wk-group"><div class="wk-list">${people}</div></div>` : ""}
+        ${rules ? `<div class="wk-group"><div class="wk-list">${rules}</div></div>` : ""}
+        ${rest.replace(/\s/g, "") ? `<div class="ab-rest">${rest}</div>` : ""}
+      </article>`;
   },
   // Requesting an accommodation for one evaluation (#request/<id>): drawn once what can be asked for is in.
   request(arg) {

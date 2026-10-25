@@ -793,3 +793,12 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .wk-card .ec-head + .wk-group { margin-top: 18px; }
 .wk-pn { display: flex; justify-content: space-between; margin-top: 16px; }
 .hb .wk-pn a.hb-btn { color: var(--ink); text-decoration: none; }
+/* About the Course: one card, as a week's page; each section and person a row, their times as lines of icons. */
+.ab-times { display: grid; gap: 4px; margin-top: 6px; }
+.ab-time { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 14.5px; color: var(--ink); }
+.ab-time .hs-ic.sm { width: 18px; color: var(--ink-3); } .ab-time .hs-ic.sm svg { width: 16px; height: 16px; }
+.ab-who { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-3); }
+.ab-oh { margin: 10px 0 0; font: 700 11px/1.3 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.wk-item > .ab-av { flex: none; align-self: flex-start; margin-top: 14px; }
+.ab-rest { margin-top: 22px; padding-top: 6px; border-top: 1px solid var(--line); }
+.ab-rest .hb-panel, .ab-rest .hs-card { box-shadow: none; }

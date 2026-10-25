@@ -384,13 +384,17 @@ export function lecturesPage(ctx, r) {
       <div class="lx-editor" style="--c:${WEEK_COLOR}">
         <div class="lx-ed-head"><span class="lx-wnum" id="lw-wnum" aria-hidden="true">${esc(weekNum(w))}</span><h2 id="lw-h">${esc(w.label || "Week")}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this week" aria-label="Delete this week">${ICON.trash}</button>` : ""}</span></div>
-        <div class="lx-grid week">
+        <h3 class="lx-sec lx-first">General</h3>
+        <div class="lx-grid two">
           <label class="lx-f">Name<input type="text" id="lw-label" value="${esc(w.label)}" placeholder="e.g. Week 4"${dis}></label>
+          <label class="lx-f">Topic<input type="text" id="lw-topic" value="${esc(w.topic)}" placeholder="What this week covers"${dis}></label>
+        </div>
+        <h3 class="lx-sec">Dates</h3>
+        <div class="lx-grid two">
           <div class="lx-f">Starts<div id="lw-start-f"></div></div>
           <div class="lx-f">Ends<div id="lw-end-f"></div></div>
         </div>
         <p class="lx-help">Its class days, e.g. Monday to Friday. On the course page, This week runs to the Sunday after.</p>
-        <div class="lx-grid one"><label class="lx-f">Topic<input type="text" id="lw-topic" value="${esc(w.topic)}" placeholder="What this week covers"${dis}></label></div>
         <h3 class="lx-sec">Activities</h3>
         <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
         ${subsHTML(w)}${evsHTML(w)}
@@ -429,18 +433,19 @@ export function lecturesPage(ctx, r) {
       <div class="lx-editor" id="lw-ed" style="--c:${KIND_COLOR[k]}">
         <div class="lx-ed-head"><span class="lx-kicon big" id="lw-kicon">${KIND_ICON[k]}</span><h2 id="lw-h">${esc(titleOf(x))}</h2>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this activity" aria-label="Delete this activity">${ICON.trash}</button>` : ""}</span></div>
+        <h3 class="lx-sec lx-first">General</h3>
         <div class="lx-grid">
           <div class="lx-f">Type<span class="lx-seg" role="group" aria-label="Type">${KINDS.map(([v, n]) => `<button type="button" data-kind="${v}" aria-pressed="${v === k}"${dis}>${n}</button>`).join("")}</span></div>
           <label class="lx-f">Label<input type="text" id="lw-label" value="${esc(x.label)}" placeholder="e.g. Midterm review"${k === "other" ? dis : ' disabled title="Only Other has a label of its own; the rest are named by their type, in order"'}></label>
           <label class="lx-f">Title<input type="text" id="lw-title" value="${esc(x.title)}" placeholder="e.g. Latches and flip-flops"${dis}></label>
         </div>
         <p class="lx-help" id="lw-named">${namedHTML(x)}</p>
+        <div class="lx-grid one"><div class="lx-f">For<div id="lw-groups"></div></div></div>
+        <h3 class="lx-sec">Dates</h3>
         <div class="lx-grid one">
           <label class="lx-f">Week<select id="lw-week"${dis}>${realWeeks().map(y => `<option value="${esc(y.id)}"${y === w ? " selected" : ""} data-kick="${esc(rangeText(y.start, y.end))}" data-icon="${esc(`<span class="pk1-wk">${esc(weekNum(y))}</span>`)}">${esc(y.label || "Week")}</option>`).join("")}</select></label>
         </div>
         <div class="lx-grid one"><div class="lx-f">When<div id="lw-whens" class="lx-whens"></div></div></div>
-
-        <div class="lx-grid one"><div class="lx-f">For<div id="lw-groups"></div></div></div>
         <h3 class="lx-sec">Description</h3>
         <div id="lw-desc"></div>
         <h3 class="lx-sec">Files and Links</h3>

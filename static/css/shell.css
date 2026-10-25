@@ -1005,3 +1005,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-sf-row input { padding: 0 10px; border: 1px solid var(--lx-line); border-radius: 8px; background: var(--home-card); font: 400 14px var(--font-ui); color: var(--home-ink); }
 .lt-sf-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .lt-sf-row input:disabled { background: var(--home-strip); }
+.lx-sec.lx-first { margin-top: 6px; padding-top: 0; border-top: 0; }

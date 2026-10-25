@@ -3239,8 +3239,11 @@ function drawGroupEditor() {
   const g = (model.groups || []).find(x => x.id === m.dataset.group); if (!g) { ui.groupEd = ""; return render(); }
   const cands = counted().filter(e => !groupOf(e) || groupOf(e) === g), n = g.members.length, keep = Math.min(num(g.keep), Math.max(1, n)), each = num(g.weight) / Math.max(1, num(g.keep));
   $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(g)}">${evIcon(g, true)}<h2>${esc(g.name)}</h2><span class="ed-acts"><button type="button" class="ic trash" data-ed="gdelete" title="Delete group (its evaluations stay)" aria-label="Delete group">${svg("trash")}</button></span></div>
-    <div class="ed-grid two"><label class="pf"><span>Name</span><input type="text" data-g="name" value="${esc(g.name)}"></label><label class="pf"><span>Weight %</span><input type="number" data-g="weight" min="0" step="any" value="${esc(g.weight)}"></label></div>
-    <h3 class="ed-sec">What Counts</h3>
+    <h3 class="ed-sec ed-first">General</h3>
+    <div class="ed-grid two"><label class="pf"><span>Name</span><input type="text" data-g="name" value="${esc(g.name)}"></label></div>
+    <h3 class="ed-sec">Grading</h3>
+    <div class="ed-grid two"><label class="pf"><span>Weight %</span><input type="number" data-g="weight" min="0" step="any" value="${esc(g.weight)}"></label></div>
+    <h4 class="ed-sub">What Counts</h4>
     <div class="keep-row">Each student's best <span class="stepper"><button type="button" data-ed="keep" data-v="-1" aria-label="Fewer"${num(g.keep) <= 1 ? " disabled" : ""}>−</button><b>${fmtNum(g.keep)}</b><button type="button" data-ed="keep" data-v="1" aria-label="More"${num(g.keep) >= n ? " disabled" : ""}>+</button></span> of ${n}, each worth <b>${fmtNum(Math.round(each * 100) / 100)}%</b>.</div>
     ${n ? `<div class="grp-viz big" style="--c:#c99a06">${g.members.map((x, k) => `<span class="${k < keep ? "gv-keep" : "gv-drop"}"></span>`).join("")}<small>${n - keep > 0 ? `the lowest ${n - keep} ${n - keep === 1 ? "is" : "are"} dropped` : "none dropped"}</small></div>` : ""}
     <h3 class="ed-sec">In the Group</h3>

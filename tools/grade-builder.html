@@ -2034,7 +2034,12 @@ const isDue = e => e.type !== "test";
 function typeLabel(e) {
   if (e.type === "other") return;
   const lab = String(e.label || "").trim(), name = TYPE_NAME[e.type] || "Assignment";
-  if (lab && labelKey(lab) !== labelKey(name)) { const t = String(e.title || "").trim(); e.title = t ? `${lab}: ${t}` : lab; }
+  // A label that's one of the types' own names (e.g. from before a change of type) isn't kept; and a title
+  // that changes of type once grew ("Project: Test: Midterm Test") loses those.
+  const own = new Set(E_TYPES.map(([, n]) => labelKey(n)));
+  if (lab && !own.has(labelKey(lab))) { const t = String(e.title || "").trim(); e.title = t ? `${lab}: ${t}` : lab; }
+  const re = new RegExp(`^(\\s*(${E_TYPES.map(([, n]) => n).join("|")})\\s*:\\s*)+`, "i");
+  if (e.title) e.title = String(e.title).replace(re, "").trim() || e.title;
   e.label = name;
 }   // everything but a test is handed in by a due date
 // Each type's icon (the same drawing style as Lectern's Activities); no colours.

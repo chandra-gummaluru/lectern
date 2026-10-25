@@ -87,6 +87,46 @@ def gradebook_files(owner_id, course, term):
     return out
 
 
+def _num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def gradebook_policies(owner_id, course, term):
+    """{evaluation id: {missed, total}}: what happens if each is missed (as the gradebook's editor shows it:
+    counts as zero, or makeups and weight moved to others, each with its share) and its points, read from the
+    gradebook itself, so the course page is right even before the course page is saved again. Public."""
+    raw = Repo(owner_id, "priv").read(f"{course}/{term}/grades.json")
+    try:
+        book = json.loads(raw.decode("utf-8")) if raw else {}
+    except (ValueError, UnicodeDecodeError):
+        return {}
+    evals = [e for e in _list(book.get("evals") if isinstance(book, dict) else None) if isinstance(e, dict) and isinstance(e.get("id"), str)]
+    by = {e["id"]: e for e in evals}
+    r2 = lambda x: round(x * 100) / 100
+    out = {}
+    for e in evals:
+        m, w = e.get("missed") if isinstance(e.get("missed"), dict) else {}, _num(e.get("weight"))
+        info = {"total": _num(e.get("total"))} if _num(e.get("total")) > 0 else {}
+        if m.get("mode") != "reweight":
+            info["missed"] = {"mode": "zero"}
+        else:
+            mk = [x for x in _list(m.get("makeups")) if isinstance(x, dict) and x.get("id") in by]
+            ids = {x["id"] for x in mk}
+            to = [x for x in _list(m.get("to")) if isinstance(x, dict) and _num(x.get("share")) > 0 and x.get("id") in by
+                  and not by[x["id"]].get("makeupFor") and x["id"] not in ids]
+            T = sum(_num(x.get("share")) for x in mk + to)
+            k = 100 / T if T > 100 else 1
+            pc = lambda x: r2(w * _num(x.get("share")) * k / 100)
+            info["missed"] = {"mode": "reweight", "zero": r2(w * max(0.0, 100 - T * k) / 100), "parts":
+                              [{"id": x["id"], "name": _s(by[x["id"]].get("name"), 200), "kind": "makeup", "pct": pc(x)} for x in mk]
+                              + [{"id": x["id"], "name": _s(by[x["id"]].get("name"), 200), "kind": "shift", "pct": pc(x), "was": _num(by[x["id"]].get("weight"))} for x in to]}
+        out[e["id"]] = info
+    return out
+
+
 def announcements_of(owner_id, course, term):
     """The Announcements part's (announcements.js): <course>/<term>/announcements.json's items, or None."""
     raw = Repo(owner_id, "priv").read(f"{course}/{term}/announcements.json")
@@ -502,6 +542,14 @@ def hub_api(handle, course, term):
     all_b = buckets(page, year, gradebook_files(o["id"], course, term), lectures_of(o["id"], course, term), team_of(o["id"], course, term),
                     announcements_of(o["id"], course, term), about)
     all_b["about"]["groups"] = groups_of(o["id"], course, term)
+    # Each evaluation's policy if it's missed, and its points: the gradebook's own, now.
+    pol = gradebook_policies(o["id"], course, term)
+    for u in _list((all_b.get("evaluations") or {}).get("units")):
+        if isinstance(u, dict) and u.get("kind") != "group" and u.get("id") in pol:
+            u.update(pol[u["id"]])
+        for mm in _list(u.get("members") if isinstance(u, dict) else None):
+            if isinstance(mm, dict) and mm.get("id") in pol and "total" in pol[mm["id"]]:
+                mm["total"] = pol[mm["id"]]["total"]
     # An evaluation's dates for some sections: with those sections' names (the course page says which).
     gname = {str(x.get("id")): x.get("name") or "" for x in all_b["about"]["groups"] or [] if isinstance(x, dict)}
     def _named(e):

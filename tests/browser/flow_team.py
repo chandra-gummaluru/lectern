@@ -94,7 +94,7 @@ def main():
         assert all(len(x["people"]) == 1 for x in g), g
         me.fill("#tm-office", "BA 4010")
         me.click("[data-add=office]")
-        row = me.locator(".tm-row[data-i]").last
+        row = me.locator(".tm-oh-row[data-i]").last
         row.locator('[data-k="day"]').select_option("2")
         row.locator('[data-k="start"]').fill("2 pm"); row.locator('[data-k="start"]').press("Tab")
         row.locator('[data-k="end"]').fill("16:00"); row.locator('[data-k="end"]').press("Tab")

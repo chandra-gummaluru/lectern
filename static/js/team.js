@@ -23,6 +23,7 @@ const DAY3 = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const itemLine = x => [[DAY3[x.day] || "", x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : ""].filter(Boolean).join(" "), x.where].filter(Boolean).join(" · ") || "No time yet";
 export const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const uid = () => Math.random().toString(36).slice(2, 10);
+const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const SECTION_HINT = { lecture: "e.g. LEC0101", tutorial: "e.g. TUT0102", lab: "e.g. PRA0101", office: "Optional", other: "e.g. Review sessions" };
 
 export function teamMemberPage(ctx, r) {
@@ -69,30 +70,37 @@ export function teamMemberPage(ctx, r) {
     const office = times.map((x, i) => [x, i]).filter(([x]) => x.kind === "office");
     const opt = (list, v) => list.map(([k, n]) => `<option value="${k}"${String(v) === String(k) ? " selected" : ""}>${esc(n)}</option>`).join("");
     const days = DAYS.slice(1).map((d, k) => [String(k + 1), d]);
-    pageHTML(`<div class="lt-in lt-lw lw-page tm-page">
-      <div class="lt-off-head"><div><h1>${esc(who.name || who.email)}</h1><p class="lt-term-line">${esc(ROLE_NAME[who.role] || who.role)}</p></div>
-        <div class="lt-off-acts">${canChange ? `<span class="lw-status" id="tm-status"></span>` : ""}</div></div>
-      ${canChange ? "" : `<p class="lt-note">An instructor sets these.</p>`}
-      <div class="lw-card lt-form">
+    const ini = String(who.name || who.email || "").split(/[\s,]+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+    const runsHTML = list => list.length ? `<div class="lt-olist tm-runs">${list.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(sectionLine(g))}</span></span></button></div>`).join("")}</div>` : "";
+    teamMemberPage.runsHTML = runsHTML;
+    pageHTML(`<div class="lt-in tm-page"><div class="lx ed">
+      ${canChange ? "" : `<p class="lt-note lx-note">An instructor sets these.</p>`}
+      <div class="lx-editor tm-ed" style="--c:#c99a06">
+        <div class="lx-ed-head tm-head"><span class="tm-av" aria-hidden="true">${esc(ini)}</span><div class="gr-tt"><h2>${esc(who.name || who.email)}</h2><p class="tm-sub">${esc(ROLE_NAME[who.role] || who.role)}${who.name && who.email ? ` · ${esc(who.email)}` : ""}</p></div>
+          <span class="lx-acts">${canChange ? `<span class="lx-status" id="tm-status"></span>` : ""}</span></div>
+        <h3 class="lx-sec lx-first">General</h3>
         <label class="lt-check tm-show"><input type="checkbox" id="tm-show"${me.show === false ? "" : " checked"}${dis}> Show them on the course page</label>
-        <div class="lw-two"><label>Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${esc(who.email)}"${dis}><small>For students. Blank: ${esc(who.email)}.</small></label>
-          <label>Office<input type="text" id="tm-office" value="${esc(me.office || "")}" placeholder="e.g. BA 4010"${dis}></label></div>
+        <div class="lx-grid two tm-two"><label class="lx-f">Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${esc(who.email)}"${dis}></label>
+          <label class="lx-f">Office<input type="text" id="tm-office" value="${esc(me.office || "")}" placeholder="e.g. BA 4010"${dis}></label></div>
+        <p class="lx-help">The email students see. Blank: ${esc(who.email)}.</p>
+        <h3 class="lx-sec">Sections They Run</h3>
+        ${G.length ? `<p class="lx-help">The lecture, tutorial and lab sections they teach. Instructors and TAs see and change things for their sections' students.</p>
+          <div class="lx-f tm-run-pick"><div id="tm-runs-pick"></div></div><div id="tm-runs-box">${runsHTML(run)}</div>`
+          : `<p class="lx-help">The offering has no sections yet: add them in Sections, on the offering's page.</p>`}
+        <h3 class="lx-sec">Office Hours</h3>
+        <p class="lx-help">Every week of the term. The course page shows them with their details, and on their days.</p>
+        <div class="gr-items tm-times">${office.map(([x, i]) => `<div class="gr-item tm-oh-row" data-i="${i}">
+          <span class="lx-kicon" aria-hidden="true">${CLOCK}</span>
+          <div class="gr-item-b"><div class="gr-grid gr-grid4">
+            <label class="lx-f">Day<select data-k="day"${dis}>${opt(days, x.day)}</select></label>
+            <label class="lx-f">Starts<input type="text" data-k="start" value="${esc(x.start || "")}" placeholder="e.g. 2 pm" autocomplete="off"${dis}></label>
+            <label class="lx-f">Ends<input type="text" data-k="end" value="${esc(x.end || "")}" placeholder="e.g. 3 pm" autocomplete="off"${dis}></label>
+            <div class="lx-f gr-where">Where<div class="tm-where" data-plc-i="${i}"></div></div>
+          </div></div>
+          ${canChange ? `<button type="button" class="lx-ic quiet" data-del="${i}" title="Remove these office hours" aria-label="Remove these office hours">${ICON.trash}</button>` : ""}</div>`).join("") || `<p class="lx-none gr-none">No office hours yet.</p>`}</div>
+        ${canChange ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add="office">${ICON.plus}Add Office Hours</button></div>` : ""}
       </div>
-      <h2 class="lw-h2">Sections They Run</h2>
-      <div class="lw-card">${G.length ? `<div class="lt-form tm-run-pick"><label>Sections<div id="tm-runs-pick"></div><small>The lecture, tutorial and lab sections they teach. Instructors and TAs see and change things for their sections' students.</small></label></div>` : ""}
-        ${run.length ? `<div class="lt-olist tm-runs">${run.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(sectionLine(g))}</span></span></button></div>`).join("")}</div>`
-        : G.length ? "" : `<p class="lt-part-text lw-help">The offering has no sections yet: add them in Sections, on the offering's page.</p>`}</div>
-      <h2 class="lw-h2">Office Hours</h2>
-      <div class="lw-card"><p class="lt-part-text lw-help">Every week of the term. The course page shows them with their details, and on their days.</p>
-        <div class="tm-times">${office.length ? `<div class="tm-row tm-head tm-oh"><span>Day</span><span>Starts</span><span>Ends</span><span>Where</span><span></span></div>` : ""}
-        ${office.map(([x, i]) => `<div class="tm-row tm-oh" data-i="${i}">
-          <select data-k="day" aria-label="Day"${dis}>${opt(days, x.day)}</select>
-          <input type="text" data-k="start" value="${esc(x.start || "")}" placeholder="e.g. 2 pm" aria-label="Starts" autocomplete="off"${dis}>
-          <input type="text" data-k="end" value="${esc(x.end || "")}" placeholder="e.g. 3 pm" aria-label="Ends" autocomplete="off"${dis}>
-          <div class="tm-where" data-plc-i="${i}"></div>
-          ${canChange ? `<button type="button" class="lt-btn lt-trash lw-ic" data-del="${i}" aria-label="Remove them">${ICON.trash}</button>` : "<span></span>"}</div>`).join("") || `<p class="lt-hint">None yet.</p>`}</div>
-        ${canChange ? `<div class="lw-adds"><button type="button" class="lt-btn add" data-add="office">${ICON.plus}Add Office Hours</button></div>` : ""}</div>
-    </div>`);
+    </div></div>`);
     document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
     // Office hours' Where: a place (picked on the map, or typed) and a room.
     document.querySelectorAll(".tm-times [data-plc-i]").forEach(h => {
@@ -107,9 +115,7 @@ export function teamMemberPage(ctx, r) {
         try {
           const { data } = await changeGroups(Store, repo, c, t, d => { d.groups.forEach(g => { const on = v.includes(g.id), was = runnersOf(g); g.people = on ? [...new Set([...was, id])] : was.filter(p => p !== id); }); }, "Sections: who runs them");
           st.groups = data.groups; status("Saved");
-          const list = document.querySelector(".tm-runs"), now = sortSections(data.groups).filter(g => runsSection(g, id));
-          const html = now.length ? `<div class="lt-olist tm-runs">${now.map(g => `<div class="lt-orow lt-user lt-sec-row"><button type="button" class="lt-user-who lt-user-open" data-group="${esc(g.id)}"><span class="lt-sec-ic" aria-hidden="true">${SECTION_ICON[sectionKind(g)]}</span><span class="lt-sec-t"><small>${esc(SECTION_NAME[sectionKind(g)])}</small><b>${esc(sectionLabel(g))}</b><span>${esc(sectionLine(g))}</span></span></button></div>`).join("")}</div>` : "";
-          if (list) list.outerHTML = html || '<div class="tm-runs" hidden></div>'; else if (html) pick.closest(".lw-card").insertAdjacentHTML("beforeend", html);
+          const box2 = $("#tm-runs-box"); if (box2) box2.innerHTML = teamMemberPage.runsHTML(sortSections(data.groups).filter(g => runsSection(g, id)));
           document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
         } catch (e) { status("Not saved", true); toast(`Couldn't save who runs the sections. ${e.message}`); }
       } });
@@ -120,7 +126,7 @@ export function teamMemberPage(ctx, r) {
     $("#tm-show").onchange = e => { if (e.target.checked) delete P().show; else P().show = false; changed(); };
     const box = $(".tm-times");
     box.oninput = box.onchange = e => {
-      const row = e.target.closest(".tm-row[data-i]"); if (!row || !e.target.dataset.k) return;
+      const row = e.target.closest(".tm-oh-row[data-i]"); if (!row || !e.target.dataset.k) return;
       const x = P().times[+row.dataset.i], k = e.target.dataset.k;
       if ((k === "start" || k === "end") && e.type === "change") { const v = parseTime(e.target.value); if (v == null) { e.target.classList.add("bad"); toast("Type a time like 14:00 or 2 pm."); return; } e.target.classList.remove("bad"); e.target.value = v; x[k] = v; changed(); return; }
       if (k === "start" || k === "end") return;
@@ -133,7 +139,7 @@ export function teamMemberPage(ctx, r) {
       const list = (P().times = P().times || []), last = list[list.length - 1];
       list.push({ id: uid(), kind: b.dataset.add, section: "", day: last ? last.day : 1, start: "", end: "", where: b.dataset.add === "office" ? P().office || "" : last ? last.where : "" });
       changed(); draw(who, true);
-      const rows = document.querySelectorAll(".tm-row[data-i]"); const s = rows[rows.length - 1] && rows[rows.length - 1].querySelector('[data-k="section"]'); if (s) s.focus();
+      const rows = document.querySelectorAll(".tm-oh-row[data-i]"); const s = rows[rows.length - 1] && rows[rows.length - 1].querySelector('[data-k="section"]'); if (s) s.focus();
     }; });
   }
 

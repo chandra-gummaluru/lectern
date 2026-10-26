@@ -157,6 +157,37 @@ CREATE TABLE IF NOT EXISTS announcements_seen (  -- the announcements each stude
   at        REAL NOT NULL,
   PRIMARY KEY (owner_id, offering, email, ann_id)
 );
+CREATE TABLE IF NOT EXISTS discussion_posts (  -- a course page's discussions (discuss.py): posts on an evaluation, an activity or an announcement, and their comments
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering    TEXT NOT NULL,
+  target      TEXT NOT NULL,              -- "eval:<id>", "act:<id>", "ann:<id>"
+  parent_id   INTEGER,                    -- a comment: the post or comment it answers
+  author_kind TEXT NOT NULL,              -- "student" (by the email they signed in with) or "staff" (a Lectern account)
+  author      TEXT NOT NULL,
+  anon        INTEGER NOT NULL DEFAULT 0, -- a student's, anonymous to classmates (the teaching team sees who)
+  title       TEXT NOT NULL DEFAULT '',
+  body        TEXT NOT NULL DEFAULT '',
+  created     REAL NOT NULL,
+  pinned      INTEGER NOT NULL DEFAULT 0,
+  endorsed_by TEXT NOT NULL DEFAULT '',
+  removed_by  TEXT NOT NULL DEFAULT '',
+  deleted     INTEGER NOT NULL DEFAULT 0  -- by its author
+);
+CREATE INDEX IF NOT EXISTS discussion_posts_target ON discussion_posts (owner_id, offering, target);
+CREATE TABLE IF NOT EXISTS discussion_votes (
+  post_id INTEGER NOT NULL REFERENCES discussion_posts(id) ON DELETE CASCADE,
+  voter   TEXT NOT NULL,                  -- "s:<email>" or "u:<user id>"
+  PRIMARY KEY (post_id, voter)
+);
+CREATE TABLE IF NOT EXISTS discussion_aliases (  -- each student's anonymous name in a course ("Anonymous Heron"), the same in all its discussions
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering TEXT NOT NULL,
+  email    TEXT NOT NULL,
+  alias    TEXT NOT NULL,
+  PRIMARY KEY (owner_id, offering, email),
+  UNIQUE (owner_id, offering, alias)
+);
 CREATE TABLE IF NOT EXISTS course_students (  -- when each student was sent the course page's link and last signed in (students.py; the class list is the gradebook's)
   owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   offering  TEXT NOT NULL,

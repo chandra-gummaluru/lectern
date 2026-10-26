@@ -128,9 +128,24 @@ function markSeen() {
 }
 const MEGAPHONE = svg('<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>');
 // An announcement, as an activity's card is: its icon, ANNOUNCEMENT (and its sections), its title and date, its message.
-const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? " hs-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<p class="hs-when">${esc(stampText(a.date))}</p></div><div class="hs-body">${markdown(a.body)}</div></div></article>`;
+const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? " hs-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<p class="hs-when">${esc(stampText(a.date))}</p></div><div class="hs-body">${markdown(a.body)}</div>${a.id ? dcLink(`ann:${a.id}`, `#announcement/${encodeURIComponent(a.id)}`) : ""}</div></article>`;
+// Discussions (discuss.js): a link to one from an activity's or an announcement's row, with how many posts it
+// has (signed-in people only: they're for the people in the course); and the discussion itself, at the
+// bottom of an item's page.
+const CHAT = svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>');
+const dcLink = (t, href) => (D.viewer.signedIn ? `<a class="dc-link" href="${href}">${CHAT}Discussion<span class="dc-link-n" data-dcn="${esc(t)}"></span></a>` : "");
+const dcHere = t => `<section class="dc" data-dc="${esc(t)}"></section>`;
+let DCN = null, DCN_AT = 0;
+function discussions(m) {
+  m.querySelectorAll("[data-dc]").forEach(el => import("/static/js/discuss.js").then(x => x.mount(el, { api: root.dataset.api, target: el.dataset.dc, signIn: D.signIn || D.lectern })).catch(e => console.error(e)));
+  const spans = m.querySelectorAll("[data-dcn]"); if (!spans.length || !D.viewer.signedIn) return;
+  const fill = () => spans.forEach(sp => { const n = (DCN || {})[sp.dataset.dcn] || 0; sp.textContent = n ? ` · ${n}` : ""; });
+  if (DCN && Date.now() - DCN_AT < 30000) return fill();
+  fetch(`${root.dataset.api}/discussion/counts`, { credentials: "same-origin" }).then(r => r.ok ? r.json() : { counts: {} }).then(d => { DCN = d.counts || {}; DCN_AT = Date.now(); fill(); }).catch(() => {});
+}
+const findActivity = id => { for (const w of weeks()) for (const c of w.cards || []) if (String(c.id) === String(id)) return { w, c }; return null; };
 // An announcement as a row in a card's group (a week's page, Announcements): as an activity's row is.
-const annItem = a => `<div class="wk-item${isNew(a) ? " wk-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="wk-b"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p><h3>${esc(a.title || "Announcement")}</h3><p class="wk-when">${esc(stampText(a.date))}</p><div class="hs-body">${markdown(a.body)}</div></div></div>`;
+const annItem = a => `<div class="wk-item${isNew(a) ? " wk-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="wk-b"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p><h3>${esc(a.title || "Announcement")}</h3><p class="wk-when">${esc(stampText(a.date))}</p><div class="hs-body">${markdown(a.body)}</div>${a.id ? dcLink(`ann:${a.id}`, `#announcement/${encodeURIComponent(a.id)}`) : ""}</div></div>`;
 // An evaluation as a row in a card's group (a week's page, a group's): it opens the evaluation's page.
 const evItem = e => `<a class="wk-item wk-link" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3>${evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${CHEV}</a>`;
 function weekRow(w, now) {
@@ -154,7 +169,7 @@ const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${
 function activityCard(c) {
   const k = kindOf(c), D_ = datesOf(c).map(stampText).join(" · ");
   const anns = c.id ? annsOn(`act:${c.id}`) : [];
-  return `<article class="hs-card hs-act hd-row"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
+  return `<article class="hs-card hs-act hd-row"><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}${c.id ? dcLink(`act:${c.id}`, `#activity/${encodeURIComponent(c.id)}`) : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 function requestHTML(e) {
@@ -326,6 +341,7 @@ function evalCard(u, group, E) {
       ${acc ? `<div class="ec-part">${acc.replace("@@REQ@@", req ? `<span class="ec-accbtn">${req}</span>` : "")}</div>` : req ? `<div class="ec-part ec-req">${req}</div>` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
+      ${dcHere(`eval:${u.id}`)}
     </article>`;
 }
 // Request Accommodation, at the top of an evaluation's card: when students can ask (until its deadline).
@@ -396,7 +412,7 @@ const PAGES = {
     const item = (ic, kick, title, when, rest = "") => `<div class="wk-item"><span class="hs-ic">${ic}</span><div class="wk-b"><p class="hs-kick">${kick}</p><h3>${esc(title)}</h3>${when ? `<p class="wk-when">${esc(when)}</p>` : ""}${rest}</div></div>`;
     const acts = w.cards.map(c => { const k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [];
       return item(KIND_ICON[k], `${esc(KIND_NAME[k])}${groupTag(c.groups)}`, c.title || c.label || "Untitled", datesOf(c).map(stampText).join(" · "),
-        `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`); }).join("");
+        `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}${c.id ? dcLink(`act:${c.id}`, `#activity/${encodeURIComponent(c.id)}`) : ""}`); }).join("");
     const due = evs.map(evItem).join("");
     const an = anns.map(annItem).join("");
     return `<div class="wk-top">${path([["Activities", "#activities"], [w.label || "Week"]])}<nav class="wk-pn" aria-label="Other weeks">${prev ? `<a class="hb-btn" href="#week/${prev.i}" title="${esc(prev.label || "Previous week")}">${svg('<path d="m15 6-6 6 6 6"/>')}Previous</a>` : `<span class="hb-btn wk-off" aria-disabled="true">${svg('<path d="m15 6-6 6 6 6"/>')}Previous</span>`}${next ? `<a class="hb-btn" href="#week/${next.i}" title="${esc(next.label || "Next week")}">Next${svg('<path d="m9 6 6 6-6 6"/>')}</a>` : `<span class="hb-btn wk-off" aria-disabled="true">Next${svg('<path d="m9 6 6 6-6 6"/>')}</span>`}</nav></div>
@@ -431,6 +447,31 @@ const PAGES = {
         </article>`;
     }
     return evalCard(u, group, E);
+  },
+  // One activity (#activity/<id>): its card, and its discussion.
+  activity(arg) {
+    if (!open("lectures")) return lockedPage("lectures", "Activities");
+    const f = findActivity(arg); if (!f) return PAGES.activities();
+    const { w, c } = f, k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [], when = datesOf(c).map(stampText).join(" · ");
+    return `${path([["Activities", "#activities"], [w.label || "Week", `#week/${w.i}`], [c.title || c.label || "Activity"]])}
+      <article class="ec-card wk-card">
+        <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON[k]}</span><div class="ec-tt"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h1>${esc(c.title || c.label || "Untitled")}</h1>${when ? `<p class="ec-subline">${esc(when)}</p>` : ""}</div></header>
+        ${c.description ? `<div class="hs-body ec-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files)}
+        ${anns.length ? `<div class="wk-group"><div class="wk-list">${anns.map(annItem).join("")}</div></div>` : ""}
+        ${dcHere(`act:${c.id}`)}
+      </article>`;
+  },
+  // One announcement (#announcement/<id>): it, and its discussion.
+  announcement(arg) {
+    if (!open("announcements")) return lockedPage("announcements", "Announcements");
+    const a = ((data("announcements") || {}).items || []).find(x => String(x.id) === String(arg)); if (!a) return PAGES.announcements();
+    note(a);
+    return `${path([["Announcements", "#announcements"], [a.title || "Announcement"]])}
+      <article class="ec-card wk-card">
+        <header class="ec-head"><span class="hs-ic ec-ic">${MEGAPHONE}</span><div class="ec-tt"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p><h1>${esc(a.title || "Announcement")}</h1><p class="ec-subline">${esc(stampText(a.date))}</p></div></header>
+        <div class="hs-body ec-body">${markdown(a.body)}</div>
+        ${dcHere(`ann:${a.id}`)}
+      </article>`;
   },
   // (Its description is in the header already.)
   about() {
@@ -499,7 +540,7 @@ function route() {
 
 function draw() {
   const { id, arg } = route(), m = $("hb-main");
-  try { m.innerHTML = PAGES[id](arg); markSeen(); }
+  try { m.innerHTML = PAGES[id](arg); markSeen(); discussions(m); }
   catch (e) { console.error(e); m.innerHTML = `<p class="hb-empty">Something went wrong showing this part of the page.</p>`; }
   if (id !== "home") { const h = m.querySelector(".hs-head h1, .hb-h2, .hb-locked h2"); document.title = `${h ? h.textContent : "Course page"} · ${D.course.code || D.course.title}`; }
 }

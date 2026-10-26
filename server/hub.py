@@ -553,10 +553,10 @@ def hub_api(handle, course, term):
     all_b["about"]["groups"] = groups_of(o["id"], course, term)
     # Each evaluation's policy if it's missed, and its points: the gradebook's own, now.
     pol = gradebook_policies(o["id"], course, term)
-    for u in _list((all_b.get("evaluations") or {}).get("units")):
-        if isinstance(u, dict) and u.get("kind") != "group" and u.get("id") in pol:
-            u.update(pol[u["id"]])
-        for mm in _list(u.get("members") if isinstance(u, dict) else None):
+    for unit in _list((all_b.get("evaluations") or {}).get("units")):   # (not u: that's who's looking)
+        if isinstance(unit, dict) and unit.get("kind") != "group" and unit.get("id") in pol:
+            unit.update(pol[unit["id"]])
+        for mm in _list(unit.get("members") if isinstance(unit, dict) else None):
             if isinstance(mm, dict) and mm.get("id") in pol and "total" in pol[mm["id"]]:
                 mm["total"] = pol[mm["id"]]["total"]
     # An evaluation's dates for some sections: with those sections' names (the course page says which).
@@ -567,9 +567,9 @@ def hub_api(handle, course, term):
             if isinstance(d, dict):
                 d["names"] = [gname[str(i)] for i in _list(d.get("groups")) if gname.get(str(i))]
                 d["kinds"] = [gkind.get(str(i), "") for i in _list(d.get("groups")) if gname.get(str(i))]
-    for u in _list((all_b.get("evaluations") or {}).get("units")):
-        _named(u)
-        for m in _list(u.get("members") if isinstance(u, dict) else None):
+    for unit in _list((all_b.get("evaluations") or {}).get("units")):
+        _named(unit)
+        for m in _list(unit.get("members") if isinstance(unit, dict) else None):
             _named(m)
     # An activity or announcement for one activity group is only for its students (and the teaching team).
     if not (role in STAFF and not preview):
@@ -610,9 +610,9 @@ def hub_api(handle, course, term):
                     break
             e.pop("dates", None)
         ev = all_b.get("evaluations") or {}
-        for u in _list(ev.get("units")):
-            own_date(u)
-            for m in _list(u.get("members") if isinstance(u, dict) else None):
+        for unit in _list(ev.get("units")):
+            own_date(unit)
+            for m in _list(unit.get("members") if isinstance(unit, dict) else None):
                 own_date(m)
         for e in _list(ev.get("evals")):
             own_date(e)

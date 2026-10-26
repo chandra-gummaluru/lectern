@@ -382,7 +382,7 @@ export function lecturesPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" style="--c:${WEEK_COLOR}">
-        <div class="lx-ed-head"><span class="lx-wnum" id="lw-wnum" aria-hidden="true">${esc(weekNum(w))}</span><h2 id="lw-h">${esc(w.label || "Week")}</h2>
+        <div class="lx-ed-head"><span class="lx-wnum" id="lw-wnum" aria-hidden="true">${esc(weekNum(w))}</span><div class="gr-tt"><p class="gr-kind">${esc(rangeText(w.start, w.end) || "Week")}</p><h2 id="lw-h">${esc(w.label || "Week")}</h2></div>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this week" aria-label="Delete this week">${ICON.trash}</button>` : ""}</span></div>
         <h3 class="lx-sec lx-first">General</h3>
         <div class="lx-grid two">
@@ -431,7 +431,7 @@ export function lecturesPage(ctx, r) {
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote()}
       <div class="lx-editor" id="lw-ed" style="--c:${KIND_COLOR[k]}">
-        <div class="lx-ed-head"><span class="lx-kicon big" id="lw-kicon">${KIND_ICON[k]}</span><h2 id="lw-h">${esc(titleOf(x))}</h2>
+        <div class="lx-ed-head"><span class="lx-kicon big" id="lw-kicon">${KIND_ICON[k]}</span><div class="gr-tt"><p class="gr-kind" id="lw-kick">${esc(kindName(k))}</p><h2 id="lw-h">${esc(titleOf(x))}</h2></div>
           <span class="lx-acts">${status$()}${edit ? `<button type="button" class="lx-ic" id="lw-del" title="Delete this activity" aria-label="Delete this activity">${ICON.trash}</button>` : ""}</span></div>
         <h3 class="lx-sec lx-first">General</h3>
         <div class="lx-grid">
@@ -490,7 +490,7 @@ export function lecturesPage(ctx, r) {
       if (now === "other") x.label = ""; else renumber(weeks());
       const lab = $("#lw-label"); lab.value = x.label || ""; lab.disabled = now !== "other"; lab.title = now === "other" ? "" : "Only Other has a label of its own; the rest are named by their type, in order";
       document.querySelectorAll("[data-kind]").forEach(y => y.setAttribute("aria-pressed", y === b));
-      $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now];
+      $("#lw-ed").style.setProperty("--c", KIND_COLOR[now]); $("#lw-kicon").innerHTML = KIND_ICON[now]; $("#lw-kick").textContent = kindName(now);
       head(); changed();
     }; });
 

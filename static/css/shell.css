@@ -1043,3 +1043,14 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-tick input { grid-row: span 2; align-self: start; margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--home-ink); }
 .lx-tick b { font-weight: 600; }
 .lx-tick span { grid-column: 2; font-size: 13px; color: var(--home-ink-3); }
+
+/* An editor's head with a kicker: a small icon (or week circle) beside the kicker, the title under them,
+   flush left (as the course page's pages); its status and buttons on the right. */
+.lx-ed-head:has(> .gr-tt > .gr-kind) { display: grid; grid-template-columns: auto 1fr auto; gap: 0 6px; align-items: center; }
+.lx-ed-head:has(> .gr-tt > .gr-kind) > .gr-tt { display: contents; }
+.lx-ed-head:has(> .gr-tt > .gr-kind) .gr-kind { grid-column: 2; grid-row: 1; margin: 0; }
+.lx-ed-head:has(> .gr-tt > .gr-kind) h2 { grid-column: 1 / 3; grid-row: 2; margin-top: 1px; line-height: 1.1; }
+.lx-ed-head:has(> .gr-tt > .gr-kind) > :not(.gr-tt):not(.lx-acts):first-child { grid-column: 1; grid-row: 1; width: 15px; height: 15px; margin: 0; color: var(--home-ink-3); }
+.lx-ed-head:has(> .gr-tt > .gr-kind) > .lx-kicon svg { width: 15px; height: 15px; stroke-width: 2.1; }
+.lx-ed-head:has(> .gr-tt > .gr-kind) > .lx-wnum { width: 17px; height: 17px; font: 600 10px/1 var(--font-ui); }
+.lx-ed-head:has(> .gr-tt > .gr-kind) > .lx-acts { grid-column: 3; grid-row: 1 / span 2; }

@@ -231,7 +231,7 @@ const ReqForm = (() => {
     box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
       ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
       <h2 class="hs-h2">Confirm It's You</h2>
-      <p class="rq-help">Give these exactly as your instructor has them on record.</p>
+      <p class="rq-help">For security purposes, please provide us with the following information.</p>
       <div class="rq-grid">
         <label class="rq-f">${esc(String(info.idLabel || "Student Number").replace(/\b\w/g, c => c.toUpperCase()))}<input type="text" name="id" autocomplete="off" spellcheck="false" value="${esc(k.id || "")}"></label>
         <label class="rq-f">First Name<input type="text" name="first" autocomplete="given-name" spellcheck="false" value="${esc(k.first || "")}"></label>

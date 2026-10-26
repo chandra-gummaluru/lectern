@@ -233,20 +233,21 @@ const ReqForm = (() => {
       <h2 class="hs-h2">Confirm It's You</h2>
       <p class="rq-help">Give these exactly as your instructor has them on record.</p>
       <div class="rq-grid">
-        <label class="rq-f rq-wide">${esc(info.idLabel)}<input type="text" name="id" autocomplete="off" spellcheck="false" value="${esc(k.id || "")}"></label>
+        <label class="rq-f">${esc(String(info.idLabel || "Student Number").replace(/\b\w/g, c => c.toUpperCase()))}<input type="text" name="id" autocomplete="off" spellcheck="false" value="${esc(k.id || "")}"></label>
         <label class="rq-f">First Name<input type="text" name="first" autocomplete="given-name" spellcheck="false" value="${esc(k.first || "")}"></label>
         <label class="rq-f">Last Name<input type="text" name="last" autocomplete="family-name" spellcheck="false" value="${esc(k.last || "")}"></label>
       </div>
       <h2 class="hs-h2 rq-h2">What You Need</h2>
-      ${s && !s.approval ? `<p class="rq-help">The standard accommodation, <b>${esc(s.text)}</b>, applies without a request.</p>` : `<p class="rq-help">Choose one. For something else as well, make another request after this one.</p>`}
+      ${canStd && alt ? `<p class="rq-help">Choose one.</p>
       <div class="hs-list rq-opts" role="radiogroup" aria-label="What you need">
-        ${canStd ? opt("standard", "The Standard Accommodation", s.text, kind === "standard") : ""}
-        ${alt ? opt("alternate", "An Alternate Accommodation", "Something other than the standard accommodation: say what you need.", kind === "alternate") : ""}
-      </div>
-      <div class="rq-more" id="rq-more"${kind === "alternate" ? "" : " hidden"}><span class="rq-fl">What do you need?</span><div id="rq-rt"></div>
+        ${opt("standard", "The Standard Accommodation", s.text, kind === "standard")}
+        ${opt("alternate", "An Alternate Accommodation", "Something other than the standard accommodation: say what you need.", kind === "alternate")}
+      </div>` : canStd ? `<p class="rq-help">You're asking for the standard accommodation: <b>${esc(s.text)}</b>.</p>`
+      : `<p class="rq-help">${s && !s.approval ? `The standard accommodation, <b>${esc(s.text)}</b>, applies without a request. Say what you need instead, and why.` : "Say what you need, and why."}</p>`}
+      <div class="rq-more" id="rq-more"${kind === "alternate" ? "" : " hidden"}><div id="rq-rt"></div>
         <small class="rq-help">To share a document (a doctor's note, say), add a link to it. Files and pictures can't be attached.</small></div>
       <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
-      <div class="rq-acts"><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Cancel</a><span class="sp"></span><button type="submit" class="hb-btn primary"${staff ? " disabled" : ""}>Send Request</button></div>
+      <div class="rq-acts"><span class="sp"></span><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Cancel</a><button type="submit" class="hb-btn primary"${staff ? " disabled" : ""}>Send Request</button></div>
     </form>`;
     const f = $("rq-form");
     ["first", "last"].forEach(n => { const el = f[n]; el.addEventListener("input", () => { const p = el.selectionStart, v = capital(el.value); if (v !== el.value) { el.value = v; el.setSelectionRange(p, p); } }); });

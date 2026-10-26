@@ -953,3 +953,17 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb .dc-search input:focus-visible { outline: none; }
 .dc-sp { flex: 1; }
 @media (max-width: 640px) { .dc-head { flex-wrap: wrap; } .dc-tools { flex-wrap: wrap; } .dc-search input { width: 110px; } }
+
+/* The list pages (Announcements, Activities, Evaluations, About the Course): the title, then a card each. */
+.hs-cards { display: grid; gap: 10px; }
+.hs-cards + .hs-cards { margin-top: 26px; }
+.hs-cards > .wk-item { padding: 16px 20px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--card); }
+.hs-cards > .wk-item + .wk-item { border-top: 1px solid var(--line-2); }
+.hs-cards > .wk-item > .hs-ic, .hs-cards > .wk-item > .ab-av { margin-top: 16px; }
+.hb .hs-cards > a.wk-item:hover, .hs-cards > .wk-go:hover { border-color: var(--ink-3); }
+.hs-cards > .wk-break { margin: 0; padding: 8px 20px !important; border-radius: 12px; background: var(--strip); border: 0; }
+.hs-cards > .wk-item.mk { margin-left: 44px; border-style: dashed; background: transparent; }
+.hs-gcard { padding: 4px 10px 10px; border: 1px solid var(--accent-line); border-radius: 14px; background: var(--accent-bg); }
+.hs-gcard > .wk-item { padding: 14px 10px; }
+.hs-gcard > .hs-cards > .wk-item.mk { margin-left: 34px; }
+@media (max-width: 640px) { .hs-cards > .wk-item.mk { margin-left: 20px; } }

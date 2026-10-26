@@ -384,24 +384,18 @@ const PAGES = {
   announcements() {
     if (!open("announcements")) return lockedPage("announcements", "Announcements");
     const items = (data("announcements").items || []).slice().sort((a, b) => annTime(b) - annTime(a));
-    // One card, as a week's page is: the announcements a row each, newest first.
-    return `${path([["Announcements"]])}
-      <article class="ec-card wk-card">
-        <header class="ec-head"><span class="hs-ic ec-ic">${MEGAPHONE}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Announcements</h1><p class="ec-subline">News for the class, newest first.</p></div></header>
-        ${items.length ? `<div class="wk-group"><div class="wk-list">${items.map(annItem).join("")}</div></div>` : `<p class="hs-empty">No announcements yet.</p>`}
-      </article>`;
+    // The title, then each announcement a card of its own, newest first.
+    return `${path([["Announcements"]])}${head("Announcements", "News for the class, newest first.")}
+      ${items.length ? `<div class="hs-cards">${items.map(annItem).join("")}</div>` : `<p class="hs-empty">No announcements yet.</p>`}`;
   },
   activities() {
     if (!open("lectures")) return lockedPage("lectures", "Activities");
-    // One card: the term's weeks, a row each (as a week's page has its activities).
+    // The title, then the term's weeks, a card each.
     const now = thisWeek();
     const rows = weeks().map(w => w.isBreak ? `<div class="wk-item wk-break">${esc(w.label || "Break")}</div>`
       : `<a class="wk-item wk-link hs-wk${w.i === now ? " wk-now" : ""}" href="#week/${w.i}"><span class="hs-num${w.i === now ? " on" : ""}"${w.i === now ? ' title="This week"' : ""}>${esc(weekNum(w))}</span><div class="wk-b"><p class="hs-kick">${esc(w.label || "Week")}</p><h3>${esc(w.topic || w.label || "Week")}</h3>${w.dates ? `<p class="wk-when">${esc(w.dates)}</p>` : ""}</div>${CHEV}</a>`).join("");
-    return `${path([["Activities"]])}
-      <article class="ec-card wk-card">
-        <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON.lecture}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Activities</h1><p class="ec-subline">The term, week by week: open a week for its lectures, tutorials and labs, their files, and what's due.</p></div></header>
-        ${rows ? `<div class="wk-group"><div class="wk-list">${rows}</div></div>` : `<p class="hs-empty">The weeks will appear here.</p>`}
-      </article>`;
+    return `${path([["Activities"]])}${head("Activities", "The term, week by week: open a week for its lectures, tutorials and labs, their files, and what's due.")}
+      ${rows ? `<div class="hs-cards">${rows}</div>` : `<p class="hs-empty">The weeks will appear here.</p>`}`;
   },
   week(arg) {
     if (!open("lectures")) return lockedPage("lectures", "Activities");
@@ -427,16 +421,15 @@ const PAGES = {
   },
   evaluations() {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
-    // One card: each evaluation a row with its weight (a group, then its own, under it).
-    const U = data("evaluations").units || [];
+    // The title, then each evaluation a card with its weight: a group a tinted card with its own inside it,
+    // and a makeup a dashed card under the evaluation it's for.
+    const U = data("evaluations").units || [], MK = allEvals().filter(x => x.makeupFor);
     const W = w => (w != null ? `<span class="wk-w">${fmtW(w)}%</span>` : "");
-    const row = (e, w, sub) => `<a class="wk-item wk-link hs-ev${sub ? " wk-sub" : ""}" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[e.kind === "group" ? "group" : evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.kind === "group" ? "Group" : e.name)}</p><h3>${esc(e.kind === "group" ? e.name : e.title || e.name)}</h3>${e.kind === "group" ? `<p class="wk-when">The best ${e.keep} of ${e.count} count, ${fmtW(e.weight / Math.max(1, e.keep))}% each</p>` : evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${W(w)}${CHEV}</a>`;
-    const rows = U.map(u => u.kind === "group" ? row(u, u.weight) + (u.members || []).map(m => row(m, null, true)).join("") : row(u, u.weight)).join("");
-    return `${path([["Evaluations"]])}
-      <article class="ec-card wk-card">
-        <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON.test}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Evaluations</h1><p class="ec-subline">Every evaluation, its weight and when it is. Together they make up your course grade.</p></div></header>
-        ${rows ? `<div class="wk-group"><div class="wk-list">${rows}</div></div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}
-      </article>`;
+    const row = (e, w, sub, mk) => `<a class="wk-item wk-link hs-ev${sub ? " wk-sub" : ""}${mk ? " mk" : ""}" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[e.kind === "group" ? "group" : evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.kind === "group" ? "Group" : mk ? `Makeup for ${mk.name}` : e.name)}</p><h3>${esc(e.kind === "group" ? e.name : e.title || e.name)}</h3>${e.kind === "group" ? `<p class="wk-when">The best ${e.keep} of ${e.count} count, ${fmtW(e.weight / Math.max(1, e.keep))}% each</p>` : evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${W(w)}${CHEV}</a>`;
+    const one = (e, w, sub) => row(e, w, sub) + MK.filter(x => x.makeupFor === e.id).map(x => row(x, null, sub, e)).join("");
+    const rows = U.map(u => u.kind === "group" ? `<div class="hs-gcard">${row(u, u.weight)}<div class="hs-cards">${(u.members || []).map(m => one(m, null, true)).join("")}</div></div>` : one(u, u.weight)).join("");
+    return `${path([["Evaluations"]])}${head("Evaluations", "Every evaluation, its weight and when it is. Together they make up your course grade.")}
+      ${rows ? `<div class="hs-cards">${rows}</div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}`;
   },
   evaluation(arg) {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
@@ -490,7 +483,6 @@ const PAGES = {
     const CLOCK = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
     const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
     const MAIL = svg('<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>');
-    const INFO = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5M12 7.6v.1"/>');
     const fact = (ic, html) => `<span class="ec-wd"><span class="hs-ic sm">${ic}</span>${html}</span>`;
     const timesHTML = I => { const L = [];   // the days that share a time and a place, together
       I.slice().sort((x, y) => (x.day || 9) - (y.day || 9)).forEach(x => { const k = `${x.start}|${x.end}|${x.where || ""}`, l = L.find(y => y.k === k); if (l) l.days.push(DAY3[x.day]); else L.push({ k, days: [DAY3[x.day]].filter(Boolean), x }); });
@@ -510,14 +502,10 @@ const PAGES = {
     const RULE = svg('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>');
     const rules = (a.rules || []).filter(r => r.title || r.text).map(r => item(`<span class="hs-ic">${RULE}</span>`, "Policy", r.title || "Policy", r.text ? `<div class="hs-body">${markdown(r.text)}</div>` : "")).join("");
     const c = D.course;
-    return `${path([["About the Course"]])}
-      <article class="ec-card wk-card ab-card">
-        <header class="ec-head"><span class="hs-ic ec-ic">${INFO}</span><div class="ec-tt"><p class="hs-kick">${esc(c.code || "")}</p><h1>About the Course</h1>${[c.term, c.school].filter(Boolean).length ? `<p class="ec-subline">${esc([c.term, c.school].filter(Boolean).join(" · "))}</p>` : ""}</div></header>
-        ${secs ? `<div class="wk-group"><div class="wk-list">${secs}</div></div>` : ""}
-        ${people ? `<div class="wk-group"><div class="wk-list">${people}</div></div>` : ""}
-        ${rules ? `<div class="wk-group"><div class="wk-list">${rules}</div></div>` : ""}
-        ${rest.replace(/\s/g, "") ? `<div class="ab-rest">${rest}</div>` : ""}
-      </article>`;
+    // The title, then each section, each person and each policy a card of its own.
+    return `${path([["About the Course"]])}${head("About the Course", esc([c.term, c.school].filter(Boolean).join(" · ")))}
+      <div class="ab-page">${[secs, people, rules].filter(Boolean).map(x => `<div class="hs-cards">${x}</div>`).join("")}</div>
+      ${rest.replace(/\s/g, "") ? `<div class="ab-rest">${rest}</div>` : ""}`;
   },
   // Requesting an accommodation for one evaluation (#request/<id>): drawn once what can be asked for is in.
   request(arg) {

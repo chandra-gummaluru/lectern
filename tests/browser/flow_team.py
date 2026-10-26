@@ -123,8 +123,8 @@ def main():
 
         # 4. The course page's About: the group with its times and who runs them; office hours; the team.
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".ab-card .wk-item")
-        sec = v.locator(".ab-card .wk-item").first
+        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".ab-page .wk-item")
+        sec = v.locator(".ab-page .wk-item").first
         expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Lecture Section"); expect(sec.locator(".ab-time").first).to_contain_text("Mon, Wed10:00–11:00")
         expect(v.locator(".hb-main")).to_contain_text("Tutorial Section"); expect(v.locator(".hb-main")).to_contain_text("Thu15:00–16:00"); expect(sec).to_contain_text("Chandra Gummaluru")
         expect(sec.locator("a[href*='openstreetmap.org']").first).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map

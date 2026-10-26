@@ -122,6 +122,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     const L = tops(), p = S.open && posts().find(x => x.id === S.open);
     if (post) {
       if (onPost) onPost(p || null);
+      if (p && !S.seen) { S.seen = true; if (window.HubSeen) window.HubSeen(`post:${post}`); }   // its replies aren't new any more
       if (!p) { host.innerHTML = `<p class="dc-none">This post isn't here any more.</p>`; return; }
     } else if (S.open && !p) S.open = null;
     const F = found(L);

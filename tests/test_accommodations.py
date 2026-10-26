@@ -131,9 +131,8 @@ def test_submit_standard(client, gh):
     assert rec["kind"] == "standard" and rec["standard"] == "Write it the next day" and rec["status"] == "pending"
     assert rec["student"] == "1001" and rec["first"] == "Maya" and rec["evalName"] == "Midterm" and rec["course"] == "CSC258"
     assert gh.repo.read_text("csc258/f26/accommodations.json")[0]   # in the instructor's private files
-    # A receipt, to the email on file
-    assert mailer.sent[-1]["to"] == "maya.castillo@mail.utoronto.ca" and "received" in mailer.sent[-1]["subject"]
-    assert "Write it the next day" in mailer.sent[-1]["body"] and rec["id"] in mailer.sent[-1]["body"]
+    # No receipt by email: students are emailed only about decisions (and marks, and announcements)
+    assert not any("received" in m["subject"] for m in mailer.sent)
 
 
 def test_submit_standard_twice_is_refused(client, gh):

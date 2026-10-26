@@ -18,6 +18,7 @@ server turns into each viewer's names: @{p:<post id>} (whoever wrote that post, 
 anonymously), @{u:<user id>} (someone on the teaching team) and @{s:<student number>} (a student, by name: only
 the teaching team writes these, and a classmate who's anonymous in the discussion is shown by their alias).
 """
+import json
 import random
 import re
 import time
@@ -280,3 +281,90 @@ def delete(handle, course, term, pid):
         raise Refusal(403, "You can delete only your own posts.")
     db.run("UPDATE discussion_posts SET deleted = 1 WHERE id = ?", (pid,))
     return jsonify(_thread(o, off, p["target"], viewer))
+
+
+# ── What's new for someone, since they last looked (the badge on the course page's account button) ──
+#   GET  /api/hub/<handle>/<course>/<term>/updates          { count, items: [{ kind, … }] }
+#   POST /api/hub/<handle>/<course>/<term>/updates/seen     { what: "post:<id>" | "requests" | "eval:<id>" }
+# Replies: comments by others in a discussion they posted or commented in, after their last post there and
+# after they last opened it. Requests: their accommodation and remark requests decided since they last
+# looked at My Requests.
+def _seen(o, off, viewer):
+    return {r["what"]: r["at"] for r in db.all_("SELECT what, at FROM hub_seen WHERE owner_id = ? AND offering = ? AND viewer = ?", (o["id"], off, viewer["key"]))}
+
+
+def updates_for(o, off, viewer):
+    seen, items = _seen(o, off, viewer), []
+    rows = db.all_("SELECT * FROM discussion_posts WHERE owner_id = ? AND offering = ? ORDER BY created", (o["id"], off))
+    by = {r["id"]: r for r in rows}
+
+    def root(r):
+        for _ in range(200):
+            if r["parent_id"] is None or r["parent_id"] not in by:
+                return r
+            r = by[r["parent_id"]]
+        return r
+    threads = {}
+    for r in rows:
+        threads.setdefault(root(r)["id"], []).append(r)
+    from .hub import closed_discussions
+    shut = closed_discussions(o["id"], *off.split("/", 1))
+    for rid, T in threads.items():
+        mine = [r["created"] for r in T if _key(r) == viewer["key"]]
+        if not mine or by[rid]["target"] in shut:
+            continue
+        since = max(max(mine), seen.get(f"post:{rid}", 0))
+        new = [r for r in T if _key(r) != viewer["key"] and r["created"] > since and not r["removed_by"] and not r["deleted"]]
+        if new:
+            items.append({"kind": "reply", "post": rid, "target": by[rid]["target"], "title": by[rid]["title"], "n": len(new), "at": max(r["created"] for r in new)})
+    if viewer["kind"] == "student":
+        # Marks out, or changed, since they last opened that evaluation (when the students were emailed about it).
+        from .classmail import _book
+        from .students import roster
+        num = str((roster(o["id"], off).get(viewer["id"]) or {}).get("num") or "")
+        book = _book(o["id"], off) or {}
+        evs = {e.get("id"): e for e in book.get("evals") or [] if isinstance(e, dict)}
+        if num:
+            for r in db.all_("SELECT eval_id, at FROM grade_notices WHERE owner_id = ? AND offering = ? AND num = ?", (o["id"], off, num)):
+                e = evs.get(r["eval_id"])
+                if e and e.get("released") is True and r["at"] > seen.get(f"eval:{r['eval_id']}", 0):
+                    items.append({"kind": "mark", "eval": r["eval_id"], "name": e.get("name") or r["eval_id"], "at": r["at"]})
+        from .store import Repo
+        try:
+            t, _ = Repo(o["id"], "priv").read_text(f"{off}/accommodations.json")
+            reqs = json.loads(t)["requests"] if t else []
+        except (ValueError, KeyError, TypeError):
+            reqs = []
+        from datetime import datetime
+        def ts(iso):
+            try:
+                return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                return 0
+        last = seen.get("requests", 0)
+        for x in reqs if isinstance(reqs, list) else []:
+            if isinstance(x, dict) and str(x.get("email") or "").strip().lower() == str(viewer["id"]).lower() and x.get("status") in ("approved", "rejected") and ts(x.get("decided")) > last:
+                items.append({"kind": "request", "id": x.get("id"), "type": "remark" if x.get("type") == "remark" else "accommodation",
+                              "evalName": x.get("evalName") or "", "status": x["status"], "at": ts(x.get("decided"))})
+    items.sort(key=lambda x: -x["at"])
+    return items
+
+
+@discuss_bp.get("/api/hub/<handle>/<course>/<term>/updates")
+@handles
+def updates(handle, course, term):
+    o, off, viewer = _viewer(handle, course, term)
+    items = updates_for(o, off, viewer)
+    return jsonify(count=sum(x.get("n", 1) for x in items), items=items[:30])
+
+
+@discuss_bp.post("/api/hub/<handle>/<course>/<term>/updates/seen")
+@handles
+def seen(handle, course, term):
+    o, off, viewer = _viewer(handle, course, term)
+    what = text(body(), "what", 40).strip()
+    if not (what == "requests" or re.match(r"^post:\d{1,12}$", what) or re.match(r"^eval:[\w.-]{1,64}$", what)):
+        raise Refusal(400, "Seen what?")
+    db.run("""INSERT INTO hub_seen (owner_id, offering, viewer, what, at) VALUES (?, ?, ?, ?, ?)
+              ON CONFLICT(owner_id, offering, viewer, what) DO UPDATE SET at = excluded.at""", (o["id"], off, viewer["key"], what, time.time()))
+    return jsonify(ok=True)

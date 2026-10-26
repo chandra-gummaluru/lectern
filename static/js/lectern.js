@@ -780,7 +780,7 @@ function offeringPage(c, t) {
       </section>
       ${edit ? `<section class="lt-part lt-wide lt-team" id="lt-email">
         <div class="lt-part-head">${ICON.mail}<h2>Email</h2></div>
-        <p class="lt-part-text">How emails to the class go out, and which ones Lectern sends on its own.</p>
+        <p class="lt-part-text">How emails to the class go out, and the signature on them.</p>
         <div class="lt-team-body em-body"></div>
       </section>` : ""}
     </div>

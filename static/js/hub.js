@@ -124,7 +124,7 @@ const unread = () => ((data("announcements") || {}).items || []).filter(isNew).l
 function markSeen() {
   const SEEN = seenSet(), ids = [...shownNew].filter(id => !SEEN.has(id)); shownNew.clear();
   if (!ids.length) return;
-  setTimeout(() => { ids.forEach(id => SEEN.add(id)); fetch(`${root.dataset.api}/seen`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {}); }, 1500);
+  setTimeout(() => { ids.forEach(id => SEEN.add(id)); paintBadge(); fetch(`${root.dataset.api}/seen`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ ids }) }).catch(() => {}); }, 1500);
 }
 const MEGAPHONE = svg('<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>');
 // An announcement, as an activity's card is: its icon, ANNOUNCEMENT (and its sections), its title and date, its message.
@@ -518,6 +518,7 @@ const PAGES = {
   evaluation(arg) {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
     const f = unitOf(arg); if (!f) return PAGES.evaluations();
+    if (UPD && (UPD.items || []).some(x => x.kind === "mark" && x.eval === f.u.id)) setTimeout(() => seenUpd(`eval:${f.u.id}`), 0);   // its mark isn't new any more
     const { u, group } = f, E = data("evaluations");
     if (u.kind === "group") {
       return `${path([["Evaluations", "#evaluations"], [u.name]])}
@@ -632,6 +633,7 @@ const PAGES = {
   accommodations() {
     if (!open("accommodations")) return lockedPage("accommodations", "My Requests");
     setTimeout(myRequests, 0);
+    setTimeout(() => seenUpd("requests"), 0);
     return `${path([["My Requests"]])}${head("My Requests", "Your accommodation and remark requests, and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
   },
 };
@@ -658,6 +660,29 @@ function myRequests() {
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }
+
+// ── What's new (replies to discussions they're in; requests decided): a count on the account button ──
+let UPD = null;
+function updates() {
+  if (!D || !D.viewer.signedIn || D.viewer.preview) return;
+  fetch(`${root.dataset.api}/updates`, { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => {
+    UPD = d; paintBadge();
+  }).catch(() => {});
+}
+// The count: the server's (replies, decisions, marks) and the announcements they haven't seen yet.
+function newAnns() { return ((data("announcements") || {}).items || []).filter(isNew); }
+function paintBadge() {
+  const b = $("hb-acct"); if (!b) return;
+  const old = b.querySelector(".hb-badge"); if (old) old.remove();
+  const n = ((UPD && UPD.count) || 0) + newAnns().length;
+  if (n) b.insertAdjacentHTML("beforeend", `<span class="hb-badge" title="${n} new" aria-label="${n} new">${n > 99 ? "99+" : n}</span>`);
+}
+// Something's been looked at (a discussion opened, My Requests): it's not new any more.
+function seenUpd(what) {
+  if (!D || !D.viewer.signedIn || D.viewer.preview) return;
+  fetch(`${root.dataset.api}/updates/seen`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ what }) }).then(updates).catch(() => {});
+}
+window.HubSeen = seenUpd;
 
 // ── The page ─────────────────────────────────────────────────────────
 function route() {
@@ -700,14 +725,22 @@ function header() {
     btn.onclick = e => {
       e.stopPropagation(); if (menu) return close();
       menu = document.createElement("div"); menu.className = "hb-menu"; menu.setAttribute("role", "menu");
-      menu.innerHTML = `<p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
+      const U = [...newAnns().map(a => ({ kind: "ann", a })), ...((UPD && UPD.items) || [])].slice(0, 12);
+      const item = x => x.kind === "ann" ? `<a role="menuitem" class="hb-upd" href="#announcement/${encodeURIComponent(x.a.id)}"><b>New announcement</b><span>${esc(x.a.title || "Announcement")}</span></a>`
+        : x.kind === "reply" ? `<a role="menuitem" class="hb-upd" href="#post/${encodeURIComponent(x.target)}/${x.post}"><b>${x.n} new repl${x.n === 1 ? "y" : "ies"}</b><span>${esc(x.title || "Your post")}</span></a>`
+        : x.kind === "mark" ? `<a role="menuitem" class="hb-upd" href="#evaluation/${encodeURIComponent(x.eval)}"><b>Your mark is out</b><span>${esc(x.name)}</span></a>`
+        : `<a role="menuitem" class="hb-upd" href="#accommodations"><b>${x.type === "remark" ? "Remark" : "Accommodation"} request ${esc(x.status)}</b><span>${esc(x.evalName)}</span></a>`;
+      menu.innerHTML = `${U.length ? `<p class="hb-menu-h">What's New</p>${U.map(item).join("")}<hr>` : ""}
+        <p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
         ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
         ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
       btn.after(menu); btn.setAttribute("aria-expanded", "true");
+      menu.querySelectorAll(".hb-upd").forEach(a => { a.onclick = () => close(); });
       const out = $("hb-out");
       if (out) out.onclick = async () => { out.disabled = true; await fetch(`${root.dataset.api}/sign-out`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" } }).catch(() => {}); location.reload(); };
     };
     document.addEventListener("click", e => { if (menu && !menu.contains(e.target)) close(); });
+    updates();
     document.addEventListener("keydown", e => { if (menu && e.key === "Escape") { close(); btn.focus(); } });
   }
   const bar = $("hb-staff");

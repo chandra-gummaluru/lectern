@@ -464,10 +464,8 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
         return rec
 
     _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
-    subject, body = receipt_email(rec)
-    from .classmail import student_mail
-    emailed = student_mail(uid, o, email, subject, body, "accomReceipts")
-    return rec, emailed
+    # No receipt by email (students are emailed only about decisions, marks and announcements): it's in My Requests.
+    return rec, False
 
 
 @accom_bp.post("/api/accommodations/submit")
@@ -694,10 +692,7 @@ def hub_remark(handle, course, term):
             return rec
 
         _update(uid, o, add, f"Remark request from {rec['student']} for {name}", "student")
-        subject, body = receipt_email(rec)
-        from .classmail import student_mail
-        emailed = student_mail(uid, o, email, subject, body, "remarkReceipts")
-        return jsonify(ok=True, id=rec["id"], email=email, emailed=emailed), 201
+        return jsonify(ok=True, id=rec["id"], email=email, emailed=False), 201
     except Refusal as x:
         return _err(x)
     except AuthRefusal as x:

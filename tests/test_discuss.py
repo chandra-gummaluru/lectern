@@ -89,3 +89,33 @@ def test_discussion_off(client, course):
     assert maya.post(D, json={"t": "ann:a1", "title": "Q", "body": "x"}, headers=H).status_code == 403
     assert maya.post(D, json={"t": "ann:a2", "title": "Q", "body": "x"}, headers=H).status_code == 201
     assert maya.get(HUB).get_json()["closed"] == ["ann:a1"]
+
+
+def test_new_replies_to_what_you_posted(client, course):
+    maya, ben = people(course)
+    pid = maya.post(D, json={"t": "eval:mt", "title": "Q3?", "body": "x"}, headers=H).get_json()["id"]
+    assert maya.get(f"{HUB}/updates").get_json()["count"] == 0
+    ben.post(D, json={"t": "eval:mt", "parent": pid, "body": "Same here."}, headers=H)
+    u = maya.get(f"{HUB}/updates").get_json()
+    assert u["count"] == 1 and u["items"][0]["post"] == pid and u["items"][0]["title"] == "Q3?"
+    assert ben.get(f"{HUB}/updates").get_json()["count"] == 0          # his own
+    maya.post(f"{HUB}/updates/seen", json={"what": f"post:{pid}"}, headers=H)
+    assert maya.get(f"{HUB}/updates").get_json()["count"] == 0
+    client.post(D, json={"t": "eval:mt", "parent": pid, "body": "Yes."}, headers=H)
+    assert maya.get(f"{HUB}/updates").get_json()["count"] == 1 and ben.get(f"{HUB}/updates").get_json()["count"] == 1
+
+
+def test_a_mark_out_is_new_until_they_open_it(client, course):
+    import json
+    from server import store
+    maya, _ = people(course)
+    r = store.Repo(course["id"], "priv")
+    b = json.loads(r.read("csc258/f26/grades.json"))
+    b["evals"] = [{"id": "mt", "name": "Test 1", "released": True}]
+    b["marks"] = {"1000": {"mt": {"pts": 30}}}
+    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "marks", r.head())
+    client.post("/api/mail/chandra/csc258/f26/grades", json={}, headers=H)         # out: noted (no SMTP, but told)
+    u = maya.get(f"{HUB}/updates").get_json()
+    assert any(x["kind"] == "mark" and x["eval"] == "mt" for x in u["items"])
+    maya.post(f"{HUB}/updates/seen", json={"what": "eval:mt"}, headers=H)
+    assert not any(x["kind"] == "mark" for x in maya.get(f"{HUB}/updates").get_json()["items"])

@@ -173,6 +173,14 @@ CREATE TABLE IF NOT EXISTS announcements_seen (  -- the announcements each stude
   at        REAL NOT NULL,
   PRIMARY KEY (owner_id, offering, email, ann_id)
 );
+CREATE TABLE IF NOT EXISTS hub_seen (           -- when someone last looked at something on a course page (its updates)
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering   TEXT NOT NULL,
+  viewer     TEXT NOT NULL,                     -- "s:<email>" or "u:<user id>"
+  what       TEXT NOT NULL,                     -- "post:<id>" (a discussion), "requests" (My Requests)
+  at         REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, viewer, what)
+);
 CREATE TABLE IF NOT EXISTS discussion_posts (  -- a course page's discussions (discuss.py): posts on an evaluation, an activity or an announcement, and their comments
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

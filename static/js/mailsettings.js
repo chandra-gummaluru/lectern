@@ -46,15 +46,12 @@ export function emailCard({ box, esc, toast, api, owner, c, t }) {
       <div class="lx-grid one"><label class="lx-f">Signature<textarea id="em-sig" rows="3" placeholder="e.g. — The CSC258 teaching team">${esc(p.signature)}</textarea></label></div>
       <p class="lx-help">Added to the end of every email to students.</p>
       <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-psave" disabled>Save</button></div>
-      <h3 class="lx-sec">Emails to Students</h3>
-      <div class="em-kinds">${KINDS.map(([k, n, sub]) => `<label class="lx-tick"><input type="checkbox" data-kind="${k}"${p.send[k] !== false ? " checked" : ""}><b>${esc(n)}</b><span>${esc(sub)}</span></label>`).join("")}</div>
-      <p class="lx-help">Sign-in and confirmation codes always go: they're how students get in.</p>`;
+      <p class="lx-help">Students are emailed only about a new announcement, a decision on their accommodation or remark request, and their marks being out or changed.</p>`;
     const q = s => box.querySelector(s);
-    const prefs = () => ({ replyTo: "", signature: q("#em-sig").value, send: Object.fromEntries([...box.querySelectorAll("[data-kind]")].map(x => [x.dataset.kind, x.checked])) });
+    const prefs = () => ({ replyTo: "", signature: q("#em-sig").value, send: {} });
     const savePrefs = (btn) => api(`${U}/prefs`, prefs()).then(r => { D.prefs = r.prefs; if (btn) btn.disabled = true; toast("Email settings saved."); }, e => toast(e.message));
     q("#em-sig").oninput = () => { q("#em-psave").disabled = false; };
     q("#em-psave").onclick = () => savePrefs(q("#em-psave"));
-    box.querySelectorAll("[data-kind]").forEach(x => { x.onchange = () => savePrefs(); });
     if (!editing) {
       q("#em-edit").onclick = () => { editing = true; draw(); q("#em-from").focus(); };
       const rm = q("#em-rm"); if (rm) rm.onclick = () => api(`${U}/settings`, { action: "remove" }).then(r => { D.settings = r.settings; draw(); toast("Back to Lectern's sender."); }, e => toast(e.message));

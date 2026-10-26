@@ -128,7 +128,8 @@ function markSeen() {
 }
 const MEGAPHONE = svg('<path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>');
 // An announcement, as an activity's card is: its icon, ANNOUNCEMENT (and its sections), its title and date, its message.
-const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? " hs-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<p class="hs-when">${esc(stampText(a.date))}</p></div><div class="hs-body">${markdown(a.body)}</div>${a.id && D.viewer.signedIn ? `<div class="hs-files">${dcLink(`ann:${a.id}`, `#announcement/${encodeURIComponent(a.id)}`)}</div>` : ""}</div></article>`;
+const annGo = a => (a.id ? ` data-go="#announcement/${encodeURIComponent(a.id)}" role="link" tabindex="0" title="Open it: its discussion too"` : "");
+const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? " hs-new" : ""}${a.id ? " wk-go" : ""}"${note(a)}${annGo(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p>${a.title ? `<h3>${esc(a.title)}</h3>` : ""}<p class="hs-when">${esc(stampText(a.date))}</p></div><div class="hs-body">${markdown(a.body)}</div></div></article>`;
 // Discussions (discuss.js): a link to one from an activity's or an announcement's row, with how many posts it
 // has (signed-in people only: they're for the people in the course); and the discussion itself, at the
 // bottom of an item's page.
@@ -147,7 +148,7 @@ function discussions(m) {
 }
 const findActivity = id => { for (const w of weeks()) for (const c of w.cards || []) if (String(c.id) === String(id)) return { w, c }; return null; };
 // An announcement as a row in a card's group (a week's page, Announcements): as an activity's row is.
-const annItem = a => `<div class="wk-item${isNew(a) ? " wk-new" : ""}"${note(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="wk-b"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p><h3>${esc(a.title || "Announcement")}</h3><p class="wk-when">${esc(stampText(a.date))}</p><div class="hs-body">${markdown(a.body)}</div>${a.id && D.viewer.signedIn ? `<div class="hs-files">${dcLink(`ann:${a.id}`, `#announcement/${encodeURIComponent(a.id)}`)}</div>` : ""}</div></div>`;
+const annItem = a => `<div class="wk-item${isNew(a) ? " wk-new" : ""}${a.id ? " wk-go" : ""}"${note(a)}${annGo(a)}><span class="hs-ic">${MEGAPHONE}</span><div class="wk-b"><p class="hs-kick">${isNew(a) ? `<span class="hs-newtag">New</span>` : ""}Announcement${groupTag(a.groups)}</p><h3>${esc(a.title || "Announcement")}</h3><p class="wk-when">${esc(stampText(a.date))}</p><div class="hs-body">${markdown(a.body)}</div></div>${a.id ? CHEV : ""}</div>`;
 // An evaluation as a row in a card's group (a week's page, a group's): it opens the evaluation's page.
 const evItem = e => `<a class="wk-item wk-link" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span><div class="wk-b"><p class="hs-kick">${esc(e.name)}</p><h3>${esc(e.title || e.name)}</h3>${evWhen(e) ? `<p class="wk-when">${esc(evWhen(e))}</p>` : ""}</div>${CHEV}</a>`;
 function weekRow(w, now) {

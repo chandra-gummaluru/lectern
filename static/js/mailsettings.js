@@ -3,7 +3,7 @@
    How the offering's email to students goes out (server/classmail.py):
      Sender               its own SMTP settings (From, server, login), tested with an email to you before
                           they're kept; without them, the server's (Lectern's admin's) are used.
-     Replies, Signature   where students' replies go (else to whoever sent it), and a sign-off added to each.
+     Signature            a sign-off added to each.
      Emails to Students   which of the automatic ones go out: marks out or changed, accommodation and remark
                           receipts and decisions, and whether a new announcement is emailed by default.
    Sign-in and confirmation codes always go: they're how students get in. */
@@ -42,18 +42,17 @@ export function emailCard({ box, esc, toast, api, owner, c, t }) {
     const p = D.prefs;
     box.innerHTML = `
       <h3 class="lx-sec lx-first">Sender</h3>${senderHTML()}
-      <h3 class="lx-sec">Replies and Signature</h3>
-      <div class="lx-grid one"><label class="lx-f">Replies Go To<input type="email" id="em-reply" value="${esc(p.replyTo)}" placeholder="Whoever sent it (e.g. the instructor who wrote an announcement)"></label>
-        <label class="lx-f">Signature<textarea id="em-sig" rows="3" placeholder="e.g. — The CSC258 teaching team">${esc(p.signature)}</textarea></label></div>
+      <h3 class="lx-sec">Signature</h3>
+      <div class="lx-grid one"><label class="lx-f">Signature<textarea id="em-sig" rows="3" placeholder="e.g. — The CSC258 teaching team">${esc(p.signature)}</textarea></label></div>
       <p class="lx-help">Added to the end of every email to students.</p>
       <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-psave" disabled>Save</button></div>
       <h3 class="lx-sec">Emails to Students</h3>
       <div class="em-kinds">${KINDS.map(([k, n, sub]) => `<label class="lx-tick"><input type="checkbox" data-kind="${k}"${p.send[k] !== false ? " checked" : ""}><b>${esc(n)}</b><span>${esc(sub)}</span></label>`).join("")}</div>
       <p class="lx-help">Sign-in and confirmation codes always go: they're how students get in.</p>`;
     const q = s => box.querySelector(s);
-    const prefs = () => ({ replyTo: q("#em-reply").value.trim(), signature: q("#em-sig").value, send: Object.fromEntries([...box.querySelectorAll("[data-kind]")].map(x => [x.dataset.kind, x.checked])) });
+    const prefs = () => ({ replyTo: "", signature: q("#em-sig").value, send: Object.fromEntries([...box.querySelectorAll("[data-kind]")].map(x => [x.dataset.kind, x.checked])) });
     const savePrefs = (btn) => api(`${U}/prefs`, prefs()).then(r => { D.prefs = r.prefs; if (btn) btn.disabled = true; toast("Email settings saved."); }, e => toast(e.message));
-    q("#em-reply").oninput = q("#em-sig").oninput = () => { q("#em-psave").disabled = false; };
+    q("#em-sig").oninput = () => { q("#em-psave").disabled = false; };
     q("#em-psave").onclick = () => savePrefs(q("#em-psave"));
     box.querySelectorAll("[data-kind]").forEach(x => { x.onchange = () => savePrefs(); });
     if (!editing) {

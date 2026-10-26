@@ -889,7 +889,8 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ef-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 6px; }
 @media (max-width: 560px) { .ef-row { grid-template-columns: 1fr 36px; } .ef-row input[data-ed="ef-url"] { grid-column: 1; } }
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
-.acm-tick input { grid-row: span 2; align-self: start; margin-top: 2px; }
+.acm-tick input { grid-row: span 2; align-self: start; margin-top: 4px; }
+.pf.acm-close { margin: 12px 0 0; display: grid; gap: 4px; justify-items: start; }
 .acm-tick b { font-weight: 600; }
 .acm-tick span { grid-column: 2; font-size: 13px; color: var(--ink-3); }
 .acm-tick.off { cursor: default; } .acm-tick.off b { color: var(--ink-3); }
@@ -3246,7 +3247,7 @@ function filesHTML(e) {
 // request, the course page shows a Request Accommodation button; requests come to the course's
 // Accommodations page in Lectern. accom.standard is the policy in words, kept up to date (syncAccom) for the
 // request form and its emails.
-const accomOf = e => Object.assign({ approval: false, alternate: false, by: "", byTime: "" }, e.accom || {});
+const accomOf = e => Object.assign({ approval: false, alternate: false, by: "", byTime: "", byMarks: false }, e.accom || {});
 function standardText(e) {
   if (!e || e.makeupFor || groupOf(e) || !e.missed || e.missed.mode !== "reweight") return "";
   const w = num(e.weight), parts = shareParts(e.missed, e), pc = f => `${fmtNum(Math.round(w * f * 100) / 100)}%`;
@@ -3261,7 +3262,7 @@ function syncAccom(m = model) {   // before saving, and before Lectern reads the
     const std = standardText(e);
     e.accom.standard = std;
     if (!std) e.accom.approval = false;
-    if (!e.accom.approval && !e.accom.alternate && !e.accom.by && !e.accom.byTime) delete e.accom;
+    if (!e.accom.approval && !e.accom.alternate && !e.accom.by && !e.accom.byTime && !e.accom.byMarks) delete e.accom;
   });
 }
 function accomHTML(e) {
@@ -3270,8 +3271,9 @@ function accomHTML(e) {
     <p class="ed-help">${std ? `The standard accommodation is the policy above: ${esc(std)}` : e.makeupFor ? "A makeup has no standard accommodation of its own." : groupOf(e) ? `No standard accommodation: missing it counts as zero, and ${esc(groupOf(e).name)} doesn't count the lowest.` : "No standard accommodation yet: missing it counts as zero. Choose a makeup, or shift its weight, above."}</p>
     <label class="acm-tick${std ? "" : " off"}"><input type="checkbox" data-acm="approval"${a.approval && std ? " checked" : ""}${std ? "" : " disabled"}><b>Students must request the standard accommodation</b><span>${std ? "It applies once you approve their request. Unticked, it applies to anyone who misses it, without asking." : "There's no standard accommodation to request."}</span></label>
     <label class="acm-tick"><input type="checkbox" data-acm="alternate"${a.alternate ? " checked" : ""}><b>Students can request an alternate accommodation</b><span>They say what they need; you approve or reject it.</span></label>
-    ${asks ? `<div class="ed-grid acm-by"><div class="pf"><span>Request By</span><button type="button" class="when-btn${a.by ? "" : " empty"}" data-ed="acm-when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(acmWhen(e)))}</span></button></div></div>
-    <p class="ed-help">${a.by ? "After this, the course page and the request form say the deadline has passed." : "No deadline: requests stay open."} Students ask with the <b>Request Accommodation</b> button on the course page; requests come to this course's Accommodations page in Lectern.</p>` : ""}`;
+    ${asks ? `<div class="pf acm-close"><span>Requests Close</span><div class="seg ed-seg" role="group" aria-label="Requests close"><button type="button" data-ed="acm-close" data-v="date" aria-pressed="${!a.byMarks}">On a Date</button><button type="button" data-ed="acm-close" data-v="marks" aria-pressed="${!!a.byMarks}">When the Marks Are Out</button></div></div>
+    ${a.byMarks ? "" : `<div class="ed-grid acm-by"><div class="pf"><span>Request By</span><button type="button" class="when-btn${a.by ? "" : " empty"}" data-ed="acm-when" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(acmWhen(e)))}</span></button></div></div>`}
+    <p class="ed-help">${a.byMarks ? "Requests close once its marks are visible to students (Marks, above)." : a.by ? "After this, the course page and the request form say the deadline has passed." : "No deadline: requests stay open."} Students ask with the <b>Request Accommodation</b> button on the course page; requests come to this course's Accommodations page in Lectern.</p>` : ""}`;
 }
 // The request deadline, shaped like an evaluation's date and time, for the same calendar (openWhen).
 const acmWhen = e => ({
@@ -3299,7 +3301,7 @@ function remarkHTML(e) {
 }
 function setAccom(e, k, v) {
   const a = accomOf(e); a[k] = v;
-  if (!a.approval && !a.alternate && !a.by && !a.byTime) delete e.accom; else e.accom = a;
+  if (!a.approval && !a.alternate && !a.by && !a.byTime && !a.byMarks) delete e.accom; else e.accom = a;
 }
 // How the name comes about, under the label and title.
 function nameHelp(e) {
@@ -3463,6 +3465,7 @@ document.addEventListener("click", ev => {
   if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time, release: e.release || "", releaseTime: e.releaseTime || "" }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "sd-del") { pushUndo(); e.dates.splice(+b.dataset.i, 1); if (!e.dates.length) delete e.dates; unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "acm-when") return openWhen(b, acmWhen(e));
+  if (a === "acm-close") { change(() => { const m = b.dataset.v === "marks"; setAccom(e, "byMarks", m); if (m) { setAccom(e, "by", ""); setAccom(e, "byTime", ""); } }); return drawEvalEditor(); }
   if (a === "rmk-from") return openWhen(b, rmkWhen(e, "from"));
   if (a === "rmk-by") return openWhen(b, rmkWhen(e, "by"));
   if (a === "rel-mail") {   // the marks changed since students were told: email them now

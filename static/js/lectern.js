@@ -1218,13 +1218,13 @@ function schemeOf(b, from, requests = null) {
   const accom = e => {
     const a = e.accom || {}, standard = String(a.standard || "").trim(), approval = !!a.approval && !!standard, alternate = !!a.alternate;
     if (!standard && !alternate) return {};
-    return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
+    return { accom: { standard, approval, alternate, ...(approval || alternate) && a.byMarks ? { byMarks: true } : (approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
   // Remark requests: when they open and close (the course page shows Request Remark once the student's mark is out).
   const remark = e => { const r = e.remark || {}; return r.on ? { remark: { from: r.from || "", fromTime: r.fromTime || "", by: r.by || "", byTime: r.byTime || "" } } : {}; };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...remark(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...remark(e), ...files(e), ...(e.released ? { released: true } : {}) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));

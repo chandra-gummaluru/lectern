@@ -1040,7 +1040,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 
 /* A tick with its name and a line under it (Allow discussion), as the gradebook's accommodation ticks. */
 .lx-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 6px 0 4px; cursor: pointer; font: 14px var(--font-ui); color: var(--home-ink); }
-.lx-tick input { grid-row: span 2; align-self: start; margin: 2px 0 0; width: 16px; height: 16px; accent-color: var(--home-ink); }
+.lx-tick input { grid-row: span 2; align-self: start; margin: 4px 0 0; width: 16px; height: 16px; accent-color: var(--home-ink); }
 .lx-tick b { font-weight: 600; }
 .lx-tick span { grid-column: 2; font-size: 13px; color: var(--home-ink-3); }
 

@@ -149,9 +149,9 @@ def test_submit_alternate(client, gh):
     assert client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "standard"}).status_code == 400    # no approval needed
     r = client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "alternate", "details": "A week, for a surgery."})
     assert r.status_code == 201
-    # Another one is fine: each request is its own
-    assert client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "alternate", "details": "And a quiet room."}).status_code == 201
-    assert [x["details"] for x in requests_of(gh)] == ["A week, for a surgery.", "And a quiet room."]
+    # Not another of the same kind while that one's waiting for a decision
+    assert client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "alternate", "details": "And a quiet room."}).status_code == 409
+    assert [x["details"] for x in requests_of(gh)] == ["A week, for a surgery."]
 
 
 def test_alternate_not_offered(client, gh):
@@ -269,13 +269,8 @@ def hub_student(email):
 
 
 def ask(st, email, **d):
-    """Ask from the course page, as the form does: checked, a code emailed, then sent with it."""
-    from test_students import code_for
-    r = st.post(f"{HUB}/accommodation", json=d, headers=H)
-    if r.status_code != 202:
-        return r
-    assert r.get_json()["confirm"] and r.get_json()["email"] == email
-    return st.post(f"{HUB}/accommodation", json={**d, "code": code_for(email)}, headers=H)
+    """Ask from the course page, as the form does."""
+    return st.post(f"{HUB}/accommodation", json=d, headers=H)
 
 
 def test_a_signed_in_student_asks_on_the_course_page(gh):
@@ -309,27 +304,19 @@ def test_a_student_sees_only_their_own_requests(gh):
     assert other.get(f"{HUB}/accommodations").get_json()["requests"] == []
 
 
-def test_a_request_needs_the_code_emailed_to_them(gh):
+def test_one_request_of_a_kind_at_a_time(gh):
     st = hub_student("maya.castillo@mail.utoronto.ca")
     d = {"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "Later, please."}
+    assert st.post(f"{HUB}/accommodation", json=d, headers=H).status_code == 201
+    assert st.get(f"{HUB}/accommodation?e=a1").get_json()["waiting"] == ["alternate"]
     r = st.post(f"{HUB}/accommodation", json=d, headers=H)
-    assert r.status_code == 202 and r.get_json()["confirm"]
-    assert requests_of(gh) == []
-    bad = st.post(f"{HUB}/accommodation", json={**d, "code": "000000"}, headers=H)
-    assert bad.status_code == 400 and bad.get_json()["code"] == "bad-code"
-    # A sign-in code doesn't send one.
-    from test_students import code_for
-    assert app.test_client().post(f"{HUB}/code", json={"email": "maya.castillo@mail.utoronto.ca"}, headers=H).status_code == 200
-    assert st.post(f"{HUB}/accommodation", json={**d, "code": code_for("maya.castillo@mail.utoronto.ca")}, headers=H).status_code == 400
-    # A new one, and it works once.
-    st.post(f"{HUB}/accommodation", json={**d, "resend": True}, headers=H)
-    code = code_for("maya.castillo@mail.utoronto.ca")
-    assert st.post(f"{HUB}/accommodation", json={**d, "code": code}, headers=H).status_code == 201
-    assert st.post(f"{HUB}/accommodation", json={**d, "code": code}, headers=H).status_code == 400
+    assert r.status_code == 409 and r.get_json()["code"] == "duplicate"
+    rid = requests_of(gh)[-1]["id"]
+    assert decide(gh.client, rid, "rejected").status_code == 200          # decided: they can ask again
+    assert st.post(f"{HUB}/accommodation", json=d, headers=H).status_code == 201
 
 
 def test_a_remark_request(gh, monkeypatch):
-    from test_students import code_for
     b = json.loads(json.dumps(BOOK))
     l1 = next(e for e in b["evals"] if e["id"] == "l1")
     l1["remark"] = {"on": True, "from": "2026-10-01", "by": "2026-10-30"}
@@ -345,12 +332,11 @@ def test_a_remark_request(gh, monkeypatch):
     l1["released"] = True
     gh.put("csc258/f26/grades.json", json.dumps(b))
     r = st.post(f"{HUB}/remark", json=d, headers=H)
-    assert r.status_code == 202 and r.get_json()["confirm"]
-    r = st.post(f"{HUB}/remark", json={**d, "code": code_for("maya.castillo@mail.utoronto.ca")}, headers=H)
     assert r.status_code == 201, r.get_json()
     got = requests_of(gh)[-1]
     assert got["type"] == "remark" and got["student"] == "1001" and got["status"] == "pending"
     assert st.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "duplicate"
+    assert st.get(f"{HUB}/remark?e=l1").get_json()["waiting"] is True
     # Zoë has no mark: no.
     zoe = hub_student("zoe.ng@mail.utoronto.ca")
     assert zoe.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "no-mark"
@@ -362,3 +348,17 @@ def test_a_remark_request(gh, monkeypatch):
     assert r.status_code == 200 and r.get_json()["request"]["status"] == "approved"
     mine = st.get(f"{HUB}/accommodations").get_json()["requests"]
     assert any(x["type"] == "remark" and x["status"] == "approved" for x in mine)
+
+
+def test_requests_close_when_the_marks_are_out(gh):
+    b = json.loads(json.dumps(BOOK))
+    a1 = next(e for e in b["evals"] if e["id"] == "a1"); a1["accom"]["byMarks"] = True
+    gh.put("csc258/f26/grades.json", json.dumps(b))
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    d = {"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "Later."}
+    info = st.get(f"{HUB}/accommodation?e=a1").get_json()
+    assert info["deadline"]["marks"] and not info["deadline"]["passed"]
+    a1["released"] = True
+    gh.put("csc258/f26/grades.json", json.dumps(b))
+    r = st.post(f"{HUB}/accommodation", json=d, headers=H)
+    assert r.status_code == 410 and "marks came out" in r.get_json()["error"]

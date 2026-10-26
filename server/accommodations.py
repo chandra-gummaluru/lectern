@@ -149,7 +149,10 @@ def accom_of(ev):
     a = (ev or {}).get("accom") or {}
     standard = str(a.get("standard") or "").strip()
     out = {"standard": standard, "approval": bool(a.get("approval")) and bool(standard), "alternate": bool(a.get("alternate")),
-           "by": "", "byTime": "", "closed": False}
+           "by": "", "byTime": "", "closed": False, "byMarks": bool(a.get("byMarks"))}
+    if out["byMarks"]:   # open until its marks are out (visible to students)
+        out["closed"] = (ev or {}).get("released") is True
+        return out
     end = deadline_of(a)
     if end is not None:
         out.update(by=a["by"], byTime=str(a.get("byTime") or "") or "23:59", closed=clock() > end)
@@ -169,6 +172,8 @@ def _evaluation(book, e, open_only=False):
     a = accom_of(ev)
     if not ev or not (a["approval"] or a["alternate"]):
         raise Refusal(404, "This evaluation isn't taking accommodation requests.")
+    if open_only and a["closed"] and a["byMarks"]:
+        raise Refusal(410, f"Requests for {ev.get('name') or 'this evaluation'} closed when its marks came out.", "closed")
     if open_only and a["closed"]:
         raise Refusal(410, f"The deadline to request an accommodation for {ev.get('name') or 'this evaluation'} has passed ({when_text(a['by'], a['byTime'])}).", "closed")
     return ev, a
@@ -261,7 +266,8 @@ def _public_info(book, ev, a):
         "idLabel": _id_label(book),
         "standard": {"text": a["standard"], "approval": a["approval"]} if a["standard"] else None,
         "alternate": a["alternate"],
-        "deadline": {"date": a["by"], "time": a["byTime"], "text": when_text(a["by"], a["byTime"]), "passed": a["closed"]} if a["by"] else None,
+        "deadline": {"date": "", "time": "", "text": "when the marks are out", "passed": a["closed"], "marks": True} if a["byMarks"]
+                    else {"date": a["by"], "time": a["byTime"], "text": when_text(a["by"], a["byTime"]), "passed": a["closed"]} if a["by"] else None,
     }
 
 
@@ -447,8 +453,10 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
         mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e and x.get("type") != "remark"]
         if len(mine) >= MAX_PER_STUDENT:
             raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
+        if kind == "alternate" and any(x.get("kind") == "alternate" and x.get("status") == "pending" for x in mine):
+            raise Refusal(409, "You've already asked for an alternate accommodation for this evaluation, and it's waiting for your instructor.", "duplicate")
         if kind == "standard":
-            dup = next((x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e
+            dup = next((x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e and x.get("type") != "remark"
                         and x.get("kind") == "standard" and x.get("status") in ("pending", "approved")), None)
             if dup:
                 raise Refusal(409, "You've already asked for the standard accommodation for this evaluation"
@@ -503,10 +511,17 @@ def _hub_student(handle, course, term):
 @accom_bp.get("/api/hub/<handle>/<course>/<term>/accommodation")
 def hub_evaluation(handle, course, term):
     try:
-        uid, o, _ = _hub_student(handle, course, term)
+        uid, o, email = _hub_student(handle, course, term)
         book = _book(uid, o)
-        ev, a = _evaluation(book, _eval_id(request.args.get("e")))
-        return jsonify(_public_info(book, ev, a))
+        e = _eval_id(request.args.get("e"))
+        ev, a = _evaluation(book, e)
+        info = _public_info(book, ev, a)
+        text_, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")   # what they've asked for already
+        me = str(email).strip().lower()
+        mine = [x for x in _parse(text_)["requests"] if str(x.get("email") or "").strip().lower() == me and x.get("eval") == e and x.get("type") != "remark"]
+        info["waiting"] = sorted({x.get("kind") for x in mine if x.get("status") == "pending"})
+        info["approvedStandard"] = any(x.get("kind") == "standard" and x.get("status") == "approved" for x in mine)
+        return jsonify(info)
     except Refusal as x:
         return _err(x)
 
@@ -530,12 +545,6 @@ def hub_submit(handle, course, term):
                 raise Refusal(400, f"Those don't match what your instructor has for you. Check your {_id_label(book).lower()} and your name, spelled exactly as on record.", "mismatch")
             raise
         _check(a, d.get("kind"), d.get("details"))
-        # Last, to be sure it's them: a code emailed to them (the first time, it's sent; then it's checked).
-        from .students import send_confirm_code, check_confirm_code
-        if d.get("resend") or not str(d.get("code") or "").strip():
-            minutes = send_confirm_code(uid, o, email, *o.split("/", 1), f"your accommodation request for {ev.get('name') or e}")
-            return jsonify(confirm=True, email=email, minutes=minutes), 202
-        check_confirm_code(uid, o, email, d.get("code"))
         rec, emailed = _record(uid, o, book, e, ev, a, s, on_file, d.get("kind"), d.get("details"))
         return jsonify(ok=True, id=rec["id"], email=on_file, emailed=emailed), 201
     except Refusal as x:
@@ -624,8 +633,13 @@ def hub_remark_info(handle, course, term):
     try:
         uid, o, email = _hub_student(handle, course, term)
         book = _book(uid, o)
-        ev, m = _remark_eval(book, _eval_id(request.args.get("e")))
-        return jsonify(_remark_info(book, ev, m, _enrolled(book, email)))
+        e = _eval_id(request.args.get("e"))
+        ev, m = _remark_eval(book, e)
+        s = _enrolled(book, email)
+        info = _remark_info(book, ev, m, s)
+        text_, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")
+        info["waiting"] = any(x.get("type") == "remark" and x.get("eval") == e and x.get("student") == s.get("num") and x.get("status") == "pending" for x in _parse(text_)["requests"])
+        return jsonify(info)
     except Refusal as x:
         return _err(x)
 
@@ -657,11 +671,6 @@ def hub_remark(handle, course, term):
         text_, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")
         if any(x.get("type") == "remark" and x.get("eval") == e and x.get("student") == s.get("num") and x.get("status") == "pending" for x in _parse(text_)["requests"]):
             raise Refusal(409, f"You've already asked for a remark of {name}: it's waiting for your instructor.", "duplicate")
-        from .students import send_confirm_code, check_confirm_code
-        if d.get("resend") or not str(d.get("code") or "").strip():
-            minutes = send_confirm_code(uid, o, email, *o.split("/", 1), f"your remark request for {name}")
-            return jsonify(confirm=True, email=email, minutes=minutes), 202
-        check_confirm_code(uid, o, email, d.get("code"))
         code, term_ = _course(book)
         rec = {"id": "m-" + secrets.token_hex(4), "type": "remark", "eval": e, "evalName": name, "kind": "remark", "standard": "", "details": details,
                "student": s.get("num"), "first": s.get("first") or "", "last": s.get("last") or "", "email": email,

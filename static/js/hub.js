@@ -221,10 +221,15 @@ const ReqForm = (() => {
     api("GET").then(d => { info = d; form(); }, e => { box().innerHTML = `<div class="hs-card rq-card"><p>${esc(e.message)}</p><div class="rq-acts"><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Back to ${esc(ev.name)}</a></div></div>`; });
   }
   function form(err) {
-    const s = info.standard, canStd = !!(s && s.approval), alt = !!info.alternate, k = keep, dl = info.deadline;
+    const s = info.standard, W = info.waiting || [], k = keep, dl = info.deadline;
+    // One request of a kind at a time: one waiting for a decision (or the standard one, approved) can't be asked for again.
+    const stdNo = W.includes("standard") ? "You've asked for it: it's waiting for a decision." : info.approvedStandard ? "You've asked for it, and it's been approved." : "";
+    const altNo = W.includes("alternate") ? "You've asked for one: it's waiting for a decision." : "";
+    const canStd = !!(s && s.approval) && !stdNo, alt = !!info.alternate && !altNo;
     const byEl = document.getElementById("rq-by");   // the deadline, under the title
     if (byEl) { byEl.hidden = !dl; byEl.innerHTML = dl ? `Requests close ${esc(dl.text)}` : ""; }
-    if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}). If you still need one, contact your instructor.</p></div>`; return; }
+    if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>${dl.marks ? `Requests for ${esc(ev.name)} closed when its marks came out.` : `The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}).`} If you still need one, contact your instructor.</p></div>`; return; }
+    if (!canStd && !alt && (stdNo || altNo)) { box().innerHTML = sentHTML("You've Asked Already", `Your request for ${esc(ev.name)} is waiting for a decision. You'll get an email when it's decided.`, ""); return; }
     const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
     // Each choice as Lectern's ticks are: the radio, its name, and a line under it.
     const opt = (v, t, sub, on, off) => `<label class="rq-choice${off ? " off" : ""}"><input type="radio" name="kind" class="rq-opt" data-kind="${v}" value="${v}"${on && !off ? " checked" : ""}${off ? " disabled" : ""}><b>${esc(t)}</b><span>${esc(sub)}</span></label>`;
@@ -241,8 +246,8 @@ const ReqForm = (() => {
       <h2 class="hs-h2 rq-h2">What You Need</h2>
       <p class="rq-help">Choose one of the following accommodations.</p>
       <div class="rq-opts" role="radiogroup" aria-label="What you need">
-        ${opt("standard", "The Standard Accommodation", canStd ? s.text : s ? `It applies without a request: ${s.text}` : "Not available for this evaluation.", kind === "standard", !canStd)}
-        ${opt("alternate", "An Alternate Accommodation", alt ? "Something other than the standard accommodation: say what you need." : "Not available for this evaluation.", kind === "alternate", !alt)}
+        ${opt("standard", "The Standard Accommodation", canStd ? s.text : stdNo || (s ? `It applies without a request: ${s.text}` : "Not available for this evaluation."), kind === "standard", !canStd)}
+        ${opt("alternate", "An Alternate Accommodation", alt ? "Something other than the standard accommodation: say what you need." : altNo || "Not available for this evaluation.", kind === "alternate", !alt)}
       </div>
       <div class="rq-more" id="rq-more"${kind === "alternate" ? "" : " hidden"}><div id="rq-rt"></div>
         <small class="rq-help">To share a document (a doctor's note, say), add a link to it. Files and pictures can't be attached.</small></div>
@@ -270,39 +275,16 @@ const ReqForm = (() => {
       if (!d.kind) return say("Choose what you're asking for.");
       if (d.kind === "alternate" && !d.details) { say("Say what you need."); if (rt) rt.el.focus(); return; }
       const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
-      api("POST", d).then(res => (res.confirm ? confirm(res) : done(res)), e => form(e.message));
-    };
-  }
-  // Last, to be sure it's them: the code just emailed to them (as signing in is), then it's sent.
-  function confirm(res, err) {
-    box().innerHTML = `<form class="hs-card rq-card rq-confirm" id="rq-code" novalidate>
-      <h2 class="hs-h2">Enter Your Code</h2>
-      <p class="rq-help">To be sure it's you, we've emailed a code to <b>${esc(res.email)}</b>. Enter it to send your request. It works for ${esc(String(res.minutes || 10))} minutes.</p>
-      <label class="rq-f rq-codef">Code<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" spellcheck="false"></label>
-      <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
-      <div class="rq-acts"><button type="button" class="hb-btn" id="rq-back">Back</button><button type="button" class="hb-btn" id="rq-resend">Email a New Code</button><span class="sp"></span><button type="submit" class="hb-btn primary">Send Request</button></div>
-    </form>`;
-    const f = $("rq-code"), say = t => { $("rq-err").textContent = t; };
-    f.code.focus();
-    f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/\D/g, "").slice(0, 6); });
-    $("rq-back").onclick = () => form();
-    $("rq-resend").onclick = () => { const b = $("rq-resend"); b.disabled = true;
-      api("POST", { ...keep, resend: true }).then(r => { confirm(r); say("A new code is on its way."); }, e => { b.disabled = false; say(e.message); }); };
-    f.onsubmit = e2 => {
-      e2.preventDefault();
-      const code = f.code.value.trim(); if (code.length !== 6) { say("Enter the 6-digit code from the email."); return f.code.focus(); }
-      const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
-      api("POST", { ...keep, code }).then(r => (r.confirm ? confirm(r) : done(r)), e => (e.code === "bad-code" || e.code === "rate" ? confirm(res, e.message) : form(e.message)));
+      api("POST", d).then(done, e => form(e.message));
     };
   }
   function done(res) {
     keep = { id: keep.id, first: keep.first, last: keep.last };
-    box().innerHTML = `<div class="hs-card rq-card rq-done"><span class="rq-tick" aria-hidden="true">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}</span>
-      <h2>Request Sent</h2>
-      <p>Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's approved or rejected.${res.emailed ? " We've emailed you a copy of your request." : ""}</p>
-      <p class="rq-ref">Reference ${esc(res.id)}</p>
-      <div class="rq-acts"><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Back to ${esc(ev.name)}</a><span class="sp"></span><button type="button" class="hb-btn" id="rq-again">Make Another Request</button></div></div>`;
-    $("rq-again").onclick = () => form();
+    box().innerHTML = sentHTML("Request Sent", `Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's approved or rejected.${res.emailed ? " We've emailed you a copy." : ""}`, res.id);
+  }
+  function sentHTML(title, text, ref) {
+    return `<div class="rq-sent"><span class="rq-sent-ic" aria-hidden="true">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}</span><div class="rq-sent-b"><b>${title}</b><p>${text}</p>${ref ? `<small>Reference ${esc(ref)}</small>` : ""}</div></div>
+      <div class="rq-acts"><span class="sp"></span><a class="hb-btn" href="#accommodations">See My Requests</a><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Back to ${esc(ev.name)}</a></div>`;
   }
   return { start };
 })();
@@ -329,6 +311,7 @@ const RemarkForm = (() => {
     const stop = info.closed ? `The deadline to request a remark for ${ev.name} has passed (${dl ? dl.text : ""}).`
       : info.notYet ? `Remark requests for ${ev.name} open ${info.from ? info.from.text : "later"}.`
       : !info.released || !info.marked ? `You can ask once your mark for ${ev.name} is out.` : "";
+    if (info.waiting) { box().innerHTML = sentHTML("You've Asked Already", `Your remark request for ${esc(ev.name)} is waiting for a decision. You'll get an email when it's decided.`, ""); return; }
     if (stop) { box().innerHTML = `<div class="hs-card rq-card"><p>${esc(stop)}</p><div class="rq-acts">${back()}</div></div>`; return; }
     const staff = D.viewer.role !== "student";
     box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
@@ -347,36 +330,16 @@ const RemarkForm = (() => {
       keep = { ...d };
       if (!d.details) { $("rq-err").textContent = "Say what should be remarked, and why."; if (rt) rt.el.focus(); return; }
       const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
-      api("POST", d).then(res => (res.confirm ? confirm(res) : done(res)), e => form(e.message));
-    };
-  }
-  function confirm(res, err) {
-    box().innerHTML = `<form class="hs-card rq-card rq-confirm" id="rq-code" novalidate>
-      <h2 class="hs-h2">Enter Your Code</h2>
-      <p class="rq-help">To be sure it's you, we've emailed a code to <b>${esc(res.email)}</b>. Enter it to send your request. It works for ${esc(String(res.minutes || 10))} minutes.</p>
-      <label class="rq-f rq-codef">Code<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" spellcheck="false"></label>
-      <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
-      <div class="rq-acts"><button type="button" class="hb-btn" id="rq-back">Back</button><button type="button" class="hb-btn" id="rq-resend">Email a New Code</button><span class="sp"></span><button type="submit" class="hb-btn primary">Send Request</button></div>
-    </form>`;
-    const f = $("rq-code"), say = t => { $("rq-err").textContent = t; };
-    f.code.focus();
-    f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/\D/g, "").slice(0, 6); });
-    $("rq-back").onclick = () => form();
-    $("rq-resend").onclick = () => { const b = $("rq-resend"); b.disabled = true; api("POST", { ...keep, resend: true }).then(r => { confirm(r); say("A new code is on its way."); }, e => { b.disabled = false; say(e.message); }); };
-    f.onsubmit = e2 => {
-      e2.preventDefault();
-      const code = f.code.value.trim(); if (code.length !== 6) { say("Enter the 6-digit code from the email."); return f.code.focus(); }
-      const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
-      api("POST", { ...keep, code }).then(r => (r.confirm ? confirm(r) : done(r)), e => (e.code === "bad-code" || e.code === "rate" ? confirm(res, e.message) : form(e.message)));
+      api("POST", d).then(done, e => form(e.message));
     };
   }
   function done(res) {
     keep = {};
-    box().innerHTML = `<div class="hs-card rq-card rq-done"><span class="rq-tick" aria-hidden="true">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}</span>
-      <h2>Request Sent</h2>
-      <p>Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's decided.${res.emailed ? " We've emailed you a copy of your request." : ""}</p>
-      <p class="rq-ref">Reference ${esc(res.id)}</p>
-      <div class="rq-acts">${back()}<span class="sp"></span><a class="hb-btn" href="#accommodations">See My Requests</a></div></div>`;
+    box().innerHTML = sentHTML("Request Sent", `Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's decided.${res.emailed ? " We've emailed you a copy." : ""}`, res.id);
+  }
+  function sentHTML(title, text, ref) {
+    return `<div class="rq-sent"><span class="rq-sent-ic" aria-hidden="true">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}</span><div class="rq-sent-b"><b>${title}</b><p>${text}</p>${ref ? `<small>Reference ${esc(ref)}</small>` : ""}</div></div>
+      <div class="rq-acts"><span class="sp"></span><a class="hb-btn" href="#accommodations">See My Requests</a>${back()}</div>`;
   }
   return { start };
 })();
@@ -431,7 +394,7 @@ function evalCard(u, group, E) {
       return `<div class="ec-rw-row"><span class="hs-ic sm">${ic}</span><b>${esc(x.name)}</b><span class="sp"></span>${x.kind === "shift" && x.was != null ? `<s>${fmtW(x.was)}%</s><span class="ec-arrow">→</span><b>${fmtW(x.was + x.pct)}%</b>` : `<b>${fmtW(x.pct)}%</b>`}</div>`; }).join("")}
       ${mi.zero > 0 ? `<div class="ec-rw-row ec-zero"><span class="sp"></span>${fmtW(mi.zero)}% counts as zero</div>` : ""}</div>` : ""}` : (u.notes || []).map(n => `<p class="ec-p">${esc(n)}</p>`).join("");
   // Accommodations: the standard one (if it must be asked for), and until when.
-  const a = u.accom || {}, by = a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";
+  const a = u.accom || {}, by = a.byMarks ? "when the marks are out" : a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";
   // Accommodations: one row, as the dates are: what can be asked for and until when, and the button to ask.
   const HAND = HEART;
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
@@ -459,6 +422,7 @@ function evalCard(u, group, E) {
 // Request Accommodation, at the top of an evaluation's card: when students can ask (until its deadline).
 function requestBtn(e) {
   const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  if (a.byMarks && (e.released || (D.viewer.marks || {})[e.id])) return `<span class="ec-closed">Requests closed</span>`;
   const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
   if (by && !isNaN(by) && by < new Date()) return `<span class="ec-closed">Requests closed</span>`;
   return D.viewer.signedIn ? `<a class="hb-btn" href="#request/${encodeURIComponent(e.id)}">Request Accommodation</a>` : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request an Accommodation</a>`;

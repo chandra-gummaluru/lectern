@@ -1018,9 +1018,17 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 /* The choice of what's asked for: radios as Lectern's ticks (the radio, its name in bold, a gray line under). */
 .rq-opts { display: grid; gap: 10px; margin-top: 2px; }
 .rq-choice { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; cursor: pointer; font: 14.5px var(--font-ui); color: var(--ink); }
-.rq-choice input { grid-row: span 2; align-self: start; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--ink); cursor: pointer; }
+.rq-choice input { grid-row: span 2; align-self: start; width: 16px; height: 16px; margin: 4px 0 0; accent-color: var(--ink); cursor: pointer; }
 .rq-choice b { font-weight: 600; }
 .rq-choice span { grid-column: 2; font-size: 13.5px; color: var(--ink-3); }
 .rq-choice.off { cursor: default; } .rq-choice.off b, .rq-choice.off span { color: var(--ink-3); opacity: .7; } .rq-choice.off input { cursor: default; }
 .rq-codef { max-width: 220px; } .rq-codef input { font: 600 20px/1 var(--font-mono, ui-monospace, monospace); letter-spacing: .18em; }
 .rq-confirm .rq-acts .hb-btn + .hb-btn { margin-left: 0; }
+
+/* A request sent (or one already waiting): a row as the evaluation page's Accommodations is, then its buttons. */
+.rq-sent { display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px; border-radius: 10px; background: color-mix(in srgb, var(--ok) 8%, var(--card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 30%, var(--card)); }
+.rq-sent-ic { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--ok); color: #fff; }
+.rq-sent-ic svg { width: 16px; height: 16px; stroke-width: 2.6; }
+.rq-sent-b > b { display: block; font: 600 16px var(--font-ui); color: var(--ink); }
+.rq-sent-b p { margin: 3px 0 0; color: var(--ink-2); font-size: 14.5px; }
+.rq-sent-b small { display: block; margin-top: 6px; color: var(--ink-3); font-size: 13px; }

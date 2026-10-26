@@ -48,7 +48,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   const body = t => esc(t).replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `<span class="at"${n.real ? ` title="${esc(n.name)} to classmates"` : ""}>@${esc(n.real || n.name)}</span>` : "@someone"; });
   const plain = t => String(t || "").replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `@${n.name}` : "@someone"; });
   const av = (w, cls = "") => `<span class="dc-av${cls}${w && w.anon ? " anon" : ""}${w && w.team ? " staff" : ""}">${!w ? "–" : w.anon ? I.mask : esc(ini(w.name))}</span>`;
-  const whoHTML = w => `<b>${esc(w.name)}</b>${w.team && w.role ? `<span class="dc-role">${esc(w.role)}</span>` : ""}${w.real ? `<span class="dc-real">${esc(w.real)}</span>` : ""}${w.you ? `<span class="dc-badge you">You</span>` : ""}`;
+  const whoHTML = w => `<b${w.team ? ` class="dc-staffname" title="${esc(w.role || "Teaching team")}"` : ""}>${esc(w.name)}</b>${w.real ? `<span class="dc-real">${esc(w.real)}</span>` : ""}`;
   const flags = (p, long) => `${p.pinned ? `<span class="dc-flag pin">${I.pin}Pinned</span>` : ""}${p.endorsed ? `<span class="dc-flag ok">${I.ok}${long ? `Endorsed by ${esc(p.endorsed.split(" ")[0])}` : "Endorsed"}</span>` : ""}${p.removed ? `<span class="dc-flag">${I.hide}${long && staff() ? "Removed: only the teaching team sees it" : "Removed"}</span>` : ""}${p.deleted ? `<span class="dc-flag">${I.trash}Deleted by its author</span>` : ""}`;
 
   function head(n) {
@@ -71,7 +71,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
       <button class="dc-t-b" data-open="${p.id}">
         <span class="dc-t-flags">${flags(p)}</span>
         <b class="dc-t-title">${esc(p.title || "(removed)")}</b>
-        <span class="dc-t-meta">${w ? `${av(w, " xs")}${esc(w.name)}${w.team && w.role ? ` <span class="dc-role">${esc(w.role)}</span>` : ""}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
+        <span class="dc-t-meta">${w ? `${av(w, " xs")}${w.team ? `<span class="dc-staffname" title="${esc(w.role || "Teaching team")}">${esc(w.name)}</span>` : esc(w.name)}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
         ${p.body ? `<span class="dc-t-clip">${esc(plain(p.body))}</span>` : ""}
       </button></div>`;
   }

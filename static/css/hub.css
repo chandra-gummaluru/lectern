@@ -918,8 +918,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .dc-t-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; font-size: 13px; color: var(--ink-3); }
 .dc-t-clip { font-size: 14px; color: var(--ink-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .dc-av.xs { width: 20px; height: 20px; font-size: 9px; } .dc-av.xs svg { width: 12px; height: 12px; }
-.dc-back { display: inline-flex; align-items: center; gap: 4px; margin: 12px 0 0 -4px; padding: 4px; border: 0; background: transparent; font: 600 13.5px var(--font-ui); color: var(--ink-2); cursor: pointer; }
-.dc-back svg { width: 16px; height: 16px; }
+.dc-backrow { display: flex; justify-content: flex-end; margin-top: 12px; }
 .dc-op { margin-top: 8px; padding: 14px 16px 8px; border: 1px solid var(--line-2); border-radius: 10px; }
 .dc-op.dc-team { background: color-mix(in srgb, var(--accent-bg) 75%, var(--card)); border-color: var(--accent-line); }
 .dc-op .dc-who .dc-av { width: 26px; height: 26px; font-size: 10px; }

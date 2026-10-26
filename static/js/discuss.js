@@ -90,7 +90,7 @@ export function mount(host, { api, target, signIn }) {
   }
   function threadHTML(p) {
     const w = p.who;
-    return `<button class="dc-back" data-back>${I.back}All posts</button>
+    return `<div class="dc-backrow"><button class="hb-btn dc-back" data-back>${I.back}All posts</button></div>
       <div class="dc-op${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
         ${w ? `<div class="dc-who">${av(w)}${whoHTML(w)}<span>${ago(p.at)}</span>${flags(p, true)}</div>
         <h3 class="dc-op-title">${esc(p.title)}</h3><p class="dc-text">${body(p.body)}</p>${acts(p, true)}` : `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>`}

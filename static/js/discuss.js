@@ -7,6 +7,8 @@
      mount(host, { api, target, signIn })              api: the hub's /api/hub/<handle>/<course>/<term>
      mount(host, { api, target, signIn, post, onPost })  one post, on its own page (#post/<target>/<id>)
 */
+import { richText, toMarkdown } from "./richtext.js";
+
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const I = {
@@ -48,8 +50,10 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   const count = id => kids(id).reduce((n, k) => n + 1 + count(k.id), 0);
   const sorted = L => L.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (S.sort === "top" ? (b.votes + (b.endorsed ? 3 : 0)) - (a.votes + (a.endorsed ? 3 : 0)) || a.at - b.at : b.at - a.at));
   const nameOf = tok => (S.data.names || {})[tok];
-  const body = t => esc(t).replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `<span class="at"${n.real ? ` title="${esc(n.name)} to classmates"` : ""}>@${esc(n.real || n.name)}</span>` : "@someone"; });
-  const plain = t => String(t || "").replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `@${n.name}` : "@someone"; });
+  // A post's body is Markdown (bold, italic, links, lists), drawn as the course page draws it; then its mentions.
+  const md = t => (window.HubView && window.HubView.markdown ? window.HubView.markdown(t) : `<p>${esc(t)}</p>`);
+  const body = t => md(t).replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `<span class="at"${n.real ? ` title="${esc(n.name)} to classmates"` : ""}>@${esc(n.real || n.name)}</span>` : "@someone"; });
+  const plain = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\*\*|[*`~=]/g, "").replace(/^\s*(?:[-•]|\d+[.)])\s+/gm, "").replace(/\s+/g, " ").trim().replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `@${n.name}` : "@someone"; });
   const av = (w, cls = "") => `<span class="dc-av${cls}${w && w.anon ? " anon" : ""}${w && w.team ? " staff" : ""}">${!w ? "–" : w.anon ? I.mask : esc(ini(w.name))}</span>`;
   const whoHTML = w => `<b${w.team ? ` class="dc-staffname" title="${esc(w.role || "Teaching team")}"` : ""}>${esc(w.name)}</b>${w.real ? `<span class="dc-real">${esc(w.real)}</span>` : ""}`;
   const marks = p => `${p.endorsed ? `<span class="dc-st ok" title="Endorsed by ${esc(p.endorsed)}" aria-label="Endorsed by ${esc(p.endorsed)}">${I.okc}</span>` : ""}${p.pinned ? `<span class="dc-st pin" title="Pinned" aria-label="Pinned">${I.pinc}</span>` : ""}`;
@@ -62,9 +66,9 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   }
   function composer(kind) {   // "post" (a title and a body), "comment" (on the opened post), "reply" (to a comment)
     const me = S.data.me;
-    const as = me.kind === "student" ? `<label class="dc-anon" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name"><input type="checkbox" data-anon${S.anon ? " checked" : ""}>Anonymous to Classmates</label><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}: marked with your role. Type @ to mention someone.</span>`;
+    const as = me.kind === "student" ? `<label class="dc-anon" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name"><input type="checkbox" data-anon${S.anon ? " checked" : ""}>Anonymous to Classmates</label><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}. Type @ to mention someone.</span>`;
     const ph = { post: "Say more: what you've tried, where you're stuck… (@ to mention)", comment: "Add a comment… (@ to mention)", reply: "Write a reply… (@ to mention)" }[kind];
-    return `<div class="dc-box${kind === "reply" ? " sm" : ""}" data-kind="${kind}">${kind === "post" ? `<input type="text" class="dc-title-in" placeholder="Title, e.g. Question 3: a truth table, or just the expression?" maxlength="200" aria-label="Title">` : ""}<textarea placeholder="${ph}" aria-label="${kind === "post" ? "Your post" : "Your comment"}"></textarea>
+    return `<div class="dc-box${kind === "reply" ? " sm" : ""}" data-kind="${kind}">${kind === "post" ? `<input type="text" class="dc-title-in" placeholder="Title, e.g. Question 3: a truth table, or just the expression?" maxlength="200" aria-label="Title">` : ""}<div class="dc-rt" data-ph="${esc(ph)}" data-label="${kind === "post" ? "Your post" : "Your comment"}"></div>
       <div class="dc-box-foot">${as}${kind !== "comment" ? `<button class="hb-btn dc-post-btn" data-cancel>Cancel</button>` : ""}<button class="hb-btn primary dc-post-btn" data-send="${kind === "reply" ? S.replyTo : kind === "comment" ? S.open : ""}">${{ post: "Post", comment: "Comment", reply: "Reply" }[kind]}</button></div>
       ${S.err ? `<p class="dc-err" role="alert">${esc(S.err)}</p>` : ""}</div>`;
   }
@@ -92,7 +96,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
       <div class="dc-row${w && w.team ? " dc-team" : ""}"${w && w.team ? ` title="${esc(w.role || "")}"` : ""}>${av(w)}
         <div class="dc-b">${gone ? `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>` : `
           <div class="dc-who">${whoHTML(w)}<span>${ago(p.at)}</span>${marks(p)}${flags(p, true)}</div>
-          <p class="dc-text">${body(p.body)}</p>${acts(p, false)}`}
+          <div class="dc-text">${body(p.body)}</div>${acts(p, false)}`}
           ${S.replyTo === p.id ? composer("reply") : ""}</div></div>
       ${K.length ? (open ? `<div class="dc-kids"><button class="dc-line" data-fold="${p.id}" title="Hide the replies" aria-label="Hide the replies"></button>${K.map(commentHTML).join("")}</div>` : `<button class="dc-more" data-fold="${p.id}">Show ${n} repl${n === 1 ? "y" : "ies"}</button>`) : ""}
     </div>`;
@@ -103,13 +107,13 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     if (post) return `<div class="dc-op${p.removed || p.deleted ? " gone" : ""}">
         <header class="ec-head"><span class="hs-ic ec-ic">${I.chat}</span><div class="ec-tt"><p class="hs-kick">Discussion Post</p><h1>${esc(w ? p.title : p.title || "Post")}</h1>
           <p class="ec-subline dc-by">${w ? `${whoHTML(w)}<span>· ${ago(p.at)}</span>${flags(p, true)}` : `<span>${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</span>`}</p></div>${p.pinned || p.endorsed ? `<span class="dc-head-st">${marks(p)}</span>` : ""}</header>
-        ${w ? `<p class="dc-text ec-body">${body(p.body)}</p>${acts(p, true)}` : ""}
+        ${w ? `<div class="dc-text ec-body">${body(p.body)}</div>${acts(p, true)}` : ""}
       </div>
       ${composer("comment")}
       <div class="dc-comments">${sorted(kids(p.id)).map(commentHTML).join("") || `<p class="dc-none">No comments yet.</p>`}</div>`;
     return `<div class="dc-op${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
         ${w ? `<div class="dc-who">${av(w)}${whoHTML(w)}<span>${ago(p.at)}</span>${flags(p, true)}</div>
-        <h3 class="dc-op-title">${esc(p.title)}</h3><p class="dc-text">${body(p.body)}</p>${acts(p, true)}` : `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>`}
+        <h3 class="dc-op-title">${esc(p.title)}</h3><div class="dc-text">${body(p.body)}</div>${acts(p, true)}` : `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>`}
       </div>
       ${composer("comment")}
       <div class="dc-comments">${sorted(kids(p.id)).map(commentHTML).join("") || `<p class="dc-none">No comments yet.</p>`}</div>`;
@@ -122,7 +126,8 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     } else if (S.open && !p) S.open = null;
     const F = found(L);
     host.innerHTML = `${head(L.length)}${!p && S.writing ? composer("post") : ""}${p ? threadHTML(p) : `<div class="dc-threads">${sorted(F).map(rowHTML).join("") || `<p class="dc-none">${L.length ? "No posts match your search." : "No posts yet. Ask the first question."}</p>`}</div>`}`;
-    const f = host.querySelector(".dc-box.sm textarea") || (S.writing && !p && host.querySelector(".dc-title-in")); if (f) f.focus();
+    host.querySelectorAll(".dc-rt").forEach(el => { el._rt = richText(el, { placeholder: el.dataset.ph, label: el.dataset.label }); });
+    const f = host.querySelector(".dc-box.sm .rt-ed") || (S.writing && !p && host.querySelector(".dc-title-in")); if (f) f.focus();
   }
   const update = d => { S.data = d; S.err = ""; draw(); };
 
@@ -139,7 +144,10 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   const closePop = () => { if (pop) { pop.remove(); pop = null; } };
   function atPopup(ta) {
     closePop();
-    const m = /(^|\s)@([^\s@]*)$/.exec(ta.value.slice(0, ta.selectionStart));
+    const sel = getSelection(); if (!sel.rangeCount || !sel.isCollapsed) return;
+    const node = sel.anchorNode, at = sel.anchorOffset;
+    if (!node || node.nodeType !== 3 || !ta.contains(node)) return;
+    const m = /(^|\s)@([^\s@]*)$/.exec(node.nodeValue.slice(0, at));
     if (!m) return;
     const q = m[2].toLowerCase(), L = mentionable().filter(x => `${x.label} ${x.sub}`.toLowerCase().includes(q)).slice(0, 6);
     if (!L.length) return;
@@ -148,22 +156,26 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     const box = host.closest(".hb") || document.body, r = ta.getBoundingClientRect(), h = box.getBoundingClientRect();
     pop.style.left = `${r.left - h.left + 10}px`; pop.style.top = `${r.bottom - h.top - 6}px`;
     box.append(pop);
-    const pick = x => { const at = ta.selectionStart, before = ta.value.slice(0, at - m[2].length - 1); ta._m = [...(ta._m || []), x]; ta.value = `${before}@${x.label} ${ta.value.slice(at)}`; closePop(); ta.focus(); };
+    const pick = x => {   // the @ and what's typed after it become @Name
+      ta._m = [...(ta._m || []), x]; closePop(); ta.focus();
+      const r = document.createRange(); r.setStart(node, at - m[2].length - 1); r.setEnd(node, at);
+      sel.removeAllRanges(); sel.addRange(r); document.execCommand("insertText", false, `@${x.label} `);
+    };
     pop.onmousedown = e => { const b = e.target.closest("[data-i]"); if (b) { e.preventDefault(); pick(L[+b.dataset.i]); } };
     ta._pick = () => pick(L[0]);
   }
   // What's written → what's sent: each @name picked becomes its mention token.
-  const tokens = ta => (ta._m || []).reduce((t, x) => t.split(`@${x.label}`).join(`@{${x.tok}}`), ta.value.trim());
+  const tokens = ta => (ta._m || []).reduce((t, x) => t.split(`@${x.label}`).join(`@{${x.tok}}`), toMarkdown(ta).trim());
 
   host.addEventListener("input", e => {
-    if (e.target.matches(".dc-search input")) { S.q = e.target.value; const at = e.target.selectionStart; draw(); const i = host.querySelector(".dc-search input"); if (i) { i.focus(); i.setSelectionRange(at, at); } return; } if (e.target.matches(".dc-box textarea")) { atPopup(e.target); e.target.style.height = "auto"; e.target.style.height = `${e.target.scrollHeight}px`; } });
+    if (e.target.matches(".dc-search input")) { S.q = e.target.value; const at = e.target.selectionStart; draw(); const i = host.querySelector(".dc-search input"); if (i) { i.focus(); i.setSelectionRange(at, at); } return; } const ed = e.target.closest && e.target.closest(".dc-box .rt-ed"); if (ed) atPopup(ed); });
   host.addEventListener("keydown", e => {
     if (pop && e.target._pick && (e.key === "Enter" || e.key === "Tab")) { e.preventDefault(); e.target._pick(); }
     else if (pop && e.key === "Escape") closePop();
-    else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.matches(".dc-box textarea")) { const b = e.target.closest(".dc-box").querySelector("[data-send]"); if (b) b.click(); }
+    else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.closest && e.target.closest(".dc-box .rt-ed")) { const b = e.target.closest(".dc-box").querySelector("[data-send]"); if (b) b.click(); }
   });
   host.addEventListener("change", e => { if (e.target.matches("[data-anon]")) S.anon = e.target.checked; });
-  host.addEventListener("focusout", () => setTimeout(() => { if (!(document.activeElement && document.activeElement.matches && document.activeElement.matches(".dc-box textarea"))) closePop(); }, 150));
+  host.addEventListener("focusout", () => setTimeout(() => { if (!(document.activeElement && document.activeElement.matches && document.activeElement.matches(".dc-box .rt-ed"))) closePop(); }, 150));
   host.addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b || !S.data) return;
     const fail = err => { S.err = err.message; draw(); };
@@ -173,17 +185,11 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     if (b.dataset.open) { location.hash = page(b.dataset.open); return; }
     if (b.dataset.reply) { S.replyTo = +b.dataset.reply; S.err = ""; return draw(); }
     if (b.dataset.fold) { const id = +b.dataset.fold; S.folded.has(id) ? S.folded.delete(id) : S.folded.add(id); return draw(); }
-    if (b.dataset.asAnon != null) {   // keep what's written
-      const box = b.closest(".dc-box"), ta = box.querySelector("textarea"), ti = box.querySelector(".dc-title-in"), v = [ta.value, ta._m, ti && ti.value];
-      S.anon = b.dataset.asAnon === "1"; draw();
-      const nb = host.querySelector(`.dc-box[data-kind="${box.dataset.kind}"]`); if (!nb) return;
-      const t2 = nb.querySelector("textarea"); t2.value = v[0]; t2._m = v[1]; if (v[2] != null) nb.querySelector(".dc-title-in").value = v[2]; t2.focus(); return;
-    }
     if (b.dataset.up) { const p = posts().find(x => x.id === +b.dataset.up); return call(`/${p.id}/vote`, { on: !p.voted }).then(update, fail); }
     if (b.dataset.mod) return call(`/${b.dataset.v}/moderate`, { [b.dataset.mod]: b.dataset.on === "true" }).then(update, fail);
     if (b.dataset.del) { if (!confirm("Delete this? Classmates will see that it was deleted.")) return; return call(`/${b.dataset.del}/delete`, {}).then(update, fail); }
     if (b.dataset.send != null) {
-      const box = b.closest(".dc-box"), ta = box.querySelector("textarea"), ti = box.querySelector(".dc-title-in"), text = tokens(ta);
+      const box = b.closest(".dc-box"), ta = box.querySelector(".rt-ed"), ti = box.querySelector(".dc-title-in"), text = tokens(ta);
       if (ti && !ti.value.trim()) return ti.focus();
       if (!text) return ta.focus();
       b.disabled = true;

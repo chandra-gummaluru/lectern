@@ -354,12 +354,12 @@ def test_a_remark_request(gh, monkeypatch):
 
 def test_requests_close_when_the_marks_are_out(gh):
     b = json.loads(json.dumps(BOOK))
-    a1 = next(e for e in b["evals"] if e["id"] == "a1"); a1["accom"]["byMarks"] = True
+    a1 = next(e for e in b["evals"] if e["id"] == "a1"); a1["accom"]["by"] = "2099-12-31"
     gh.put("csc258/f26/grades.json", json.dumps(b))
     st = hub_student("maya.castillo@mail.utoronto.ca")
     d = {"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "Later."}
     info = st.get(f"{HUB}/accommodation?e=a1").get_json()
-    assert info["deadline"]["marks"] and not info["deadline"]["passed"]
+    assert not info["deadline"]["passed"] and "marks" not in info["deadline"]
     a1["released"] = True
     gh.put("csc258/f26/grades.json", json.dumps(b))
     r = st.post(f"{HUB}/accommodation", json=d, headers=H)

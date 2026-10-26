@@ -227,7 +227,7 @@ const ReqForm = (() => {
     const altNo = W.includes("alternate") ? "You've asked for one: it's waiting for a decision." : "";
     const canStd = !!(s && s.approval) && !stdNo, alt = !!info.alternate && !altNo;
     const byEl = document.getElementById("rq-by");   // the deadline, under the title
-    if (byEl) { byEl.hidden = !dl; byEl.innerHTML = dl ? `Requests close ${esc(dl.text)}` : ""; }
+    if (byEl) { byEl.hidden = !dl || !dl.date; byEl.innerHTML = dl && dl.date ? `Requests close ${esc(dl.text)}, or when the marks are out if that's sooner` : ""; }
     if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>${dl.marks ? `Requests for ${esc(ev.name)} closed when its marks came out.` : `The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}).`} If you still need one, contact your instructor.</p></div>`; return; }
     if (!canStd && !alt && (stdNo || altNo)) { box().innerHTML = sentHTML("You've Asked Already", `Your request for ${esc(ev.name)} is waiting for a decision. You'll get an email when it's decided.`, ""); return; }
     const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
@@ -405,7 +405,7 @@ function evalCard(u, group, E) {
       return `<div class="ec-rw-row"><span class="hs-ic sm">${ic}</span><b>${esc(x.name)}</b><span class="sp"></span>${x.kind === "shift" && x.was != null ? `<s>${fmtW(x.was)}%</s><span class="ec-arrow">→</span><b>${fmtW(x.was + x.pct)}%</b>` : `<b>${fmtW(x.pct)}%</b>`}</div>`; }).join("")}
       ${mi.zero > 0 ? `<div class="ec-rw-row ec-zero"><span class="sp"></span>${fmtW(mi.zero)}% counts as zero</div>` : ""}</div>` : ""}` : (u.notes || []).map(n => `<p class="ec-p">${esc(n)}</p>`).join("");
   // Accommodations: the standard one (if it must be asked for), and until when.
-  const a = u.accom || {}, by = a.byMarks ? "when the marks are out" : a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";
+  const a = u.accom || {}, by = a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}, or when the marks are out if that's sooner` : "";
   // Accommodations: one row, as the dates are: what can be asked for and until when, and the button to ask.
   const HAND = HEART;
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
@@ -433,7 +433,7 @@ function evalCard(u, group, E) {
 // Request Accommodation, at the top of an evaluation's card: when students can ask (until its deadline).
 function requestBtn(e) {
   const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
-  if (a.byMarks && (e.released || (D.viewer.marks || {})[e.id])) return `<span class="ec-closed">Requests closed</span>`;
+  if (e.released || (D.viewer.marks || {})[e.id]) return `<span class="ec-closed">Requests closed</span>`;   // its marks are out
   const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
   if (by && !isNaN(by) && by < new Date()) return `<span class="ec-closed">Requests closed</span>`;
   return D.viewer.signedIn ? `<a class="hb-btn" href="#request/${encodeURIComponent(e.id)}">Request Accommodation</a>` : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request an Accommodation</a>`;

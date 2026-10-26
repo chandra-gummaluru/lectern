@@ -149,13 +149,12 @@ def accom_of(ev):
     a = (ev or {}).get("accom") or {}
     standard = str(a.get("standard") or "").strip()
     out = {"standard": standard, "approval": bool(a.get("approval")) and bool(standard), "alternate": bool(a.get("alternate")),
-           "by": "", "byTime": "", "closed": False, "byMarks": bool(a.get("byMarks"))}
-    if out["byMarks"]:   # open until its marks are out (visible to students)
-        out["closed"] = (ev or {}).get("released") is True
-        return out
+           "by": "", "byTime": "", "closed": False, "marksOut": (ev or {}).get("released") is True}
     end = deadline_of(a)
     if end is not None:
         out.update(by=a["by"], byTime=str(a.get("byTime") or "") or "23:59", closed=clock() > end)
+    if out["marksOut"]:   # and once its marks are out, whatever the date
+        out["closed"] = True
     return out
 
 
@@ -172,7 +171,7 @@ def _evaluation(book, e, open_only=False):
     a = accom_of(ev)
     if not ev or not (a["approval"] or a["alternate"]):
         raise Refusal(404, "This evaluation isn't taking accommodation requests.")
-    if open_only and a["closed"] and a["byMarks"]:
+    if open_only and a["marksOut"]:
         raise Refusal(410, f"Requests for {ev.get('name') or 'this evaluation'} closed when its marks came out.", "closed")
     if open_only and a["closed"]:
         raise Refusal(410, f"The deadline to request an accommodation for {ev.get('name') or 'this evaluation'} has passed ({when_text(a['by'], a['byTime'])}).", "closed")
@@ -266,8 +265,7 @@ def _public_info(book, ev, a):
         "idLabel": _id_label(book),
         "standard": {"text": a["standard"], "approval": a["approval"]} if a["standard"] else None,
         "alternate": a["alternate"],
-        "deadline": {"date": "", "time": "", "text": "when the marks are out", "passed": a["closed"], "marks": True} if a["byMarks"]
-                    else {"date": a["by"], "time": a["byTime"], "text": when_text(a["by"], a["byTime"]), "passed": a["closed"]} if a["by"] else None,
+        "deadline": {"date": a["by"], "time": a["byTime"], "text": when_text(a["by"], a["byTime"]), "passed": a["closed"], **({"marks": True} if a["marksOut"] else {})} if a["by"] or a["marksOut"] else None,
     }
 
 

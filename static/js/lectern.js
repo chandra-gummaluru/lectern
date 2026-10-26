@@ -1218,7 +1218,7 @@ function schemeOf(b, from, requests = null) {
   const accom = e => {
     const a = e.accom || {}, standard = String(a.standard || "").trim(), approval = !!a.approval && !!standard, alternate = !!a.alternate;
     if (!standard && !alternate) return {};
-    return { accom: { standard, approval, alternate, ...(approval || alternate) && a.byMarks ? { byMarks: true } : (approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
+    return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
   // Remark requests: when they open and close (the course page shows Request Remark once the student's mark is out).
   const remark = e => { const r = e.remark || {}; return r.on ? { remark: { from: r.from || "", fromTime: r.fromTime || "", by: r.by || "", byTime: r.byTime || "" } } : {}; };

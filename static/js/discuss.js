@@ -1,7 +1,7 @@
 /* A discussion on the course page (server/discuss.py): the posts on an evaluation, an activity or an
    announcement, each a title and a body, opened to see its comments (nested, as on Reddit). Upvotes, no
    downvotes. A student posts by name or anonymous to classmates (their course alias); the teaching team's
-   posts are highlighted, and they can pin, endorse and remove. @ mentions anyone in the course: the
+   posts are marked with their role, and they can pin, endorse and remove. @ mentions anyone in the course: the
    teaching team by name, students as each viewer sees them.
 
      mount(host, { api, target, signIn })      api: the hub's /api/hub/<handle>/<course>/<term>
@@ -44,7 +44,7 @@ export function mount(host, { api, target, signIn }) {
   const body = t => esc(t).replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `<span class="at"${n.real ? ` title="${esc(n.name)} to classmates"` : ""}>@${esc(n.real || n.name)}</span>` : "@someone"; });
   const plain = t => String(t || "").replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `@${n.name}` : "@someone"; });
   const av = (w, cls = "") => `<span class="dc-av${cls}${w && w.anon ? " anon" : ""}${w && w.team ? " staff" : ""}">${!w ? "–" : w.anon ? I.mask : esc(ini(w.name))}</span>`;
-  const whoHTML = w => `<b>${esc(w.name)}</b>${w.real ? `<span class="dc-real">${esc(w.real)}</span>` : ""}${w.you ? `<span class="dc-badge you">You</span>` : ""}`;
+  const whoHTML = w => `<b>${esc(w.name)}</b>${w.team && w.role ? `<span class="dc-role">${esc(w.role)}</span>` : ""}${w.real ? `<span class="dc-real">${esc(w.real)}</span>` : ""}${w.you ? `<span class="dc-badge you">You</span>` : ""}`;
   const flags = (p, long) => `${p.pinned ? `<span class="dc-flag pin">${I.pin}Pinned</span>` : ""}${p.endorsed ? `<span class="dc-flag ok">${I.ok}${long ? `Endorsed by ${esc(p.endorsed.split(" ")[0])}` : "Endorsed"}</span>` : ""}${p.removed ? `<span class="dc-flag">${I.hide}${long && staff() ? "Removed: only the teaching team sees it" : "Removed"}</span>` : ""}${p.deleted ? `<span class="dc-flag">${I.trash}Deleted by its author</span>` : ""}`;
 
   function head(n) {
@@ -53,7 +53,7 @@ export function mount(host, { api, target, signIn }) {
   }
   function composer(kind) {   // "post" (a title and a body), "comment" (on the opened post), "reply" (to a comment)
     const me = S.data.me;
-    const as = me.kind === "student" ? `<div class="dc-as" role="group" aria-label="Post as"><button data-as-anon="0" aria-pressed="${!S.anon}">${I.user}${esc(me.name)}</button><button data-as-anon="1" aria-pressed="${S.anon}" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name">${I.mask}Anonymous to Classmates</button></div><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}: the teaching team's posts are highlighted. Type @ to mention someone.</span>`;
+    const as = me.kind === "student" ? `<div class="dc-as" role="group" aria-label="Post as"><button data-as-anon="0" aria-pressed="${!S.anon}">${I.user}${esc(me.name)}</button><button data-as-anon="1" aria-pressed="${S.anon}" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name">${I.mask}Anonymous to Classmates</button></div><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}: marked with your role. Type @ to mention someone.</span>`;
     const ph = { post: "Say more: what you've tried, where you're stuck… (@ to mention)", comment: "Add a comment… (@ to mention)", reply: "Write a reply… (@ to mention)" }[kind];
     return `<div class="dc-box${kind === "reply" ? " sm" : ""}" data-kind="${kind}">${kind === "post" ? `<input type="text" class="dc-title-in" placeholder="Title, e.g. Question 3: a truth table, or just the expression?" maxlength="200" aria-label="Title">` : ""}<textarea placeholder="${ph}" aria-label="${kind === "post" ? "Your post" : "Your comment"}"></textarea>
       <div class="dc-box-foot">${as}${kind !== "comment" ? `<button class="hb-btn dc-post-btn" data-cancel>Cancel</button>` : ""}<button class="hb-btn primary dc-post-btn" data-send="${kind === "reply" ? S.replyTo : kind === "comment" ? S.open : ""}">${{ post: "Post", comment: "Comment", reply: "Reply" }[kind]}</button></div>
@@ -66,7 +66,7 @@ export function mount(host, { api, target, signIn }) {
       <button class="dc-t-b" data-open="${p.id}">
         <span class="dc-t-flags">${flags(p)}</span>
         <b class="dc-t-title">${esc(p.title || "(removed)")}</b>
-        <span class="dc-t-meta">${w ? `${av(w, " xs")}${esc(w.name)}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
+        <span class="dc-t-meta">${w ? `${av(w, " xs")}${esc(w.name)}${w.team && w.role ? ` <span class="dc-role">${esc(w.role)}</span>` : ""}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
         ${p.body ? `<span class="dc-t-clip">${esc(plain(p.body))}</span>` : ""}
       </button></div>`;
   }

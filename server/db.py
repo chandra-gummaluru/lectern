@@ -122,6 +122,22 @@ CREATE TABLE IF NOT EXISTS offering_mail (     -- an offering's own email (SMTP)
   updated_by INTEGER,
   PRIMARY KEY (owner_id, offering)
 );
+CREATE TABLE IF NOT EXISTS offering_mail_prefs ( -- an offering's email to students: reply-to, signature, which go out
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering   TEXT NOT NULL,
+  prefs      TEXT NOT NULL,                     -- JSON { replyTo, signature, send: { kind: bool } }
+  updated    REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering)
+);
+CREATE TABLE IF NOT EXISTS grade_notices (      -- what each student was last emailed about an evaluation's mark
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering   TEXT NOT NULL,
+  eval_id    TEXT NOT NULL,
+  num        TEXT NOT NULL,                     -- the student's identifier in the gradebook
+  mark       TEXT NOT NULL,                     -- the mark as it was then (JSON)
+  at         REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, eval_id, num)
+);
 CREATE TABLE IF NOT EXISTS mail_sends (        -- emails to a class: who sent what, to how many, how it went
   id        INTEGER PRIMARY KEY,
   owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

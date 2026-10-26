@@ -133,3 +133,46 @@ def test_a_saved_announcement_is_emailed_to_its_students(client, course, smtp):
     r_.commit({"csc258/f26/groups.json": json.dumps({"format": "lectern-groups/1", "groups": [{"id": "g2", "name": "TUT1", "kind": "tutorial", "people": [str(t["id"])], "items": []}]}).encode()}, "g", r_.head())
     assert ta.post(U, json={"title": "x", "body": "y", "groups": ["g2"]}, headers=H).status_code == 200
     assert ta.post(U, json={"title": "x", "body": "y", "groups": ["g1"]}, headers=H).status_code == 403
+
+
+def _book(user, **changes):
+    b = json.loads(json.dumps(BOOK)); b.update(changes)
+    r = store.Repo(user["id"], "priv")
+    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "seed", r.head())
+
+
+def test_marks_emailed_when_out_and_when_changed(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26"
+    client.post(f"{U}/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    mt = {"id": "mt", "name": "Test 1", "type": "test"}
+    _book(course, evals=[mt], marks={"1": {"mt": {"pts": 30}}, "2": {"mt": {"pts": 40}}})
+    # Not visible yet: nobody's emailed.
+    assert client.post(f"{U}/grades", json={}, headers=H).get_json()["emailed"] == 0
+    assert client.get(f"{U}/grades").get_json()["evals"]["mt"] == {"released": False, "told": 0, "waiting": 2, "changed": 0}
+    _book(course, evals=[{**mt, "released": True}], marks={"1": {"mt": {"pts": 30}}, "2": {"mt": {"pts": 40}}})
+    assert client.post(f"{U}/grades", json={}, headers=H).get_json()["emailed"] == 2
+    sent = smtp["many"][-1]
+    assert sorted(sent["to"]) == ["ada@mail.utoronto.ca", "alan@mail.utoronto.ca"] and "is out" in sent["subject"] and "#evaluation/mt" in sent["body"]
+    assert client.post(f"{U}/grades", json={}, headers=H).get_json()["emailed"] == 0          # once
+    # A mark changed: it waits for Email Them.
+    _book(course, evals=[{**mt, "released": True}], marks={"1": {"mt": {"pts": 33}}, "2": {"mt": {"pts": 40}}})
+    assert client.post(f"{U}/grades", json={}, headers=H).get_json()["emailed"] == 0
+    assert client.get(f"{U}/grades").get_json()["evals"]["mt"]["changed"] == 1
+    assert client.post(f"{U}/grades", json={"e": "mt", "changes": True}, headers=H).get_json()["emailed"] == 1
+    assert smtp["many"][-1]["to"] == ["ada@mail.utoronto.ca"] and "changed" in smtp["many"][-1]["subject"]
+    # Turned off in the email settings: none go out (and they're not saved up for later).
+    client.post(f"{U}/prefs", json={"replyTo": "", "signature": "", "send": {"grades": False}}, headers=H)
+    _book(course, evals=[{**mt, "released": True}], marks={"1": {"mt": {"pts": 34}}, "2": {"mt": {"pts": 40}}})
+    assert client.post(f"{U}/grades", json={"e": "mt", "changes": True}, headers=H).get_json()["emailed"] == 0
+
+
+def test_email_settings_reply_to_and_signature(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26"
+    client.post(f"{U}/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    assert client.get(f"{U}/prefs").get_json()["prefs"]["send"]["announcements"] is True
+    assert client.post(f"{U}/prefs", json={"replyTo": "not an address"}, headers=H).status_code == 400
+    p = client.post(f"{U}/prefs", json={"replyTo": "csc258@utoronto.ca", "signature": "— The CSC258 team", "send": {"announcements": False}}, headers=H).get_json()["prefs"]
+    assert p["send"]["announcements"] is False and p["send"]["grades"] is True
+    client.post(f"{U}/send", json={"to": "all", "subject": "Hi", "body": "Hello."}, headers=H)
+    m = smtp["many"][-1]
+    assert m["reply_to"] == "csc258@utoronto.ca" and m["body"].rstrip().endswith("— The CSC258 team")

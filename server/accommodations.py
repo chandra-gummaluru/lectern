@@ -436,8 +436,8 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
 
     _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
     subject, body = receipt_email(rec)
-    from .classmail import settings_for
-    emailed = mailer.send(email, subject, body, cfg=settings_for(uid, o))
+    from .classmail import student_mail
+    emailed = student_mail(uid, o, email, subject, body, "accomReceipts")
     return rec, emailed
 
 
@@ -575,8 +575,8 @@ def decide():
                     lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} accommodation request from {r['student']} for {r['evalName']}",
                     g.user["email"])
         subject, body = decision_email(r)
-        from .classmail import settings_for
-        emailed = bool(r.get("email")) and mailer.send(r["email"], subject, body, reply_to=g.user["email"], cfg=settings_for(owner, o))
+        from .classmail import student_mail
+        emailed = bool(r.get("email")) and student_mail(owner, o, r["email"], subject, body, "accomDecisions", reply_to=g.user["email"])
         return jsonify(ok=True, request=r, emailed=emailed)
     except Refusal as x:
         return _err(x)

@@ -185,6 +185,9 @@ export function announcementsPage(ctx, r) {
     pickOne($("#an-on-f"), { options: aboutOpts, value: x.on || "", empty: "Nothing in particular", emptyHint: "A general announcement", search: "Search activities and evaluations", id: "an-on", label: "About",
       disabled: !edit, onChange: v => onChange(v) });
     if (!edit) return;
+    // A new one is emailed by default unless the offering's email settings say otherwise.
+    if (isNew) fetch(`/api/mail/${encodeURIComponent(owner())}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/prefs`, { credentials: "same-origin" })
+      .then(r => (r.ok ? r.json() : null)).then(d => { const b = $("#an-mail"); if (d && b && st.draft === orig) b.checked = d.prefs.send.announcements !== false; }).catch(() => {});
     $("#an-disc").onchange = e => { if (e.target.checked) delete x.discussion; else x.discussion = false; changed(); };
     mark();
     $("#an-cancel").onclick = () => {

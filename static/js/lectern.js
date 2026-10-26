@@ -413,6 +413,11 @@ async function saveAll() {
       if (r.ok && ta) await reopenAfterTA(t, u.path);   // show what was kept: the gradebook as saved
       if (r.ok) done.push(u); else failed.push({ u, error: r.error || "Couldn't save." });
       if (r.ok && u.name === "grades" && !ta) await syncScheme(p[0], p[1], t.owner || "").catch(e => console.warn("[Lectern] marking scheme:", e));
+      if (r.ok && u.name === "grades" && ["owner", "coordinator"].includes(roleIn(p[0], p[1], t.owner || ""))) {   // marks just made visible: email those students
+        const res = await Auth.api(gradesAPI(p[0], p[1], t.owner || ""), {}).catch(e => { console.warn("[Lectern] grade emails:", e); return null; });
+        if (res && res.emailed) toast(`Emailed ${res.emailed} student${res.emailed === 1 ? "" : "s"} that their mark${res.emailed === 1 ? " is" : "s are"} out.`);
+        if (g0()) g0().refreshNotices && g0().refreshNotices();
+      }
     }
   } finally {
     saving = false; savingText = ""; renderBar();
@@ -428,6 +433,15 @@ async function saveAll() {
   }
 }
 Lectern.saveAll = saveAll;
+const gradesAPI = (c, t, o) => `/api/mail/${encodeURIComponent(o || curOwner() || S.user.handle)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/grades`;
+const g0 = () => Lectern.tools.grades && Lectern.tools.grades.api;
+// For the gradebook: each evaluation's marks as students know them (told, waiting to be told, changed since),
+// and emailing the changes. Coordinators only (others get null).
+Lectern.gradeNotices = async () => {
+  const r = S.route; if (!r.c || !r.t || !["owner", "coordinator"].includes(roleIn(r.c, r.t))) return null;
+  try { return await Auth.api(gradesAPI(r.c, r.t)); } catch (_) { return null; }
+};
+Lectern.notifyGrades = async e => { const r = S.route; return Auth.api(gradesAPI(r.c, r.t), { e, changes: true }); };
 
 // A TA's gradebook: what it was when opened (tidied by the builder), apart from marks, to tell whether a
 // TA changed anything else; and after a save, open it again from the server so it shows what was kept.

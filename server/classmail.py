@@ -53,6 +53,34 @@ def settings_for(owner_id, off):
     return mailer.settings()
 
 
+# Which automatic emails go to students (each on unless turned off), where replies go, and a sign-off.
+SEND_KINDS = ("grades", "accomReceipts", "accomDecisions", "remarkReceipts", "remarkDecisions", "announcements")
+
+
+def prefs_for(owner_id, off):
+    r = db.one("SELECT prefs FROM offering_mail_prefs WHERE owner_id = ? AND offering = ?", (owner_id, off))
+    try:
+        d = json.loads(r["prefs"]) if r else {}
+    except ValueError:
+        d = {}
+    send = d.get("send") if isinstance(d.get("send"), dict) else {}
+    return {"replyTo": str(d.get("replyTo") or ""), "signature": str(d.get("signature") or ""),
+            "send": {k: send.get(k) is not False for k in SEND_KINDS}}
+
+
+def student_mail(owner_id, off, to, subject, text_, kind, reply_to=None):
+    """One email to a student from the offering, if that kind is on: its reply-to and signature added.
+    True if it went out."""
+    p = prefs_for(owner_id, off)
+    if kind and not p["send"].get(kind, True):
+        return False
+    return mailer.send(to, subject, signed(p, text_), reply_to=p["replyTo"] or reply_to, cfg=settings_for(owner_id, off))
+
+
+def signed(p, text_):
+    return f"{text_.rstrip()}\n\n{p['signature'].strip()}\n" if p.get("signature", "").strip() else text_
+
+
 def _settings_json(owner_id, off):
     s = settings_for(owner_id, off)
     return {"source": s.get("source") or "", "host": s.get("host") or "", "port": str(s.get("port") or ""),
@@ -135,7 +163,33 @@ def overview(owner, course, term):
     return jsonify(settings=_settings_json(o["id"], off), domain=r["domain"], total=len(r["students"]),
                    missing=[{"num": x["num"], "name": x["name"], "email": x["email"]} for x in r["missing"]][:200],
                    missingCount=len(r["missing"]), sections=[{"name": s, "count": counts[s]} for s in r["sections"]],
-                   sends=_sends(o["id"], off), you=g.user["email"])
+                   sends=_sends(o["id"], off), you=g.user["email"], prefs=prefs_for(o["id"], off))
+
+
+@mail_bp.get("/api/mail/<owner>/<course>/<term>/prefs")
+@signed_in
+def get_prefs(owner, course, term):   # anyone on the teaching team (e.g. whether an announcement is emailed by default)
+    o, off, role = _where(owner, course, term)
+    return jsonify(prefs=prefs_for(o["id"], off))
+
+
+@mail_bp.post("/api/mail/<owner>/<course>/<term>/prefs")
+@signed_in
+def set_prefs(owner, course, term):
+    o, off, role = _where(owner, course, term)
+    _instructor(role)
+    d = body()
+    reply = text(d, "replyTo", 254).strip()
+    if reply and not _ADDR.match(reply.lower()):
+        raise Refusal(400, "Replies go to an email address, e.g. csc258@utoronto.ca.", "replyTo")
+    sig = text(d, "signature", 2000).replace("\r\n", "\n").strip()
+    send = d.get("send") if isinstance(d.get("send"), dict) else {}
+    prefs = {"replyTo": reply, "signature": sig, "send": {k: bool(send.get(k, True)) for k in SEND_KINDS}}
+    db.run("""INSERT INTO offering_mail_prefs (owner_id, offering, prefs, updated) VALUES (?, ?, ?, ?)
+              ON CONFLICT(owner_id, offering) DO UPDATE SET prefs = excluded.prefs, updated = excluded.updated""",
+           (o["id"], off, json.dumps(prefs), time.time()))
+    log(g.user["id"], "class-mail-prefs", off)
+    return jsonify(ok=True, prefs=prefs_for(o["id"], off))
 
 
 @mail_bp.post("/api/mail/<owner>/<course>/<term>/settings")
@@ -215,7 +269,8 @@ def send(owner, course, term):
         sid = cur.lastrowid
     log(g.user["id"], "class-mail", f"{off} {label} {len(people)}")
     addrs = [p["email"] for p in people]
-    reply = g.user["email"]
+    pf = prefs_for(o["id"], off)
+    reply, msg = pf["replyTo"] or g.user["email"], signed(pf, msg)
 
     def run():
         counts = {"sent": 0, "failed": 0}
@@ -276,7 +331,8 @@ def announce(owner, course, term):
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                         (o["id"], off, g.user["id"], g.user["name"] or g.user["email"], time.time(), subject, label, len(people))).lastrowid
     log(g.user["id"], "announcement-mail", f"{off} {label} {len(people)}")
-    reply = g.user["email"]
+    pf = prefs_for(o["id"], off)
+    reply, text_ = pf["replyTo"] or g.user["email"], signed(pf, text_)
 
     def run():
         counts = {"sent": 0, "failed": 0}
@@ -292,3 +348,105 @@ def announce(owner, course, term):
     else:
         threading.Thread(target=run, daemon=True).start()
     return jsonify(ok=True, emailed=True, total=len(people), to=label)
+
+
+# ── Marks: released to students, and emailed when they're out or changed ────────────────
+# An evaluation's marks show on the course page only once the gradebook says so (its "released"). Saving
+# the gradebook emails the students whose mark is out and who haven't been told; a mark changed after
+# they were told waits for an instructor's Email Them (so editing cell by cell doesn't send a stream).
+#   GET  /api/mail/<owner>/<course>/<term>/grades            { evals: { id: { released, told, waiting, changed } } }
+#   POST /api/mail/<owner>/<course>/<term>/grades            {} (what's newly out) or { e, changes: true }
+def _mark(m):
+    """A mark as it's compared (and kept): its points or what happened; None if there isn't one."""
+    if not isinstance(m, dict):
+        return None
+    st = m.get("status") or ("missed" if m.get("missed") else "")
+    if st:
+        return json.dumps({"status": st})
+    return json.dumps({"pts": m["pts"]}) if isinstance(m.get("pts"), (int, float)) else None
+
+
+def _grade_state(owner_id, off, book):
+    told = {}
+    for r in db.all_("SELECT eval_id, num, mark FROM grade_notices WHERE owner_id = ? AND offering = ?", (owner_id, off)):
+        told[(r["eval_id"], r["num"])] = r["mark"]
+    marks = book.get("marks") if isinstance(book.get("marks"), dict) else {}
+    people = roster(book)["students"]
+    out = {}
+    for e in book.get("evals") or []:
+        if not isinstance(e, dict) or not e.get("id"):
+            continue
+        eid, w, c, n = e["id"], [], [], 0
+        for p in people:
+            m = _mark((marks.get(p["num"]) or {}).get(eid))
+            was = told.get((eid, p["num"]))
+            n += was is not None
+            if m is None:
+                continue
+            if was is None:
+                w.append((p, m))
+            elif was != m:
+                c.append((p, m))
+        out[eid] = {"e": e, "released": e.get("released") is True, "told": n, "waiting": w, "changed": c}
+    return out
+
+
+@mail_bp.get("/api/mail/<owner>/<course>/<term>/grades")
+@signed_in
+def grade_notices(owner, course, term):
+    o, off, role = _where(owner, course, term)
+    book = _book(o["id"], off) or {}
+    st = _grade_state(o["id"], off, book)
+    return jsonify(evals={k: {"released": v["released"], "told": v["told"], "waiting": len(v["waiting"]), "changed": len(v["changed"])} for k, v in st.items()},
+                   on=prefs_for(o["id"], off)["send"]["grades"])
+
+
+@mail_bp.post("/api/mail/<owner>/<course>/<term>/grades")
+@signed_in
+def notify_grades(owner, course, term):
+    from .students import hub_url
+    o, off, role = _where(owner, course, term)
+    _instructor(role)
+    d = body()
+    book = _book(o["id"], off) or {}
+    st = _grade_state(o["id"], off, book)
+    one = text(d, "e", 64).strip()
+    if one and (one not in st or not st[one]["released"]):
+        raise Refusal(400, "Its marks aren't visible to students yet: tick that, and save the gradebook.")
+    pf, cfg = prefs_for(o["id"], off), settings_for(o["id"], off)
+    code = str((book.get("course") or {}).get("code") or course.upper())
+    jobs, t = [], time.time()
+    for eid, v in st.items():
+        if not v["released"] or (one and eid != one):
+            continue
+        name = str(v["e"].get("name") or v["e"].get("title") or eid)
+        link = f"{hub_url(o, off)}#evaluation/{eid}"
+        for kind, who in (("released", v["waiting"]), ("updated", v["changed"] if one and d.get("changes") else [])):
+            if not who:
+                continue
+            subject = f"{code}: your mark for {name} is out" if kind == "released" else f"{code}: your mark for {name} has changed"
+            msg = (f"Your mark for {name} is now on the course page." if kind == "released"
+                   else f"Your mark for {name} has been updated.") + f"\n\nSee it here: {link}\n"
+            jobs.append(([p["email"] for p, _ in who], subject, signed(pf, msg)))
+            with db.transaction() as c:
+                for p, m in who:
+                    c.execute("""INSERT INTO grade_notices (owner_id, offering, eval_id, num, mark, at) VALUES (?, ?, ?, ?, ?, ?)
+                                 ON CONFLICT(owner_id, offering, eval_id, num) DO UPDATE SET mark = excluded.mark, at = excluded.at""",
+                              (o["id"], off, eid, p["num"], m, t))
+    total = sum(len(j[0]) for j in jobs)
+    if not total:
+        return jsonify(ok=True, emailed=0)
+    if not pf["send"]["grades"] or not cfg.get("host"):   # kept as told, so turning it on later doesn't send old news
+        return jsonify(ok=True, emailed=0, why="Emails about marks are off." if not pf["send"]["grades"] else "Email isn't set up for this offering.")
+    log(g.user["id"], "grade-mail", f"{off} {total}")
+    reply = pf["replyTo"] or g.user["email"]
+
+    def run():
+        for addrs, subject, msg in jobs:
+            mailer.deliver_many(addrs, subject, msg, reply_to=reply, cfg=cfg)
+
+    if mailer.keep:
+        run()
+    else:
+        threading.Thread(target=run, daemon=True).start()
+    return jsonify(ok=True, emailed=total)

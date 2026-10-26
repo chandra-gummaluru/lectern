@@ -648,8 +648,10 @@ def hub_api(handle, course, term):
         except (ValueError, UnicodeDecodeError):
             book = {}
         mine_m = ((book.get("marks") or {}) if isinstance(book, dict) else {}).get(str(num)) if num else None
+        # Only the evaluations whose marks are out (the gradebook's "released"; until then, only the team sees them).
+        out = {e.get("id") for e in _list(book.get("evals") if isinstance(book, dict) else None) if isinstance(e, dict) and e.get("released") is True}
         for eid, m in (mine_m.items() if isinstance(mine_m, dict) else []):
-            if not isinstance(m, dict):
+            if not isinstance(m, dict) or eid not in out:
                 continue
             st = m.get("status") or ("missed" if m.get("missed") else "")
             if st in ("missed", "aiv", "excused", "deferred"):

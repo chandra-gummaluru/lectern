@@ -893,6 +893,9 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .acm-tick b { font-weight: 600; }
 .acm-tick span { grid-column: 2; font-size: 13px; color: var(--ink-3); }
 .acm-tick.off { cursor: default; } .acm-tick.off b { color: var(--ink-3); }
+.rel-note .ed-help { margin: 2px 0 0 26px; }
+.rel-chg { display: flex; align-items: center; gap: 12px; margin: 10px 0 0 26px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg, #fdf6e3); font-size: 13.5px; }
+.rel-chg span { flex: 1; }
 @media (max-width: 640px) { .ed-grid.acm-by { grid-template-columns: 1fr; } }
 .ed-mk { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
 .ed-mk > svg { flex: none; width: 16px; height: 16px; color: var(--ink-3); }
@@ -3151,12 +3154,38 @@ function drawEvalEditor() {
     <h4 class="ed-sub">If a Student Doesn't Submit It</h4>
     ${g ? `<p class="ed-help">It counts as zero, so it's usually one of the lowest, which ${esc(g.name)} doesn't count.</p>` : `
     ${policyHTML(e, p, num(e.weight), "")}`}`}
+    ${releaseHTML(e)}
     ${accomHTML(e)}
     ${filesHTML(e)}
     <h3 class="ed-sec">Discussion</h3>
     <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
 `;
   mountSecDates(m, e);
+  drawNotices(e);
+}
+// ── Marks on the course page ─────────────────────────────────────────
+// Off until ticked: then each student sees their own mark on the course page. Saving the gradebook emails the
+// students whose mark is out; a mark changed after that waits for Email Them (Lectern's grade notices).
+let NOTICES = null;
+function releaseHTML(e) {
+  return `<h3 class="ed-sec">Marks</h3>
+    <label class="acm-tick"><input type="checkbox" data-rel="1"${e.released ? " checked" : ""}><b>Students can see their marks</b><span>On the course page, each student sees their own. Off, only the teaching team sees them.${HOSTED ? " Once it's on and the gradebook is saved, the students with a mark are emailed that it's out." : ""}</span></label>
+    <div class="rel-note" id="rel-note"></div>`;
+}
+async function drawNotices(e, fresh) {
+  const el = $("#rel-note"); if (!el || !HOSTED || !window.Lectern.gradeNotices) return;
+  if (!NOTICES || fresh) NOTICES = await window.Lectern.gradeNotices();
+  const n = NOTICES && NOTICES.evals && NOTICES.evals[e.id]; if (!$("#rel-note") || !n) { el.innerHTML = ""; return; }
+  const pl = (k, w) => `${k} ${w}${k === 1 ? "" : "s"}`;
+  const L = [];
+  if (!e.released && n.released) L.push("Save the gradebook to hide them again.");
+  else if (e.released && !n.released) L.push("Save the gradebook to show them.");
+  else if (n.released) {
+    if (n.told) L.push(`${pl(n.told, "student")} ${n.told === 1 ? "has" : "have"} been emailed about ${n.told === 1 ? "their mark" : "their marks"}.`);
+    if (n.waiting) L.push(`${pl(n.waiting, "new mark")} will be emailed when the gradebook is saved.`);
+  }
+  el.innerHTML = `${L.length ? `<p class="ed-help">${L.join(" ")}${NOTICES.on === false ? " (Emails about marks are off in the offering's email settings.)" : ""}</p>` : ""}
+    ${e.released && n.released && n.changed ? `<div class="rel-chg"><span>${pl(n.changed, "mark")} changed since ${n.changed === 1 ? "that student was" : "those students were"} emailed.</span><button type="button" class="btn" data-ed="rel-mail">Email Them</button></div>` : ""}`;
 }
 // ── Dates for some sections ──────────────────────────────────────────
 // An evaluation's date is everyone's, unless some sections have their own (a lab each section writes on its
@@ -3414,6 +3443,11 @@ document.addEventListener("click", ev => {
   if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time, release: e.release || "", releaseTime: e.releaseTime || "" }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "sd-del") { pushUndo(); e.dates.splice(+b.dataset.i, 1); if (!e.dates.length) delete e.dates; unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "acm-when") return openWhen(b, acmWhen(e));
+  if (a === "rel-mail") {   // the marks changed since students were told: email them now
+    b.disabled = true;
+    return window.Lectern.notifyGrades(e.id).then(r => { toast(r.emailed ? `Emailed ${r.emailed} student${r.emailed === 1 ? "" : "s"} that their mark changed.` : r.why || "Nobody to email."); drawNotices(e, true); },
+      err => { b.disabled = false; toast(err.message); });
+  }
   if (a === "ef-add") { change(() => { e.files = [...(e.files || []), { label: (e.files || []).length ? "" : e.type === "test" ? "Practice" : "Handout", url: "" }]; }); const ins = $$('[data-ed="ef-url"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
   if (a === "ef-del") { change(() => { e.files.splice(+b.dataset.i, 1); if (!e.files.length) delete e.files; }); return; }
   if (a === "ef-up") {   // choose a file; it's uploaded straight away (to the public files), then listed here
@@ -3468,6 +3502,7 @@ document.addEventListener("change", ev => {
     });
     if (acc) return drawStudentEditor();
   }
+  else if (t.dataset.rel && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) e.released = true; else delete e.released; }); drawNotices(e); }
   else if (t.dataset.disc && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) delete e.discussion; else e.discussion = false; }); }
   else if (t.dataset.acm && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => setAccom(e, t.dataset.acm, t.checked)); }
   else if (t.dataset.ed === "member") act({ dataset: { act: "grpmem", id: m.dataset.group, v: t.dataset.v } });
@@ -4541,6 +4576,8 @@ if (lectern) {
       return { error: $("#pl-err", m).textContent || "Couldn't save." };
     },
     state: () => ({ path: gh.path, unsaved, view: ui.view }),
+    // After a save: what students have been told about their marks, again.
+    refreshNotices() { NOTICES = null; const e = ui.evalEd && evalById(ui.evalEd); if (e) drawNotices(e, true); },
     // Which part of it Lectern shows: "evals" (Evaluations), "book" (the Gradebook: Grades and Students) or "settings".
     section(part) {
       const T = { evals: ["evals"], book: ["grades"], settings: ["settings"] }[part];

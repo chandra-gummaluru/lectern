@@ -191,3 +191,14 @@ def test_announcements_a_student_has_seen(client, course):
     assert s.get(HUB).get_json()["viewer"]["seen"] == ["a2"]
     assert app.test_client().post(f"{HUB}/seen", json={"ids": ["a1"]}, headers=H).status_code == 401   # not signed in
     assert "seen" not in client.get(HUB).get_json()["viewer"]   # the teaching team: nothing is New for them
+
+
+def test_a_student_sees_only_the_marks_that_are_out(client, course):
+    enrol(course, "maya@mail.utoronto.ca")
+    r = store.Repo(course["id"], "priv")
+    b = json.loads(r.read("csc258/f26/grades.json"))
+    b["evals"] = [{"id": "mt", "name": "Test 1"}, {"id": "a1", "name": "A1", "released": True}]
+    b["marks"] = {"1000": {"mt": {"pts": 30}, "a1": {"pts": 8}}}
+    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "marks", r.head())
+    st = app.test_client(); sign_in(st, "maya@mail.utoronto.ca")
+    assert st.get(HUB).get_json()["viewer"]["marks"] == {"a1": {"pts": 8}}

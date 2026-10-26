@@ -138,6 +138,7 @@ const dcLink = (t, href) => (D.viewer.signedIn && !dcOff(t) ? `<a class="hs-file
 // An item's buttons in one row: its files and links, then its Discussion (as the files' buttons are).
 const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (link ? f.replace(/<\/div>$/, `${link}</div>`) : f) : `${soon ? `<p class="hs-soon">Files coming soon</p>` : ""}${link ? `<div class="hs-files">${link}</div>` : ""}`; };
 // Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked).
+const HEART = svg('<path d="M12 21s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 8.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16.6 12 21 12 21z"/>');
 const dcOff = t => (D.closed || []).includes(t);
 const dcHere = t => (dcOff(t) ? "" : `<section class="dc" data-dc="${esc(t)}"></section>`);
 let DCN = null, DCN_AT = 0;
@@ -335,7 +336,7 @@ function evalCard(u, group, E) {
   // Accommodations: the standard one (if it must be asked for), and until when.
   const a = u.accom || {}, by = a.by ? `${day(a.by, true)}, ${a.byTime || "23:59"}` : "";
   // Accommodations: one row, as the dates are: what can be asked for and until when, and the button to ask.
-  const HAND = svg('<path d="M12 21s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 8.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16.6 12 21 12 21z"/>');
+  const HAND = HEART;
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
   const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks)}</span>${by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
   const req = requestBtn(u);
@@ -529,8 +530,10 @@ const PAGES = {
     const { u, group } = f;
     setTimeout(() => ReqForm.start(u), 0);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name, `#evaluation/${encodeURIComponent(u.id)}`], ["Request an Accommodation"]])}
-      <p class="hs-kick hs-kick-top"><span class="hs-ic sm">${EV_ICON[evType(u)]}</span>${esc(u.name)}</p>${head("Request an Accommodation", "")}
-      <div id="rq-box"><p class="hs-empty">Loading…</p></div>`;
+      <article class="ec-card rq-page">
+        <header class="ec-head"><span class="hs-ic ec-ic">${HEART}</span><div class="ec-tt"><p class="hs-kick">Accommodation Request</p><h1>${esc(u.title || u.name)}</h1>${u.title && u.title !== u.name ? `<p class="ec-subline">${esc(u.name)}</p>` : ""}</div></header>
+        <div id="rq-box"><p class="hs-empty">Loading…</p></div>
+      </article>`;
   },
   accommodations() { return open("accommodations") ? `${path([["My Accommodations"]])}${HubView.draw(D, "accommodations")}` : lockedPage("accommodations", "My Accommodations"); },
 };

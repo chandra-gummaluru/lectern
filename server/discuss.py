@@ -257,6 +257,10 @@ def moderate(handle, course, term, pid):
         if p["parent_id"] is not None:
             raise Refusal(400, "Only posts can be pinned, not comments.")
         db.run("UPDATE discussion_posts SET pinned = ? WHERE id = ?", (1 if d["pin"] else 0, pid))
+    if "endorse" in d and d["endorse"] and p["author_kind"] == "staff":
+        raise Refusal(400, "Only students' posts can be endorsed, not the teaching team's.")
+    if "remove" in d and d["remove"] and _key(p) == viewer["key"]:
+        raise Refusal(400, "Delete your own post instead.")
     if "endorse" in d:
         db.run("UPDATE discussion_posts SET endorsed_by = ? WHERE id = ?", (viewer["id"] if d["endorse"] else "", pid))
     if "remove" in d:

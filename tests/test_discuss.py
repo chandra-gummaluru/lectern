@@ -67,3 +67,14 @@ def test_votes_and_the_teaching_teams_tools(client, course):
     assert client.get(f"{D}?t=act:l1").get_json()["posts"][0]["body"] == "Where are the slides?"   # the teaching team still sees it
     assert ben.post(f"{D}/{pid}/delete", json={}, headers=H).status_code == 403                    # only its author
     assert maya.post(f"{D}/{pid}/delete", json={}, headers=H).get_json()["posts"][0]["deleted"]
+
+
+def test_the_teaching_teams_own_posts(client, course):
+    maya, _ = people(course)
+    mine = client.post(D, json={"t": "eval:mt", "title": "Room change", "body": "EX 100."}, headers=H).get_json()["id"]
+    hers = maya.post(D, json={"t": "eval:mt", "title": "Q3?", "body": "x"}, headers=H).get_json()["id"]
+    assert client.post(f"{D}/{mine}/moderate", json={"endorse": True}, headers=H).status_code == 400   # not the teaching team's
+    assert client.post(f"{D}/{mine}/moderate", json={"remove": True}, headers=H).status_code == 400    # delete it instead
+    assert client.post(f"{D}/{hers}/delete", json={}, headers=H).status_code == 403                   # remove it instead
+    assert client.post(f"{D}/{hers}/moderate", json={"endorse": True, "remove": True}, headers=H).status_code == 200
+    assert client.post(f"{D}/{mine}/delete", json={}, headers=H).status_code == 200

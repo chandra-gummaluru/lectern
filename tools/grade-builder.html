@@ -811,7 +811,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .nt-md > :last-child, .nt-md .hb-md > :last-child { margin-bottom: 0; }
 .nt-md p { margin: 0 0 6px; } .nt-md ul, .nt-md ol { margin: 0 0 6px; padding-left: 22px; }
 .nt-rt .rt-ed { min-height: 64px; }
-.st-head .st-mail-ro { margin-top: 2px; }
+.st-head .st-mail-ro { margin: 0; }
 .nt-item .ic.trash { grid-row: 1 / span 2; grid-column: 2; }
 .editor.on-page .nt-item .ic.trash { width: 30px; height: 30px; }
 .nt-item .ic.trash svg { width: 15px; height: 15px; }
@@ -1464,7 +1464,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .set-help { margin: 0 0 12px; font-size: 13.5px; color: #7a7f87; line-height: 1.5; }
 .set-show { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid #eceef1; font-size: 13.5px; color: #4a4f57; cursor: pointer; }
 .set-show input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent, #1f5fbf); }
-.st-mail-ro { margin: 4px 0 14px; }
+.st-mail-ro { margin: 0; }
 .set-help b { color: #1f2329; }
 .set-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid #ecedef; font-size: 14px; color: #4a4f57; }
 .set-row:first-of-type { border-top: 0; }
@@ -3930,7 +3930,7 @@ function drawStudentEditor() {
     const { o, p, w } = accPolicy(s, x), own = !sub && Object.keys(o).length;
     return `<div class="acc-row${own ? " own" : ""}${sub ? " sub" : ""}" style="--c:${colorOf(x)}">${evIcon(x)}<div class="acc-t"><b>${esc(x.name)}</b>
         <small>${sub ? accMemberNote(s, x) : own ? `${o.weight != null ? `Weight ${fmtNum(o.weight)}%. ` : ""}${policySentence(x, p, w)}` : `${fmtNum(x.weight)}%. ${policySentence(x)}`}</small></div>
-        ${!sub && reqsFor(s, x).length ? `<span class="rq-mini st-${esc(reqsFor(s, x)[0].status)}" title="Their request: ${esc(REQ_STATUS[reqsFor(s, x)[0].status] || "")}">${REQ_ICON[reqsFor(s, x)[0].status] || REQ_ICON.pending}Requested</span>` : ""}${scoreHTML(s, x)}${sub ? "" : `<button type="button" class="ec-btn2" data-ed="acc-open" data-v="${esc(x.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button>`}</div>`;
+        ${scoreHTML(s, x)}${sub ? "" : `<button type="button" class="ec-btn2" data-ed="acc-open" data-v="${esc(x.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button>`}</div>`;
   };
   const groupRow = g => {
     const go = groupOverride(s.num, g), own = !!go;
@@ -3942,7 +3942,7 @@ function drawStudentEditor() {
   const info = [esc(s.num), ...customFields().filter(f => f.id !== "email" && fieldVal(s, f.id)).map(f => `${esc(f.label)} ${esc(fieldVal(s, f.id))}`)].join(" · ");
   const ep = emailProblem(s);
   const nOwn = counted().filter(x => !groupOf(x) && overrideOf(s.num, x.id)).length + (model.groups || []).filter(g => groupOverride(s.num, g)).length;
-  $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}</small>${HOSTED ? `<small class="st-mail-ro">${fieldVal(s, "email") ? esc(fieldVal(s, "email")) : "No email"}${ep && fieldVal(s, "email") ? ` · <span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</small>` : ""}</div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}${`<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span>`}</div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head st-head">${av}<div><h2>${esc(s.name || s.num)}</h2><small>${info}${s.dropped ? " · Dropped" : ""}${HOSTED ? ` · <span class="st-mail-ro">${fieldVal(s, "email") ? esc(fieldVal(s, "email")) : "No email"}${ep && fieldVal(s, "email") ? ` · <span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</span>` : ""}</small></div><span class="spacer"></span>${nOwn ? `<span class="acc-badge">${PIC.acc}<b>Accommodation</b></span>` : ""}${`<span class="ed-acts"><button type="button" class="btn" data-act="st-drop" data-num="${esc(s.num)}" title="${s.dropped ? "Back in the course: their marks count again" : "They left the course: kept, but not in the class figures"}">${s.dropped ? `${PIC.userPlus}Re-enrol` : `${PIC.userMinus}Drop`}</button><button type="button" class="ic trash" data-ed="sremove" title="Delete student (and their marks)" aria-label="Delete student">${svg("trash")}</button></span>`}</div>
     ${HOSTED ? "" : `<div class="st-mail"><label><span>Email</span><input type="email" data-ed="email" value="${esc(fieldVal(s, "email"))}" placeholder="${emailDomain() ? `name@${esc(emailDomain())}` : "name@example.com"}" spellcheck="false" autocomplete="off"></label>${ep ? `<span class="s-mail-bad">${esc(emailProblemText(ep))}</span>` : ""}</div>`}
     <h3 class="ed-sec">Course Grade</h3>
     ${finalGradeHTML(s)}

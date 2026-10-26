@@ -226,7 +226,7 @@ const ReqForm = (() => {
     if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}). If you still need one, contact your instructor.</p></div>`; return; }
     const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
     // Each choice as Lectern's ticks are: the radio, its name, and a line under it.
-    const opt = (v, t, sub, on) => `<label class="rq-choice"><input type="radio" name="kind" class="rq-opt" data-kind="${v}" value="${v}"${on ? " checked" : ""}><b>${esc(t)}</b><span>${esc(sub)}</span></label>`;
+    const opt = (v, t, sub, on, off) => `<label class="rq-choice${off ? " off" : ""}"><input type="radio" name="kind" class="rq-opt" data-kind="${v}" value="${v}"${on && !off ? " checked" : ""}${off ? " disabled" : ""}><b>${esc(t)}</b><span>${esc(sub)}</span></label>`;
     const staff = D.viewer.role !== "student";
     box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
       ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
@@ -238,12 +238,11 @@ const ReqForm = (() => {
         <label class="rq-f">Last Name<input type="text" name="last" autocomplete="family-name" spellcheck="false" value="${esc(k.last || "")}"></label>
       </div>
       <h2 class="hs-h2 rq-h2">What You Need</h2>
-      ${canStd && alt ? `<p class="rq-help">Choose one.</p>
+      <p class="rq-help">Choose one of the following accommodations.</p>
       <div class="rq-opts" role="radiogroup" aria-label="What you need">
-        ${opt("standard", "The Standard Accommodation", s.text, kind === "standard")}
-        ${opt("alternate", "An Alternate Accommodation", "Something other than the standard accommodation: say what you need.", kind === "alternate")}
-      </div>` : canStd ? `<p class="rq-help">You're asking for the standard accommodation: <b>${esc(s.text)}</b>.</p>`
-      : `<p class="rq-help">${s && !s.approval ? `The standard accommodation, <b>${esc(s.text)}</b>, applies without a request. Say what you need instead, and why.` : "Say what you need, and why."}</p>`}
+        ${opt("standard", "The Standard Accommodation", canStd ? s.text : s ? `It applies without a request: ${s.text}` : "Not available for this evaluation.", kind === "standard", !canStd)}
+        ${opt("alternate", "An Alternate Accommodation", alt ? "Something other than the standard accommodation: say what you need." : "Not available for this evaluation.", kind === "alternate", !alt)}
+      </div>
       <div class="rq-more" id="rq-more"${kind === "alternate" ? "" : " hidden"}><div id="rq-rt"></div>
         <small class="rq-help">To share a document (a doctor's note, say), add a link to it. Files and pictures can't be attached.</small></div>
       <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>

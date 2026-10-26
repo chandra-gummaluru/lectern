@@ -1021,3 +1021,4 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .rq-choice input { grid-row: span 2; align-self: start; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--ink); cursor: pointer; }
 .rq-choice b { font-weight: 600; }
 .rq-choice span { grid-column: 2; font-size: 13.5px; color: var(--ink-3); }
+.rq-choice.off { cursor: default; } .rq-choice.off b, .rq-choice.off span { color: var(--ink-3); opacity: .7; } .rq-choice.off input { cursor: default; }

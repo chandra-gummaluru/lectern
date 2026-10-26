@@ -561,7 +561,7 @@ function myRequests() {
         const line = [`Requested ${when(r.submitted)}`, st === "pending" ? REQ_WORD.pending : `${REQ_WORD[st]} ${when(r.decided)}${r.decidedBy ? ` by ${r.decidedBy}` : ""}`].filter(Boolean).join(" · ");
         return `<div class="wk-item wk-go ma-req st-${st}" data-go="#evaluation/${encodeURIComponent(r.eval)}" role="link" tabindex="0" title="Open ${esc(r.evalName || "the evaluation")}">
           <span class="hs-ic ma-ic" title="${esc(REQ_WORD[st])}" aria-label="${esc(REQ_WORD[st])}">${REQ_IC[st]}</span>
-          <div class="wk-b"><p class="hs-kick">${esc(r.evalName || "Evaluation")}</p><h3>${r.kind === "standard" ? "Standard Accommodation" : "Alternate Accommodation"}</h3><p class="wk-when">${esc(line)}</p>
+          <div class="wk-b"><p class="hs-kick">Accommodation Request / ${esc(r.evalName || "Evaluation")}</p><h3>${r.kind === "standard" ? "Standard Accommodation" : "Alternate Accommodation"}</h3><p class="wk-when">${esc(line)}</p>
             ${r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
             ${r.note ? `<div class="ma-note"><b>${esc(r.decidedBy || "Your instructor")}</b>${markdown(r.note)}</div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
         : `<p class="hs-empty">No requests yet. Ask for one from an evaluation's page, with Request Accommodation.</p>`;

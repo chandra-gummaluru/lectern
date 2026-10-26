@@ -167,6 +167,28 @@ def lectures_of(owner_id, course, term):
     return d if isinstance(d, dict) and isinstance(d.get("weeks"), list) else None
 
 
+def closed_discussions(owner_id, course, term):
+    """The evaluations, activities and announcements whose discussion is off (Lectern: Allow Discussion
+    unticked: "discussion": false), as discussion targets: {"eval:<id>", "act:<id>", "ann:<id>"}."""
+    out = set()
+    try:
+        raw = Repo(owner_id, "priv").read(f"{course}/{term}/grades.json")
+        book = json.loads(raw.decode("utf-8")) if raw else {}
+    except (ValueError, UnicodeDecodeError):
+        book = {}
+    for e in _list(book.get("evals") if isinstance(book, dict) else None):
+        if isinstance(e, dict) and e.get("discussion") is False and isinstance(e.get("id"), str):
+            out.add(f"eval:{e['id']}")
+    for w in _list((lectures_of(owner_id, course, term) or {}).get("weeks")):
+        for c in _list(w.get("cards") if isinstance(w, dict) else None):
+            if isinstance(c, dict) and c.get("discussion") is False and c.get("id"):
+                out.add(f"act:{c['id']}")
+    for a in _list(announcements_of(owner_id, course, term)):
+        if isinstance(a, dict) and a.get("discussion") is False and a.get("id"):
+            out.add(f"ann:{a['id']}")
+    return out
+
+
 TEAM_KINDS = {"lecture", "tutorial", "lab", "office", "other"}
 
 
@@ -654,6 +676,8 @@ def hub_api(handle, course, term):
                 # a student: the announcements they've seen (the others are New for them)
                 **({"seen": [r["ann_id"] for r in db.all_("SELECT ann_id FROM announcements_seen WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], offering, student))]} if student else {})},
         tabs=tabs, data=data,
+        # Where discussion is off (no Discussion on its page).
+        closed=sorted(closed_discussions(o["id"], course, term)),
         lectern=app_url(), signIn=f"/c/{o['handle']}/{offering}/sign-in",
         pages=f"{pages_base()}{o['handle']}/{offering}/",
     )

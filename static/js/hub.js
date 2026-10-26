@@ -134,10 +134,12 @@ const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? "
 // has (signed-in people only: they're for the people in the course); and the discussion itself, at the
 // bottom of an item's page.
 const CHAT = svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>');
-const dcLink = (t, href) => (D.viewer.signedIn ? `<a class="hs-file dc-link" href="${href}">${CHAT}Discussion<span class="dc-link-n" data-dcn="${esc(t)}"></span></a>` : "");
+const dcLink = (t, href) => (D.viewer.signedIn && !dcOff(t) ? `<a class="hs-file dc-link" href="${href}">${CHAT}Discussion<span class="dc-link-n" data-dcn="${esc(t)}"></span></a>` : "");
 // An item's buttons in one row: its files and links, then its Discussion (as the files' buttons are).
 const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (link ? f.replace(/<\/div>$/, `${link}</div>`) : f) : `${soon ? `<p class="hs-soon">Files coming soon</p>` : ""}${link ? `<div class="hs-files">${link}</div>` : ""}`; };
-const dcHere = t => `<section class="dc" data-dc="${esc(t)}"></section>`;
+// Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked).
+const dcOff = t => (D.closed || []).includes(t);
+const dcHere = t => (dcOff(t) ? "" : `<section class="dc" data-dc="${esc(t)}"></section>`);
 let DCN = null, DCN_AT = 0;
 function discussions(m) {
   m.querySelectorAll("[data-dc]").forEach(el => import("/static/js/discuss.js").then(x => x.mount(el, { api: root.dataset.api, target: el.dataset.dc, signIn: D.signIn || D.lectern,
@@ -466,6 +468,7 @@ const PAGES = {
     if (k === "act" && open("lectures")) { const f = findActivity(x); if (f) way = [["Activities", "#activities"], [f.w.label || "Week", `#week/${f.w.i}`], [f.c.title || f.c.label || "Activity", `#activity/${encodeURIComponent(f.c.id)}`]]; }
     if (k === "ann" && open("announcements")) { const a = ((data("announcements") || {}).items || []).find(y => String(y.id) === x); if (a) way = [["Announcements", "#announcements"], [a.title || "Announcement", `#announcement/${encodeURIComponent(a.id)}`]]; }
     if (!way || !/^\d+$/.test(id || "")) return PAGES.home();
+    if (dcOff(t)) return PAGES[{ eval: "evaluation", act: "activity", ann: "announcement" }[k]](x);   // discussion's off: the item itself
     return `${path([...way, ["Post"]])}
       <article class="ec-card dc-page"><section class="dc" data-dc="${esc(t)}" data-post="${esc(id)}"></section></article>`;
   },

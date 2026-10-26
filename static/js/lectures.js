@@ -452,6 +452,8 @@ export function lecturesPage(ctx, r) {
         <p class="lx-help">Each one is a button students click on the course page, with this activity. With none, it says Coming soon.</p>
         <div id="lw-files">${files.map((f, i) => `<div class="lx-frow"><input type="text" data-fl="${i}" value="${esc(f.label)}" placeholder="Button text, e.g. Slides" aria-label="Button text"${dis}><input type="url" data-fu="${i}" value="${esc(f.url)}" placeholder="https://…" aria-label="Link"${dis}>${edit ? `<button type="button" class="lx-ic quiet" data-fdel="${i}" aria-label="Remove it">${ICON.trash}</button>` : ""}</div>`).join("") || (edit ? "" : `<p class="lx-help">None.</p>`)}</div>
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn add" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn add" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
+        <h3 class="lx-sec">Discussion</h3>
+        <label class="lx-tick"><input type="checkbox" id="lw-disc"${x.discussion === false ? "" : " checked"}${dis}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
       </div>
     </div></div>`);
     // Its dates: a field for each (at least one), and another one added with Add a Date; only days in its week
@@ -476,6 +478,7 @@ export function lecturesPage(ctx, r) {
       onChange: v => { delete x.group; if (v.length) x.groups = v; else delete x.groups; changed(); } });
     richText($("#lw-desc"), { value: x.description, placeholder: "A sentence or two about it", label: "Description", disabled: !edit, onChange: v => { x.description = v; changed(); } });
     if (!edit) return;
+    $("#lw-disc").onchange = e => { if (e.target.checked) delete x.discussion; else x.discussion = false; changed(); };
     let shown = titleOf(x);
     const head = () => { $("#lw-named").innerHTML = namedHTML(x); const now = titleOf(x); if (now === shown) return; shown = now; $("#lw-h").textContent = now; renderPath(lecSteps(w, x)); };
     const bind = (id, fn) => { const el = $(id); el.oninput = el.onchange = () => { fn(el.value); changed(); }; };

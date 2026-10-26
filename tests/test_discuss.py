@@ -78,3 +78,14 @@ def test_the_teaching_teams_own_posts(client, course):
     assert client.post(f"{D}/{hers}/delete", json={}, headers=H).status_code == 403                   # remove it instead
     assert client.post(f"{D}/{hers}/moderate", json={"endorse": True, "remove": True}, headers=H).status_code == 200
     assert client.post(f"{D}/{mine}/delete", json={}, headers=H).status_code == 200
+
+
+def test_discussion_off(client, course):
+    import json
+    from server import store
+    maya, _ = people(course)
+    r = store.Repo(course["id"], "priv")
+    r.commit({"csc258/f26/announcements.json": json.dumps({"items": [{"id": "a1", "title": "Hi", "body": "x", "date": "Sep 7, 2026", "discussion": False}, {"id": "a2", "title": "Yo", "body": "y", "date": "Sep 8, 2026"}]}).encode()}, "seed", r.head())
+    assert maya.post(D, json={"t": "ann:a1", "title": "Q", "body": "x"}, headers=H).status_code == 403
+    assert maya.post(D, json={"t": "ann:a2", "title": "Q", "body": "x"}, headers=H).status_code == 201
+    assert maya.get(HUB).get_json()["closed"] == ["ann:a1"]

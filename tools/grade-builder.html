@@ -3145,6 +3145,8 @@ function drawEvalEditor() {
     ${policyHTML(e, p, num(e.weight), "")}`}`}
     ${accomHTML(e)}
     ${filesHTML(e)}
+    <h3 class="ed-sec">Discussion</h3>
+    <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
 `;
   mountSecDates(m, e);
 }
@@ -3458,6 +3460,7 @@ document.addEventListener("change", ev => {
     });
     if (acc) return drawStudentEditor();
   }
+  else if (t.dataset.disc && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) delete e.discussion; else e.discussion = false; }); }
   else if (t.dataset.acm && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => setAccom(e, t.dataset.acm, t.checked)); }
   else if (t.dataset.ed === "member") act({ dataset: { act: "grpmem", id: m.dataset.group, v: t.dataset.v } });
   else return;   // a typed field finished: nothing to redraw (and redrawing would lose the next field)

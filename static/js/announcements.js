@@ -152,6 +152,8 @@ export function announcementsPage(ctx, r) {
 
         <h3 class="lx-sec">Message</h3>
         <div id="an-body"></div>
+        <h3 class="lx-sec">Discussion</h3>
+        <label class="lx-tick"><input type="checkbox" id="an-disc"${x.discussion === false ? "" : " checked"}${dis}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
         ${edit ? `<div class="an-foot"><label class="lt-check"><input type="checkbox" id="an-mail"${isNew ? " checked" : ""}> Email it to the students it's for</label><span class="spacer"></span>
           <button type="button" class="lx-btn" id="an-cancel">${isNew ? "Discard" : "Undo Changes"}</button><button type="button" class="lx-btn main" id="an-save">${isNew ? "Save" : "Save Changes"}</button></div>` : ""}
       </div>
@@ -183,6 +185,7 @@ export function announcementsPage(ctx, r) {
     pickOne($("#an-on-f"), { options: aboutOpts, value: x.on || "", empty: "Nothing in particular", emptyHint: "A general announcement", search: "Search activities and evaluations", id: "an-on", label: "About",
       disabled: !edit, onChange: v => onChange(v) });
     if (!edit) return;
+    $("#an-disc").onchange = e => { if (e.target.checked) delete x.discussion; else x.discussion = false; changed(); };
     mark();
     $("#an-cancel").onclick = () => {
       if (isNew) { st.draft = null; go({ page: "announcements", c, t }); return; }

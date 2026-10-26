@@ -201,6 +201,9 @@ def post(handle, course, term):
     o, off, viewer = _viewer(handle, course, term)
     d = body()
     target = _target(d.get("t"))
+    from .hub import closed_discussions
+    if target in closed_discussions(o["id"], *off.split("/", 1)):
+        raise Refusal(403, "Discussion is off for this.", "closed")
     if not limiter.ok(f"discuss:{viewer['key']}", 30, 600):
         raise Refusal(429, "That's a lot of posts. Wait a few minutes, then try again.", "rate")
     parent = d.get("parent")

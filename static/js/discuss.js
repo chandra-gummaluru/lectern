@@ -75,7 +75,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
       <button class="dc-t-b" data-open="${p.id}">
         <span class="dc-t-flags">${flags(p)}</span>
         <b class="dc-t-title">${esc(p.title || "(removed)")}</b>
-        <span class="dc-t-meta">${w ? `${av(w, " xs")}${w.team ? `<span class="dc-staffname" title="${esc(w.role || "Teaching team")}">${esc(w.name)}</span>` : esc(w.name)}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
+        <span class="dc-t-meta">${w ? `${w.team ? `<span class="dc-staffname" title="${esc(w.role || "Teaching team")}">${esc(w.name)}</span>` : esc(w.name)}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
         ${p.body ? `<span class="dc-t-clip">${esc(plain(p.body))}</span>` : ""}
       </button>${p.pinned || p.endorsed ? `<span class="dc-t-st">${marks(p)}</span>` : ""}</div>`;
   }

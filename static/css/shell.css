@@ -1064,3 +1064,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .em-acts { justify-content: flex-end; }
 .em-body > .lx-sec.lx-first { border-top: 0; padding-top: 0; }
 .em-err { margin: 6px 0 0; color: #b42318; font-size: 13.5px; font-weight: 600; } .em-err:empty { display: none; }
+.lt-part.lt-team#lt-email > .lt-part-text { flex: none; padding-bottom: 14px; }

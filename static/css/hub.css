@@ -1006,3 +1006,10 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb .dc-box .rt { border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .hb .dc-box .rt-bar { padding: 4px 6px; }
 .hb .dc-box .rt-ed { outline: none; }
+
+/* My Accommodations: each request a card, its state's icon as in Lectern (approved green, rejected red, waiting yellow). */
+.ma-req .ma-ic { color: #b58a00; } .ma-req.st-approved .ma-ic { color: #2f8f5b; } .ma-req.st-rejected .ma-ic { color: #c0392b; }
+.ma-req .ma-ic svg { width: 24px; height: 24px; }
+.ma-note { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--strip); font-size: 14.5px; }
+.ma-note b { display: block; margin-bottom: 2px; font-size: 13px; color: var(--ink-2); }
+.ma-note .hb-md > :last-child { margin-bottom: 0; }

@@ -535,8 +535,37 @@ const PAGES = {
         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
       </article>`;
   },
-  accommodations() { return open("accommodations") ? `${path([["My Accommodations"]])}${HubView.draw(D, "accommodations")}` : lockedPage("accommodations", "My Accommodations"); },
+  // The student's requests (accommodations.py), a card each as the other lists are: its state's icon, the
+  // evaluation, what was asked for, when, what was decided, and the note that came with it.
+  accommodations() {
+    if (!open("accommodations")) return lockedPage("accommodations", "My Accommodations");
+    setTimeout(myRequests, 0);
+    return `${path([["My Accommodations"]])}${head("My Accommodations", "Your accommodation requests and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
+  },
 };
+
+const REQ_IC = {
+  approved: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m7.8 12.3 2.8 2.8 5.6-6"/></svg>',
+  rejected: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m8.8 8.8 6.4 6.4M15.2 8.8l-6.4 6.4"/></svg>',
+  pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01" stroke-width="2.8"/></svg>',
+};
+const REQ_WORD = { approved: "Approved", rejected: "Rejected", pending: "Waiting for a decision" };
+function myRequests() {
+  const box = document.getElementById("ma-box"); if (!box) return;
+  const when = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }); };
+  fetch(`${root.dataset.api}/accommodations`, { credentials: "same-origin" }).then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "Your requests couldn't be loaded. Try again in a moment.")))))
+    .then(d => {
+      const R = d.requests || [];
+      box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending";
+        const line = [`Requested ${when(r.submitted)}`, st === "pending" ? REQ_WORD.pending : `${REQ_WORD[st]} ${when(r.decided)}${r.decidedBy ? ` by ${r.decidedBy}` : ""}`].filter(Boolean).join(" · ");
+        return `<div class="wk-item wk-go ma-req st-${st}" data-go="#evaluation/${encodeURIComponent(r.eval)}" role="link" tabindex="0" title="Open ${esc(r.evalName || "the evaluation")}">
+          <span class="hs-ic ma-ic" title="${esc(REQ_WORD[st])}" aria-label="${esc(REQ_WORD[st])}">${REQ_IC[st]}</span>
+          <div class="wk-b"><p class="hs-kick">${esc(r.evalName || "Evaluation")}</p><h3>${r.kind === "standard" ? "Standard Accommodation" : "Alternate Accommodation"}</h3><p class="wk-when">${esc(line)}</p>
+            ${r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
+            ${r.note ? `<div class="ma-note"><b>${esc(r.decidedBy || "Your instructor")}</b>${markdown(r.note)}</div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
+        : `<p class="hs-empty">No requests yet. Ask for one from an evaluation's page, with Request Accommodation.</p>`;
+    }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
+}
 
 // ── The page ─────────────────────────────────────────────────────────
 function route() {

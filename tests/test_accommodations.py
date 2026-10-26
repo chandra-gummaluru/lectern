@@ -286,3 +286,14 @@ def test_a_signed_in_student_asks_on_the_course_page(gh):
     # Someone else's number with Maya's session: no.
     r = st.post(f"{HUB}/accommodation", json={"e": "mt", "id": "1002", "first": "Zoë", "last": "Ng", "kind": "standard"}, headers=H)
     assert r.status_code == 400
+
+
+def test_a_student_sees_only_their_own_requests(gh):
+    assert app.test_client().get(f"{HUB}/accommodations").status_code == 401
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    assert st.get(f"{HUB}/accommodations").get_json()["requests"] == []
+    st.post(f"{HUB}/accommodation", json={"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "Later, please."}, headers=H)
+    mine = st.get(f"{HUB}/accommodations").get_json()["requests"]
+    assert len(mine) == 1 and mine[0]["eval"] == "a1" and mine[0]["status"] == "pending" and mine[0]["details"] == "Later, please." and "email" not in mine[0]
+    other = hub_student("zoe.ng@mail.utoronto.ca")
+    assert other.get(f"{HUB}/accommodations").get_json()["requests"] == []

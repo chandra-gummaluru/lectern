@@ -503,6 +503,25 @@ def hub_submit(handle, course, term):
         return _err(x)
 
 
+# The signed-in student's own requests, newest first (My Accommodations on the course page).
+#   GET  /api/hub/<handle>/<course>/<term>/accommodations
+@accom_bp.get("/api/hub/<handle>/<course>/<term>/accommodations")
+def hub_mine(handle, course, term):
+    try:
+        uid, o, email = _hub_student(handle, course, term)
+        text, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")
+        d = _parse(text)
+        me = str(email).strip().lower()
+        keep = ("id", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note")
+        mine = [{k: r.get(k, "") for k in keep} for r in d["requests"] if isinstance(r, dict) and str(r.get("email") or "").strip().lower() == me]
+        mine.sort(key=lambda r: str(r.get("submitted") or ""), reverse=True)
+        return jsonify(requests=mine)
+    except StoreError as e:
+        return _err(Refusal(e.status, str(e)))
+    except Refusal as x:
+        return _err(x)
+
+
 # ── Instructors ──────────────────────────────────────────────────────
 @accom_bp.post("/api/accommodations/decide")
 @signed_in

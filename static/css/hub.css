@@ -930,13 +930,16 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb .dc-box input:focus-visible, .hb .dc-box textarea:focus-visible { outline: none; }
 
 /* A Discussion link on an activity's or an announcement's row, and the bodies of their own pages. */
-.hb a.dc-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; font: 600 13.5px var(--font-ui); color: var(--ink-2); text-decoration: none; }
-.hb a.dc-link:hover { color: var(--ink); }
+.hb a.hs-file.dc-link { gap: 7px; }
 .dc-link svg { width: 16px; height: 16px; }
-.dc-link-n { color: var(--ink-3); font-weight: 600; }
+.dc-link-n { color: var(--ink-2); font-weight: 600; }
 .ec-body { margin-top: 14px; color: var(--ink-2); }
 .ec-card > .hs-files { margin-top: 14px; }
 .dc-err { margin: 0; padding: 8px 12px; border-top: 1px solid var(--line); color: #b42318; font-size: 13.5px; font-weight: 600; }
 .dc > .dc-none .hb-btn { margin-left: 8px; }
 .dc > .dc-threads, .dc > .dc-box, .dc > .dc-none { margin-top: 12px; }
 .dc-head { align-items: center; }
+.wk-go { cursor: pointer; }
+.wk-go > svg:last-child { flex: none; align-self: center; width: 18px; height: 18px; color: var(--ink-3); }
+.wk-go:hover h3 { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.hs-card.wk-go:hover { border-color: var(--ink-3); }

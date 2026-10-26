@@ -316,25 +316,36 @@ const RemarkForm = (() => {
     const staff = D.viewer.role !== "student";
     box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
       ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
-      <h2 class="hs-h2">What Should Be Remarked</h2>
+      <h2 class="hs-h2">Confirm It's You</h2>
+      <p class="rq-help">For security purposes, please provide us with the following information.</p>
+      <div class="rq-grid">
+        <label class="rq-f">${esc(String(info.idLabel || "Student Number").replace(/\b\w/g, c => c.toUpperCase()))}<input type="text" name="id" autocomplete="off" spellcheck="false" value="${esc(keep.id || "")}"></label>
+        <label class="rq-f">First Name<input type="text" name="first" autocomplete="given-name" spellcheck="false" value="${esc(keep.first || "")}"></label>
+        <label class="rq-f">Last Name<input type="text" name="last" autocomplete="family-name" spellcheck="false" value="${esc(keep.last || "")}"></label>
+      </div>
+      <h2 class="hs-h2 rq-h2">What Should Be Remarked</h2>
       <p class="rq-help">Say which questions or parts, and why you think they should be looked at again.</p>
       <div class="rq-more"><div id="rq-rt"></div><small class="rq-help">To share a document, add a link to it. Files and pictures can't be attached.</small></div>
       <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
       <div class="rq-acts"><span class="sp"></span><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Cancel</a><button type="submit" class="hb-btn primary"${staff ? " disabled" : ""}>Send Request</button></div>
     </form>`;
     const f = $("rq-form");
-    import("/static/js/richtext.js").then(m => { rt = m.richText($("rq-rt"), { value: keep.details || "", placeholder: "e.g. Question 2(b): my answer is the same as the solution's, but it lost 2 marks…", label: "What should be remarked" }); if (!err) rt.el.focus(); });
+    const cap = v => v.replace(/(^|[\s\-'’])(\p{Ll})/gu, (m0, a, b) => a + b.toUpperCase());
+    ["first", "last"].forEach(n => { const el = f[n]; el.addEventListener("input", () => { const p = el.selectionStart, v = cap(el.value); if (v !== el.value) { el.value = v; el.setSelectionRange(p, p); } }); });
+    import("/static/js/richtext.js").then(m => { rt = m.richText($("rq-rt"), { value: keep.details || "", placeholder: "e.g. Question 2(b): my answer is the same as the solution's, but it lost 2 marks…", label: "What should be remarked" }); });
+    if (!err) f.id.focus();
     f.onsubmit = e2 => {
       e2.preventDefault();
-      const d = { e: ev.id, details: rt ? rt.get().trim() : "" };
+      const d = { e: ev.id, id: f.id.value.trim(), first: cap(f.first.value.trim()), last: cap(f.last.value.trim()), details: rt ? rt.get().trim() : "" };
       keep = { ...d };
+      if (!d.id || !d.first || !d.last) { $("rq-err").textContent = `Fill in your ${String(info.idLabel || "student number").toLowerCase()}, first name and last name.`; return; }
       if (!d.details) { $("rq-err").textContent = "Say what should be remarked, and why."; if (rt) rt.el.focus(); return; }
       const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
       api("POST", d).then(done, e => form(e.message));
     };
   }
   function done(res) {
-    keep = {};
+    keep = { id: keep.id, first: keep.first, last: keep.last };
     box().innerHTML = sentHTML("Request Sent", `Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's decided.${res.emailed ? " We've emailed you a copy." : ""}`, res.id);
   }
   function sentHTML(title, text, ref) {

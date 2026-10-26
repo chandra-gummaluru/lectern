@@ -327,7 +327,7 @@ def test_a_remark_request(gh, monkeypatch):
     assert st.get(f"{HUB}/remark?e=mt").status_code == 404                   # not taking them
     info = st.get(f"{HUB}/remark?e=l1").get_json()
     assert info["marked"] and not info["released"] and info["deadline"]["date"] == "2026-10-30"
-    d = {"e": "l1", "details": "Question 2 was marked as wrong, but **it's right**."}
+    d = {"e": "l1", "id": "1001", "first": "Maya", "last": "Castillo", "details": "Question 2 was marked as wrong, but **it's right**."}
     assert st.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "not-out"
     l1["released"] = True
     gh.put("csc258/f26/grades.json", json.dumps(b))
@@ -339,6 +339,8 @@ def test_a_remark_request(gh, monkeypatch):
     assert st.get(f"{HUB}/remark?e=l1").get_json()["waiting"] is True
     # Zoë has no mark: no.
     zoe = hub_student("zoe.ng@mail.utoronto.ca")
+    assert zoe.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "mismatch"           # Maya's details
+    d = {**d, "id": "1002", "first": "Zoë", "last": "Ng"}
     assert zoe.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "no-mark"
     # Closed after its deadline.
     monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0 + 30 * 86400)

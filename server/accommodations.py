@@ -621,7 +621,7 @@ def _mark_of(book, s, e):
 
 
 def _remark_info(book, ev, m, s):
-    return {"evaluation": {"id": ev.get("id"), "name": ev.get("name") or ""},
+    return {"evaluation": {"id": ev.get("id"), "name": ev.get("name") or ""}, "idLabel": _id_label(book),
             "released": ev.get("released") is True, "marked": bool(_mark_of(book, s, ev.get("id"))),
             "from": {"date": m["from"], "time": m["fromTime"], "text": when_text(m["from"], m["fromTime"])} if m["from"] else None,
             "deadline": {"date": m["by"], "time": m["byTime"], "text": when_text(m["by"], m["byTime"])} if m["by"] else None,
@@ -660,7 +660,16 @@ def hub_remark(handle, course, term):
             raise Refusal(410, f"The deadline to request a remark for {name} has passed ({when_text(m['by'], m['byTime'])}).", "closed")
         if ev.get("released") is not True:
             raise Refusal(403, f"The marks for {name} aren't out yet.", "not-out")
-        s = _enrolled(book, email)
+        # As an accommodation request: their number and name must be theirs (the email is the one they signed in with).
+        sid, first, last = (str(d.get(k) or "").strip() for k in ("id", "first", "last"))
+        if not (sid and first and last):
+            raise Refusal(400, f"Fill in your {_id_label(book).lower()}, first name and last name.")
+        try:
+            s, _ = find_student(book, email, sid, first, last)
+        except Refusal as x:
+            if x.code == "not-found":
+                raise Refusal(400, f"Those don't match what your instructor has for you. Check your {_id_label(book).lower()} and your name, spelled exactly as on record.", "mismatch")
+            raise
         if not _mark_of(book, s, e):
             raise Refusal(403, f"You don't have a mark for {name} yet.", "no-mark")
         details = clean_details(d.get("details"))

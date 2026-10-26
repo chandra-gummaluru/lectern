@@ -1165,7 +1165,7 @@ const isMajor = t => /midterm|final|exam|test|quiz|demo|project|due|presentation
 // open their own page. ui.tab is the tab showing; ui.week a week chosen on This week.
 // ═════════════════════════════════════════════════════════════════════
 const HV = () => window.HubView;
-const HUB_ALL = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
+const HUB_ALL = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My requests"]];
 const tabTitle = id => (HUB_ALL.find(t => t[0] === id) || HUB_ALL[0])[1];
 const OVERVIEW_TYPES = ["table", "sessions", "text", "meetings"];
 const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';

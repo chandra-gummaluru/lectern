@@ -238,6 +238,7 @@ function parseHash() {
     if (part) return { page: "tool", tool: "grades", part, c, t, o };
     if (tool === "exams" && e && slugOK(e)) return { page: "tool", tool, c, t, e, o };
     if (tool === "accommodations") return { page: "accom", c, t, o, q: e || "" };
+    if (tool === "remarks") return { page: "accom", k: "remark", c, t, o, q: e || "" };
     if (tool === "lectures" || tool === "activities") return { page: "lectures", c, t, o, w: e || "", l: p[4] || "" };
     if (tool === "team" && e) return { page: "team", c, t, o, p: e };
     if ((tool === "groups" || tool === "sections") && e) return { page: "groups", c, t, o, g: e };
@@ -253,7 +254,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/accommodations${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -545,7 +546,7 @@ function renderPage() {
   const r = S.route;
   if (r.page === "home") { renderPath([{ label: HOME_STEP.label }]); return homePage(); }
   if (r.page === "offering") { renderPath([HOME_STEP, { label: offeringLabel(r.c, r.t) }]); return offeringPage(r.c, r.t); }
-  if (r.page === "accom") { renderPath([HOME_STEP, offeringStep(r.c, r.t), r.q ? { label: "Accommodations", go: () => go({ page: "accom", c: r.c, t: r.t }) } : { label: "Accommodations" }, ...(r.q ? [{ label: "Request" }] : [])]); return accomPage(r.c, r.t, r.q); }
+  if (r.page === "accom") { const L = r.k === "remark" ? "Remark Requests" : "Accommodations"; renderPath([HOME_STEP, offeringStep(r.c, r.t), r.q ? { label: L, go: () => go({ page: "accom", k: r.k, c: r.c, t: r.t }) } : { label: L }, ...(r.q ? [{ label: "Request" }] : [])]); return accomPage(r.c, r.t, r.q, r.k || ""); }
   if (r.page === "lectures") return lecturesPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], uploadPublic: Lectern.uploadPublic,
     // The gradebook's evaluations: each week shows the ones dated in it, and opens one in the Evaluations.
@@ -759,6 +760,11 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>
         <p class="lt-part-text" id="lt-accom-sum">Requests students make with the course page's Request Accommodation buttons. Approve or reject each one; the student gets an email.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-accom"${!o.grades && loading ? " disabled" : ""}>Open Accommodations</button></div>
+      </section>
+      <section class="lt-part lt-wide">
+        <div class="lt-part-head">${ICON.evals}<h2>Remark Requests</h2></div>
+        <p class="lt-part-text" id="lt-rmk-sum">Requests students make with the course page's Request Remark buttons, once their marks are out. Approve or reject each one; the student gets an email.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-rmk"${!o.grades && loading ? " disabled" : ""}>Open Remark Requests</button></div>
       </section>` : ""}
       <section class="lt-part lt-wide lt-team" id="lt-team">
         <div class="lt-part-head">${ICON.team}<h2>Teaching Team</h2></div>
@@ -783,11 +789,15 @@ function offeringPage(c, t) {
   $("#lt-anns").onclick = () => go({ page: "announcements", c, t });
   const acc = $("#lt-accom");
   if (acc) acc.onclick = () => go({ page: "accom", c, t });
+  const rmk = $("#lt-rmk"); if (rmk) rmk.onclick = () => go({ page: "accom", k: "remark", c, t });
   if (acc && o.grades) readAccom(c, t).then(d => {
-    const el = $("#lt-accom-sum"), n = d ? d.requests.filter(x => x.status === "pending").length : 0;
-    if (!el || !n || S.route.page !== "offering" || S.route.c !== c || S.route.t !== t) return;
-    el.innerHTML = `<b>${n} request${n === 1 ? "" : "s"} waiting</b> for a decision. Approve or reject each one; the student gets an email.`;
-    $("#lt-accom").classList.add("primary");
+    if (S.route.page !== "offering" || S.route.c !== c || S.route.t !== t || !d) return;
+    [["#lt-accom-sum", "#lt-accom", false], ["#lt-rmk-sum", "#lt-rmk", true]].forEach(([sum, btn, rm]) => {
+      const el = $(sum), n = d.requests.filter(x => x.status === "pending" && (x.type === "remark") === rm).length;
+      if (!el || !n) return;
+      el.innerHTML = `<b>${n} request${n === 1 ? "" : "s"} waiting</b> for a decision. Approve or reject each one; the student gets an email.`;
+      $(btn).classList.add("primary");
+    });
   }).catch(() => {});
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
@@ -1014,20 +1024,23 @@ const accomUI = { show: "pending", ev: "" };
 const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
 const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
 
-async function accomPage(c, t, q = "") {
+// The same page lists remark requests (k = "remark": the course page's Request Remark), kept in the same file.
+async function accomPage(c, t, q = "", k = "") {
+  const RM = k === "remark", here = x => go({ page: "accom", ...(RM ? { k } : {}), c, t, ...x });
   pageHTML(q ? `<div class="lt-in lt-accom"><div class="lx ed"><div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading the request…</div></div></div></div>`
     : `<div class="lt-in lt-accom"><div class="lx">
-    <div class="lx-head"><h1>Accommodations</h1></div>
-    <p class="lx-help lt-acc-lede">Requests from the course page's Request Accommodation buttons. Click one to see it, its decisions, and to decide. Deciding emails the student.</p>
+    <div class="lx-head"><h1>${RM ? "Remark Requests" : "Accommodations"}</h1></div>
+    <p class="lx-help lt-acc-lede">Requests from the course page's ${RM ? "Request Remark" : "Request Accommodation"} buttons. Click one to see it, its decisions, and to decide. Deciding emails the student.</p>
     <div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading requests…</div></div>
   </div></div>`);
-  const mine = () => S.route.page === "accom" && S.route.c === c && S.route.t === t && (S.route.q || "") === q;
+  const mine = () => S.route.page === "accom" && S.route.c === c && S.route.t === t && (S.route.q || "") === q && (S.route.k || "") === k;
   let data, book, cfg;
   try { [data, book, cfg] = await Promise.all([readAccom(c, t), getBook(c, t).catch(() => null), getCfg()]); }
   catch (e) { if (mine()) $("#lt-acc").innerHTML = `<p class="lt-note err">Couldn't read the requests. ${esc(e.message)}</p>`; return; }
   if (!mine()) return;
+  data = { ...data, requests: data.requests.filter(x => (x.type === "remark") === RM) };
   const evals = (book && book.evals) || [];
-  const asks = evals.filter(e => e.accom && ((e.accom.approval && String(e.accom.standard || "").trim()) || e.accom.alternate));
+  const asks = RM ? evals.filter(e => e.remark && e.remark.on) : evals.filter(e => e.accom && ((e.accom.approval && String(e.accom.standard || "").trim()) || e.accom.alternate));
   const canDecide = true;
   const draw = () => {
     if (q) return drawOne();
@@ -1038,7 +1051,7 @@ async function accomPage(c, t, q = "") {
     const evNames = [...new Map(all.map(r => [r.eval, r.evalName])).entries()];
     const notes = [
       !cfg.email ? `<p class="lt-note"><b>Emails aren't being sent:</b> the server has no SMTP settings, so students won't hear about decisions (see the README).</p>` : "",
-      book && !asks.length ? `<p class="lt-note">No evaluation takes requests yet. In <button type="button" class="lt-link" data-evals>Evaluations</button>, open one and set its <b>Accommodations</b>; then save the course page so its buttons appear.</p>` : "",
+      book && !asks.length ? `<p class="lt-note">No evaluation takes requests yet. In <button type="button" class="lt-link" data-evals>Evaluations</button>, open one and set its <b>${RM ? "Remark Requests" : "Accommodations"}</b>; then save the gradebook so its buttons appear.</p>` : "",
       data.bad ? `<p class="lt-note err"><code>accommodations.json</code> couldn't be read.</p>` : "",
     ].join("");
     const seg = (k, label, n) => `<button type="button" data-show="${k}" aria-pressed="${accomUI.show === k}">${label}${n != null ? ` <span>${n}</span>` : ""}</button>`;
@@ -1050,21 +1063,21 @@ async function accomPage(c, t, q = "") {
         : `<p class="lx-empty">${accomUI.show === "pending" ? (all.length ? "Nothing waiting: every request has a decision." : "No requests yet.") : "None."}</p>`}`;
     $("#lt-acc").querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { accomUI.show = b.dataset.show; draw(); }; });
     const f = $("#acc-ev"); if (f) f.onchange = () => { accomUI.ev = f.value; draw(); };
-    $("#acc-refresh").onclick = () => accomPage(c, t);
+    $("#acc-refresh").onclick = () => accomPage(c, t, "", k);
     const ev = $("#lt-acc [data-evals]"); if (ev) ev.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t });
     $("#lt-acc").querySelectorAll("[data-req]").forEach(card => {
-      const open = () => go({ page: "accom", c, t, q: card.dataset.req });
+      const open = () => here({ q: card.dataset.req });
       card.onclick = e => { if (!e.target.closest("a")) open(); };
       card.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
     });
   };
   // One request, as an activity's or an evaluation's page: what they asked for, every decision (the
   // earlier ones too), and deciding (or changing the decision, or its note).
-  const KIND = r => (r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation");
+  const KIND = r => (r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation");
   function drawOne() {
     const r = data.requests.find(x => x.id === q);
-    if (!r) { $("#lt-acc").innerHTML = `<p class="lx-empty">That request isn't there any more. <button type="button" class="lt-link" id="acc-back">See all requests</button></p>`; $("#acc-back").onclick = () => go({ page: "accom", c, t }); return; }
-    renderPath([HOME_STEP, offeringStep(c, t), { label: "Accommodations", go: () => go({ page: "accom", c, t }) }, { label: `${r.first} ${r.last}`.trim() || "Request" }]);
+    if (!r) { $("#lt-acc").innerHTML = `<p class="lx-empty">That request isn't there any more. <button type="button" class="lt-link" id="acc-back">See all requests</button></p>`; $("#acc-back").onclick = () => here({}); return; }
+    renderPath([HOME_STEP, offeringStep(c, t), { label: RM ? "Remark Requests" : "Accommodations", go: () => here({}) }, { label: `${r.first} ${r.last}`.trim() || "Request" }]);
     const D = decisionsOf(r), pend = r.status === "pending";
     const fact = (k, v) => v ? `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>` : "";
     $("#lt-acc").innerHTML = `<div class="lx-editor lt-req-ed st-${esc(r.status)}">
@@ -1104,7 +1117,7 @@ async function accomPage(c, t, q = "") {
   const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
       <div class="lx-main hd-main"><div class="hd">
-        <p class="lx-kind">${esc(r.evalName)} · ${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"}</p>
+        <p class="lx-kind">${esc(r.evalName)} · ${esc(KIND(r))}</p>
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
         <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)}</p></div>
         <p class="lx-clip">${esc(r.kind === "standard" ? r.standard : plainOf(r.details))}</p>
@@ -1116,12 +1129,12 @@ async function accomPage(c, t, q = "") {
     if (!r) return;
     const yes = decision === "approved", same = r.status === decision;
     modal(`<h2>${same ? "Change the note?" : `${yes ? "Approve" : "Reject"} this request?`}</h2>
-      <p>${esc(r.first)} ${esc(r.last)}, ${esc(r.evalName)}: ${r.kind === "standard" ? `the standard accommodation (${esc(r.standard)})` : "an alternate accommodation"}. ${cfg.email ? `They're emailed at <b>${esc(r.email)}</b>.` : "The server has no SMTP settings, so no email is sent."}</p>
+      <p>${esc(r.first)} ${esc(r.last)}, ${esc(r.evalName)}: ${r.type === "remark" ? "a remark" : r.kind === "standard" ? `the standard accommodation (${esc(r.standard)})` : "an alternate accommodation"}. ${cfg.email ? `They're emailed at <b>${esc(r.email)}</b>.` : "The server has no SMTP settings, so no email is sent."}</p>
       <div class="lt-form"><div class="lt-f-rt"><span class="lt-f-l">Note to the student</span><div id="dc-note"></div><small>Optional. It goes in the email.</small></div></div>
       <p class="lt-err" id="dc-err"></p>
       <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn ${yes ? "primary" : "lt-btn-danger"}" data-ok>${same ? "Save the Note" : yes ? "Approve" : "Reject"}</button></div>`, (m, close) => {
       m.querySelector("[data-no]").onclick = close;
-      const note = richText(m.querySelector("#dc-note"), { value: r.status === "pending" ? "" : r.note || "", placeholder: yes ? "e.g. Write it Thursday at 6 in BA 2135." : "e.g. Please come to office hours to talk about it.", label: "Note to the student" });
+      const note = richText(m.querySelector("#dc-note"), { value: r.status === "pending" ? "" : r.note || "", placeholder: r.type === "remark" ? (yes ? "e.g. Question 2 is now 8/10: your mark is updated." : "e.g. The marking scheme takes off for the missing units.") : yes ? "e.g. Write it Thursday at 6 in BA 2135." : "e.g. Please come to office hours to talk about it.", label: "Note to the student" });
       setTimeout(() => note.el.focus(), 0);
       const ok = m.querySelector("[data-ok]");
       ok.onclick = async () => {
@@ -1207,9 +1220,11 @@ function schemeOf(b, from, requests = null) {
     if (!standard && !alternate) return {};
     return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
+  // Remark requests: when they open and close (the course page shows Request Remark once the student's mark is out).
+  const remark = e => { const r = e.remark || {}; return r.on ? { remark: { from: r.from || "", fromTime: r.fromTime || "", by: r.by || "", byTime: r.byTime || "" } } : {}; };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...files(e) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...remark(e), ...files(e) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -1256,7 +1271,7 @@ Lectern.back = num => { const f = S.studentFrom; if (!f || (num != null && f.num
 Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); } finally { setTimeout(() => { H.applying = was && H.applying; }, 300); } };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).
-Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t, q: String(id) }); };
+Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", ...(String(id).startsWith("m-") ? { k: "remark" } : {}), c: r.c, t: r.t, q: String(id) }); };
 // For the gradebook: the offering's sections (an evaluation's dates for some of them), and the dropdown to pick them.
 Lectern.sections = async () => { const r = S.route; if (!r.c || !r.t) return []; const G = await readGroups(Store, area(Store.PRIV), r.c, r.t); return sortSections(G.data.groups).map(g => ({ id: g.id, name: g.name || "Untitled section", kind: sectionKind(g) })); };
 Lectern.pickMany = pickMany;

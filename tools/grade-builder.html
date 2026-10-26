@@ -894,6 +894,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .acm-tick span { grid-column: 2; font-size: 13px; color: var(--ink-3); }
 .acm-tick.off { cursor: default; } .acm-tick.off b { color: var(--ink-3); }
 .rel-note .ed-help { margin: 2px 0 0 26px; }
+.ed-grid.acm-by.rmk-dates { grid-template-columns: repeat(2, minmax(0, 320px)); }
 .rel-chg { display: flex; align-items: center; gap: 12px; margin: 10px 0 0 26px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg, #fdf6e3); font-size: 13.5px; }
 .rel-chg span { flex: 1; }
 @media (max-width: 640px) { .ed-grid.acm-by { grid-template-columns: 1fr; } }
@@ -3156,6 +3157,7 @@ function drawEvalEditor() {
     ${policyHTML(e, p, num(e.weight), "")}`}`}
     ${releaseHTML(e)}
     ${accomHTML(e)}
+    ${remarkHTML(e)}
     ${filesHTML(e)}
     <h3 class="ed-sec">Discussion</h3>
     <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
@@ -3277,6 +3279,24 @@ const acmWhen = e => ({
   get date() { return accomOf(e).by; }, set date(v) { setAccom(e, "by", v); },
   get time() { return accomOf(e).byTime; }, set time(v) { setAccom(e, "byTime", v); },
 });
+// Remark requests: on or off, and when they open and close (each optional).
+const remarkOf = e => Object.assign({ on: false, from: "", fromTime: "", by: "", byTime: "" }, e.remark || {});
+function setRemark(e, k, v) {
+  const r = remarkOf(e); r[k] = v;
+  if (!r.on && !r.from && !r.by) delete e.remark; else e.remark = r;
+}
+const rmkWhen = (e, k) => ({
+  type: k === "from" ? "opens" : "deadline",
+  get date() { return remarkOf(e)[k]; }, set date(v) { setRemark(e, k, v); },
+  get time() { return remarkOf(e)[k + "Time"]; }, set time(v) { setRemark(e, k + "Time", v); },
+});
+function remarkHTML(e) {
+  const r = remarkOf(e);
+  return `<h3 class="ed-sec">Remark Requests</h3>
+    <label class="acm-tick"><input type="checkbox" data-rmk="1"${r.on ? " checked" : ""}><b>Students can request a remark</b><span>From the course page, once their mark is out. You approve or reject each one in Lectern's Remark Requests; the student gets an email.</span></label>
+    ${r.on ? `<div class="ed-grid acm-by rmk-dates"><div class="pf"><span>Requests Open</span><button type="button" class="when-btn${r.from ? "" : " empty"}" data-ed="rmk-from" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(rmkWhen(e, "from")))}</span></button></div>
+      <div class="pf"><span>Requests Close</span><button type="button" class="when-btn${r.by ? "" : " empty"}" data-ed="rmk-by" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(rmkWhen(e, "by")))}</span></button></div></div>` : ""}`;
+}
 function setAccom(e, k, v) {
   const a = accomOf(e); a[k] = v;
   if (!a.approval && !a.alternate && !a.by && !a.byTime) delete e.accom; else e.accom = a;
@@ -3443,6 +3463,8 @@ document.addEventListener("click", ev => {
   if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time, release: e.release || "", releaseTime: e.releaseTime || "" }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "sd-del") { pushUndo(); e.dates.splice(+b.dataset.i, 1); if (!e.dates.length) delete e.dates; unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "acm-when") return openWhen(b, acmWhen(e));
+  if (a === "rmk-from") return openWhen(b, rmkWhen(e, "from"));
+  if (a === "rmk-by") return openWhen(b, rmkWhen(e, "by"));
   if (a === "rel-mail") {   // the marks changed since students were told: email them now
     b.disabled = true;
     return window.Lectern.notifyGrades(e.id).then(r => { toast(r.emailed ? `Emailed ${r.emailed} student${r.emailed === 1 ? "" : "s"} that their mark changed.` : r.why || "Nobody to email."); drawNotices(e, true); },
@@ -3502,6 +3524,7 @@ document.addEventListener("change", ev => {
     });
     if (acc) return drawStudentEditor();
   }
+  else if (t.dataset.rmk && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => setRemark(e, "on", t.checked)); return drawEvalEditor(); }
   else if (t.dataset.rel && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) e.released = true; else delete e.released; }); drawNotices(e); }
   else if (t.dataset.disc && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) delete e.discussion; else e.discussion = false; }); }
   else if (t.dataset.acm && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => setAccom(e, t.dataset.acm, t.checked)); }
@@ -3528,6 +3551,8 @@ const PIC = {
 const fmtTime = t => t || "";   // 24-hour, as stored: 18:10
 function whenLabel(e) {
   if (e.type === "deadline" && !e.date) return "No deadline";
+  if (e.type === "opens" && !e.date) return "As soon as the marks are out";
+  if (e.type === "opens") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "Start of Day"}`; }
   if (e.type === "deadline") { const d = new Date(`${e.date}T12:00`); return isNaN(d) ? e.date : `${d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric", year: "numeric" })} · ${e.time || "End of Day"}`; }
   if (!e.date) return e.type === "release" ? "Not set: from the start" : isDue(e) ? "Choose a due date" : "Choose a date";
   const d = new Date(`${e.date}T12:00`); if (isNaN(d)) return e.date;
@@ -3554,7 +3579,7 @@ function openWhen(btn, e) {
     for (let k = 0; k < 42; k++) { const d = new Date(start); d.setDate(start.getDate() + k); days.push(d); }
     pop.innerHTML = `<div class="wp-head"><button type="button" data-w="prev" aria-label="Previous month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button><b>${first.toLocaleDateString("en-CA", { month: "long", year: "numeric" })}</b><button type="button" data-w="next" aria-label="Next month"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button></div>
       <div class="wp-days">${["S", "M", "T", "W", "T", "F", "S"].map(x => `<i>${x}</i>`).join("")}${days.map(d => `<button type="button" data-day="${iso(d)}" class="${d.getMonth() !== first.getMonth() ? "out" : ""}${iso(d) === today ? " today" : ""}${iso(d) === e.date ? " on" : ""}">${d.getDate()}</button>`).join("")}</div>
-      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" || e.type === "lab" || e.type === "other" ? "Starts At" : e.type === "deadline" ? "By" : e.type === "release" ? "At" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of Day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
+      <div class="wp-time"><div class="wp-trow"><label>${e.type === "test" || e.type === "lab" || e.type === "other" ? "Starts At" : e.type === "deadline" ? "By" : e.type === "opens" ? "From" : e.type === "release" ? "At" : "Due At"}<input type="text" id="wp-t" value="${esc(fmtTime(e.time))}" placeholder="${e.type === "deadline" ? "End of Day" : "No time"}" autocomplete="off"></label><button type="button" class="wp-clear" data-w="clear" title="${e.type === "deadline" ? "No deadline" : "No date and no time"}">Clear</button></div></div>`;
   };
   popover(btn, "", pop => {
     pop._onClose = () => render();   // the list, the name and the course page follow
@@ -3920,7 +3945,7 @@ function reqsHTML(s, e) {
   const clip = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
   return `<h3 class="ed-sec rq-sec">Their Requests</h3>
     <div class="rq-list">${L.map(r => `<${can ? `button type="button" data-ed="rq-open" data-v="${esc(r.id)}"` : "div"} class="rq rq-row st-${esc(r.status)}"><span class="rq-ic" title="${esc(REQ_STATUS[r.status] || r.status)}">${REQ_ICON[r.status] || REQ_ICON.pending}</span>
-      <span class="rq-b hd-main"><span class="hd"><span class="rq-k">${r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</span>
+      <span class="rq-b hd-main"><span class="hd"><span class="rq-k">${r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</span>
         <span class="rq-t">${esc(clip(r.kind === "standard" ? r.standard : r.details))}</span></span></span>
       <span class="rq-st v-${esc(r.status)}">${esc(REQ_STATUS[r.status] || r.status)}</span>${can ? svg("chev") : ""}</${can ? "button" : "div"}>`).join("")}</div>`;
 }

@@ -335,6 +335,8 @@ def _update(uid, o, change, message, author=""):
 
 
 def _what(r):
+    if r.get("type") == "remark":
+        return f"a remark:\n\n{_quote(r.get('details') or '')}"
     if r["kind"] == "standard":
         return f"the standard accommodation: {r.get('standard') or ''}"
     return f"an alternate accommodation:\n\n{_quote(r.get('details') or '')}"
@@ -350,6 +352,17 @@ def _course_line(r):
 
 def receipt_email(r):
     code = r.get("course") or "Your course"
+    if r.get("type") == "remark":
+        return f"{code}: remark request received ({r['evalName']})", f"""Hi {r['first']},
+
+We've received your request for a remark of {r['evalName']} in {_course_line(r)}.
+
+You asked for {_what(r)}
+
+Your instructor will review it, and you'll get another email when it's decided.
+
+Reference: {r['id']}
+"""
     body = f"""Hi {r['first']},
 
 We've received your request for an accommodation for {r['evalName']} in {_course_line(r)}.
@@ -366,6 +379,16 @@ Reference: {r['id']}
 def decision_email(r):
     code = r.get("course") or "Your course"
     ok = r["status"] == "approved"
+    if r.get("type") == "remark":
+        body = f"""Hi {r['first']},
+
+Your request for a remark of {r['evalName']} in {_course_line(r)} has been {"approved" if ok else "rejected"}.{" Your mark on the course page shows the result." if ok else ""}
+
+You asked for {_what(r)}
+"""
+        if r.get("note"):
+            body += f"\nA note from your instructor:\n\n{_quote(r['note'])}\n"
+        return f"{code}: remark request for {r['evalName']} {'approved' if ok else 'rejected'}", body + f"\nReference: {r['id']}\n"
     body = f"""Hi {r['first']},
 
 Your request for an accommodation for {r['evalName']} in {_course_line(r)} has been {"approved" if ok else "rejected"}.
@@ -421,7 +444,7 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
     }
 
     def add(f):
-        mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e]
+        mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e and x.get("type") != "remark"]
         if len(mine) >= MAX_PER_STUDENT:
             raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
         if kind == "standard":
@@ -530,13 +553,138 @@ def hub_mine(handle, course, term):
         text, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")
         d = _parse(text)
         me = str(email).strip().lower()
-        keep = ("id", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note")
+        keep = ("id", "type", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note")
         mine = [{k: r.get(k, "") for k in keep} for r in d["requests"] if isinstance(r, dict) and str(r.get("email") or "").strip().lower() == me]
         mine.sort(key=lambda r: str(r.get("submitted") or ""), reverse=True)
         return jsonify(requests=mine)
     except StoreError as e:
         return _err(Refusal(e.status, str(e)))
     except Refusal as x:
+        return _err(x)
+
+
+# ── Remark requests: from the course page, for an evaluation whose marks are out ─────
+# An evaluation takes them when its gradebook entry says so: "remark": { on, from, fromTime, by, byTime } (from
+# and by optional: open from then, until then). Kept in the same file as accommodations, with "type": "remark",
+# and decided the same way (Lectern's Remarks page).
+#   GET  /api/hub/<handle>/<course>/<term>/remark?e=<eval id>     whether it can be asked for now
+#   POST /api/hub/<handle>/<course>/<term>/remark                 { e, details, code? | resend } (as an accommodation's)
+def start_of(m):
+    """When remark requests open, as a timestamp (None: from the start)."""
+    f = str(m.get("from") or "")
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", f):
+        return None
+    end = deadline_of({"by": f, "byTime": str(m.get("fromTime") or "") or "00:00"})
+    return None if end is None else end - 59
+
+
+def remark_of(ev):
+    m = (ev or {}).get("remark") or {}
+    out = {"on": bool(m.get("on")), "from": "", "fromTime": "", "by": "", "byTime": "", "notYet": False, "closed": False}
+    st, end = start_of(m), deadline_of(m)
+    if st is not None:
+        out.update({"from": m["from"], "fromTime": str(m.get("fromTime") or ""), "notYet": clock() < st})
+    if end is not None:
+        out.update({"by": m["by"], "byTime": str(m.get("byTime") or "") or "23:59", "closed": clock() > end})
+    return out
+
+
+def _remark_eval(book, e):
+    ev = next((x for x in book.get("evals") or [] if x.get("id") == e), None)
+    m = remark_of(ev)
+    if not ev or not m["on"]:
+        raise Refusal(404, "This evaluation isn't taking remark requests.")
+    return ev, m
+
+
+def _enrolled(book, email):
+    """The student on the class list with this email (they're signed in with it)."""
+    me = _norm(email)
+    for s in book.get("students") or []:
+        if not s.get("dropped") and any(_norm((s.get("f") or {}).get(fid)) == me for fid in _email_fields(book)):
+            return s
+    raise Refusal(404, "You're not on this course's class list.", "not-found")
+
+
+def _mark_of(book, s, e):
+    m = ((book.get("marks") or {}).get(str(s.get("num"))) or {}).get(e)
+    return m if isinstance(m, dict) and (isinstance(m.get("pts"), (int, float)) or m.get("status") or m.get("missed")) else None
+
+
+def _remark_info(book, ev, m, s):
+    return {"evaluation": {"id": ev.get("id"), "name": ev.get("name") or ""},
+            "released": ev.get("released") is True, "marked": bool(_mark_of(book, s, ev.get("id"))),
+            "from": {"date": m["from"], "time": m["fromTime"], "text": when_text(m["from"], m["fromTime"])} if m["from"] else None,
+            "deadline": {"date": m["by"], "time": m["byTime"], "text": when_text(m["by"], m["byTime"])} if m["by"] else None,
+            "notYet": m["notYet"], "closed": m["closed"]}
+
+
+@accom_bp.get("/api/hub/<handle>/<course>/<term>/remark")
+def hub_remark_info(handle, course, term):
+    try:
+        uid, o, email = _hub_student(handle, course, term)
+        book = _book(uid, o)
+        ev, m = _remark_eval(book, _eval_id(request.args.get("e")))
+        return jsonify(_remark_info(book, ev, m, _enrolled(book, email)))
+    except Refusal as x:
+        return _err(x)
+
+
+@accom_bp.post("/api/hub/<handle>/<course>/<term>/remark")
+def hub_remark(handle, course, term):
+    try:
+        d = _body()
+        _limit("submit")
+        uid, o, email = _hub_student(handle, course, term)
+        book = _book(uid, o)
+        e = _eval_id(d.get("e"))
+        ev, m = _remark_eval(book, e)
+        name = ev.get("name") or "this evaluation"
+        if m["notYet"]:
+            raise Refusal(403, f"Remark requests for {name} open {when_text(m['from'], m['fromTime'])}.", "not-yet")
+        if m["closed"]:
+            raise Refusal(410, f"The deadline to request a remark for {name} has passed ({when_text(m['by'], m['byTime'])}).", "closed")
+        if ev.get("released") is not True:
+            raise Refusal(403, f"The marks for {name} aren't out yet.", "not-out")
+        s = _enrolled(book, email)
+        if not _mark_of(book, s, e):
+            raise Refusal(403, f"You don't have a mark for {name} yet.", "no-mark")
+        details = clean_details(d.get("details"))
+        if not details:
+            raise Refusal(400, "Say what should be remarked, and why.")
+        if len(details) > MAX_DETAILS:
+            raise Refusal(400, f"That's too long: keep it under {MAX_DETAILS} characters.")
+        text_, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")
+        if any(x.get("type") == "remark" and x.get("eval") == e and x.get("student") == s.get("num") and x.get("status") == "pending" for x in _parse(text_)["requests"]):
+            raise Refusal(409, f"You've already asked for a remark of {name}: it's waiting for your instructor.", "duplicate")
+        from .students import send_confirm_code, check_confirm_code
+        if d.get("resend") or not str(d.get("code") or "").strip():
+            minutes = send_confirm_code(uid, o, email, *o.split("/", 1), f"your remark request for {name}")
+            return jsonify(confirm=True, email=email, minutes=minutes), 202
+        check_confirm_code(uid, o, email, d.get("code"))
+        code, term_ = _course(book)
+        rec = {"id": "m-" + secrets.token_hex(4), "type": "remark", "eval": e, "evalName": name, "kind": "remark", "standard": "", "details": details,
+               "student": s.get("num"), "first": s.get("first") or "", "last": s.get("last") or "", "email": email,
+               "course": code, "term": term_, "status": "pending", "submitted": _now(), "decided": "", "decidedBy": "", "note": ""}
+
+        def add(f):
+            mine = [x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e and x.get("type") == "remark"]
+            if any(x.get("status") == "pending" for x in mine):
+                raise Refusal(409, f"You've already asked for a remark of {name}: it's waiting for your instructor.", "duplicate")
+            if len(mine) >= MAX_PER_STUDENT:
+                raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
+            f["requests"].append(rec)
+            f["format"] = FORMAT
+            return rec
+
+        _update(uid, o, add, f"Remark request from {rec['student']} for {name}", "student")
+        subject, body = receipt_email(rec)
+        from .classmail import student_mail
+        emailed = student_mail(uid, o, email, subject, body, "remarkReceipts")
+        return jsonify(ok=True, id=rec["id"], email=email, emailed=emailed), 201
+    except Refusal as x:
+        return _err(x)
+    except AuthRefusal as x:
         return _err(x)
 
 
@@ -572,11 +720,11 @@ def decide():
             return dict(r)
 
         r = _update(owner, o, apply,
-                    lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} accommodation request from {r['student']} for {r['evalName']}",
+                    lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} {'remark' if r.get('type') == 'remark' else 'accommodation'} request from {r['student']} for {r['evalName']}",
                     g.user["email"])
         subject, body = decision_email(r)
         from .classmail import student_mail
-        emailed = bool(r.get("email")) and student_mail(owner, o, r["email"], subject, body, "accomDecisions", reply_to=g.user["email"])
+        emailed = bool(r.get("email")) and student_mail(owner, o, r["email"], subject, body, "remarkDecisions" if r.get("type") == "remark" else "accomDecisions", reply_to=g.user["email"])
         return jsonify(ok=True, request=r, emailed=emailed)
     except Refusal as x:
         return _err(x)

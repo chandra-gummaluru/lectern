@@ -43,7 +43,7 @@ TABS = [
     ("lectures", "Activities"),   # the weeks and their lectures, tutorials, labs and the rest (the id stays: addresses keep working)
     ("evaluations", "Evaluations"),
     ("about", "About"),
-    ("accommodations", "My accommodations"),
+    ("accommodations", "My requests"),
 ]
 ALWAYS_SIGNED_IN = {"accommodations"}
 DEFAULT_VIS = {t: "public" for t, _ in TABS}

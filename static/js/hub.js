@@ -138,6 +138,7 @@ const dcLink = (t, href) => (D.viewer.signedIn && !dcOff(t) ? `<a class="hs-file
 // An item's buttons in one row: its files and links, then its Discussion (as the files' buttons are).
 const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (link ? f.replace(/<\/div>$/, `${link}</div>`) : f) : `${soon ? `<p class="hs-soon">Files coming soon</p>` : ""}${link ? `<div class="hs-files">${link}</div>` : ""}`; };
 // Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked).
+const REDO = svg('<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>');
 const HEART = svg('<path d="M12 21s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 8.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16.6 12 21 12 21z"/>');
 const dcOff = t => (D.closed || []).includes(t);
 const dcHere = t => (dcOff(t) ? "" : `<section class="dc" data-dc="${esc(t)}"></section>`);
@@ -306,6 +307,80 @@ const ReqForm = (() => {
   return { start };
 })();
 
+// ── Requesting a remark ──────────────────────────────────────────────
+// Signed in, and their mark is out: they say what should be looked at again and why; a code emailed to them
+// confirms it (as an accommodation request's does); decided in Lectern's Remark Requests.
+const RemarkForm = (() => {
+  let ev = null, info = null, rt = null, keep = {};
+  const api = (method, body) => fetch(`${root.dataset.api}/remark${method === "GET" ? `?e=${encodeURIComponent(ev.id)}` : ""}`, {
+    method, credentials: "same-origin", headers: method === "GET" ? {} : { "X-Lectern": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().catch(() => ({})).then(d => { if (!r.ok) { const x = new Error(d.error || "Something went wrong. Try again in a moment."); x.code = d.code; throw x; } return d; }),
+    e => { if (e.code !== undefined) throw e; throw new Error("Couldn't reach the course page. Check your connection and try again."); });
+  const box = () => $("rq-box");
+  const back = () => `<a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Back to ${esc(ev.name)}</a>`;
+  function start(u) {
+    ev = u; info = null; rt = null; keep = {};
+    if (!D.viewer.signedIn) { box().innerHTML = `<div class="hs-card"><p>Sign in to request a remark.</p><a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`; return; }
+    api("GET").then(d => { info = d; form(); }, e => { box().innerHTML = `<div class="hs-card rq-card"><p>${esc(e.message)}</p><div class="rq-acts">${back()}</div></div>`; });
+  }
+  function form(err) {
+    const by = document.getElementById("rq-by"), dl = info.deadline;
+    if (by) { by.hidden = !dl; by.textContent = dl ? `Requests close ${dl.text}` : ""; }
+    const stop = info.closed ? `The deadline to request a remark for ${ev.name} has passed (${dl ? dl.text : ""}).`
+      : info.notYet ? `Remark requests for ${ev.name} open ${info.from ? info.from.text : "later"}.`
+      : !info.released || !info.marked ? `You can ask once your mark for ${ev.name} is out.` : "";
+    if (stop) { box().innerHTML = `<div class="hs-card rq-card"><p>${esc(stop)}</p><div class="rq-acts">${back()}</div></div>`; return; }
+    const staff = D.viewer.role !== "student";
+    box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
+      ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
+      <h2 class="hs-h2">What Should Be Remarked</h2>
+      <p class="rq-help">Say which questions or parts, and why you think they should be looked at again.</p>
+      <div class="rq-more"><div id="rq-rt"></div><small class="rq-help">To share a document, add a link to it. Files and pictures can't be attached.</small></div>
+      <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
+      <div class="rq-acts"><span class="sp"></span><a class="hb-btn" href="#evaluation/${encodeURIComponent(ev.id)}">Cancel</a><button type="submit" class="hb-btn primary"${staff ? " disabled" : ""}>Send Request</button></div>
+    </form>`;
+    const f = $("rq-form");
+    import("/static/js/richtext.js").then(m => { rt = m.richText($("rq-rt"), { value: keep.details || "", placeholder: "e.g. Question 2(b): my answer is the same as the solution's, but it lost 2 marks…", label: "What should be remarked" }); if (!err) rt.el.focus(); });
+    f.onsubmit = e2 => {
+      e2.preventDefault();
+      const d = { e: ev.id, details: rt ? rt.get().trim() : "" };
+      keep = { ...d };
+      if (!d.details) { $("rq-err").textContent = "Say what should be remarked, and why."; if (rt) rt.el.focus(); return; }
+      const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
+      api("POST", d).then(res => (res.confirm ? confirm(res) : done(res)), e => form(e.message));
+    };
+  }
+  function confirm(res, err) {
+    box().innerHTML = `<form class="hs-card rq-card rq-confirm" id="rq-code" novalidate>
+      <h2 class="hs-h2">Enter Your Code</h2>
+      <p class="rq-help">To be sure it's you, we've emailed a code to <b>${esc(res.email)}</b>. Enter it to send your request. It works for ${esc(String(res.minutes || 10))} minutes.</p>
+      <label class="rq-f rq-codef">Code<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" spellcheck="false"></label>
+      <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
+      <div class="rq-acts"><button type="button" class="hb-btn" id="rq-back">Back</button><button type="button" class="hb-btn" id="rq-resend">Email a New Code</button><span class="sp"></span><button type="submit" class="hb-btn primary">Send Request</button></div>
+    </form>`;
+    const f = $("rq-code"), say = t => { $("rq-err").textContent = t; };
+    f.code.focus();
+    f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/\D/g, "").slice(0, 6); });
+    $("rq-back").onclick = () => form();
+    $("rq-resend").onclick = () => { const b = $("rq-resend"); b.disabled = true; api("POST", { ...keep, resend: true }).then(r => { confirm(r); say("A new code is on its way."); }, e => { b.disabled = false; say(e.message); }); };
+    f.onsubmit = e2 => {
+      e2.preventDefault();
+      const code = f.code.value.trim(); if (code.length !== 6) { say("Enter the 6-digit code from the email."); return f.code.focus(); }
+      const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
+      api("POST", { ...keep, code }).then(r => (r.confirm ? confirm(r) : done(r)), e => (e.code === "bad-code" || e.code === "rate" ? confirm(res, e.message) : form(e.message)));
+    };
+  }
+  function done(res) {
+    keep = {};
+    box().innerHTML = `<div class="hs-card rq-card rq-done"><span class="rq-tick" aria-hidden="true">${svg('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}</span>
+      <h2>Request Sent</h2>
+      <p>Your instructor will review it, and you'll get an email at <b>${esc(res.email)}</b> when it's decided.${res.emailed ? " We've emailed you a copy of your request." : ""}</p>
+      <p class="rq-ref">Reference ${esc(res.id)}</p>
+      <div class="rq-acts">${back()}<span class="sp"></span><a class="hb-btn" href="#accommodations">See My Requests</a></div></div>`;
+  }
+  return { start };
+})();
+
 // ── One evaluation, as one card (as the gradebook's editor and a student's page have it) ──
 // Its dates (a signed-in student's section's; everyone's otherwise), its grading (worth, and their mark),
 // what happens if it's missed (the gradebook's two choices, the chosen one marked, and where its weight goes),
@@ -362,12 +437,20 @@ function evalCard(u, group, E) {
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
   const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks)}</span>${by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
   const req = requestBtn(u);
+  // Remarks: once their mark is out, a student can ask for it to be looked at again (while requests are open).
+  const rk = u.remark, rkBy = rk && rk.by ? new Date(`${rk.by}T${rk.byTime || "23:59"}`) : null, rkFrom = rk && rk.from ? new Date(`${rk.from}T${rk.fromTime || "00:00"}`) : null;
+  const rkBtn = !rk ? "" : !D.viewer.signedIn ? `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request a Remark</a>`
+    : rkBy && !isNaN(rkBy) && rkBy < new Date() ? `<span class="ec-closed">Requests closed</span>`
+    : me && m && !(rkFrom && rkFrom > new Date()) ? `<a class="hb-btn" href="#remark/${encodeURIComponent(u.id)}">Request Remark</a>` : "";
+  const rkText = !rk ? "" : me && !m ? "Once your mark is out, you can ask for it to be looked at again." : rkFrom && rkFrom > new Date() ? `You can ask for your mark to be looked at again from ${rk.from ? `${day(rk.from, true)}${rk.fromTime ? `, ${rk.fromTime}` : ""}` : ""}.` : "You can ask for your mark to be looked at again.";
+  const rmk = rk ? `<div class="ec-accrow"><span class="hs-ic sm">${REDO}</span><div class="ec-acct"><b>Remarks</b><span>${esc(rkText)}</span>${rk.by ? `<small>Requests close ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}.</small>` : ""}</div>${rkBtn ? `<span class="ec-accbtn">${rkBtn}</span>` : ""}</div>` : "";
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
       <div class="ec-part">${dates}</div>
       ${policy ? `<div class="ec-part">${policy}</div>` : ""}
       ${acc ? `<div class="ec-part">${acc.replace("@@REQ@@", req ? `<span class="ec-accbtn">${req}</span>` : "")}</div>` : req ? `<div class="ec-part ec-req">${req}</div>` : ""}
+      ${rmk ? `<div class="ec-part">${rmk}</div>` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
       ${dcHere(`eval:${u.id}`)}
@@ -401,7 +484,7 @@ const PAGES = {
       ["activities", "Activities", "The term, week by week: lectures, tutorials and labs, with their files.", "lectures"],
       ["evaluations", "Evaluations", "Every evaluation, its weight and when it is."],
       ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
-      ["accommodations", "My Accommodations", "Your accommodation requests and what was decided."],
+      ["accommodations", "My Requests", "Your accommodation and remark requests, and what was decided."],
     ].filter(([id, , , t]) => tab(t || id) && !shown.has(id));
     if (more.length) out.push(`<section class="hs-sec"><div class="hs-list">${more.map(([id, t, s, tb]) => linkRow(id, t, s, tb)).join("")}</div></section>`);
     document.title = [c.code, c.title].filter(Boolean).join(": ") || "Course page";
@@ -557,12 +640,24 @@ const PAGES = {
         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
       </article>`;
   },
+  // Requesting a remark for one evaluation (#remark/<id>): what should be looked at again, and why.
+  remark(arg) {
+    if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
+    const f = unitOf(arg); if (!f || f.u.kind === "group") return PAGES.evaluations();
+    const { u, group } = f;
+    setTimeout(() => RemarkForm.start(u), 0);
+    return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name, `#evaluation/${encodeURIComponent(u.id)}`], ["Request a Remark"]])}
+      <article class="ec-card rq-page">
+        <header class="ec-head"><span class="hs-ic ec-ic">${REDO}</span><div class="ec-tt"><p class="hs-kick">Remark Request${u.title && u.title !== u.name ? ` / ${esc(u.name)}` : ""}</p><h1>${esc(u.title || u.name)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
+        <div id="rq-box"><p class="hs-empty">Loading…</p></div>
+      </article>`;
+  },
   // The student's requests (accommodations.py), a card each as the other lists are: its state's icon, the
   // evaluation, what was asked for, when, what was decided, and the note that came with it.
   accommodations() {
-    if (!open("accommodations")) return lockedPage("accommodations", "My Accommodations");
+    if (!open("accommodations")) return lockedPage("accommodations", "My Requests");
     setTimeout(myRequests, 0);
-    return `${path([["My Accommodations"]])}${head("My Accommodations", "Your accommodation requests and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
+    return `${path([["My Requests"]])}${head("My Requests", "Your accommodation and remark requests, and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
   },
 };
 
@@ -582,10 +677,10 @@ function myRequests() {
         const line = [`Requested ${when(r.submitted)}`, st === "pending" ? REQ_WORD.pending : `${REQ_WORD[st]} ${when(r.decided)}${r.decidedBy ? ` by ${r.decidedBy}` : ""}`].filter(Boolean).join(" · ");
         return `<div class="wk-item wk-go ma-req st-${st}" data-go="#evaluation/${encodeURIComponent(r.eval)}" role="link" tabindex="0" title="Open ${esc(r.evalName || "the evaluation")}">
           <span class="hs-ic ma-ic" title="${esc(REQ_WORD[st])}" aria-label="${esc(REQ_WORD[st])}">${REQ_IC[st]}</span>
-          <div class="wk-b"><p class="hs-kick">Accommodation Request / ${esc(r.evalName || "Evaluation")}</p><h3>${r.kind === "standard" ? "Standard Accommodation" : "Alternate Accommodation"}</h3><p class="wk-when">${esc(line)}</p>
-            ${r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
+          <div class="wk-b"><p class="hs-kick">${r.type === "remark" ? "Remark Request" : "Accommodation Request"} / ${esc(r.evalName || "Evaluation")}</p><h3>${r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard Accommodation" : "Alternate Accommodation"}</h3><p class="wk-when">${esc(line)}</p>
+            ${r.kind === "standard" && r.type !== "remark" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
             ${r.note ? `<div class="ma-note"><b>${esc(r.decidedBy || "Your instructor")}</b>${markdown(r.note)}</div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
-        : `<p class="hs-empty">No requests yet. Ask for one from an evaluation's page, with Request Accommodation.</p>`;
+        : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }
 

@@ -354,7 +354,7 @@ const DRAW = {
   },
 
   accommodations() {
-    return `<h2 class="hb-h2">My accommodations</h2><p class="hb-lede">Your accommodation requests and what was decided.</p><div class="hb-panel hb-soft"><p class="hb-empty">Requests you make will show here.</p></div>`;
+    return `<h2 class="hb-h2">My requests</h2><p class="hb-lede">Your accommodation and remark requests, and what was decided.</p><div class="hb-panel hb-soft"><p class="hb-empty">Requests you make will show here.</p></div>`;
   },
 };
 
@@ -441,7 +441,7 @@ function fromPage(page, year, lectures, extra) {
   };
 }
 
-const TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My accommodations"]];
+const TABS = [["week", "This week"], ["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About"], ["accommodations", "My requests"]];
 
 window.HubView = { draw, fromPage, currentWeek, today, esc, rich, markdown, meetingsTable, TABS, LOCK };
 })();

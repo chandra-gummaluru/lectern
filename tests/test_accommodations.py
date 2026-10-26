@@ -326,3 +326,39 @@ def test_a_request_needs_the_code_emailed_to_them(gh):
     code = code_for("maya.castillo@mail.utoronto.ca")
     assert st.post(f"{HUB}/accommodation", json={**d, "code": code}, headers=H).status_code == 201
     assert st.post(f"{HUB}/accommodation", json={**d, "code": code}, headers=H).status_code == 400
+
+
+def test_a_remark_request(gh, monkeypatch):
+    from test_students import code_for
+    b = json.loads(json.dumps(BOOK))
+    l1 = next(e for e in b["evals"] if e["id"] == "l1")
+    l1["remark"] = {"on": True, "from": "2026-10-01", "by": "2026-10-30"}
+    b["marks"] = {"1001": {"l1": {"pts": 7}}}
+    gh.put("csc258/f26/grades.json", json.dumps(b))
+    monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0)        # Oct 19, 2026
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    assert st.get(f"{HUB}/remark?e=mt").status_code == 404                   # not taking them
+    info = st.get(f"{HUB}/remark?e=l1").get_json()
+    assert info["marked"] and not info["released"] and info["deadline"]["date"] == "2026-10-30"
+    d = {"e": "l1", "details": "Question 2 was marked as wrong, but **it's right**."}
+    assert st.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "not-out"
+    l1["released"] = True
+    gh.put("csc258/f26/grades.json", json.dumps(b))
+    r = st.post(f"{HUB}/remark", json=d, headers=H)
+    assert r.status_code == 202 and r.get_json()["confirm"]
+    r = st.post(f"{HUB}/remark", json={**d, "code": code_for("maya.castillo@mail.utoronto.ca")}, headers=H)
+    assert r.status_code == 201, r.get_json()
+    got = requests_of(gh)[-1]
+    assert got["type"] == "remark" and got["student"] == "1001" and got["status"] == "pending"
+    assert st.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "duplicate"
+    # Zoë has no mark: no.
+    zoe = hub_student("zoe.ng@mail.utoronto.ca")
+    assert zoe.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "no-mark"
+    # Closed after its deadline.
+    monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0 + 30 * 86400)
+    assert zoe.post(f"{HUB}/remark", json=d, headers=H).get_json()["code"] == "closed"
+    # Decided as accommodations are; the student sees it among their requests.
+    r = gh.client.post("/api/accommodations/decide", headers=H, json={"offering": "csc258/f26", "id": got["id"], "decision": "approved", "note": "Fixed: 9/10."})
+    assert r.status_code == 200 and r.get_json()["request"]["status"] == "approved"
+    mine = st.get(f"{HUB}/accommodations").get_json()["requests"]
+    assert any(x["type"] == "remark" and x["status"] == "approved" for x in mine)

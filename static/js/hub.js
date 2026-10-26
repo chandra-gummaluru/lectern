@@ -140,7 +140,8 @@ const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (
 const dcHere = t => `<section class="dc" data-dc="${esc(t)}"></section>`;
 let DCN = null, DCN_AT = 0;
 function discussions(m) {
-  m.querySelectorAll("[data-dc]").forEach(el => import("/static/js/discuss.js").then(x => x.mount(el, { api: root.dataset.api, target: el.dataset.dc, signIn: D.signIn || D.lectern })).catch(e => console.error(e)));
+  m.querySelectorAll("[data-dc]").forEach(el => import("/static/js/discuss.js").then(x => x.mount(el, { api: root.dataset.api, target: el.dataset.dc, signIn: D.signIn || D.lectern,
+    ...(el.dataset.post ? { post: +el.dataset.post, onPost: p => { const b = m.querySelector(".hs-path b"); if (b) b.textContent = p ? p.title || "Post" : "Post"; if (p && p.title) document.title = p.title; } } : {}) })).catch(e => console.error(e)));
   const spans = m.querySelectorAll("[data-dcn]"); if (!spans.length || !D.viewer.signedIn) return;
   const fill = () => spans.forEach(sp => { const n = (DCN || {})[sp.dataset.dcn] || 0; sp.textContent = n ? ` · ${n}` : ""; });
   if (DCN && Date.now() - DCN_AT < 30000) return fill();
@@ -456,6 +457,17 @@ const PAGES = {
         ${anns.length ? `<div class="wk-group"><div class="wk-list">${anns.map(annItem).join("")}</div></div>` : ""}
         ${dcHere(`act:${c.id}`)}
       </article>`;
+  },
+  // One post of a discussion (#post/<target>/<id>), on its own page: the way to it is the item it's on.
+  post(arg) {
+    const t = String(arg || ""), id = decodeURIComponent(location.hash.slice(1)).split("/")[2], [k, x] = [t.slice(0, t.indexOf(":")), t.slice(t.indexOf(":") + 1)];
+    let way = null;
+    if (k === "eval" && open("evaluations")) { const f = unitOf(x); if (f) way = [["Evaluations", "#evaluations"], [f.u.title || f.u.name || "Evaluation", `#evaluation/${encodeURIComponent(f.u.id)}`]]; }
+    if (k === "act" && open("lectures")) { const f = findActivity(x); if (f) way = [["Activities", "#activities"], [f.w.label || "Week", `#week/${f.w.i}`], [f.c.title || f.c.label || "Activity", `#activity/${encodeURIComponent(f.c.id)}`]]; }
+    if (k === "ann" && open("announcements")) { const a = ((data("announcements") || {}).items || []).find(y => String(y.id) === x); if (a) way = [["Announcements", "#announcements"], [a.title || "Announcement", `#announcement/${encodeURIComponent(a.id)}`]]; }
+    if (!way || !/^\d+$/.test(id || "")) return PAGES.home();
+    return `${path([...way, ["Post"]])}
+      <article class="ec-card dc-page"><section class="dc" data-dc="${esc(t)}" data-post="${esc(id)}"></section></article>`;
   },
   // One announcement (#announcement/<id>): it, and its discussion.
   announcement(arg) {

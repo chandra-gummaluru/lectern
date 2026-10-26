@@ -4,7 +4,8 @@
    posts are marked with their role, and they can pin, endorse and remove. @ mentions anyone in the course: the
    teaching team by name, students as each viewer sees them.
 
-     mount(host, { api, target, signIn })      api: the hub's /api/hub/<handle>/<course>/<term>
+     mount(host, { api, target, signIn })              api: the hub's /api/hub/<handle>/<course>/<term>
+     mount(host, { api, target, signIn, post, onPost })  one post, on its own page (#post/<target>/<id>)
 */
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -25,8 +26,10 @@ const ini = n => String(n || "?").split(/\s+/).filter(Boolean).map(w => w[0]).sl
 const ago = t => { const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 10080 ? `${Math.round(m / 1440)} d ago` : new Date(t * 1000).toLocaleDateString("en-CA", { month: "short", day: "numeric" }); };
 const TOKEN = /@\{([pus]):([\w.@+-]{1,120})\}/g;
 
-export function mount(host, { api, target, signIn }) {
-  const S = { data: null, open: null, writing: false, replyTo: null, sort: "top", anon: false, folded: new Set(), err: "", q: "" };
+export function mount(host, { api, target, signIn, post = null, onPost = null }) {
+  // A post opens on its own page; on it, it's the only one shown.
+  const page = id => `#post/${encodeURIComponent(target)}/${id}`;
+  const S = { data: null, open: post, writing: false, replyTo: null, sort: "top", anon: false, folded: new Set(), err: "", q: "" };
   const call = (path, body) => fetch(`${api}/discussion${path}`, body ? { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) } : { credentials: "same-origin" })
     .then(r => r.json().catch(() => ({})).then(d => { if (!r.ok) { const e = new Error(d.error || "Something went wrong. Try again in a moment."); e.status = r.status; throw e; } return d; }));
   const load = () => call(`?t=${encodeURIComponent(target)}`).then(d => { S.data = d; draw(); }, e => {
@@ -48,6 +51,7 @@ export function mount(host, { api, target, signIn }) {
   const flags = (p, long) => `${p.pinned ? `<span class="dc-flag pin">${I.pin}Pinned</span>` : ""}${p.endorsed ? `<span class="dc-flag ok">${I.ok}${long ? `Endorsed by ${esc(p.endorsed.split(" ")[0])}` : "Endorsed"}</span>` : ""}${p.removed ? `<span class="dc-flag">${I.hide}${long && staff() ? "Removed: only the teaching team sees it" : "Removed"}</span>` : ""}${p.deleted ? `<span class="dc-flag">${I.trash}Deleted by its author</span>` : ""}`;
 
   function head(n) {
+    if (post) return "";
     const tools = S.data && !S.open ? `<div class="dc-tools"><label class="dc-search">${I.search}<input type="search" placeholder="Search posts" aria-label="Search posts" value="${esc(S.q)}"></label><div class="dc-sort" role="tablist"><button data-sort="top" aria-pressed="${S.sort === "top"}">Top</button><button data-sort="new" aria-pressed="${S.sort === "new"}">New</button></div>${S.writing ? "" : `<button class="hb-btn primary dc-new" data-new>${I.plus}New Post</button>`}</div>` : "";
     return `<div class="dc-head"><h2 class="ec-sec dc-title">Discussion${S.data ? ` <span>· ${n} post${n === 1 ? "" : "s"}</span>` : ""}</h2>${tools}</div>`;
   }
@@ -90,8 +94,7 @@ export function mount(host, { api, target, signIn }) {
   }
   function threadHTML(p) {
     const w = p.who;
-    return `<div class="dc-backrow"><button class="hb-btn dc-back" data-back>${I.back}All posts</button></div>
-      <div class="dc-op${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
+    return `<div class="dc-op${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
         ${w ? `<div class="dc-who">${av(w)}${whoHTML(w)}<span>${ago(p.at)}</span>${flags(p, true)}</div>
         <h3 class="dc-op-title">${esc(p.title)}</h3><p class="dc-text">${body(p.body)}</p>${acts(p, true)}` : `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>`}
       </div>
@@ -100,7 +103,10 @@ export function mount(host, { api, target, signIn }) {
   }
   function draw() {
     const L = tops(), p = S.open && posts().find(x => x.id === S.open);
-    if (S.open && !p) S.open = null;
+    if (post) {
+      if (onPost) onPost(p || null);
+      if (!p) { host.innerHTML = `<p class="dc-none">This post isn't here any more.</p>`; return; }
+    } else if (S.open && !p) S.open = null;
     const F = found(L);
     host.innerHTML = `${head(L.length)}${!p && S.writing ? composer("post") : ""}${p ? threadHTML(p) : `<div class="dc-threads">${sorted(F).map(rowHTML).join("") || `<p class="dc-none">${L.length ? "No posts match your search." : "No posts yet. Ask the first question."}</p>`}</div>`}`;
     const f = host.querySelector(".dc-box.sm textarea") || (S.writing && !p && host.querySelector(".dc-title-in")); if (f) f.focus();
@@ -150,8 +156,7 @@ export function mount(host, { api, target, signIn }) {
     if (b.dataset.sort) { S.sort = b.dataset.sort; return draw(); }
     if (b.hasAttribute("data-new")) { S.writing = true; S.err = ""; return draw(); }
     if (b.hasAttribute("data-cancel")) { S.writing = false; S.replyTo = null; S.err = ""; return draw(); }
-    if (b.dataset.open) { S.open = +b.dataset.open; S.replyTo = null; S.err = ""; draw(); return host.scrollIntoView({ block: "start", behavior: "smooth" }); }
-    if (b.hasAttribute("data-back")) { S.open = null; S.replyTo = null; S.err = ""; return draw(); }
+    if (b.dataset.open) { location.hash = page(b.dataset.open); return; }
     if (b.dataset.reply) { S.replyTo = +b.dataset.reply; S.err = ""; return draw(); }
     if (b.dataset.fold) { const id = +b.dataset.fold; S.folded.has(id) ? S.folded.delete(id) : S.folded.add(id); return draw(); }
     if (b.dataset.asAnon != null) {   // keep what's written
@@ -169,10 +174,10 @@ export function mount(host, { api, target, signIn }) {
       if (!text) return ta.focus();
       b.disabled = true;
       call("", { t: target, ...(b.dataset.send ? { parent: +b.dataset.send } : { title: ti.value.trim() }), body: text, anon: S.anon })
-        .then(d => { if (!b.dataset.send) { S.open = d.id; S.writing = false; } S.replyTo = null; update(d); }, err => {   // keep what's written
+        .then(d => { if (!b.dataset.send) { S.writing = false; location.hash = page(d.id); return; } S.replyTo = null; update(d); }, err => {   // keep what's written
           b.disabled = false; let el = box.querySelector(".dc-err"); if (!el) { el = document.createElement("p"); el.className = "dc-err"; el.setAttribute("role", "alert"); box.append(el); } el.textContent = err.message; });
     }
   });
-  host.innerHTML = head(0) + `<p class="dc-none">Loading the discussion…</p>`;
+  host.innerHTML = head(0) + `<p class="dc-none">Loading ${post ? "the post" : "the discussion"}…</p>`;
   load();
 }

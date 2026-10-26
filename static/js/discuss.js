@@ -17,6 +17,7 @@ const I = {
   mask: svg('<path d="M3 9c3-2 15-2 18 0 0 5-3 8-6 8-1.6 0-2.2-1.5-3-1.5S10.6 17 9 17c-3 0-6-3-6-8z"/><circle cx="8.5" cy="11" r="1.2"/><circle cx="15.5" cy="11" r="1.2"/>'),
   user: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>'),
   back: svg('<path d="m15 6-6 6 6 6"/>'),
+  search: svg('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'),
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
   trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
 };
@@ -25,7 +26,7 @@ const ago = t => { const m = Math.round((Date.now() / 1000 - t) / 60); return m 
 const TOKEN = /@\{([pus]):([\w.@+-]{1,120})\}/g;
 
 export function mount(host, { api, target, signIn }) {
-  const S = { data: null, open: null, writing: false, replyTo: null, sort: "top", anon: false, folded: new Set(), err: "" };
+  const S = { data: null, open: null, writing: false, replyTo: null, sort: "top", anon: false, folded: new Set(), err: "", q: "" };
   const call = (path, body) => fetch(`${api}/discussion${path}`, body ? { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) } : { credentials: "same-origin" })
     .then(r => r.json().catch(() => ({})).then(d => { if (!r.ok) { const e = new Error(d.error || "Something went wrong. Try again in a moment."); e.status = r.status; throw e; } return d; }));
   const load = () => call(`?t=${encodeURIComponent(target)}`).then(d => { S.data = d; draw(); }, e => {
@@ -35,6 +36,8 @@ export function mount(host, { api, target, signIn }) {
   const posts = () => S.data.posts;
   const kids = id => posts().filter(p => p.parent === id);
   const tops = () => posts().filter(p => p.parent == null && (staff() || !(p.removed || p.deleted)));
+  const words = p => [p.title, plain(p.body), p.who && p.who.name, ...kids(p.id).map(words)].join(" ").toLowerCase();
+  const found = L => { const q = S.q.trim().toLowerCase().split(/\s+/).filter(Boolean); return q.length ? L.filter(p => { const w = words(p); return q.every(x => w.includes(x)); }) : L; };
   const count = id => kids(id).reduce((n, k) => n + 1 + count(k.id), 0);
   const sorted = L => L.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (S.sort === "top" ? (b.votes + (b.endorsed ? 3 : 0)) - (a.votes + (a.endorsed ? 3 : 0)) || a.at - b.at : b.at - a.at));
   const nameOf = tok => (S.data.names || {})[tok];
@@ -45,13 +48,12 @@ export function mount(host, { api, target, signIn }) {
   const flags = (p, long) => `${p.pinned ? `<span class="dc-flag pin">${I.pin}Pinned</span>` : ""}${p.endorsed ? `<span class="dc-flag ok">${I.ok}${long ? `Endorsed by ${esc(p.endorsed.split(" ")[0])}` : "Endorsed"}</span>` : ""}${p.removed ? `<span class="dc-flag">${I.hide}${long && staff() ? "Removed: only the teaching team sees it" : "Removed"}</span>` : ""}${p.deleted ? `<span class="dc-flag">${I.trash}Deleted by its author</span>` : ""}`;
 
   function head(n) {
-    const tools = S.data && !S.open ? `<div class="dc-tools"><div class="dc-sort" role="tablist"><button data-sort="top" aria-pressed="${S.sort === "top"}">Top</button><button data-sort="new" aria-pressed="${S.sort === "new"}">New</button></div>${S.writing ? "" : `<button class="hb-btn primary dc-new" data-new>${I.plus}New Post</button>`}</div>` : "";
+    const tools = S.data && !S.open ? `<div class="dc-tools"><label class="dc-search">${I.search}<input type="search" placeholder="Search posts" aria-label="Search posts" value="${esc(S.q)}"></label><div class="dc-sort" role="tablist"><button data-sort="top" aria-pressed="${S.sort === "top"}">Top</button><button data-sort="new" aria-pressed="${S.sort === "new"}">New</button></div>${S.writing ? "" : `<button class="hb-btn primary dc-new" data-new>${I.plus}New Post</button>`}</div>` : "";
     return `<div class="dc-head"><h2 class="ec-sec dc-title">Discussion${S.data ? ` <span>· ${n} post${n === 1 ? "" : "s"}</span>` : ""}</h2>${tools}</div>`;
   }
   function composer(kind) {   // "post" (a title and a body), "comment" (on the opened post), "reply" (to a comment)
     const me = S.data.me;
-    const as = me.kind === "student" ? `<div class="dc-as" role="group" aria-label="Post as"><button data-as-anon="0" aria-pressed="${!S.anon}">${I.user}${esc(me.name)}</button><button data-as-anon="1" aria-pressed="${S.anon}">${I.mask}${esc(me.alias)}</button></div>
-        <span class="dc-hint">${S.anon ? "Anonymous to classmates. The teaching team sees your name." : "Classmates see your name."}</span>` : `<span class="dc-hint">You post as ${esc(me.name)}: the teaching team's posts are highlighted. Type @ to mention someone.</span>`;
+    const as = me.kind === "student" ? `<div class="dc-as" role="group" aria-label="Post as"><button data-as-anon="0" aria-pressed="${!S.anon}">${I.user}${esc(me.name)}</button><button data-as-anon="1" aria-pressed="${S.anon}" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name">${I.mask}Anonymous to Classmates</button></div><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}: the teaching team's posts are highlighted. Type @ to mention someone.</span>`;
     const ph = { post: "Say more: what you've tried, where you're stuck… (@ to mention)", comment: "Add a comment… (@ to mention)", reply: "Write a reply… (@ to mention)" }[kind];
     return `<div class="dc-box${kind === "reply" ? " sm" : ""}" data-kind="${kind}">${kind === "post" ? `<input type="text" class="dc-title-in" placeholder="Title, e.g. Question 3: a truth table, or just the expression?" maxlength="200" aria-label="Title">` : ""}<textarea placeholder="${ph}" aria-label="${kind === "post" ? "Your post" : "Your comment"}"></textarea>
       <div class="dc-box-foot">${as}${kind !== "comment" ? `<button class="hb-btn dc-post-btn" data-cancel>Cancel</button>` : ""}<button class="hb-btn primary dc-post-btn" data-send="${kind === "reply" ? S.replyTo : kind === "comment" ? S.open : ""}">${{ post: "Post", comment: "Comment", reply: "Reply" }[kind]}</button></div>
@@ -99,7 +101,8 @@ export function mount(host, { api, target, signIn }) {
   function draw() {
     const L = tops(), p = S.open && posts().find(x => x.id === S.open);
     if (S.open && !p) S.open = null;
-    host.innerHTML = `${head(L.length)}${!p && S.writing ? composer("post") : ""}${p ? threadHTML(p) : `<div class="dc-threads">${sorted(L).map(rowHTML).join("") || `<p class="dc-none">No posts yet. Ask the first question.</p>`}</div>`}`;
+    const F = found(L);
+    host.innerHTML = `${head(L.length)}${!p && S.writing ? composer("post") : ""}${p ? threadHTML(p) : `<div class="dc-threads">${sorted(F).map(rowHTML).join("") || `<p class="dc-none">${L.length ? "No posts match your search." : "No posts yet. Ask the first question."}</p>`}</div>`}`;
     const f = host.querySelector(".dc-box.sm textarea") || (S.writing && !p && host.querySelector(".dc-title-in")); if (f) f.focus();
   }
   const update = d => { S.data = d; S.err = ""; draw(); };
@@ -133,7 +136,8 @@ export function mount(host, { api, target, signIn }) {
   // What's written → what's sent: each @name picked becomes its mention token.
   const tokens = ta => (ta._m || []).reduce((t, x) => t.split(`@${x.label}`).join(`@{${x.tok}}`), ta.value.trim());
 
-  host.addEventListener("input", e => { if (e.target.matches(".dc-box textarea")) { atPopup(e.target); e.target.style.height = "auto"; e.target.style.height = `${e.target.scrollHeight}px`; } });
+  host.addEventListener("input", e => {
+    if (e.target.matches(".dc-search input")) { S.q = e.target.value; const at = e.target.selectionStart; draw(); const i = host.querySelector(".dc-search input"); if (i) { i.focus(); i.setSelectionRange(at, at); } return; } if (e.target.matches(".dc-box textarea")) { atPopup(e.target); e.target.style.height = "auto"; e.target.style.height = `${e.target.scrollHeight}px`; } });
   host.addEventListener("keydown", e => {
     if (pop && e.target._pick && (e.key === "Enter" || e.key === "Tab")) { e.preventDefault(); e.target._pick(); }
     else if (pop && e.key === "Escape") closePop();

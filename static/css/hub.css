@@ -945,3 +945,11 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .wk-go > svg:last-child { flex: none; align-self: center; width: 18px; height: 18px; color: var(--ink-3); }
 .wk-go:hover h3 { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .hs-card.wk-go:hover { border-color: var(--ink-3); }
+
+.dc-search { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--card); color: var(--ink-3); }
+.dc-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
+.dc-search svg { width: 15px; height: 15px; flex: none; }
+.dc-search input { width: 150px; border: 0; background: transparent; font: 14px var(--font-ui); color: var(--ink); outline: none; }
+.hb .dc-search input:focus-visible { outline: none; }
+.dc-sp { flex: 1; }
+@media (max-width: 640px) { .dc-head { flex-wrap: wrap; } .dc-tools { flex-wrap: wrap; } .dc-search input { width: 110px; } }

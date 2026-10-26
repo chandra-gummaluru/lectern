@@ -730,7 +730,7 @@ function header() {
         : x.kind === "reply" ? `<a role="menuitem" class="hb-upd" href="#post/${encodeURIComponent(x.target)}/${x.post}"><b>${x.n} new repl${x.n === 1 ? "y" : "ies"}</b><span>${esc(x.title || "Your post")}</span></a>`
         : x.kind === "mark" ? `<a role="menuitem" class="hb-upd" href="#evaluation/${encodeURIComponent(x.eval)}"><b>Your mark is out</b><span>${esc(x.name)}</span></a>`
         : `<a role="menuitem" class="hb-upd" href="#accommodations"><b>${x.type === "remark" ? "Remark" : "Accommodation"} request ${esc(x.status)}</b><span>${esc(x.evalName)}</span></a>`;
-      menu.innerHTML = `${U.length ? `<p class="hb-menu-h">What's New</p>${U.map(item).join("")}<hr>` : ""}
+      menu.innerHTML = `${U.length ? `${U.map(item).join("")}<hr>` : ""}
         <p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
         ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
         ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;

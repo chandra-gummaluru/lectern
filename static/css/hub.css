@@ -1014,3 +1014,10 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ma-note { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: var(--strip); font-size: 14.5px; }
 .ma-note b { display: block; margin-bottom: 2px; font-size: 13px; color: var(--ink-2); }
 .ma-note .hb-md > :last-child { margin-bottom: 0; }
+
+/* The choice of what's asked for: radios as Lectern's ticks (the radio, its name in bold, a gray line under). */
+.rq-opts { display: grid; gap: 10px; margin-top: 2px; }
+.rq-choice { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; cursor: pointer; font: 14.5px var(--font-ui); color: var(--ink); }
+.rq-choice input { grid-row: span 2; align-self: start; width: 16px; height: 16px; margin: 2px 0 0; accent-color: var(--ink); cursor: pointer; }
+.rq-choice b { font-weight: 600; }
+.rq-choice span { grid-column: 2; font-size: 13.5px; color: var(--ink-3); }

@@ -214,7 +214,6 @@ const ReqForm = (() => {
   const box = () => $("rq-box");
   // Names as they're written: a capital at the start of each part ("jeremy o'neil-smith" → "Jeremy O'Neil-Smith").
   const capital = v => v.replace(/(^|[\s\-'’])(\p{Ll})/gu, (m, a, b) => a + b.toUpperCase());
-  const RADIO = '<span class="rq-dot" aria-hidden="true"></span>';
   function start(u) {
     ev = u; info = null; rt = null; keep = {};
     if (!D.viewer.signedIn) { box().innerHTML = `<div class="hs-card"><p>Sign in to request an accommodation.</p><a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`; return; }
@@ -226,7 +225,8 @@ const ReqForm = (() => {
     if (byEl) { byEl.hidden = !dl; byEl.innerHTML = dl ? `Requests close ${esc(dl.text)}` : ""; }
     if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}). If you still need one, contact your instructor.</p></div>`; return; }
     const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
-    const opt = (v, t, sub, on) => `<button type="button" class="hs-row rq-opt" data-kind="${v}" role="radio" aria-checked="${on}">${RADIO}<span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span></button>`;
+    // Each choice as Lectern's ticks are: the radio, its name, and a line under it.
+    const opt = (v, t, sub, on) => `<label class="rq-choice"><input type="radio" name="kind" class="rq-opt" data-kind="${v}" value="${v}"${on ? " checked" : ""}><b>${esc(t)}</b><span>${esc(sub)}</span></label>`;
     const staff = D.viewer.role !== "student";
     box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
       ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
@@ -239,7 +239,7 @@ const ReqForm = (() => {
       </div>
       <h2 class="hs-h2 rq-h2">What You Need</h2>
       ${canStd && alt ? `<p class="rq-help">Choose one.</p>
-      <div class="hs-list rq-opts" role="radiogroup" aria-label="What you need">
+      <div class="rq-opts" role="radiogroup" aria-label="What you need">
         ${opt("standard", "The Standard Accommodation", s.text, kind === "standard")}
         ${opt("alternate", "An Alternate Accommodation", "Something other than the standard accommodation: say what you need.", kind === "alternate")}
       </div>` : canStd ? `<p class="rq-help">You're asking for the standard accommodation: <b>${esc(s.text)}</b>.</p>`
@@ -252,9 +252,8 @@ const ReqForm = (() => {
     const f = $("rq-form");
     ["first", "last"].forEach(n => { const el = f[n]; el.addEventListener("input", () => { const p = el.selectionStart, v = capital(el.value); if (v !== el.value) { el.value = v; el.setSelectionRange(p, p); } }); });
     let chosen = kind;
-    f.querySelectorAll(".rq-opt").forEach(b => { b.onclick = () => {
+    f.querySelectorAll(".rq-opt").forEach(b => { b.onchange = () => {
       chosen = b.dataset.kind;
-      f.querySelectorAll(".rq-opt").forEach(x => x.setAttribute("aria-checked", String(x === b)));
       $("rq-more").hidden = chosen !== "alternate";
       if (chosen === "alternate" && rt) rt.el.focus();
     }; });

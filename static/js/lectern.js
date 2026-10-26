@@ -793,10 +793,10 @@ function offeringPage(c, t) {
   if (acc && o.grades) readAccom(c, t).then(d => {
     if (S.route.page !== "offering" || S.route.c !== c || S.route.t !== t || !d) return;
     [["#lt-accom-sum", "#lt-accom", false], ["#lt-rmk-sum", "#lt-rmk", true]].forEach(([sum, btn, rm]) => {
-      const el = $(sum), n = d.requests.filter(x => x.status === "pending" && (x.type === "remark") === rm).length;
-      if (!el || !n) return;
-      el.innerHTML = `<b>${n} request${n === 1 ? "" : "s"} waiting</b> for a decision. Approve or reject each one; the student gets an email.`;
-      $(btn).classList.add("primary");
+      const b = $(btn), n = d.requests.filter(x => x.status === "pending" && (x.type === "remark") === rm).length;
+      if (!b || !n) return;   // how many are waiting for a decision: a count on the button's corner
+      b.classList.add("primary", "lt-has-badge");
+      b.insertAdjacentHTML("beforeend", `<span class="lt-badge" title="${n} waiting for a decision" aria-label="${n} waiting for a decision">${n > 99 ? "99+" : n}</span>`);
     });
   }).catch(() => {});
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });

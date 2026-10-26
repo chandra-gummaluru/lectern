@@ -1073,3 +1073,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-req-ed .lt-cmt-h b, .lt-req .lt-cmt-h b { font-size: 14px; }
 .lt-req-ed .lt-cmt-v, .lt-req .lt-cmt-v { font: 600 12.5px var(--font-ui); }
 .lt-req-ed .lt-cmt-n, .lt-req .lt-cmt-n { display: block !important; margin: 3px 0 0 !important; padding: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; font-size: 15px !important; line-height: 1.55; color: var(--home-ink) !important; }
+
+/* A count on a button's corner (requests waiting for a decision). */
+.lt-btn.lt-has-badge { position: relative; overflow: visible; }
+.lt-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: grid; place-items: center; border-radius: 10px; background: #c0392b; color: #fff; font: 700 11.5px/1 var(--font-ui); box-shadow: 0 0 0 2px var(--home-card); }

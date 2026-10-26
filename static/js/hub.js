@@ -222,13 +222,14 @@ const ReqForm = (() => {
   }
   function form(err) {
     const s = info.standard, canStd = !!(s && s.approval), alt = !!info.alternate, k = keep, dl = info.deadline;
+    const byEl = document.getElementById("rq-by");   // the deadline, under the title
+    if (byEl) { byEl.hidden = !dl; byEl.innerHTML = dl ? `Requests close ${esc(dl.text)}` : ""; }
     if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}). If you still need one, contact your instructor.</p></div>`; return; }
     const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
     const opt = (v, t, sub, on) => `<button type="button" class="hs-row rq-opt" data-kind="${v}" role="radio" aria-checked="${on}">${RADIO}<span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span></button>`;
     const staff = D.viewer.role !== "student";
     box().innerHTML = `<form class="hs-card rq-card" id="rq-form" novalidate>
       ${staff ? `<p class="rq-note">This is what a student sees. Only students signed in to the course page can send one.</p>` : ""}
-      ${dl ? `<p class="rq-lede">Requests close <b>${esc(dl.text)}</b>.</p>` : ""}
       <h2 class="hs-h2">Confirm It's You</h2>
       <p class="rq-help">Give these exactly as your instructor has them on record.</p>
       <div class="rq-grid">
@@ -531,7 +532,7 @@ const PAGES = {
     setTimeout(() => ReqForm.start(u), 0);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name, `#evaluation/${encodeURIComponent(u.id)}`], ["Request an Accommodation"]])}
       <article class="ec-card rq-page">
-        <header class="ec-head"><span class="hs-ic ec-ic">${HEART}</span><div class="ec-tt"><p class="hs-kick">Accommodation Request</p><h1>${esc(u.title || u.name)}</h1>${u.title && u.title !== u.name ? `<p class="ec-subline">${esc(u.name)}</p>` : ""}</div></header>
+        <header class="ec-head"><span class="hs-ic ec-ic">${HEART}</span><div class="ec-tt"><p class="hs-kick">Accommodation Request${u.title && u.title !== u.name ? ` / ${esc(u.name)}` : ""}</p><h1>${esc(u.title || u.name)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
       </article>`;
   },

@@ -918,7 +918,9 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 /* A post on its own page: the post is the card's head, then the comments. */
 .dc-page .dc { margin: 0; padding: 0; border: 0; }
 .dc-page .dc-op { margin: 0; padding: 0 0 14px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
-.dc-page .dc-op-title { margin: 12px 0 4px; font: 500 32px/1.2 var(--font-serif); letter-spacing: -.01em; }
+.dc-by { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.dc-by b { font-weight: 600; color: var(--ink); }
+.dc-page .dc-op .ec-body { margin: 14px 0 6px; color: var(--ink); }
 .dc-page .dc-op .dc-text { font-size: 15.5px; }
 .dc-page .dc-box { margin-top: 18px; }
 .dc-op { margin-top: 8px; padding: 14px 16px 8px; border: 1px solid var(--line-2); border-radius: 10px; }

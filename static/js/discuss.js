@@ -20,6 +20,7 @@ const I = {
   back: svg('<path d="m15 6-6 6 6 6"/>'),
   search: svg('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'),
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  chat: svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>'),
   trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
 };
 const ini = n => String(n || "?").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
@@ -94,6 +95,14 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   }
   function threadHTML(p) {
     const w = p.who;
+    // On its own page: headed as an announcement's page is: DISCUSSION POST, its title, then who and when.
+    if (post) return `<div class="dc-op${p.removed || p.deleted ? " gone" : ""}">
+        <header class="ec-head"><span class="hs-ic ec-ic">${I.chat}</span><div class="ec-tt"><p class="hs-kick">Discussion Post</p><h1>${esc(w ? p.title : p.title || "Post")}</h1>
+          <p class="ec-subline dc-by">${w ? `${av(w, " xs")}${whoHTML(w)}<span>· ${ago(p.at)}</span>${flags(p, true)}` : `<span>${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</span>`}</p></div></header>
+        ${w ? `<p class="dc-text ec-body">${body(p.body)}</p>${acts(p, true)}` : ""}
+      </div>
+      ${composer("comment")}
+      <div class="dc-comments">${sorted(kids(p.id)).map(commentHTML).join("") || `<p class="dc-none">No comments yet.</p>`}</div>`;
     return `<div class="dc-op${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
         ${w ? `<div class="dc-who">${av(w)}${whoHTML(w)}<span>${ago(p.at)}</span>${flags(p, true)}</div>
         <h3 class="dc-op-title">${esc(p.title)}</h3><p class="dc-text">${body(p.body)}</p>${acts(p, true)}` : `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>`}

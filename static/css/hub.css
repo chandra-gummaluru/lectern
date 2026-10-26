@@ -974,3 +974,14 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 /* Requesting an accommodation: one card, as an evaluation's page; the form is the rest of it. */
 .rq-page #rq-box { margin-top: 18px; }
 .rq-page #rq-box > .hs-card { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+
+/* Endorsed (green) and pinned (yellow): a mark in a circle, as a request's state in Lectern. */
+.dc-st { display: inline-grid; place-items: center; }
+.dc-st svg { width: 18px; height: 18px; }
+.dc-st.ok { color: #2f8f5b; }
+.dc-st.pin { color: #b58a00; }
+.dc-t-st { flex: none; display: flex; align-items: center; gap: 6px; padding: 0 16px 0 4px; }
+.dc-t-st .dc-st svg, .dc-head-st .dc-st svg { width: 24px; height: 24px; }
+.dc-head-st { flex: none; display: flex; gap: 8px; align-self: center; }
+.dc-anon { display: inline-flex; align-items: center; gap: 8px; font: 500 13.5px var(--font-ui); color: var(--ink-2); cursor: pointer; }
+.dc-anon input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }

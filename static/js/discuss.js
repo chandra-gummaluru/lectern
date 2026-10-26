@@ -21,6 +21,9 @@ const I = {
   search: svg('<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>'),
   plus: svg('<path d="M12 5v14M5 12h14"/>'),
   chat: svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>'),
+  // Endorsed and pinned, as a request's state is in Lectern: a mark in a circle.
+  okc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m7.8 12.3 2.8 2.8 5.6-6"/></svg>',
+  pinc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M10.6 7.6h2.8l-.4 2.6 1.5 1.5v1H9.5v-1l1.5-1.5z"/><path d="M12 12.7v3.6"/></svg>',
   trash: svg('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
 };
 const ini = n => String(n || "?").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
@@ -49,7 +52,8 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   const plain = t => String(t || "").replace(TOKEN, (m, k, v) => { const n = nameOf(`${k}:${v}`); return n ? `@${n.name}` : "@someone"; });
   const av = (w, cls = "") => `<span class="dc-av${cls}${w && w.anon ? " anon" : ""}${w && w.team ? " staff" : ""}">${!w ? "–" : w.anon ? I.mask : esc(ini(w.name))}</span>`;
   const whoHTML = w => `<b${w.team ? ` class="dc-staffname" title="${esc(w.role || "Teaching team")}"` : ""}>${esc(w.name)}</b>${w.real ? `<span class="dc-real">${esc(w.real)}</span>` : ""}`;
-  const flags = (p, long) => `${p.pinned ? `<span class="dc-flag pin">${I.pin}Pinned</span>` : ""}${p.endorsed ? `<span class="dc-flag ok">${I.ok}${long ? `Endorsed by ${esc(p.endorsed.split(" ")[0])}` : "Endorsed"}</span>` : ""}${p.removed ? `<span class="dc-flag">${I.hide}${long && staff() ? "Removed: only the teaching team sees it" : "Removed"}</span>` : ""}${p.deleted ? `<span class="dc-flag">${I.trash}Deleted by its author</span>` : ""}`;
+  const marks = p => `${p.endorsed ? `<span class="dc-st ok" title="Endorsed by ${esc(p.endorsed)}" aria-label="Endorsed by ${esc(p.endorsed)}">${I.okc}</span>` : ""}${p.pinned ? `<span class="dc-st pin" title="Pinned" aria-label="Pinned">${I.pinc}</span>` : ""}`;
+  const flags = (p, long) => `${p.removed ? `<span class="dc-flag">${I.hide}${long && staff() ? "Removed: only the teaching team sees it" : "Removed"}</span>` : ""}${p.deleted ? `<span class="dc-flag">${I.trash}Deleted by its author</span>` : ""}`;
 
   function head(n) {
     if (post) return "";
@@ -58,7 +62,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   }
   function composer(kind) {   // "post" (a title and a body), "comment" (on the opened post), "reply" (to a comment)
     const me = S.data.me;
-    const as = me.kind === "student" ? `<div class="dc-as" role="group" aria-label="Post as"><button data-as-anon="0" aria-pressed="${!S.anon}">${I.user}${esc(me.name)}</button><button data-as-anon="1" aria-pressed="${S.anon}" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name">${I.mask}Anonymous to Classmates</button></div><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}: marked with your role. Type @ to mention someone.</span>`;
+    const as = me.kind === "student" ? `<label class="dc-anon" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name"><input type="checkbox" data-anon${S.anon ? " checked" : ""}>Anonymous to Classmates</label><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}: marked with your role. Type @ to mention someone.</span>`;
     const ph = { post: "Say more: what you've tried, where you're stuck… (@ to mention)", comment: "Add a comment… (@ to mention)", reply: "Write a reply… (@ to mention)" }[kind];
     return `<div class="dc-box${kind === "reply" ? " sm" : ""}" data-kind="${kind}">${kind === "post" ? `<input type="text" class="dc-title-in" placeholder="Title, e.g. Question 3: a truth table, or just the expression?" maxlength="200" aria-label="Title">` : ""}<textarea placeholder="${ph}" aria-label="${kind === "post" ? "Your post" : "Your comment"}"></textarea>
       <div class="dc-box-foot">${as}${kind !== "comment" ? `<button class="hb-btn dc-post-btn" data-cancel>Cancel</button>` : ""}<button class="hb-btn primary dc-post-btn" data-send="${kind === "reply" ? S.replyTo : kind === "comment" ? S.open : ""}">${{ post: "Post", comment: "Comment", reply: "Reply" }[kind]}</button></div>
@@ -73,7 +77,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
         <b class="dc-t-title">${esc(p.title || "(removed)")}</b>
         <span class="dc-t-meta">${w ? `${av(w, " xs")}${w.team ? `<span class="dc-staffname" title="${esc(w.role || "Teaching team")}">${esc(w.name)}</span>` : esc(w.name)}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${n} comment${n === 1 ? "" : "s"}</span>
         ${p.body ? `<span class="dc-t-clip">${esc(plain(p.body))}</span>` : ""}
-      </button></div>`;
+      </button>${p.pinned || p.endorsed ? `<span class="dc-t-st">${marks(p)}</span>` : ""}</div>`;
   }
   function acts(p, top) {
     const mine = p.who && p.who.you && !p.deleted;
@@ -87,7 +91,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     return `<div class="dc-p${p.removed || p.deleted ? " gone" : ""}">
       <div class="dc-row${w && w.team ? " dc-team" : ""}"${w && w.team ? ` title="${esc(w.role || "")}"` : ""}>${av(w)}
         <div class="dc-b">${gone ? `<p class="dc-removed">${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</p>` : `
-          <div class="dc-who">${whoHTML(w)}<span>${ago(p.at)}</span>${flags(p, true)}</div>
+          <div class="dc-who">${whoHTML(w)}<span>${ago(p.at)}</span>${marks(p)}${flags(p, true)}</div>
           <p class="dc-text">${body(p.body)}</p>${acts(p, false)}`}
           ${S.replyTo === p.id ? composer("reply") : ""}</div></div>
       ${K.length ? (open ? `<div class="dc-kids"><button class="dc-line" data-fold="${p.id}" title="Hide the replies" aria-label="Hide the replies"></button>${K.map(commentHTML).join("")}</div>` : `<button class="dc-more" data-fold="${p.id}">Show ${n} repl${n === 1 ? "y" : "ies"}</button>`) : ""}
@@ -98,7 +102,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     // On its own page: headed as an announcement's page is: DISCUSSION POST, its title, then who and when.
     if (post) return `<div class="dc-op${p.removed || p.deleted ? " gone" : ""}">
         <header class="ec-head"><span class="hs-ic ec-ic">${I.chat}</span><div class="ec-tt"><p class="hs-kick">Discussion Post</p><h1>${esc(w ? p.title : p.title || "Post")}</h1>
-          <p class="ec-subline dc-by">${w ? `${av(w, " xs")}${whoHTML(w)}<span>· ${ago(p.at)}</span>${flags(p, true)}` : `<span>${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</span>`}</p></div></header>
+          <p class="ec-subline dc-by">${w ? `${av(w, " xs")}${whoHTML(w)}<span>· ${ago(p.at)}</span>${flags(p, true)}` : `<span>${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</span>`}</p></div>${p.pinned || p.endorsed ? `<span class="dc-head-st">${marks(p)}</span>` : ""}</header>
         ${w ? `<p class="dc-text ec-body">${body(p.body)}</p>${acts(p, true)}` : ""}
       </div>
       ${composer("comment")}
@@ -158,6 +162,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     else if (pop && e.key === "Escape") closePop();
     else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.target.matches(".dc-box textarea")) { const b = e.target.closest(".dc-box").querySelector("[data-send]"); if (b) b.click(); }
   });
+  host.addEventListener("change", e => { if (e.target.matches("[data-anon]")) S.anon = e.target.checked; });
   host.addEventListener("focusout", () => setTimeout(() => { if (!(document.activeElement && document.activeElement.matches && document.activeElement.matches(".dc-box textarea"))) closePop(); }, 150));
   host.addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b || !S.data) return;

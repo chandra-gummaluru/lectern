@@ -269,7 +269,29 @@ const ReqForm = (() => {
       if (!d.kind) return say("Choose what you're asking for.");
       if (d.kind === "alternate" && !d.details) { say("Say what you need."); if (rt) rt.el.focus(); return; }
       const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
-      api("POST", d).then(done, e => form(e.message));
+      api("POST", d).then(res => (res.confirm ? confirm(res) : done(res)), e => form(e.message));
+    };
+  }
+  // Last, to be sure it's them: the code just emailed to them (as signing in is), then it's sent.
+  function confirm(res, err) {
+    box().innerHTML = `<form class="hs-card rq-card rq-confirm" id="rq-code" novalidate>
+      <h2 class="hs-h2">Enter Your Code</h2>
+      <p class="rq-help">To be sure it's you, we've emailed a code to <b>${esc(res.email)}</b>. Enter it to send your request. It works for ${esc(String(res.minutes || 10))} minutes.</p>
+      <label class="rq-f rq-codef">Code<input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" spellcheck="false"></label>
+      <p class="rq-err" id="rq-err" role="alert">${esc(err || "")}</p>
+      <div class="rq-acts"><button type="button" class="hb-btn" id="rq-back">Back</button><button type="button" class="hb-btn" id="rq-resend">Email a New Code</button><span class="sp"></span><button type="submit" class="hb-btn primary">Send Request</button></div>
+    </form>`;
+    const f = $("rq-code"), say = t => { $("rq-err").textContent = t; };
+    f.code.focus();
+    f.code.addEventListener("input", () => { f.code.value = f.code.value.replace(/\D/g, "").slice(0, 6); });
+    $("rq-back").onclick = () => form();
+    $("rq-resend").onclick = () => { const b = $("rq-resend"); b.disabled = true;
+      api("POST", { ...keep, resend: true }).then(r => { confirm(r); say("A new code is on its way."); }, e => { b.disabled = false; say(e.message); }); };
+    f.onsubmit = e2 => {
+      e2.preventDefault();
+      const code = f.code.value.trim(); if (code.length !== 6) { say("Enter the 6-digit code from the email."); return f.code.focus(); }
+      const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
+      api("POST", { ...keep, code }).then(r => (r.confirm ? confirm(r) : done(r)), e => (e.code === "bad-code" || e.code === "rate" ? confirm(res, e.message) : form(e.message)));
     };
   }
   function done(res) {

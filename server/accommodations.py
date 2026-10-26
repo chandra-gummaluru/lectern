@@ -38,6 +38,7 @@ from . import db, mailer
 from .auth import signed_in
 from .security import Limiter
 from .store import Repo, StoreError
+from .auth import Refusal as AuthRefusal
 
 accom_bp = Blueprint('accommodations', __name__)
 
@@ -391,8 +392,8 @@ def clean_details(text):
     return re.sub(r"\n{3,}", "\n\n", t).strip()
 
 
-def _record(uid, o, book, e, ev, a, s, email, kind, details):
-    """Check and keep one request, and email the student a receipt: (the request, whether it was emailed)."""
+def _check(a, kind, details):
+    """What's asked for, checked: the cleaned details (or a Refusal)."""
     details = clean_details(details)
     if kind == "standard" and not a["approval"]:
         raise Refusal(400, "The standard accommodation can't be requested for this evaluation.")
@@ -404,6 +405,12 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
         raise Refusal(400, "Say what you need.")
     if len(details) > MAX_DETAILS:
         raise Refusal(400, f"That's too long: keep it under {MAX_DETAILS} characters.")
+    return details
+
+
+def _record(uid, o, book, e, ev, a, s, email, kind, details):
+    """Check and keep one request, and email the student a receipt: (the request, whether it was emailed)."""
+    details = _check(a, kind, details)
     code, term = _course(book)
     rec = {
         "id": "r-" + secrets.token_hex(4), "eval": e, "evalName": ev.get("name") or e, "kind": kind,
@@ -454,7 +461,9 @@ def submit():
 # with; to be sure it's them, they also give their identifier and name, which must match the class list.
 #
 #   GET  /api/hub/<handle>/<course>/<term>/accommodation?e=<eval id>    what can be asked for
-#   POST /api/hub/<handle>/<course>/<term>/accommodation                { e, id, first, last, kind, details }
+#   POST /api/hub/<handle>/<course>/<term>/accommodation                { e, id, first, last, kind, details, code? }
+#        without a code (or with resend): checked, then a code is emailed to them (202 {confirm, email});
+#        with it: kept (201)
 def _hub_student(handle, course, term):
     from .students import _offering as hub_offering, student_of
     from .auth import Refusal as AuthRefusal
@@ -497,9 +506,18 @@ def hub_submit(handle, course, term):
             if x.code == "not-found":
                 raise Refusal(400, f"Those don't match what your instructor has for you. Check your {_id_label(book).lower()} and your name, spelled exactly as on record.", "mismatch")
             raise
+        _check(a, d.get("kind"), d.get("details"))
+        # Last, to be sure it's them: a code emailed to them (the first time, it's sent; then it's checked).
+        from .students import send_confirm_code, check_confirm_code
+        if d.get("resend") or not str(d.get("code") or "").strip():
+            minutes = send_confirm_code(uid, o, email, *o.split("/", 1), f"your accommodation request for {ev.get('name') or e}")
+            return jsonify(confirm=True, email=email, minutes=minutes), 202
+        check_confirm_code(uid, o, email, d.get("code"))
         rec, emailed = _record(uid, o, book, e, ev, a, s, on_file, d.get("kind"), d.get("details"))
         return jsonify(ok=True, id=rec["id"], email=on_file, emailed=emailed), 201
     except Refusal as x:
+        return _err(x)
+    except AuthRefusal as x:   # the code's (students.py)
         return _err(x)
 
 

@@ -268,6 +268,16 @@ def hub_student(email):
     return c
 
 
+def ask(st, email, **d):
+    """Ask from the course page, as the form does: checked, a code emailed, then sent with it."""
+    from test_students import code_for
+    r = st.post(f"{HUB}/accommodation", json=d, headers=H)
+    if r.status_code != 202:
+        return r
+    assert r.get_json()["confirm"] and r.get_json()["email"] == email
+    return st.post(f"{HUB}/accommodation", json={**d, "code": code_for(email)}, headers=H)
+
+
 def test_a_signed_in_student_asks_on_the_course_page(gh):
     # Not signed in: no.
     assert app.test_client().get(f"{HUB}/accommodation?e=a1").status_code == 401
@@ -278,7 +288,7 @@ def test_a_signed_in_student_asks_on_the_course_page(gh):
     r = st.post(f"{HUB}/accommodation", json={"e": "a1", "id": "1002", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "x"}, headers=H)
     assert r.status_code == 400 and r.get_json()["code"] == "mismatch"
     md = "Writing it **later**, see [my note](https://example.com/note) ![pic](https://x/y.png) <script>x</script>"
-    r = st.post(f"{HUB}/accommodation", json={"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": md}, headers=H)
+    r = ask(st, "maya.castillo@mail.utoronto.ca", e="a1", id="1001", first="Maya", last="Castillo", kind="alternate", details=md)
     assert r.status_code == 201, r.get_json()
     got = requests_of(gh)[-1]
     assert got["student"] == "1001" and got["kind"] == "alternate"
@@ -292,8 +302,27 @@ def test_a_student_sees_only_their_own_requests(gh):
     assert app.test_client().get(f"{HUB}/accommodations").status_code == 401
     st = hub_student("maya.castillo@mail.utoronto.ca")
     assert st.get(f"{HUB}/accommodations").get_json()["requests"] == []
-    st.post(f"{HUB}/accommodation", json={"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "Later, please."}, headers=H)
+    assert ask(st, "maya.castillo@mail.utoronto.ca", e="a1", id="1001", first="Maya", last="Castillo", kind="alternate", details="Later, please.").status_code == 201
     mine = st.get(f"{HUB}/accommodations").get_json()["requests"]
     assert len(mine) == 1 and mine[0]["eval"] == "a1" and mine[0]["status"] == "pending" and mine[0]["details"] == "Later, please." and "email" not in mine[0]
     other = hub_student("zoe.ng@mail.utoronto.ca")
     assert other.get(f"{HUB}/accommodations").get_json()["requests"] == []
+
+
+def test_a_request_needs_the_code_emailed_to_them(gh):
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    d = {"e": "a1", "id": "1001", "first": "Maya", "last": "Castillo", "kind": "alternate", "details": "Later, please."}
+    r = st.post(f"{HUB}/accommodation", json=d, headers=H)
+    assert r.status_code == 202 and r.get_json()["confirm"]
+    assert requests_of(gh) == []
+    bad = st.post(f"{HUB}/accommodation", json={**d, "code": "000000"}, headers=H)
+    assert bad.status_code == 400 and bad.get_json()["code"] == "bad-code"
+    # A sign-in code doesn't send one.
+    from test_students import code_for
+    assert app.test_client().post(f"{HUB}/code", json={"email": "maya.castillo@mail.utoronto.ca"}, headers=H).status_code == 200
+    assert st.post(f"{HUB}/accommodation", json={**d, "code": code_for("maya.castillo@mail.utoronto.ca")}, headers=H).status_code == 400
+    # A new one, and it works once.
+    st.post(f"{HUB}/accommodation", json={**d, "resend": True}, headers=H)
+    code = code_for("maya.castillo@mail.utoronto.ca")
+    assert st.post(f"{HUB}/accommodation", json={**d, "code": code}, headers=H).status_code == 201
+    assert st.post(f"{HUB}/accommodation", json={**d, "code": code}, headers=H).status_code == 400

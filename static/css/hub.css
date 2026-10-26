@@ -1022,3 +1022,5 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .rq-choice b { font-weight: 600; }
 .rq-choice span { grid-column: 2; font-size: 13.5px; color: var(--ink-3); }
 .rq-choice.off { cursor: default; } .rq-choice.off b, .rq-choice.off span { color: var(--ink-3); opacity: .7; } .rq-choice.off input { cursor: default; }
+.rq-codef { max-width: 220px; } .rq-codef input { font: 600 20px/1 var(--font-mono, ui-monospace, monospace); letter-spacing: .18em; }
+.rq-confirm .rq-acts .hb-btn + .hb-btn { margin-left: 0; }

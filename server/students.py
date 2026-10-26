@@ -219,6 +219,42 @@ def send_code(handle, course, term):
     return jsonify(sent=True, minutes=CODE_MINUTES)
 
 
+# A code to confirm something a signed-in student sends (an accommodation request): emailed to them, as signing
+# in is, but kept for a different purpose, so it can't sign anyone in (nor a sign-in code confirm a request).
+def send_confirm_code(owner_id, off, email, course, term, what):
+    _limit("code-ip", ip())
+    _limit("code-email", f"{owner_id}/{off}/{email}")
+    code, t = f"{secrets.randbelow(10 ** 6):06d}", time.time()
+    with db.transaction() as c:
+        c.execute("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
+        c.execute("DELETE FROM student_codes WHERE expires < ?", (t,))
+        c.execute("INSERT INTO student_codes (owner_id, offering, email, code_mac, expires, tries, created) VALUES (?, ?, ?, ?, ?, 0, ?)",
+                  (owner_id, off, email, sec.mac(f"{owner_id}/{off}/{email}/{code}", "student-confirm"), t + CODE_MINUTES * 60, t))
+    name = course_name(owner_id, course, term)
+    _mail(owner_id, off, email, f"{code} is your code to send your request for {name}",
+          f"Your code to send {what}:\n\n  {code}\n\nIt works once, for {CODE_MINUTES} minutes.\n"
+          f"If you didn't ask for it, you can ignore this email.\n")
+    return CODE_MINUTES
+
+
+def check_confirm_code(owner_id, off, email, code):
+    """Raises a Refusal unless code is the one just emailed to them; used up once it's right."""
+    code = re.sub(r"\D", "", str(code or ""))[:6]
+    _limit("verify-ip", ip())
+    _limit("verify-email", f"{owner_id}/{off}/{email}")
+    row = db.one("SELECT * FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
+    wrong = Refusal(400, "That code isn't right, or it has expired. Check it, or get a new one.", "bad-code")
+    if not row or row["expires"] < time.time() or len(code) != 6:
+        raise wrong
+    if not sec.same(row["code_mac"], sec.mac(f"{owner_id}/{off}/{email}/{code}", "student-confirm")):
+        if row["tries"] + 1 >= MAX_TRIES:
+            db.run("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
+        else:
+            db.run("UPDATE student_codes SET tries = tries + 1 WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
+        raise wrong
+    db.run("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
+
+
 @students_bp.post("/api/hub/<handle>/<course>/<term>/verify")
 @handles
 def verify(handle, course, term):

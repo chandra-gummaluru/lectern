@@ -102,7 +102,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
     // On its own page: headed as an announcement's page is: DISCUSSION POST, its title, then who and when.
     if (post) return `<div class="dc-op${p.removed || p.deleted ? " gone" : ""}">
         <header class="ec-head"><span class="hs-ic ec-ic">${I.chat}</span><div class="ec-tt"><p class="hs-kick">Discussion Post</p><h1>${esc(w ? p.title : p.title || "Post")}</h1>
-          <p class="ec-subline dc-by">${w ? `${av(w, " xs")}${whoHTML(w)}<span>· ${ago(p.at)}</span>${flags(p, true)}` : `<span>${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</span>`}</p></div>${p.pinned || p.endorsed ? `<span class="dc-head-st">${marks(p)}</span>` : ""}</header>
+          <p class="ec-subline dc-by">${w ? `${whoHTML(w)}<span>· ${ago(p.at)}</span>${flags(p, true)}` : `<span>${p.deleted ? "Deleted by its author." : "Removed by the teaching team."}</span>`}</p></div>${p.pinned || p.endorsed ? `<span class="dc-head-st">${marks(p)}</span>` : ""}</header>
         ${w ? `<p class="dc-text ec-body">${body(p.body)}</p>${acts(p, true)}` : ""}
       </div>
       ${composer("comment")}

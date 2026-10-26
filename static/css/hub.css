@@ -850,7 +850,6 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .dc-kids .dc-p + .dc-p { border-top: 0; }
 .dc-row { display: flex; gap: 10px; }
 .dc-av { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--strip); box-shadow: inset 0 0 0 1px var(--line-2); font: 600 11px var(--font-ui); color: var(--ink-2); }
-.dc-av.anon { background: color-mix(in srgb, var(--accent-bg) 70%, var(--card)); box-shadow: inset 0 0 0 1px var(--accent-line); color: var(--accent); }
 .dc-av.anon svg { width: 16px; height: 16px; }
 .dc-av.staff { background: var(--ink); color: var(--card); box-shadow: none; }
 .dc-b { flex: 1; min-width: 0; }
@@ -891,7 +890,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .dc-at-pop .dc-av { width: 24px; height: 24px; font-size: 10px; }
 
 /* The teaching team's posts: highlighted (no badge). */
-.dc-team .dc-av.staff { background: var(--accent-line); color: var(--ink); box-shadow: inset 0 0 0 1px var(--accent); }
+.dc-team .dc-av.staff { background: color-mix(in srgb, var(--accent-bg) 70%, var(--card)); box-shadow: inset 0 0 0 1px var(--accent-line); color: var(--accent); }
 
 /* Posts: a title and a body; opened, with their comments under them */
 .dc-tools { display: flex; align-items: center; gap: 8px; }
@@ -902,7 +901,6 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .dc-threads { display: grid; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
 .dc-t { display: flex; align-items: stretch; }
 .dc-t + .dc-t { border-top: 1px solid var(--line); }
-.dc-t.dc-team, .dc-op.dc-team { box-shadow: inset 4px 0 0 var(--accent-line); }
 .dc-t.gone { opacity: .55; }
 .dc-vote { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 54px; border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font: 600 13px var(--font-ui); }
 .dc-vote svg { width: 17px; height: 17px; }

@@ -136,7 +136,7 @@ const evItem = e => `<a class="wk-item wk-link" href="#evaluation/${encodeURICom
 function weekRow(w, now) {
   if (w.isBreak) return `<p class="hs-break">${esc(w.label || "Break")}</p>`;
   const bits = [w.dates, w.topic].filter(Boolean).map(esc).join(" · ");
-  return `<a class="hs-row hs-wk${w.i === now ? " now" : ""}" href="#week/${w.i}"><span class="hs-num">${esc(weekNum(w))}</span><span class="hs-t"><b>${esc(w.label || "Week")}</b>${bits ? `<small>${bits}</small>` : ""}</span>${w.i === now ? `<span class="hs-tag">This week</span>` : ""}${CHEV}</a>`;
+  return `<a class="hs-row hs-wk${w.i === now ? " now" : ""}" href="#week/${w.i}"><span class="hs-num${w.i === now ? " on" : ""}" title="${w.i === now ? "This week" : ""}">${esc(weekNum(w))}</span><span class="hs-t"><b>${esc(w.label || "Week")}</b>${bits ? `<small>${bits}</small>` : ""}</span>${CHEV}</a>`;
 }
 // A week, opened: its row, then its activities and what's due, inside it (as a week is in Lectern).
 function weekOpen(w, now) {
@@ -377,7 +377,7 @@ const PAGES = {
     // One card: the term's weeks, a row each (as a week's page has its activities).
     const now = thisWeek();
     const rows = weeks().map(w => w.isBreak ? `<div class="wk-item wk-break">${esc(w.label || "Break")}</div>`
-      : `<a class="wk-item wk-link hs-wk${w.i === now ? " wk-now" : ""}" href="#week/${w.i}"><span class="hs-num">${esc(weekNum(w))}</span><div class="wk-b"><p class="hs-kick">${esc(w.label || "Week")}${w.i === now ? ` <span class="hs-tag">This week</span>` : ""}</p><h3>${esc(w.topic || w.label || "Week")}</h3>${w.dates ? `<p class="wk-when">${esc(w.dates)}</p>` : ""}</div>${CHEV}</a>`).join("");
+      : `<a class="wk-item wk-link hs-wk${w.i === now ? " wk-now" : ""}" href="#week/${w.i}"><span class="hs-num${w.i === now ? " on" : ""}"${w.i === now ? ' title="This week"' : ""}>${esc(weekNum(w))}</span><div class="wk-b"><p class="hs-kick">${esc(w.label || "Week")}</p><h3>${esc(w.topic || w.label || "Week")}</h3>${w.dates ? `<p class="wk-when">${esc(w.dates)}</p>` : ""}</div>${CHEV}</a>`).join("");
     return `${path([["Activities"]])}
       <article class="ec-card wk-card">
         <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON.lecture}</span><div class="ec-tt"><p class="hs-kick">${esc(D.course.code || "")}</p><h1>Activities</h1><p class="ec-subline">The term, week by week: open a week for its lectures, tutorials and labs, their files, and what's due.</p></div></header>
@@ -399,12 +399,12 @@ const PAGES = {
         `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`); }).join("");
     const due = evs.map(evItem).join("");
     const an = anns.map(annItem).join("");
-    return `${path([["Activities", "#activities"], [w.label || "Week"]])}
+    return `<div class="wk-top">${path([["Activities", "#activities"], [w.label || "Week"]])}<nav class="wk-pn" aria-label="Other weeks">${prev ? `<a class="hb-btn" href="#week/${prev.i}" title="${esc(prev.label || "Previous week")}">${svg('<path d="m15 6-6 6 6 6"/>')}Previous</a>` : `<span class="hb-btn wk-off" aria-disabled="true">${svg('<path d="m15 6-6 6 6 6"/>')}Previous</span>`}${next ? `<a class="hb-btn" href="#week/${next.i}" title="${esc(next.label || "Next week")}">Next${svg('<path d="m9 6 6 6-6 6"/>')}</a>` : `<span class="hb-btn wk-off" aria-disabled="true">Next${svg('<path d="m9 6 6 6-6 6"/>')}</span>`}</nav></div>
       <article class="ec-card wk-card">
-        <header class="ec-head"><span class="hs-num">${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
+        <header class="ec-head"><span class="hs-num${now ? " on" : ""}"${now ? ' title="This week"' : ""}>${esc(weekNum(w))}</span><div class="ec-tt"><p class="hs-kick">${esc(w.label || "Week")}</p><h1>${esc(w.topic || w.label || "Week")}</h1>${w.dates ? `<p class="ec-subline">${esc(w.dates)}</p>` : ""}</div></header>
         ${[acts, due, an].filter(Boolean).map(x => `<div class="wk-group"><div class="wk-list">${x}</div></div>`).join("") || `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`}
       </article>
-      <nav class="hs-pn wk-pn">${prev ? `<a class="hb-btn" href="#week/${prev.i}">${svg('<path d="m15 6-6 6 6 6"/>')}${esc(prev.label || "Previous week")}</a>` : "<span></span>"}${next ? `<a class="hb-btn" href="#week/${next.i}">${esc(next.label || "Next week")}${svg('<path d="m9 6 6 6-6 6"/>')}</a>` : ""}</nav>`;
+`;
   },
   evaluations() {
     if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");

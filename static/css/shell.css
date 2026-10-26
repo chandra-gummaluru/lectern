@@ -1065,3 +1065,11 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .em-body > .lx-sec.lx-first { border-top: 0; padding-top: 0; }
 .em-err { margin: 6px 0 0; color: #b42318; font-size: 13.5px; font-weight: 600; } .em-err:empty { display: none; }
 .lt-part.lt-team#lt-email > .lt-part-text { flex: none; padding-bottom: 14px; }
+
+/* A request's decisions, as the course page's discussion comments: initials, the name, what and when on one
+   line, and the note under it as plain text (no bubble). */
+.lt-req-ed .lt-cmt, .lt-req .lt-cmt { gap: 12px; margin-top: 14px; }
+.lt-req-ed .lt-cmt-h, .lt-req .lt-cmt-h { align-items: center !important; margin: 4px 0 0 !important; font-size: 13px !important; gap: 4px 8px; }
+.lt-req-ed .lt-cmt-h b, .lt-req .lt-cmt-h b { font-size: 14px; }
+.lt-req-ed .lt-cmt-v, .lt-req .lt-cmt-v { font: 600 12.5px var(--font-ui); }
+.lt-req-ed .lt-cmt-n, .lt-req .lt-cmt-n { display: block !important; margin: 3px 0 0 !important; padding: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; font-size: 15px !important; line-height: 1.55; color: var(--home-ink) !important; }

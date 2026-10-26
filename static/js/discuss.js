@@ -48,7 +48,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   const words = p => [p.title, plain(p.body), p.who && p.who.name, ...kids(p.id).map(words)].join(" ").toLowerCase();
   const found = L => { const q = S.q.trim().toLowerCase().split(/\s+/).filter(Boolean); return q.length ? L.filter(p => { const w = words(p); return q.every(x => w.includes(x)); }) : L; };
   const count = id => kids(id).reduce((n, k) => n + 1 + count(k.id), 0);
-  const sorted = L => L.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (S.sort === "top" ? (b.votes + (b.endorsed ? 3 : 0)) - (a.votes + (a.endorsed ? 3 : 0)) || a.at - b.at : b.at - a.at));
+  const sorted = L => L.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (S.sort === "top" ? b.votes - a.votes || a.at - b.at : b.at - a.at));
   const nameOf = tok => (S.data.names || {})[tok];
   // A post's body is Markdown (bold, italic, links, lists), drawn as the course page draws it; then its mentions.
   const md = t => (window.HubView && window.HubView.markdown ? window.HubView.markdown(t) : `<p>${esc(t)}</p>`);

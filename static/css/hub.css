@@ -988,14 +988,15 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 
 /* A card's head, flush left: a small icon (or week circle) beside the kicker, as tall as its text; then the
    title and the line under it. Anything else in the head (a mark, Pinned) on the right. */
-.hb .ec-head { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto auto 1fr; column-gap: 6px; align-items: center; }
+.hb .ec-head { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto auto 1fr; gap: 0 6px; align-items: center; }
 .hb .ec-head > .ec-tt { display: contents; }
 .hb .ec-head .ec-tt > .hs-kick { grid-column: 2; grid-row: 1; margin: 0; }
-.hb .ec-head .ec-tt > h1 { grid-column: 1 / 3; grid-row: 2; margin-top: 2px; line-height: 1.12; }
-.hb .ec-head .ec-tt > :not(.hs-kick):not(h1) { grid-column: 1 / 3; grid-row: 3; margin-top: 4px; line-height: 1.35; }
+.hb .ec-head .ec-tt > h1 { grid-column: 1 / 3; grid-row: 2; margin-top: 1px; line-height: 1.08; }
+.hb .ec-head .ec-tt > :not(.hs-kick):not(h1) { grid-column: 1 / 3; grid-row: 3; margin-top: 2px; line-height: 1.3; }
 .hb .ec-head > .ec-ic, .hb .ec-head > .hs-num { grid-column: 1; grid-row: 1; margin: 0; color: var(--ink-3); }
 .hb .ec-head > :not(.ec-ic):not(.ec-tt):not(.hs-num) { grid-column: 3; grid-row: 1 / span 4; align-self: center; }
 .hb .ec-head > .ec-ic { width: 15px; height: 15px; display: grid; place-items: center; }
 .hb .ec-head > .ec-ic svg { width: 15px; height: 15px; stroke-width: 2.1; }
 .hb .ec-head > .hs-num { width: 17px !important; height: 17px !important; font: 600 10px/1 var(--font-ui) !important; color: var(--ink-2); box-shadow: inset 0 0 0 1.2px var(--accent-line); }
 .hb .ec-head > .hs-num.on { box-shadow: inset 0 0 0 1.2px var(--accent); }
+

@@ -3900,7 +3900,7 @@ function drawStudentEditor() {
   if (ag) {   // a group's accommodation for this student
     const go = groupOverride(s.num, ag) || {}, ex = new Set(go.excused || []), mem = ag.members.map(evalById).filter(Boolean), live = mem.filter(x => !ex.has(x.id));
     const keep = Math.max(1, Math.min(go.keep != null ? num(go.keep) : num(ag.keep), live.length || 1)), gw = go.weight != null ? num(go.weight) : num(ag.weight);
-    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(ag)}">${evIcon(ag, true)}<h2>${esc(ag.name)}</h2></div>
+    $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(ag)}">${evIcon(ag, true)}<div class="ed-tt"><p class="ed-kind">Group</p><h2>${esc(ag.name)}</h2></div></div>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the group's policy.</p>
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="gacc-weight" value="${go.weight != null ? esc(go.weight) : ""}" placeholder="${fmtNum(ag.weight)}"></label>
         <p class="ed-help">All other evaluations scale so the total stays ${fmtNum(weightSum())}%. Use 0% to excuse the whole group.</p></div>

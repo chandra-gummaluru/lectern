@@ -26,6 +26,7 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { studentsCard } from "./students.js";
+import { emailCard } from "./mailsettings.js";
 import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind, SECTION_ICON, sortSections } from "./groups.js";
 import { pickMany } from "./pick.js";
 import { richText } from "./richtext.js";
@@ -771,6 +772,11 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.user}<h2>Students</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
       </section>
+      ${edit ? `<section class="lt-part lt-wide lt-team" id="lt-email">
+        <div class="lt-part-head">${ICON.mail}<h2>Email</h2></div>
+        <p class="lt-part-text">How emails to the class go out, and which ones Lectern sends on its own.</p>
+        <div class="lt-team-body em-body"></div>
+      </section>` : ""}
     </div>
   </div>`);
   $("#lt-lectures").onclick = () => go({ page: "lectures", c, t });
@@ -789,6 +795,7 @@ function offeringPage(c, t) {
   teamPart(c, t);
   groupsPart(c, t);
   studentsPart(c, t);
+  if (edit) emailCard({ box: $("#lt-email .em-body"), esc, toast, api: Auth.api, owner: curOwner() || S.user.handle, c, t });
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
   if (o.exams.length) docLinks(c, t).then(links => {
     const linked = new Set(Object.values(links).map(d => d.folder)), loose = o.exams.filter(e => !linked.has(e)), el = $("#lt-loose");

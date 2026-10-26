@@ -1054,3 +1054,13 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lx-ed-head:has(> .gr-tt > .gr-kind) > .lx-kicon svg { width: 15px; height: 15px; stroke-width: 2.1; }
 .lx-ed-head:has(> .gr-tt > .gr-kind) > .lx-wnum { width: 17px; height: 17px; font: 600 10px/1 var(--font-ui); }
 .lx-ed-head:has(> .gr-tt > .gr-kind) > .lx-acts { grid-column: 3; grid-row: 1 / span 2; }
+
+/* The offering's Email card. */
+.em-body .lx-sec.lx-first { margin-top: 6px; }
+.em-body .lx-span2 { grid-column: 1 / -1; }
+.em-body .lx-f textarea { height: auto; min-height: 70px; padding: 8px 10px; font: 14px/1.45 var(--font-ui); resize: vertical; }
+.em-kinds { display: grid; gap: 10px; margin-top: 4px; }
+.em-body .lt-part-acts, .lt-part.lt-wide .em-body .lt-part-acts { padding: 0; margin-top: 12px; }
+.em-acts { justify-content: flex-end; }
+.em-body > .lx-sec.lx-first { border-top: 0; padding-top: 0; }
+.em-err { margin: 6px 0 0; color: #b42318; font-size: 13.5px; font-weight: 600; } .em-err:empty { display: none; }

@@ -1131,7 +1131,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-new { display: inline-block; margin-right: 8px; padding: 1px 7px; border-radius: 999px; background: #c0392b; color: #fff; font: 700 10px/16px var(--font-ui); letter-spacing: .06em; vertical-align: 1px; }
 
 /* Attendance (attendance.js): the total and the sessions; scanning with the camera, and who each card is. */
-.at-total { font-weight: 700; color: var(--home-ink); }
+.at-total { color: inherit; }
 .at-acts { margin: 18px 0 4px; }
 .at-big { height: 48px; padding: 0 22px; font-size: 15.5px; }
 .at-big svg, .at-start .lt-btn svg, .at-hand svg { width: 18px; height: 18px; }

@@ -454,6 +454,7 @@ export function lecturesPage(ctx, r) {
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn add" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn add" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
         <h3 class="lx-sec">Discussion</h3>
         <label class="lx-tick"><input type="checkbox" id="lw-disc"${x.discussion === false ? "" : " checked"}${dis}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
+        ${x.discussion === false ? "" : `<div data-dc-slot="act:${esc(x.id)}"></div>`}
       </div>
     </div></div>`);
     // Its dates: a field for each (at least one), and another one added with Add a Date; only days in its week

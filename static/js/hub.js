@@ -145,7 +145,7 @@ const dcOff = t => (D.closed || []).includes(t);
 const dcHere = t => (dcOff(t) ? "" : `<section class="dc" data-dc="${esc(t)}"></section>`);
 let DCN = null, DCN_AT = 0;
 function discussions(m) {
-  m.querySelectorAll("[data-dc]").forEach(el => import("/static/js/discuss.js").then(x => x.mount(el, { api: root.dataset.api, target: el.dataset.dc, signIn: D.signIn || D.lectern,
+  m.querySelectorAll("[data-dc]").forEach(el => import("/static/js/discuss.js").then(x => x.mount(el, { api: root.dataset.api, target: el.dataset.dc, signIn: D.signIn || D.lectern, as: D.viewer.preview === "student" ? "student" : "",
     ...(el.dataset.post ? { post: +el.dataset.post, onPost: p => { const b = m.querySelector(".hs-path b"); if (b) b.textContent = p ? p.title || "Post" : "Post"; if (p && p.title) document.title = p.title; } } : {}) })).catch(e => console.error(e)));
   const spans = m.querySelectorAll("[data-dcn]"); if (!spans.length || !D.viewer.signedIn) return;
   const fill = () => spans.forEach(sp => { const n = (DCN || {})[sp.dataset.dcn] || 0; sp.textContent = n ? ` · ${n}` : ""; });
@@ -666,6 +666,7 @@ const evalTitle = u => `${esc(u.name || u.title || "Evaluation")}${u.title && u.
 const REQ_WORD = { approved: "Approved", rejected: "Rejected", pending: "Waiting for a decision" };
 function myRequests() {
   const box = document.getElementById("ma-box"); if (!box) return;
+  if (D.viewer.preview) { box.innerHTML = `<p class="hs-empty">A student sees their own accommodation and remark requests here.</p>`; return; }
   const when = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" }); };
   fetch(`${root.dataset.api}/accommodations`, { credentials: "same-origin" }).then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "Your requests couldn't be loaded. Try again in a moment.")))))
     .then(d => {
@@ -848,9 +849,16 @@ function route() {
 
 document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (!g || e.target.closest("a, button") || (getSelection && String(getSelection()).length)) return; location.hash = g.dataset.go; });
 document.addEventListener("keydown", e => { const g = e.target.closest && e.target.closest("[data-go]"); if (g && e.target === g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); location.hash = g.dataset.go; } });
+// The teaching team only looks (they take part from Lectern): what a student would use is shown, but off.
+const STUDENT_ONLY = { request: "asks for an accommodation", remark: "asks for a remark", tcard: "adds their TCard", myrequest: "sees one of their requests" };
+function previewOnly(m) {
+  if (!D.viewer.preview) return;
+  m.querySelectorAll('a.hb-btn[href^="#request/"], a.hb-btn[href^="#remark/"]').forEach(a => { const b = document.createElement("button"); b.type = "button"; b.className = "hb-btn"; b.disabled = true; b.textContent = a.textContent; b.title = "Students use this; you're previewing the course page"; a.replaceWith(b); });
+}
 function draw() {
   const { id, arg } = route(), m = $("hb-main");
-  try { m.innerHTML = PAGES[id](arg); markSeen(); discussions(m); }
+  if (D.viewer.preview && STUDENT_ONLY[id]) { m.innerHTML = `${path([[id === "tcard" ? "My TCard" : "Request"]])}<article class="ec-card"><p class="hs-empty">Here a student ${STUDENT_ONLY[id]}. You're previewing the course page, so it's not something you can use here.</p></article>`; return; }
+  try { m.innerHTML = PAGES[id](arg); markSeen(); discussions(m); previewOnly(m); }
   catch (e) { console.error(e); m.innerHTML = `<p class="hb-empty">Something went wrong showing this part of the page.</p>`; }
   if (id !== "home") { const h = m.querySelector(".hs-head h1, .hb-h2, .hb-locked h2"); document.title = `${h ? h.textContent : "Course page"} · ${D.course.code || D.course.title}`; }
 }
@@ -870,7 +878,21 @@ function header() {
   const USER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
   const DOWN = '<svg class="hb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   const who = $("hb-who");
-  if (!v.signedIn) { who.innerHTML = `<a class="hb-acct" href="${esc(D.signIn || D.lectern)}">${USER}<span>Sign in</span></a>`; }
+  if (v.staff) {   // the teaching team: which view (a student's, or a visitor's), not an account
+    const here = v.preview === "public" ? "public" : "student";
+    who.innerHTML = `<div class="hb-acct-wrap"><button type="button" class="hb-acct hb-view" id="hb-acct" aria-haspopup="menu" aria-expanded="false"><span class="hb-view-l">Viewing as</span><span>${here === "public" ? "Public" : "Student"}</span>${DOWN}</button></div>`;
+    const btn = $("hb-acct"); let menu = null;
+    const close = () => { if (menu) { menu.remove(); menu = null; btn.setAttribute("aria-expanded", "false"); } };
+    btn.onclick = e => {
+      e.stopPropagation(); if (menu) return close();
+      menu = document.createElement("div"); menu.className = "hb-menu hb-view-menu"; menu.setAttribute("role", "menu");
+      const opt = (k, n, sub) => `<a role="menuitemradio" aria-checked="${here === k}" href="${esc(location.pathname + (k === "public" ? "?as=public" : "") + location.hash)}"><b>${n}</b><span>${sub}</span></a>`;
+      menu.innerHTML = opt("student", "Student", "A signed-in student in the course") + opt("public", "Public", "A visitor who isn't signed in") + `<hr><a role="menuitem" href="${esc(D.lectern)}">Open in Lectern</a>`;
+      btn.after(menu); btn.setAttribute("aria-expanded", "true");
+    };
+    document.addEventListener("click", e => { if (menu && !menu.contains(e.target)) close(); });
+    document.addEventListener("keydown", e => { if (menu && e.key === "Escape") { close(); btn.focus(); } });
+  } else if (!v.signedIn) { who.innerHTML = `<a class="hb-acct" href="${esc(D.signIn || D.lectern)}">${USER}<span>Sign in</span></a>`; }
   else {
     who.innerHTML = `<div class="hb-acct-wrap"><button type="button" class="hb-acct" id="hb-acct" aria-haspopup="menu" aria-expanded="false">${USER}<span>${esc(v.name)}</span>${DOWN}</button></div>`;
     const btn = $("hb-acct"); let menu = null;
@@ -899,9 +921,10 @@ function header() {
   const bar = $("hb-staff");
   if (v.staff) {
     const base = location.pathname;
-    bar.innerHTML = `<div class="hb-staff-in">${v.preview
-      ? `<span class="grow">You're seeing this page as a visitor who isn't signed in.</span><a href="${esc(base + location.hash)}">Back to your view</a>`
-      : `<span class="grow">You're on the teaching team. Parts marked ${LOCK.replace("<svg", '<svg style="width:12px;height:12px;vertical-align:-1px"')} are hidden from visitors who aren't signed in.</span><a href="${esc(base + "?as=public" + location.hash)}">See it as a visitor</a><a href="${esc(D.lectern)}">Edit in Lectern</a>`}</div>`;
+    bar.innerHTML = `<div class="hb-staff-in"><span class="grow">${v.preview === "public"
+      ? "You're seeing the course page as a visitor who isn't signed in sees it."
+      : `You're seeing the course page as a student sees it. Parts marked ${LOCK.replace("<svg", '<svg style="width:12px;height:12px;vertical-align:-1px"')} are hidden from visitors.`} To take part in discussions, or change anything, use Lectern.</span><a href="${esc(D.lectern)}">Open in Lectern</a></div>`;
+    void base;
     bar.hidden = false;
   }
   const nav = $("hb-tabs"); if (nav) nav.hidden = true;   // no tabs: the home page and its paths

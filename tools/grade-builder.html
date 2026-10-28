@@ -3203,7 +3203,9 @@ function drawEvalEditor() {
     ${filesHTML(e)}
     <h3 class="ed-sec">Discussion</h3>
     <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
+    ${HOSTED && window.Lectern.discussionEl && e.discussion !== false ? `<div data-dc-slot="eval:${esc(e.id)}"></div>` : ""}
 `;
+  if (HOSTED && window.Lectern.fillDiscussions) window.Lectern.fillDiscussions(m);
   mountSecDates(m, e);
   drawNotices(e);
 }

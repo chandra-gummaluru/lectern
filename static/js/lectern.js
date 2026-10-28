@@ -26,6 +26,7 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { attendancePage } from "./attendance.js";
+import { discussionsPage, mountDiscussion, unanswered } from "./discussions.js";
 import { studentsCard } from "./students.js";
 import { emailCard } from "./mailsettings.js";
 import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind, SECTION_ICON, sortSections } from "./groups.js";
@@ -50,6 +51,7 @@ const ICON = {
   lectures: svgI('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
   out: svgI('<path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'),
   folder: svgI('<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>', 1.8),
+  chat: svgI('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>', 1.8),
   page: svgI('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 13h3M8 16h6"/>', 1.8),
   grades: svgI('<path d="M4 20V4M4 20h16"/><path d="m8 15 3.5-4 3 2.5L20 7"/>', 1.8),
   exam: svgI('<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>', 1.8),
@@ -245,6 +247,7 @@ function parseHash() {
     if ((tool === "groups" || tool === "sections") && e) return { page: "groups", c, t, o, g: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
     if (tool === "attendance" && e && slugOK(e)) return { page: "attend", c, t, o, e };
+    if (tool === "discussions") return { page: "discuss", c, t, o, tg: e || "", id: p[4] || "" };
     return { page: "offering", c, t, o };
   }
   if (p.length === 1 && p[0] === "account") return { page: "account" };
@@ -256,7 +259,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "discuss" ? `${at}/discussions${r.tg && r.id ? `/${encodeURIComponent(r.tg)}/${encodeURIComponent(r.id)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -542,7 +545,23 @@ const offeringLabel = (c, t, o = curOwner()) => `${c} / ${t}${o ? ` (${ownerName
 const offeringStep = (c, t) => ({ label: offeringLabel(c, t), go: () => go({ page: "offering", c, t }) });
 
 // ── Lectern's own pages ──────────────────────────────────────────────
-function pageHTML(html) { $("#lt-page").innerHTML = html; }
+function pageHTML(html) { $("#lt-page").innerHTML = html; fillDiscussions($("#lt-page")); }
+// An item's discussion (an evaluation's, an activity's, an announcement's), under it in Lectern: each slot
+// (data-dc-slot="<target>") gets it, mounted once per item and kept while you're in that offering.
+const DC = new Map();
+function discussionEl(target) {
+  const r = S.route, key = `${curOwner()}/${r.c}/${r.t}/${target}`;
+  let el = DC.get(key);
+  if (!el || Date.now() - el._at > 60000) {
+    el = document.createElement("div"); el._at = Date.now();
+    mountDiscussion(el, { handle: curOwner() || S.user.handle, c: r.c, t: r.t, target, link: (tg, id) => hashFor({ page: "discuss", c: r.c, t: r.t, o: r.o, tg, id: String(id) }) });
+    DC.set(key, el);
+  }
+  return el;
+}
+function fillDiscussions(root) { if (!root || !S.route.c) return; root.querySelectorAll("[data-dc-slot]").forEach(s => { if (!s.firstChild) s.appendChild(discussionEl(s.dataset.dcSlot)); }); }
+Lectern.discussionEl = discussionEl;
+Lectern.fillDiscussions = fillDiscussions;
 function renderPage() {
   renderBar();
   const r = S.route;
@@ -555,6 +574,9 @@ function renderPage() {
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim(), date: e.date || "", time: e.time || "", dates: secDates(e) })) : []; },
     openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups), me: S.user.id }, r);
+  if (r.page === "discuss") { const key = hashFor(r);
+    return discussionsPage({ $, esc, pageHTML, go, api: Auth.api, renderPath, steps: [HOME_STEP, offeringStep(r.c, r.t)], handle: curOwner() || S.user.handle, c: r.c, t: r.t, r,
+      here: () => hashFor(S.route) === key, hashOf: x => hashFor({ ...x, o: r.o }) }); }
   if (r.page === "attend") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Attendance" }]);
     const key = hashFor(r);
     return attendancePage({ $, esc, pageHTML, toast, go, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: r.e, renderPath, here: () => hashFor(S.route) === key,
@@ -773,6 +795,11 @@ function offeringPage(c, t) {
         <p class="lt-part-text" id="lt-rmk-sum">Requests students make with the course page's Request Remark buttons, once their marks are out. Approve or reject each one; the student gets an email.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-rmk"${!o.grades && loading ? " disabled" : ""}>Open Remark Requests</button></div>
       </section>` : ""}
+      <section class="lt-part lt-wide">
+        <div class="lt-part-head">${ICON.chat}<h2>Discussions</h2></div>
+        <p class="lt-part-text" id="lt-dc-sum">Students' posts on the course page, from every evaluation, activity and announcement. Answer them here.</p>
+        <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-dc">Open Discussions</button></div>
+      </section>
       <section class="lt-part lt-wide lt-team" id="lt-team">
         <div class="lt-part-head">${ICON.team}<h2>Teaching Team</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
@@ -802,6 +829,10 @@ function offeringPage(c, t) {
   const acc = $("#lt-accom");
   if (acc) acc.onclick = () => go({ page: "accom", c, t });
   const rmk = $("#lt-rmk"); if (rmk) rmk.onclick = () => go({ page: "accom", k: "remark", c, t });
+  const dcb = $("#lt-dc");
+  if (dcb) { dcb.onclick = () => go({ page: "discuss", c, t });
+    unanswered(Auth.api, curOwner() || S.user.handle, c, t).then(n => { if (!n || S.route.page !== "offering" || S.route.c !== c || S.route.t !== t || dcb.querySelector(".lt-badge")) return;
+      dcb.classList.add("primary", "lt-has-badge"); dcb.insertAdjacentHTML("beforeend", `<span class="lt-badge" title="${n} unanswered" aria-label="${n} unanswered">${n > 99 ? "99+" : n}</span>`); }).catch(() => {}); }
   if ((acc || rmk) && o.grades) readAccom(c, t).then(d => {
     if (S.route.page !== "offering" || S.route.c !== c || S.route.t !== t || !d) return;
     [["#lt-accom-sum", "#lt-accom", false], ["#lt-rmk-sum", "#lt-rmk", true]].forEach(([sum, btn, rm]) => {

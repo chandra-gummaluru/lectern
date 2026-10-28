@@ -92,7 +92,7 @@ def main():
         # 4. The owner on the hub, and a phone.
         me.goto(srv.base + "c/chandra/csc258/f26/#lectures")
         me.wait_for_selector(".hs-wk")
-        expect(me.locator(".hb-staff")).to_contain_text("See it as a visitor")
+        expect(me.locator(".hb-staff")).to_contain_text("as a student sees it"); expect(me.locator("#hb-acct")).to_contain_text("Student")
         ph = browser("phone", 390)
         ph.goto(srv.base + "c/chandra/csc258/f26/#about")
         ph.wait_for_selector(".hb-person")

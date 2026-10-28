@@ -535,6 +535,69 @@ def _offering_or_404(handle, course, term):
     return (o, page) if page is not None else (o, None)
 
 
+# The course page's stylesheet, for showing its parts inside Lectern (its discussions): each of its rules made to
+# apply only inside .hb (a selector that doesn't start with .hb gets ".hb " in front), so none of it touches
+# Lectern's own page. At-rules with rules inside (@media) are done the same way; @keyframes are kept as they are.
+_SCOPED = {}
+
+
+def _scope_sel(sel):
+    """A selector of hub.css, kept to inside .hb: as it is if it's already .hb's; else after :where(.hb), which adds
+    nothing to its specificity, so its rules win and lose against each other just as on the course page."""
+    sel = sel.strip()
+    if not sel or re.match(r"\.hb(?![\w-])", sel) or re.search(r"(^|\s)\.hb(?![\w-])", sel):
+        return sel                                   # already .hb's (".hb .x", ":root:not(…) .hb")
+    if re.match(r"(html|body|:root)\b", sel):       # the page itself: .hb, here
+        rest = re.sub(r"^(html|body|:root)(\.[\w-]+|\[[^\]]*\]|:not\([^)]*\))*\s*", "", sel)
+        return f":where(.hb) {rest}".strip() if rest else ":where(.hb)"
+    return f":where(.hb) {sel}"
+
+
+def _split_sels(head):
+    parts, depth, cur = [], 0, ""
+    for ch in head:
+        depth += {"(": 1, ")": -1}.get(ch, 0)
+        if ch == "," and depth == 0:
+            parts.append(cur); cur = ""
+        else:
+            cur += ch
+    return parts + [cur]
+
+
+def _scope_css(css):
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    out, i, n = [], 0, len(css)
+    while i < n:
+        j = css.find("{", i)
+        if j < 0:
+            break
+        head = css[i:j].strip()
+        depth, k = 1, j + 1
+        while k < n and depth:
+            depth += {"{": 1, "}": -1}.get(css[k], 0)
+            k += 1
+        inner = css[j + 1:k - 1]
+        if head.startswith("@keyframes") or head.startswith("@font-face"):
+            out.append(f"{head}{{{inner}}}")
+        elif head.startswith("@"):
+            out.append(f"{head}{{{_scope_css(inner)}}}")
+        else:
+            out.append(",".join(_scope_sel(x) for x in _split_sels(head)) + f"{{{inner}}}")
+        i = k
+    return "\n".join(out)
+
+
+@hub_bp.get("/css/hub-in-lectern.css")
+def hub_css_scoped():
+    import os
+    from flask import Response
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "css", "hub.css")
+    m = os.path.getmtime(path)
+    if _SCOPED.get("m") != m:
+        _SCOPED.update(m=m, css=_scope_css(open(path, encoding="utf-8").read()))
+    return Response(_SCOPED["css"], mimetype="text/css", headers={"Cache-Control": "no-cache"})
+
+
 @hub_bp.get("/c/<handle>/<course>/<term>/")
 def hub_page(handle, course, term):
     o, page = _offering_or_404(handle, course, term)
@@ -565,8 +628,11 @@ def hub_api(handle, course, term):
         from .students import student_of
         student = student_of(o["id"], offering)
         role = "student" if student else None
-    preview = role in STAFF and request.args.get("as") == "public"
-    signed = bool(role) and not preview
+    # The teaching team only looks at the course page (they take part from Lectern): as a visitor (?as=public), or as
+    # a typical signed-in student (?as=student, the default for them): no one's marks or requests, no section's own.
+    as_ = request.args.get("as")
+    preview = (("public" if as_ == "public" else "student") if role in STAFF else False)
+    signed = bool(role) and preview != "public"
     vis = visibility(page)
     year = year_of(page, term)
     about = about_of(o["id"], course, term)
@@ -673,8 +739,8 @@ def hub_api(handle, course, term):
         course={"title": _s(head.get("title"), 300) or _s(page.get("title"), 300), "code": course.upper(),
                 "term": term_name(term), "school": institution(),
                 "offering": offering, "year": year},
-        viewer={"signedIn": signed, "role": None if preview else role, "name": student or (u["name"] if u and signed else ""),
-                "staff": role in STAFF, "preview": preview,
+        viewer={"signedIn": signed, "role": None if preview == "public" else "student" if preview else role, "name": student or "",
+                "staff": role in STAFF, "preview": preview, "staffRole": role if role in STAFF else None,
                 **({"marks": marks} if student else {}),
                 # a student: the announcements they've seen (the others are New for them)
                 **({"seen": [r["ann_id"] for r in db.all_("SELECT ann_id FROM announcements_seen WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], offering, student))]} if student else {})},

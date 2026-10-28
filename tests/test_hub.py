@@ -39,7 +39,7 @@ def test_the_hub_page_and_its_api(client, user, anon):
     assert j["course"]["code"] == "CSC258" and j["course"]["year"] == 2026
     assert [t["id"] for t in j["tabs"]] == ["week", "announcements", "lectures", "evaluations", "about", "accommodations"]
     assert set(j["data"]) == {"week", "announcements", "lectures", "evaluations", "about"}
-    assert j["viewer"] == {"signedIn": False, "role": None, "name": "", "staff": False, "preview": False}
+    assert j["viewer"] == {"signedIn": False, "role": None, "name": "", "staff": False, "preview": False, "staffRole": None}
     # The page's old contact and meeting-time tables aren't shown: the teaching team's sections and times are.
     assert not [s for s in j["data"]["about"]["sections"] if s["type"] != "text"]
     weeks = j["data"]["week"]["weeks"]
@@ -80,17 +80,17 @@ def test_signed_in_tabs_stay_private(client, user, anon):
     assert all(set(w) <= {"i", "label", "dates", "start", "end", "isBreak"} for w in j["data"]["week"]["weeks"])
 
 
-def test_the_teaching_team_sees_everything_and_can_preview(client, user, anon):
+def test_the_teaching_team_sees_it_as_a_student_or_a_visitor(client, user, anon):
     publish(user, with_tabs(lectures="signed-in"))
-    j = client.get("/api/hub/chandra/csc258/f26").get_json()
-    assert j["viewer"]["signedIn"] and j["viewer"]["role"] == "owner" and j["viewer"]["staff"]
+    j = client.get("/api/hub/chandra/csc258/f26").get_json()   # as a typical signed-in student (they take part from Lectern)
+    assert j["viewer"]["signedIn"] and j["viewer"]["role"] == "student" and j["viewer"]["preview"] == "student" and j["viewer"]["staffRole"] == "owner" and "marks" not in j["viewer"]
     assert "lectures" in j["data"] and "accommodations" in j["data"]
     p = client.get("/api/hub/chandra/csc258/f26?as=public").get_json()
     assert p["viewer"]["preview"] and not p["viewer"]["signedIn"] and "lectures" not in p["data"]
     ta, _ = member("alan@utoronto.ca", "alan")
     add(client, "alan@utoronto.ca", "ta", who=ta)
     t = ta.get("/api/hub/chandra/csc258/f26").get_json()
-    assert t["viewer"]["role"] == "ta" and "lectures" in t["data"]
+    assert t["viewer"]["staffRole"] == "ta" and "lectures" in t["data"]
 
 
 def test_someone_elses_account_is_a_visitor(client, user):
@@ -233,9 +233,8 @@ def test_an_activity_or_announcement_for_one_activity_group(client, user, anon):
     j = anon.get("/api/hub/chandra/csc258/f26").get_json()
     assert [c["title"] for c in j["data"]["lectures"]["weeks"][0]["cards"]] == ["Gates"]
     assert [a["title"] for a in j["data"]["announcements"]["items"]] == ["For all"]
-    j = client.get("/api/hub/chandra/csc258/f26").get_json()   # the teaching team sees them all
-    assert [c["title"] for c in j["data"]["lectures"]["weeks"][0]["cards"]] == ["Gates", "Only 0101", "0101 and 0201"]
-    assert {a["title"]: a["groups"] for a in j["data"]["announcements"]["items"]} == {"For all": [], "For 0101": ["g1"], "About the 0101 lecture": ["g1"]}
+    j = client.get("/api/hub/chandra/csc258/f26").get_json()   # the teaching team sees it as a typical student: not a section's own
+    assert [c["title"] for c in j["data"]["lectures"]["weeks"][0]["cards"]] == ["Gates"]
     assert [t["title"] for t in j["tabs"]][2] == "Activities"
 
 

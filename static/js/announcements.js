@@ -154,6 +154,7 @@ export function announcementsPage(ctx, r) {
         <div id="an-body"></div>
         <h3 class="lx-sec">Discussion</h3>
         <label class="lx-tick"><input type="checkbox" id="an-disc"${x.discussion === false ? "" : " checked"}${dis}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
+        ${isNew || x.discussion === false ? "" : `<div data-dc-slot="ann:${esc(x.id)}"></div>`}
         ${edit ? `<div class="an-foot"><label class="lt-check"><input type="checkbox" id="an-mail"${isNew ? " checked" : ""}> Email it to the students it's for</label><span class="spacer"></span>
           <button type="button" class="lx-btn" id="an-cancel">${isNew ? "Discard" : "Undo Changes"}</button><button type="button" class="lx-btn main" id="an-save">${isNew ? "Save" : "Save Changes"}</button></div>` : ""}
       </div>

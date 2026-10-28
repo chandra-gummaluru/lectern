@@ -50,6 +50,9 @@ def _viewer(handle, course, term):
     u, _ = current()
     role = role_of(u["id"], o["id"], off) if u else None
     if role in STAFF:
+        # On the course page the teaching team only looks, as a student would (?as=student): they take part from Lectern.
+        if request.args.get("as") == "student":
+            return o, off, {"kind": "preview", "key": f"u:{u['id']}", "id": str(u["id"]), "name": "A student", "role": role}
         return o, off, {"kind": "staff", "key": f"u:{u['id']}", "id": str(u["id"]), "name": u["name"] or u["email"], "role": role}
     email = student_of(o["id"], off)
     if not email:
@@ -154,7 +157,7 @@ def _thread(o, off, target, viewer):
             p.update(title=r["title"], body=r["body"], who=_who(o, off, r, viewer, students, team, aliases))
         posts.append(p)
     names = _names(o, off, rows, viewer, students, team, aliases)
-    me = {"kind": viewer["kind"], "name": viewer["name"], **({"alias": alias_of(o["id"], off, viewer["id"])} if viewer["kind"] == "student" else {"role": ROLE.get(viewer["role"], "Staff")})}
+    me = {"kind": viewer["kind"], "name": viewer["name"], **({"alias": alias_of(o["id"], off, viewer["id"])} if viewer["kind"] == "student" else {} if viewer["kind"] == "preview" else {"role": ROLE.get(viewer["role"], "Staff")})}
     # Who can be mentioned: the teaching team, and (for the teaching team) every student by name.
     people = [{"tok": f"u:{k}", "name": t["name"], "role": ROLE.get(t["role"], "Staff")} for k, t in team.items()]
     if staff:
@@ -184,6 +187,74 @@ def counts(handle, course, term):
     return jsonify(counts={r["target"]: r["n"] for r in rows})
 
 
+def _writer(handle, course, term):
+    """Who's writing (posting, voting, moderating, deleting): a student on the course page, or the teaching team
+    from Lectern (its requests say so: X-Lectern-App). On the course page the teaching team only looks."""
+    o, off, viewer = _viewer(handle, course, term)
+    if viewer["kind"] == "preview" or (viewer["kind"] == "staff" and request.headers.get("X-Lectern-App") != "1"):
+        raise Refusal(403, "The teaching team takes part in discussions from Lectern: this course page is how students see it.", "from-lectern")
+    return o, off, viewer
+
+
+# Every post in an offering (not comments), for Lectern's Discussions page: where it is, who, when, how many
+# comments, and whether the teaching team has answered it (a comment of theirs, or an endorsement).
+#   GET /api/hub/<handle>/<course>/<term>/discussion/all
+@discuss_bp.get("/api/hub/<handle>/<course>/<term>/discussion/all")
+@handles
+def every_post(handle, course, term):
+    o, off, viewer = _viewer(handle, course, term)
+    if viewer["kind"] != "staff":
+        raise Refusal(403, "Only the teaching team sees every discussion.")
+    rows = db.all_("SELECT * FROM discussion_posts WHERE owner_id = ? AND offering = ? ORDER BY created", (o["id"], off))
+    students, team = _people(o, off)
+    aliases = {r["email"]: r["alias"] for r in db.all_("SELECT email, alias FROM discussion_aliases WHERE owner_id = ? AND offering = ?", (o["id"], off))}
+    kids = {}
+    for r in rows:
+        if r["parent_id"] is not None:
+            kids.setdefault(r["parent_id"], []).append(r)
+    def under(pid):
+        out = []
+        for k in kids.get(pid, []):
+            out += [k] + under(k["id"])
+        return out
+    votes = {r["post_id"]: r["n"] for r in db.all_("SELECT post_id, COUNT(*) AS n FROM discussion_votes WHERE post_id IN (SELECT id FROM discussion_posts WHERE owner_id = ? AND offering = ?) GROUP BY post_id", (o["id"], off))}
+    posts = []
+    for r in rows:
+        if r["parent_id"] is not None:
+            continue
+        sub = [k for k in under(r["id"]) if not k["removed_by"] and not k["deleted"]]
+        answered = bool(r["endorsed_by"]) or r["author_kind"] == "staff" or any(k["author_kind"] == "staff" for k in sub)
+        posts.append({"id": r["id"], "target": r["target"], "title": r["title"], "body": r["body"], "at": r["created"],
+                      "last": max([r["created"]] + [k["created"] for k in sub]), "comments": len(sub), "votes": votes.get(r["id"], 0),
+                      "pinned": bool(r["pinned"]), "endorsed": bool(r["endorsed_by"]), "removed": bool(r["removed_by"]), "deleted": bool(r["deleted"]),
+                      "answered": answered, "who": _who(o, off, r, viewer, students, team, aliases)})
+    return jsonify(posts=posts, names=target_names(o["id"], off))
+
+
+def target_names(owner_id, off):
+    """{target: {kind, name, title?}}: what each discussion is on, by the offering's files (the gradebook's
+    evaluations, the activities, the announcements)."""
+    from .hub import lectures_of, announcements_of
+    from .store import Repo
+    course, term = off.split("/", 1)
+    out = {}
+    try:
+        book = json.loads((Repo(owner_id, "priv").read(f"{off}/grades.json") or b"{}").decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        book = {}
+    for e in (book.get("evals") or []) if isinstance(book, dict) else []:
+        if isinstance(e, dict) and e.get("id"):
+            out[f"eval:{e['id']}"] = {"kind": "eval", "name": e.get("name") or "Evaluation", "title": e.get("title") or ""}
+    for w in ((lectures_of(owner_id, course, term) or {}).get("weeks") or []):
+        for c in (w.get("cards") or []) if isinstance(w, dict) else []:
+            if isinstance(c, dict) and c.get("id"):
+                out[f"act:{c['id']}"] = {"kind": "act", "name": c.get("title") or "Activity", "title": w.get("label") or ""}
+    for a in announcements_of(owner_id, course, term) or []:
+        if isinstance(a, dict) and a.get("id"):
+            out[f"ann:{a['id']}"] = {"kind": "ann", "name": a.get("title") or "Announcement", "title": ""}
+    return out
+
+
 def _clean(t, viewer, students):
     """What was written: plain text; mention tokens kept only if this viewer may write them."""
     t = str(t or "").replace("\r\n", "\n").strip()
@@ -199,7 +270,7 @@ def _clean(t, viewer, students):
 @discuss_bp.post("/api/hub/<handle>/<course>/<term>/discussion")
 @handles
 def post(handle, course, term):
-    o, off, viewer = _viewer(handle, course, term)
+    o, off, viewer = _writer(handle, course, term)
     d = body()
     target = _target(d.get("t"))
     from .hub import closed_discussions
@@ -241,7 +312,7 @@ def _post(o, off, pid):
 @discuss_bp.post("/api/hub/<handle>/<course>/<term>/discussion/<int:pid>/vote")
 @handles
 def vote(handle, course, term, pid):
-    o, off, viewer = _viewer(handle, course, term)
+    o, off, viewer = _writer(handle, course, term)
     p = _post(o, off, pid)
     if body().get("on"):
         db.run("INSERT OR IGNORE INTO discussion_votes (post_id, voter) VALUES (?, ?)", (pid, viewer["key"]))
@@ -253,7 +324,7 @@ def vote(handle, course, term, pid):
 @discuss_bp.post("/api/hub/<handle>/<course>/<term>/discussion/<int:pid>/moderate")
 @handles
 def moderate(handle, course, term, pid):
-    o, off, viewer = _viewer(handle, course, term)
+    o, off, viewer = _writer(handle, course, term)
     if viewer["kind"] != "staff":
         raise Refusal(403, "Only the teaching team can do that.")
     p, d = _post(o, off, pid), body()
@@ -275,7 +346,7 @@ def moderate(handle, course, term, pid):
 @discuss_bp.post("/api/hub/<handle>/<course>/<term>/discussion/<int:pid>/delete")
 @handles
 def delete(handle, course, term, pid):
-    o, off, viewer = _viewer(handle, course, term)
+    o, off, viewer = _writer(handle, course, term)
     p = _post(o, off, pid)
     if _key(p) != viewer["key"]:
         raise Refusal(403, "You can delete only your own posts.")

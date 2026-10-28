@@ -32,16 +32,19 @@ const ini = n => String(n || "?").split(/\s+/).filter(Boolean).map(w => w[0]).sl
 const ago = t => { const m = Math.round((Date.now() / 1000 - t) / 60); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : m < 10080 ? `${Math.round(m / 1440)} d ago` : new Date(t * 1000).toLocaleDateString("en-CA", { month: "short", day: "numeric" }); };
 const TOKEN = /@\{([pus]):([\w.@+-]{1,120})\}/g;
 
-export function mount(host, { api, target, signIn, post = null, onPost = null }) {
+export function mount(host, { api, target, signIn, post = null, onPost = null, as = "", link = null, app = false }) {
   // A post opens on its own page; on it, it's the only one shown.
-  const page = id => `#post/${encodeURIComponent(target)}/${id}`;
+  const page = id => (link ? link(target, id) : `#post/${encodeURIComponent(target)}/${id}`);
   const S = { data: null, open: post, writing: false, replyTo: null, sort: "top", anon: false, folded: new Set(), err: "", q: "" };
-  const call = (path, body) => fetch(`${api}/discussion${path}`, body ? { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify(body) } : { credentials: "same-origin" })
+  // as: "student" (the teaching team previewing the course page: read only). app: in Lectern, where the team takes part.
+  const q = path => (as ? `${path}${path.includes("?") ? "&" : "?"}as=${encodeURIComponent(as)}` : path);
+  const call = (path, body) => fetch(`${api}/discussion${body ? path : q(path)}`, body ? { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json", ...(app ? { "X-Lectern-App": "1" } : {}) }, body: JSON.stringify(body) } : { credentials: "same-origin" })
     .then(r => r.json().catch(() => ({})).then(d => { if (!r.ok) { const e = new Error(d.error || "Something went wrong. Try again in a moment."); e.status = r.status; throw e; } return d; }));
   const load = () => call(`?t=${encodeURIComponent(target)}`).then(d => { S.data = d; draw(); }, e => {
     host.innerHTML = head(0) + (e.status === 401 ? `<div class="dc-none">For people in the course. <a class="hb-btn" href="${esc(signIn)}">Sign in</a> to see the discussion and join it.</div>` : `<p class="dc-none">${esc(e.message)}</p>`);
   });
   const staff = () => S.data && S.data.me.kind === "staff";
+  const ro = () => S.data && S.data.me.kind === "preview";   // only looking
   const posts = () => S.data.posts;
   const kids = id => posts().filter(p => p.parent === id);
   const tops = () => posts().filter(p => p.parent == null && (staff() || !(p.removed || p.deleted)));
@@ -61,10 +64,11 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
 
   function head(n) {
     if (post) return "";
-    const tools = S.data && !S.open ? `<div class="dc-tools"><label class="dc-search">${I.search}<input type="search" placeholder="Search posts" aria-label="Search posts" value="${esc(S.q)}"></label><div class="dc-sort" role="tablist"><button data-sort="top" aria-pressed="${S.sort === "top"}">Top</button><button data-sort="new" aria-pressed="${S.sort === "new"}">New</button></div>${S.writing ? "" : `<button class="hb-btn primary dc-new" data-new>${I.plus}New Post</button>`}</div>` : "";
+    const tools = S.data && !S.open ? `<div class="dc-tools"><label class="dc-search">${I.search}<input type="search" placeholder="Search posts" aria-label="Search posts" value="${esc(S.q)}"></label><div class="dc-sort" role="tablist"><button data-sort="top" aria-pressed="${S.sort === "top"}">Top</button><button data-sort="new" aria-pressed="${S.sort === "new"}">New</button></div>${S.writing || ro() ? "" : `<button class="hb-btn primary dc-new" data-new>${I.plus}New Post</button>`}</div>` : "";
     return `<div class="dc-head"><h2 class="ec-sec dc-title">Discussion${S.data ? ` <span>· ${n} post${n === 1 ? "" : "s"}</span>` : ""}</h2>${tools}</div>`;
   }
   function composer(kind) {   // "post" (a title and a body), "comment" (on the opened post), "reply" (to a comment)
+    if (ro()) return "";
     const me = S.data.me;
     const as = me.kind === "student" ? `<label class="dc-anon" title="Classmates see you as ${esc(me.alias)}; the teaching team sees your name"><input type="checkbox" data-anon${S.anon ? " checked" : ""}>Anonymous to Classmates</label><span class="dc-sp"></span>` : `<span class="dc-hint">You post as ${esc(me.name)}. Type @ to mention someone.</span>`;
     const ph = { post: "Say more: what you've tried, where you're stuck… (@ to mention)", comment: "Add a comment… (@ to mention)", reply: "Write a reply… (@ to mention)" }[kind];
@@ -75,7 +79,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
   function rowHTML(p) {
     const n = count(p.id), w = p.who;
     return `<div class="dc-t${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
-      <button class="dc-vote dc-up" data-up="${p.id}" aria-pressed="${p.voted}" title="Upvote">${I.up}<b>${p.votes}</b></button>
+      ${ro() ? `<span class="dc-vote dc-up dc-ro">${I.up}<b>${p.votes}</b></span>` : `<button class="dc-vote dc-up" data-up="${p.id}" aria-pressed="${p.voted}" title="Upvote">${I.up}<b>${p.votes}</b></button>`}
       <button class="dc-t-b" data-open="${p.id}">
         <span class="dc-t-flags">${flags(p)}</span>
         <b class="dc-t-title">${esc(p.title || "(removed)")}</b>
@@ -84,6 +88,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null })
       </button>${p.pinned || p.endorsed ? `<span class="dc-t-st">${marks(p)}</span>` : ""}</div>`;
   }
   function acts(p, top) {
+    if (ro()) return `<div class="dc-acts"><span class="dc-up dc-ro" title="Upvotes">${I.up}${p.votes || ""}</span>${top ? `<span class="dc-ncom">${count(p.id)} comment${count(p.id) === 1 ? "" : "s"}</span>` : ""}</div>`;
     const mine = p.who && p.who.you && !p.deleted;
     return `<div class="dc-acts"><button class="dc-up" data-up="${p.id}" aria-pressed="${p.voted}" title="Upvote">${I.up}${p.votes || ""}</button>
       ${top ? `<span class="dc-ncom">${count(p.id)} comment${count(p.id) === 1 ? "" : "s"}</span>` : `<button data-reply="${p.id}">${I.reply}Reply</button>`}

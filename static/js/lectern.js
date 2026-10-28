@@ -1202,8 +1202,9 @@ async function partsCard(c, t) {
   let f = null;
   try { f = await Store.readFile(repo, path); } catch (e) { if (box) box.innerHTML = `<p class="lt-part-text">${esc(e.message)}</p>`; return; }
   if (!mine() || !box) return;
-  if (!f) { box.innerHTML = `<p class="lt-part-text">The course page isn't published yet.</p>`; return; }
-  let d; try { d = JSON.parse(f.text); } catch (_) { box.innerHTML = `<p class="lt-part-text">Its course.json couldn't be read.</p>`; return; }
+  // No course.json (an offering made in Lectern's parts): its course page is live anyway, every part public;
+  // the first change here makes one, with just these settings.
+  let d; try { d = f ? JSON.parse(f.text) : { page: { sections: [], tabs: {} } }; } catch (_) { box.innerHTML = `<p class="lt-part-text">Its course.json couldn't be read.</p>`; return; }
   const tabs = () => (d.page && d.page.tabs) || {};
   const cur = id => tabs()[id] || (id === "accommodations" ? "signed-in" : "public");
   const draw = () => {
@@ -1214,9 +1215,9 @@ async function partsCard(c, t) {
       if (cur(b.dataset.part) === b.dataset.v) return;
       box.querySelectorAll("[data-part]").forEach(x => { x.disabled = true; });
       try {
-        const g = await Store.readFile(repo, path), x = JSON.parse(g.text);   // the latest, then this one change
-        x.page = x.page || {}; x.page.tabs = { ...(x.page.tabs || {}), [b.dataset.part]: b.dataset.v };
-        await Store.writeText(repo, path, JSON.stringify(x, null, 1) + "\n", `Course page: ${HUB_PARTS.find(p => p[0] === b.dataset.part)[1]} ${b.dataset.v}`, g.sha);
+        const g = await Store.readFile(repo, path), x = g ? JSON.parse(g.text) : { page: { sections: [] } };   // the latest, then this one change
+        x.page = x.page || {}; if (!Array.isArray(x.page.sections)) x.page.sections = []; x.page.tabs = { ...(x.page.tabs || {}), [b.dataset.part]: b.dataset.v };
+        await Store.writeText(repo, path, JSON.stringify(x, null, 1) + "\n", `Course page: ${HUB_PARTS.find(p => p[0] === b.dataset.part)[1]} ${b.dataset.v}`, g ? g.sha : null);
         d = x; const cp = Lectern.tools.course; if (cp && cp.api && cp.api.state().path === path) cp.stale = true;
         toast(b.dataset.v === "off" ? `${HUB_PARTS.find(p => p[0] === b.dataset.part)[1]} is off: it's not on the course page.` : "Saved.");
       } catch (e) { toast(e.message); }

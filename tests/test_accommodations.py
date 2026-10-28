@@ -379,3 +379,22 @@ def test_a_student_replies_to_their_request(gh):
     # Someone else can't reply to it.
     other = hub_student("zoe.ng@mail.utoronto.ca")
     assert other.post(f"{HUB}/accommodations/{rid}/reply", json={"text": "Hi"}, headers=H).status_code == 404
+
+
+def test_a_ta_handles_remark_requests_but_not_accommodations(gh):
+    from server import db
+    acc = app.test_client().post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).get_json()["id"]
+    rec = {"id": "m-1", "type": "remark", "eval": "mt", "evalName": "Midterm", "kind": "remark", "details": "Q2", "student": "1001",
+           "first": "Maya", "last": "Castillo", "email": "maya.castillo@mail.utoronto.ca", "status": "pending", "submitted": "2026-10-26T12:00:00Z"}
+    d = json.loads(gh.text("csc258/f26/accommodations.json")); d["requests"].append(rec); gh.put("csc258/f26/accommodations.json", json.dumps(d))
+    ta = app.test_client(); t = make_user(ta, email="sam@utoronto.ca", name="Sam Patel", handle="sam")
+    db.run("INSERT INTO members (owner_id, offering, user_id, role, added) VALUES (?, 'csc258/f26', ?, 'ta', 0)", (gh.user["id"], t["id"]))
+    got = ta.get("/api/accommodations/remarks?owner=chandra&offering=csc258/f26").get_json()["requests"]
+    assert [r["id"] for r in got] == ["m-1"]   # the remark request, not the accommodation request
+    ask = lambda rid: ta.post("/api/accommodations/decide", headers=H, json={"owner": "chandra", "offering": "csc258/f26", "id": rid, "decision": "approved", "note": "Fixed."})
+    assert ask(acc).status_code == 403
+    r = ask("m-1")
+    assert r.status_code == 200 and r.get_json()["request"]["decidedBy"] == "Sam Patel"
+    assert [x["status"] for x in requests_of(gh)] == ["pending", "approved"]
+    other = app.test_client(); make_user(other, email="x@utoronto.ca", name="X", handle="xx")
+    assert other.get("/api/accommodations/remarks?owner=chandra&offering=csc258/f26").status_code == 404

@@ -749,6 +749,26 @@ def hub_remark(handle, course, term):
 
 
 # ── Instructors ──────────────────────────────────────────────────────
+# A TA handles remark requests, but can't read the requests file (its accommodation requests can hold medical
+# details): they get the remark requests from here.   GET /api/accommodations/remarks?owner&offering
+@accom_bp.get("/api/accommodations/remarks")
+@signed_in
+def remarks():
+    try:
+        from .teams import role_of
+        o = _offering(request.args.get("offering"))
+        owner = _owner(request.args.get("owner")) if request.args.get("owner") else g.user["id"]
+        role = role_of(g.user["id"], owner, o)
+        if role not in ("owner", "coordinator", "staff", "ta"):
+            raise Refusal(404 if not role else 403, "Only the offering's teaching team can see remark requests.")
+        text, _ = Repo(owner, "priv").read_text(f"{o}/{FILE}")
+        return jsonify(requests=[r for r in _parse(text)["requests"] if isinstance(r, dict) and r.get("type") == "remark"])
+    except StoreError as e:
+        return _err(Refusal(e.status, str(e)))
+    except Refusal as x:
+        return _err(x)
+
+
 @accom_bp.post("/api/accommodations/decide")
 @signed_in
 def decide():
@@ -756,12 +776,14 @@ def decide():
     try:
         d = _body()
         o = _offering(d.get("offering"))
-        owner = g.user["id"]
+        owner, ta_only = g.user["id"], False
         if d.get("owner"):
             from .teams import role_of
             owner = _owner(d.get("owner"))
-            if role_of(g.user["id"], owner, o) not in ("owner", "coordinator", "staff"):   # staff decide any group's
-                raise Refusal(404 if not role_of(g.user["id"], owner, o) else 403, "Only the offering's instructors can decide requests.")
+            role = role_of(g.user["id"], owner, o)
+            if role not in ("owner", "coordinator", "staff", "ta"):   # staff decide any group's; TAs, remark requests only
+                raise Refusal(404 if not role else 403, "Only the offering's instructors can decide requests.")
+            ta_only = role == "ta"
         rid = str(d.get("id") or "")
         decision = d.get("decision")
         note = clean_details(d.get("note"))[:MAX_DETAILS]
@@ -773,6 +795,8 @@ def decide():
             r = next((x for x in f["requests"] if x.get("id") == rid), None)
             if not r:
                 raise Refusal(404, "That request isn't there any more.")
+            if ta_only and r.get("type") != "remark":   # a TA: only remark requests (accommodations can hold medical details)
+                raise Refusal(403, "As a TA you decide remark requests, not accommodation requests.")
             if r.get("status") in ("approved", "rejected"):   # a changed decision: the earlier one stays, as history
                 r["history"] = (r.get("history") if isinstance(r.get("history"), list) else [])[-49:] + [
                     {"status": r["status"], "decided": r.get("decided", ""), "decidedBy": r.get("decidedBy", ""), "note": r.get("note", "")}]

@@ -739,7 +739,7 @@ function offeringPage(c, t) {
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
     ${role === "staff" ? `<p class="lt-note">As staff you decide accommodation requests (any section's), and can look at everything else here, but not change it.</p>` : ""}
     ${role === "instructor" ? `<p class="lt-note">As an instructor you add and change the activities and announcements for your sections (the ones you run: set on your page in the teaching team). Everything else is the coordinators'.</p>` : ""}
-    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook for every student, and look at the evaluations and exams.</p>` : ""}
+    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook for every student, decide remark requests, and look at the evaluations and exams.</p>` : ""}
     <div class="lt-three lt-off-parts">
       <section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>
@@ -766,7 +766,7 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.accom}<h2>Accommodations</h2></div>
         <p class="lt-part-text" id="lt-accom-sum">Requests students make with the course page's Request Accommodation buttons. Approve or reject each one; the student gets an email.</p>
         <div class="lt-part-acts"><button type="button" class="lt-btn" id="lt-accom"${!o.grades && loading ? " disabled" : ""}>Open Accommodations</button></div>
-      </section>
+      </section>` : ""}${edit || role === "staff" || ta ? `
       <section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.evals}<h2>Remark Requests</h2></div>
         <p class="lt-part-text" id="lt-rmk-sum">Requests students make with the course page's Request Remark buttons, once their marks are out. Approve or reject each one; the student gets an email.</p>
@@ -801,7 +801,7 @@ function offeringPage(c, t) {
   const acc = $("#lt-accom");
   if (acc) acc.onclick = () => go({ page: "accom", c, t });
   const rmk = $("#lt-rmk"); if (rmk) rmk.onclick = () => go({ page: "accom", k: "remark", c, t });
-  if (acc && o.grades) readAccom(c, t).then(d => {
+  if ((acc || rmk) && o.grades) readAccom(c, t).then(d => {
     if (S.route.page !== "offering" || S.route.c !== c || S.route.t !== t || !d) return;
     [["#lt-accom-sum", "#lt-accom", false], ["#lt-rmk-sum", "#lt-rmk", true]].forEach(([sum, btn, rm]) => {
       const b = $(btn), n = d.requests.filter(x => (x.status === "pending" || x.unread) && (x.type === "remark") === rm).length;
@@ -899,7 +899,7 @@ async function teamPart(c, t) {
   const roleSeg = (cur, attrs, label, small = true) => `<span class="lt-seg${small ? " lt-seg-sm" : ""}" role="radiogroup" aria-label="${esc(label)}">${[["coordinator", "Coordinator"], ["instructor", "Instructor"], ["ta", "TA"], ["staff", "Staff"]].map(([v, n]) =>
     `<button type="button" role="radio" ${attrs} data-v="${v}" aria-checked="${cur === v}" aria-pressed="${cur === v}">${n}</button>`).join("")}</span>`;
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
-  box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">${lead ? "Coordinators do everything here (the team too). Instructors add and change their sections' activities and announcements. TAs enter marks for every student. Staff decide accommodation requests." : "The people who work on this offering."}</p>${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div>` : ""}</div>
+  box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">${lead ? "Coordinators do everything here (the team too). Instructors add and change their sections' activities and announcements. TAs enter marks for every student and decide remark requests. Staff decide accommodation requests." : "The people who work on this offering."}</p>${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div>` : ""}</div>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
         <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag lt-owner">Owner</span>`
@@ -1026,6 +1026,8 @@ function newExamDialog(c, t) {
 // Students' requests are in your private files, <course>/<term>/accommodations.json (the server writes
 // them: students don't sign in). A decision goes through the server too, which saves it and emails the student.
 async function readAccom(c, t) {
+  // A TA handles remark requests but can't read the file (its accommodation requests can hold medical details).
+  if (roleIn(c, t) === "ta") return { requests: (await Auth.api(`/api/accommodations/remarks?owner=${encodeURIComponent(curOwner() || "")}&offering=${encodeURIComponent(`${c}/${t}`)}`)).requests || [] };
   const text = await readPriv(`${c}/${t}/accommodations.json`);
   if (!text) return { requests: [] };
   try { const d = JSON.parse(text); return { requests: Array.isArray(d.requests) ? d.requests : [] }; } catch (_) { return { requests: [], bad: true }; }

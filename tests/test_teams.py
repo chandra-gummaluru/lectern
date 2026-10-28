@@ -194,7 +194,7 @@ def test_only_instructors_manage_the_team(client, course):
     assert ta.get("/api/store/chandra.priv/git/trees/main").status_code == 404
 
 
-def test_instructors_decide_accommodations_tas_cant(client, course):
+def test_coordinators_decide_accommodations_tas_cant(client, course):
     ta, _ = member("ta@x.ca", "ta")
     ins, _ = member("ins@x.ca", "ins")
     add(client, "ta@x.ca", "ta", who=ta); add(client, "ins@x.ca", "coordinator", who=ins)

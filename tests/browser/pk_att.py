@@ -24,7 +24,7 @@ with Server() as srv, sync_playwright() as p:
     ctx = b.new_context(viewport={"width": 1360, "height": 900}, permissions=["camera"]); block_cdns(ctx); me = ctx.new_page(); me.on("pageerror", lambda e: errs.append(str(e)))
     me.on("response", lambda r: errs.append(f"{r.status} {r.url}") if r.status >= 400 else None)
     srv.sign_in(me, hash="#/csc258/f26/evaluations"); me.wait_for_timeout(2500)
-    me.wait_for_selector("[data-lt-tool='grades'] .erow"); me.screenshot(path=f"{OUT}/att-0-list.png", full_page=True); me.locator("[data-lt-tool='grades'] .erow", has_text="Midterm").first.locator("[data-act=attend]").click(); me.wait_for_selector("#at-note"); me.wait_for_timeout(300); me.screenshot(path=f"{OUT}/att-1-overview.png")
+    me.wait_for_selector("[data-lt-tool='grades'] .erow"); me.screenshot(path=f"{OUT}/att-0-list.png", full_page=True); me.locator("[data-lt-tool='grades'] .erow", has_text="Midterm").first.click(); me.wait_for_selector("#at-note"); me.wait_for_timeout(300); me.screenshot(path=f"{OUT}/att-1-overview.png")
     print("hash:", me.evaluate("location.hash"))
     me.fill("#at-note", "BA 1170, last names A–L"); me.wait_for_timeout(7000); print("note kept:", me.locator("#at-note").count() and me.input_value("#at-note")); me.screenshot(path=f"{OUT}/att-2-note.png")
     me.click("#at-go"); me.wait_for_selector(".at-panel.ask", timeout=20000); me.screenshot(path=f"{OUT}/att-3-ask.png")

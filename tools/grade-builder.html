@@ -109,8 +109,6 @@ body.gb-limited #view .editor :is(input[type=text], input[type=number], input:no
 body.gb-limited #view :disabled:hover { filter: none; }
 body.gb-limited #view button.add:disabled, body.gb-limited #view [data-ed=mkadd]:disabled { display: none; }
 /* Take Attendance on a test's card: the size of Lectern's own buttons (the offering's Open … ones). */
-.erow [data-act="attend"] { height: 38px; padding: 0 15px; gap: 8px; border-radius: 9px; font-size: 14px; }
-.erow [data-act="attend"] svg { width: 16px; height: 16px; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -2736,9 +2734,9 @@ const pushUndo = () => { undoStack.push(JSON.stringify(model)); if (undoStack.le
 // ── What you may change (in Lectern: window.Lectern.access()): "all", only the "marks" (a TA), or nothing ("view":
 // instructors and staff). The rest is disabled as it's drawn (lockDown), and a change that touches it anyway is undone.
 const ACCESS = () => (HOSTED && window.Lectern.access ? window.Lectern.access() : "all");
-const ED_OK = new Set(["attend", "rq-open", "open-accom", "acc-open", "acc-back", "done"]);
-const ACT_OK = { marks: new Set(["attend", "cell-st", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "up-marks", "view", "acc-cell"]),
-  view: new Set(["attend", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "view", "acc-cell"]) };
+const ED_OK = new Set(["rq-open", "open-accom", "acc-open", "acc-back", "done"]);
+const ACT_OK = { marks: new Set(["cell-st", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "up-marks", "view", "acc-cell"]),
+  view: new Set(["crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "view", "acc-cell"]) };
 const notMarks = m => JSON.stringify({ ...m, marks: null });
 let allowedBase = null;   // the model as it may be, apart from the marks (for "marks"), or entirely (for "view"): set as it's first drawn
 const baseOf = m => (ACCESS() === "marks" ? notMarks(m) : JSON.stringify(m));
@@ -3095,7 +3093,7 @@ function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a
   return `<div class="erow hd-row${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
     ${evIcon(e, true)}<div class="er-main hd-main"><div class="hd"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(e.name)}</p><h3>${esc(titleOf(e) || e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
       <p class="er-when">${esc(whenSentence(e))}${secDatesNote(e) ? `<span class="er-sd">${esc(secDatesNote(e))}</span>` : ""}</p></div>
-      <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div>${HOSTED && window.Lectern.openAttendance && e.type === "test" ? `<span class="hd-side er-side"><button type="button" class="ec-btn2" data-act="attend" data-id="${esc(e.id)}" title="Scan students' ID cards as they come in">${ATTEND_SVG}Take Attendance</button></span>` : ""}</div>`;
+      <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div></div>`;
 }
 // Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
 function buildBtn(e) {
@@ -3175,7 +3173,6 @@ stage.addEventListener("dragend", () => {
 
 // ── The window for one evaluation ────────────────────────────────────
 function evalEditor(id) { goPage(() => { ui.view = "evals"; ui.evalEd = id; ui.groupEd = ""; ui.cell = null; }); }   // its page
-const ATTEND_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4.5"/></svg>';
 function drawEvalEditor() {
   const m = $(".editor[data-eval]"); if (!m) return;
   const e = evalById(m.dataset.eval); if (!e) { ui.evalEd = ""; return render(); }
@@ -4221,7 +4218,6 @@ function act(b) {
       evalEditor(e.id); const f = $('.editor [data-f="label"]'); if (f) { f.focus(); f.select(); } return;
     }
     case "ed-eval": return evalEditor(b.dataset.id);
-    case "attend": return window.Lectern && window.Lectern.openAttendance && window.Lectern.openAttendance(b.dataset.id);
     case "ev-dup": {   // a copy right after it (in its group, if it's in one), named from the same label: Lab 2 → Lab 3
       const x = evalById(b.dataset.id); if (!x) return;
       const c = clone(x);

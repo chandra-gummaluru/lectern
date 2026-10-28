@@ -1,12 +1,11 @@
-"""Attendance: who was there for an evaluation (an exam, a test), taken by the teaching team scanning students' ID cards.
+"""Attendance: who was there for an evaluation (an exam, a test), taken by the teaching team holding students' ID cards up to a phone's camera.
 
 Anyone on the offering's team takes it, at any time, several at once. Each starts a session (with a note:
 the room, or the last names they're taking), scans students' ID cards (or finds a student by hand), and
 stops it: so each session has its own count, and the evaluation its total.
 
-  A scan       the card's number → the student it's registered to (students register theirs on the course
-               page; the teaching team can register a card to someone when it's unknown, or wrong). The
-               scanner shows who it is; Correct records them.
+  A scan       what's printed on the card (read with OCR, in the browser): its student number, or its names →
+               the student on the class list. The scanner shows who it is; Correct records them.
   Once each    a student is in once per evaluation (the database refuses a second), however many people are
                scanning: the second is told who entered them, and when.
 
@@ -18,12 +17,10 @@ Kept in the database (db.py's attendance tables, not the offering's files): it's
   POST /api/attendance/delete  {owner, offering, session}   instructors: a session, and who it put in
   GET  /api/attendance/student?owner&offering&num          a student's attendance: each evaluation it was taken for,
                                                            and whether they were in (when, and who entered them)
-  POST /api/attendance/lookup  {owner, offering, e, card}  who the card is, and whether they're in already
   GET  /api/attendance/search?owner&offering&e&q          students by name or number
   POST /api/attendance/identify {owner, offering, e, text} whose student ID it is, by what's printed on it (the scanner reads
                                                            it, OCR): its student number, or its first and last names
-  POST /api/attendance/mark    {owner, offering, e, session, student, card?}  they're in (card: register it to them)
-  Course page (a signed-in student): GET / POST /api/hub/<handle>/<course>/<term>/student-id {card}
+  POST /api/attendance/mark    {owner, offering, e, session, student, hand?}  they're in
 """
 import functools
 import re
@@ -33,7 +30,7 @@ from flask import Blueprint, g, jsonify, request
 
 from . import db
 from .auth import signed_in
-from .accommodations import Refusal, _book, _offering, _owner, _eval_id, _enrolled, _hub_student, _err
+from .accommodations import Refusal, _book, _offering, _owner, _eval_id, _err
 from .store import StoreError
 
 attendance_bp = Blueprint("attendance", __name__)
@@ -41,14 +38,6 @@ attendance_bp = Blueprint("attendance", __name__)
 
 MAX_NOTE = 120
 ROLES = ("owner", "coordinator", "instructor", "ta", "staff")
-
-
-def card_of(x):
-    """A card's number as scanned or typed: its letters and digits (a Codabar scan's start and stop letters,
-    A–D around the digits, are dropped)."""
-    s = re.sub(r"[^0-9A-Za-z]", "", str(x or "")).upper()
-    m = re.fullmatch(r"[A-D](\d+)[A-D]", s)
-    return m.group(1) if m else s
 
 
 def team_api(fn):
@@ -194,23 +183,6 @@ def of_student():
     return jsonify(evals={e: {"in": got.get(e)} for e in taken})
 
 
-@attendance_bp.post("/api/attendance/lookup")
-@team_api
-def lookup():
-    d = _args() or {}
-    owner, o = _team(d)
-    e = _eval_id(d.get("e"))
-    card = card_of(d.get("card"))
-    if not card:
-        raise Refusal(400, "That didn't scan: try again.")
-    r = db.one("SELECT student FROM tcards WHERE owner_id = ? AND offering = ? AND card = ?", (owner, o, card))
-    s = next((x for x in _students(_book_of(owner, o)) if r and str(x.get("num")) == r["student"]), None)
-    if not s:
-        return jsonify(card=card, student=None)
-    w = _who(s)
-    return jsonify(card=card, student=w, already=_in(owner, o, e, w["num"]))
-
-
 @attendance_bp.get("/api/attendance/search")
 @team_api
 def search():
@@ -308,54 +280,13 @@ def mark():
     if not s:
         raise Refusal(404, "That student isn't on the class list.", "not-enrolled")
     w = _who(s)
-    card = card_of(d.get("card"))
     who = g.user["name"] or g.user["email"]
     with db.transaction():
-        if card:   # this card is theirs (the scan was unknown, or someone else's): register it to them instead
-            db.run("DELETE FROM tcards WHERE owner_id = ? AND offering = ? AND (card = ? OR student = ?)", (owner, o, card, num))
-            db.run("INSERT INTO tcards (owner_id, offering, card, student, set_by, at) VALUES (?, ?, ?, ?, ?, ?)", (owner, o, card, num, who, time.time()))
         got = db.run("""INSERT INTO attendance (owner_id, offering, eval, student, session_id, by_name, how, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT DO NOTHING""", (owner, o, e, num, sess["id"], who, "hand" if d.get("hand") else "scan", time.time())).rowcount
     if not got:
         a = _in(owner, o, e, num)
-        return jsonify(error=f"{w['first']} {w['last']} was already entered{f' by {a['by']}' if a and a['by'] else ''}.", code="already", student=w, already=a), 409
+        by = f" by {a['by']}" if a and a["by"] else ""
+        return jsonify(error=f"This student was already entered{by}.", code="already", student=w, already=a), 409
     n = db.one("SELECT COUNT(*) AS n FROM attendance WHERE session_id = ?", (sess["id"],))["n"]
     return jsonify(ok=True, student=w, count=n)
-
-
-# ── The course page: a student registers their own card ──────────────
-@attendance_bp.get("/api/hub/<handle>/<course>/<term>/student-id")
-def hub_card(handle, course, term):
-    try:
-        uid, o, email = _hub_student(handle, course, term)
-        s = _enrolled(_book(uid, o), email)
-        r = db.one("SELECT card FROM tcards WHERE owner_id = ? AND offering = ? AND student = ?", (uid, o, str(s.get("num"))))
-        return jsonify(card=r["card"] if r else "")
-    except Refusal as x:
-        return _err(x)
-    except StoreError as x:
-        return _err(Refusal(x.status, str(x)))
-
-
-@attendance_bp.post("/api/hub/<handle>/<course>/<term>/student-id")
-def hub_set_card(handle, course, term):
-    try:
-        if request.headers.get("X-Lectern") != "1":
-            raise Refusal(403, "Refused: this request didn't come from Lectern.")
-        uid, o, email = _hub_student(handle, course, term)
-        s = _enrolled(_book(uid, o), email)
-        num = str(s.get("num"))
-        card = card_of((request.get_json(silent=True) or {}).get("card"))
-        if not re.fullmatch(r"[0-9A-Z]{5,24}", card):
-            raise Refusal(400, "That doesn't look like a student ID number: it's the number under the barcode on your card.")
-        with db.transaction():
-            r = db.one("SELECT student FROM tcards WHERE owner_id = ? AND offering = ? AND card = ?", (uid, o, card))
-            if r and r["student"] != num:
-                raise Refusal(409, "That card is registered to someone else in this course. If it's yours, show it to your instructor.", "taken")
-            db.run("DELETE FROM tcards WHERE owner_id = ? AND offering = ? AND student = ?", (uid, o, num))
-            db.run("INSERT INTO tcards (owner_id, offering, card, student, set_by, at) VALUES (?, ?, ?, ?, ?, ?)", (uid, o, card, num, "student", time.time()))
-        return jsonify(ok=True, card=card)
-    except Refusal as x:
-        return _err(x)
-    except StoreError as x:
-        return _err(Refusal(x.status, str(x)))

@@ -1272,3 +1272,8 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-sec .at-bar .at-sum { min-width: 0; }
 .at-sec .at-hand-row { display: flex; justify-content: center; }
 .at-sec .lt-btn svg { width: 16px; height: 16px; }
+.at-best:empty { display: none; }
+.at-best { margin-top: 12px; }
+.at-best h3 { margin: 0; }
+.at-best .at-why { margin-top: 4px; }
+.at-bad-t { color: var(--danger, #c0392b) !important; }

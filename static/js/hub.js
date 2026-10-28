@@ -639,14 +639,6 @@ const PAGES = {
     setTimeout(() => seenUpd("requests"), 0);
     return `${path([["My Requests"]])}${head("My Requests", "Your accommodation and remark requests, and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
   },
-  // Their student ID card's number (#student-id), so the teaching team can scan them in at a test (Lectern's Attendance).
-  "student-id"() {
-    const v = D.viewer;
-    setTimeout(IdCard.start, 0);
-    return `${path([["My Student ID"]])}<article class="ec-card rq-page" id="tc-card">
-      <header class="ec-head"><span class="hs-ic ec-ic">${IDCARD_IC}</span><div class="ec-tt"><p class="hs-kick">Student ID</p><h1>Your Student ID</h1><p class="ec-subline">At tests and exams, the teaching team scans it to check you in.</p></div></header>
-      <div id="tc-box">${v.role === "student" ? `<p class="hs-empty">Loading…</p>` : `<p class="hs-empty">Sign in to the course page to add your student ID.</p>`}</div></article>`;
-  },
   // One of the student's requests (#myrequest/<id>), in the Item Head style: what they asked for, then the
   // decision and the discussion with the teaching team, where they can reply.
   myrequest(arg) {
@@ -683,32 +675,6 @@ function myRequests() {
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }
-
-const IDCARD_IC = svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M7 9v3M10 9v3M13 9v3M16 9v3"/>');
-const IdCard = (() => {
-  const api = (method, body) => fetch(`${root.dataset.api}/student-id`, { method, credentials: "same-origin", headers: method === "GET" ? {} : { "X-Lectern": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
-    .then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "That didn't work. Try again in a moment.")))));
-  function draw(card, editing) {
-    const box = document.getElementById("tc-box"); if (!box) return;
-    if (card && !editing) {
-      box.innerHTML = `<div class="tc-have"><p class="tc-label">Card number</p><p class="tc-num">${esc(card)}</p></div>
-        <div class="rq-acts tc-acts"><button type="button" class="hb-btn" id="tc-edit">Change It</button></div>`;
-      document.getElementById("tc-edit").onclick = () => draw(card, true);
-      return;
-    }
-    box.innerHTML = `<form class="rq-form tc-form" id="tc-form" novalidate>
-        <label class="rq-f">Card Number<input type="text" id="tc-in" inputmode="numeric" autocomplete="off" value="${esc(card || "")}" placeholder="e.g. 21007012345678"></label>
-        <p class="rq-help">The number under the barcode on the back of your student ID card.</p>
-        <p class="rq-err" id="tc-err" role="alert"></p>
-        <div class="rq-acts tc-acts">${card ? `<button type="button" class="hb-btn" id="tc-cancel">Cancel</button>` : ""}<button type="submit" class="hb-btn primary" id="tc-save">Save</button></div></form>`;
-    const f = document.getElementById("tc-form"), b = document.getElementById("tc-save");
-    const cancel = document.getElementById("tc-cancel"); if (cancel) cancel.onclick = () => draw(card, false);
-    f.onsubmit = ev => { ev.preventDefault(); b.disabled = true; document.getElementById("tc-err").textContent = "";
-      api("POST", { card: document.getElementById("tc-in").value }).then(d => draw(d.card, false), x => { b.disabled = false; document.getElementById("tc-err").textContent = x.message; }); };
-    document.getElementById("tc-in").focus();
-  }
-  return { start: () => { if (D.viewer.role !== "student") return; api("GET").then(d => draw(d.card, false), x => { const box = document.getElementById("tc-box"); if (box) box.innerHTML = `<p class="hs-empty">${esc(x.message)}</p>`; }); } };
-})();
 
 const MyRequest = (() => {
   const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -844,21 +810,20 @@ function route() {
   if (id === "lectures") id = "activities";
   if (id === "evaluations" && arg) id = "evaluation";
   if (id === "week" && !arg) { id = ""; }
-  if (id === "tcard") id = "student-id";   // (its old address)
   return { id: PAGES[id] && id !== "home" ? id : "home", arg };
 }
 
 document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (!g || e.target.closest("a, button") || (getSelection && String(getSelection()).length)) return; location.hash = g.dataset.go; });
 document.addEventListener("keydown", e => { const g = e.target.closest && e.target.closest("[data-go]"); if (g && e.target === g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); location.hash = g.dataset.go; } });
 // The teaching team only looks (they take part from Lectern): what a student would use is shown, but off.
-const STUDENT_ONLY = { request: "asks for an accommodation", remark: "asks for a remark", "student-id": "adds their student ID", myrequest: "sees one of their requests" };
+const STUDENT_ONLY = { request: "asks for an accommodation", remark: "asks for a remark", myrequest: "sees one of their requests" };
 function previewOnly(m) {
   if (!D.viewer.preview) return;
   m.querySelectorAll('a.hb-btn[href^="#request/"], a.hb-btn[href^="#remark/"]').forEach(a => { const b = document.createElement("button"); b.type = "button"; b.className = "hb-btn"; b.disabled = true; b.textContent = a.textContent; b.title = "Students use this; you're previewing the course page"; a.replaceWith(b); });
 }
 function draw() {
   const { id, arg } = route(), m = $("hb-main");
-  if (D.viewer.preview && STUDENT_ONLY[id]) { m.innerHTML = `${path([[id === "student-id" ? "My Student ID" : "Request"]])}<article class="ec-card"><p class="hs-empty">Here a student ${STUDENT_ONLY[id]}. You're previewing the course page, so it's not something you can use here.</p></article>`; return; }
+  if (D.viewer.preview && STUDENT_ONLY[id]) { m.innerHTML = `${path([["Request"]])}<article class="ec-card"><p class="hs-empty">Here a student ${STUDENT_ONLY[id]}. You're previewing the course page, so it's not something you can use here.</p></article>`; return; }
   try { m.innerHTML = PAGES[id](arg); markSeen(); discussions(m); previewOnly(m); }
   catch (e) { console.error(e); m.innerHTML = `<p class="hb-empty">Something went wrong showing this part of the page.</p>`; }
   if (id !== "home") { const h = m.querySelector(".hs-head h1, .hb-h2, .hb-locked h2"); document.title = `${h ? h.textContent : "Course page"} · ${D.course.code || D.course.title}`; }
@@ -909,7 +874,7 @@ function header() {
       menu.innerHTML = `${U.length ? `${U.map(item).join("")}<hr>` : ""}
         <p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
         ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
-        ${v.role === "student" ? `<a role="menuitem" href="#student-id">My Student ID</a><button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
+        ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
       btn.after(menu); btn.setAttribute("aria-expanded", "true");
       menu.querySelectorAll(".hb-upd").forEach(a => { a.onclick = () => close(); });
       const out = $("hb-out");

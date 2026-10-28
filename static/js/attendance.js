@@ -3,9 +3,8 @@
    Attendance button opens it).
 
    + Take Attendance (with Session Information: the room, or the last names you're taking) begins your session;
-   each card held up shows who it is (by its barcode, if it's registered; or by its printed name and number, read
-   with OCR), and Correct puts them in. Not Them (or a card nobody has) finds the student by name or number, and
-   registers the card to them. A student is in once, whoever scans them: the second time says who entered them.
+   each card held up shows who it is (by its printed name and number, read with OCR), and Correct puts them in.
+   Not Them (or Enter by Hand) finds the student by name or number: the best match, and Correct. A student is in once, whoever scans them: the second time says who entered them.
    Leaving the page ends your session, with its count. The section shows every session (each person's, with its
    note and count) and the total, as they happen. */
 
@@ -16,42 +15,8 @@ const SEARCH = SVG('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>');
 const TRASH = SVG('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>');
 const PLUS = SVG('<path d="M12 5v14M5 12h14"/>');
 const CHECK = SVG('<path d="m5 12.5 4.5 4.5L19 7"/>');
-const FORMATS = ["codabar", "code_39", "code_128", "code_93", "itf", "ean_13", "ean_8", "upc_a", "qr_code"];
 const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
 const hm = s => { const d = new Date(s * 1000); return isNaN(d) ? "" : d.toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false }); };
-
-// ── The camera, and reading barcodes from it: the browser's own reader where there is one, else ZXing (zxing-cpp,
-// as WebAssembly: static/vendor/), which reads TCards' Codabar well ──
-let zx = null;
-function loadZXing() {
-  if (window.ZXingWASM) return Promise.resolve(window.ZXingWASM);
-  return zx || (zx = new Promise((ok, no) => {
-    const s = document.createElement("script"); s.src = "/static/vendor/zxing-wasm-reader-2.2.4.js";
-    s.onload = () => { window.ZXingWASM.prepareZXingModule({ overrides: { locateFile: (p, pre) => (p.endsWith(".wasm") ? "/static/vendor/zxing_reader-2.2.4.wasm" : pre + p) } }); ok(window.ZXingWASM); };
-    s.onerror = () => { zx = null; no(new Error("The barcode reader couldn't load.")); };
-    document.head.appendChild(s);
-  }));
-}
-async function reader() {
-  if ("BarcodeDetector" in window) {
-    try {
-      const have = await window.BarcodeDetector.getSupportedFormats();
-      const f = FORMATS.filter(x => have.includes(x));
-      if (f.includes("codabar")) { const bd = new window.BarcodeDetector({ formats: f }); return async v => { const r = await bd.detect(v); return r.length ? r[0].rawValue : ""; }; }
-    } catch (_) { /* use ZXing */ }
-  }
-  const Z = await loadZXing();
-  const opts = { tryHarder: true, maxNumberOfSymbols: 1, formats: ["Codabar", "Code39", "Code93", "Code128", "ITF", "EAN-13", "EAN-8", "UPC-A", "QRCode"] };
-  const cv = document.createElement("canvas"), cx = cv.getContext("2d", { willReadFrequently: true });
-  return async v => {
-    const w = v.videoWidth, h = v.videoHeight; if (!w || !h) return "";
-    const k = Math.min(1, 1280 / w); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
-    cx.drawImage(v, 0, 0, cv.width, cv.height);
-    const r = await Z.readBarcodes(cx.getImageData(0, 0, cv.width, cv.height), opts);
-    const ok = r.find(x => x.isValid && x.text);
-    return ok ? ok.text : "";
-  };
-}
 
 // ── Reading what's printed on the card (OCR: Tesseract, as WebAssembly in a worker, static/vendor/tesseract/):
 // its name and student number, matched against the class list (server: identify) ──
@@ -87,7 +52,7 @@ function cardFrame(v, cv) {
 export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = false, onScan = () => {}, onDone: done = () => {}, path = () => {} }) {
   const Q = `owner=${encodeURIComponent(owner)}&offering=${encodeURIComponent(`${c}/${t}`)}&e=${encodeURIComponent(e)}`;
   const B = x => ({ owner: owner || undefined, offering: `${c}/${t}`, e, ...x });
-  let O = null, S = null, timer = 0, cam = null, busy = false, lastCode = "", lastAt = 0, polling = false;
+  let O = null, S = null, timer = 0, cam = null, busy = false, polling = false;
   const $ = s => host.querySelector(s);
   const onDone = () => { clearTimeout(timer); stopCam(); host.innerHTML = ""; done(); };   // (the page: its camera off, and gone)
   const here = () => host.isConnected;
@@ -144,17 +109,17 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
     goB.onclick = startIt; note.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); startIt(); } };
   }
 
-  // ── Scanning: this session's line, with Stop; the camera; Enter by Hand ──
+  // ── Scanning: the evaluation, with Enter by Hand; this session's line; the camera ──
   function scanner() {
     path(O.eval);
     const tt = `${esc(O.eval.name)}${O.eval.title && O.eval.title !== O.eval.name ? `<span class="lt-req-of"> / ${esc(O.eval.title)}</span>` : ""}`;
     host.innerHTML = `<div class="lx-editor lt-req-ed at-card at-scan">
-      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${tt}</h2></div></div>
+      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${tt}</h2></div>
+        <button type="button" class="lt-btn lx-acts at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
       <p class="lt-req-meta">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
       <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg"></p><div id="at-res" class="at-res"></div></div>
-      <div class="at-hand-row"><button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
     </div>`;
-    $("#at-hand").onclick = () => findStudent("");
+    $("#at-hand").onclick = () => findStudent();
     startCam();
   }
   function drawCounts() { const a = $("#at-all"); if (a) a.textContent = O.total; }
@@ -164,22 +129,17 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
   async function startCam() {
     const v = $("#at-video"), msg = $("#at-cam-msg");
     try {
-      const read = await reader();
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
       if (!S || !v.isConnected) { stream.getTracks().forEach(x => x.stop()); return; }
       cam = stream; v.srcObject = stream; await v.play(); msg.textContent = "";
-      const tick = async () => {
+      const tick = () => {   // (the camera: kept going, and off once the page is gone)
         if (!cam) return;
         if (away()) return stopCam();
         if (here() && v.paused) v.play().catch(() => {});
-        if (!busy && here() && v.readyState >= 2) {
-          let code = ""; try { code = await read(v); } catch (_) { code = ""; }
-          if (code && !(code === lastCode && Date.now() - lastAt < 2500)) { lastCode = code; lastAt = Date.now(); scanned(code); }
-        }
-        setTimeout(tick, 120);
+        setTimeout(tick, 250);
       };
       tick();
-      // And its printed name and number, a few times a second's worth apart (OCR is slower than a barcode).
+      // What's printed on it, read a few times a second.
       const cv = document.createElement("canvas");
       let reading = false, lastWho = "", lastWhoAt = 0;
       ocr().then(w => {
@@ -223,72 +183,52 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
   const whoHTML = (s, kick) => `<p class="gr-kind">${esc(kick)}</p><h3>${esc([s.last, s.first].filter(Boolean).join(", "))}</h3><p class="at-meta">${esc([s.num, s.email].filter(Boolean).join(" · "))}</p>`;
   function already(s, a) {
     buzz([80, 60, 80]);
-    const r = res(`<div class="at-panel bad">${whoHTML(s, "Already entered")}<p class="at-why">${esc(`${s.first} ${s.last}`)} was already entered${a && a.by ? ` by ${esc(a.by)}` : ""}${a && a.at ? ` at ${hm(a.at)}` : ""}.</p>
+    const r = res(`<div class="at-panel bad">${whoHTML(s, "Already entered")}<p class="at-why">This student was already entered${a && a.by ? ` by ${esc(a.by)}` : ""}${a && a.at ? ` at ${hm(a.at)}` : ""}.</p>
       <div class="at-pacts"><button type="button" class="lt-btn primary" data-next>Next</button></div></div>`);
     r.querySelector("[data-next]").onclick = () => resume();
   }
-  function scanned(code) {
-    busy = true; buzz(40);
-    res(`<div class="at-panel"><p class="at-why">Looking up the card…</p></div>`);
-    api("/api/attendance/lookup", B({ card: code })).then(d => {
-      if (!d.student) return findStudent(d.card, true);
-      if (d.already) return already(d.student, d.already);
-      const r = res(`<div class="at-panel ask">${whoHTML(d.student, "Is this them?")}
-        <div class="at-pacts"><button type="button" class="lt-btn" data-no>Not Them</button><button type="button" class="lt-btn primary" data-yes>${CHECK}Correct</button></div></div>`);
-      r.querySelector("[data-yes]").onclick = () => markIn(d.student, "");
-      r.querySelector("[data-no]").onclick = () => findStudent(d.card);
-    }, x => { res(`<div class="at-panel bad"><p class="at-why">${esc(x.message)}</p><div class="at-pacts"><button type="button" class="lt-btn primary" data-next>Next</button></div></div>`).querySelector("[data-next]").onclick = () => resume(); });
-  }
-  // The card, read by its text: who it is (Correct puts them in), or, not sure, which of a few it is.
+  // The card, read by its text: its best match, Correct puts them in.
   function recognised(d) {
     busy = true; buzz(40);
-    const L = d.students, s = L[0];
-    if (d.sure) {
-      if (s.already) return already(s, s.already);
-      const r = res(`<div class="at-panel ask">${whoHTML(s, "Is this them?")}
-        <div class="at-pacts"><button type="button" class="lt-btn" data-no>Not Them</button><button type="button" class="lt-btn primary" data-yes>${CHECK}Correct</button></div></div>`);
-      r.querySelector("[data-yes]").onclick = () => markIn(s, "");
-      r.querySelector("[data-no]").onclick = () => findStudent("");
-      return;
-    }
-    const r = res(`<div class="at-panel find"><p class="gr-kind">Which one is it?</p><p class="at-why">The card could be any of these.</p>
-      <div class="at-hits">${L.map((x, i) => `<button type="button" class="at-hit${x.already ? " in" : ""}" data-i="${i}"><b>${esc([x.last, x.first].filter(Boolean).join(", "))}</b><span>${esc([x.num, x.email].filter(Boolean).join(" · "))}</span>${x.already ? `<em>Already in</em>` : ""}</button>`).join("")}</div>
-      <div class="at-pacts"><button type="button" class="lt-btn" data-other>Someone Else</button><button type="button" class="lt-btn" data-cancel>Cancel</button></div></div>`);
-    r.querySelectorAll("[data-i]").forEach(b => { b.onclick = () => { const x = L[+b.dataset.i]; x.already ? already(x, x.already) : markIn(x, ""); }; });
-    r.querySelector("[data-other]").onclick = () => findStudent("");
-    r.querySelector("[data-cancel]").onclick = () => { r.innerHTML = ""; resume(); };
+    const s = d.students[0];
+    if (s.already) return already(s, s.already);
+    const r = res(`<div class="at-panel ask">${whoHTML(s, "Is this them?")}
+      <div class="at-pacts"><button type="button" class="lt-btn" data-no>Not Them</button><button type="button" class="lt-btn primary" data-yes>${CHECK}Correct</button></div></div>`);
+    r.querySelector("[data-yes]").onclick = () => markIn(s);
+    r.querySelector("[data-no]").onclick = () => findStudent();
   }
-  // Find the student by name or number: a card that's unknown, or someone else's, is registered to them.
-  function findStudent(card, unknown = false) {
+  // By hand: a name or number, and the best match as you type; Correct (or Enter) puts them in.
+  function findStudent() {
     busy = true;
-    const r = res(`<div class="at-panel find">
-      <p class="gr-kind">${card ? (unknown ? "A card nobody has registered" : "Not them") : "Enter by hand"}</p>
-      <p class="at-why">${card ? `Find the student: card <b>${esc(card)}</b> will be registered to them.` : "Find the student by name or number."}</p>
+    const r = res(`<div class="at-panel find"><p class="gr-kind">Enter by Hand</p>
       <label class="at-q">${SEARCH}<input type="search" id="at-q" placeholder="Last name, first name or number" autocomplete="off" autocapitalize="words"></label>
-      <div class="at-hits" id="at-hits"></div>
-      <div class="at-pacts"><button type="button" class="lt-btn" data-cancel>Cancel</button></div></div>`);
-    const inp = r.querySelector("#at-q"), hits = r.querySelector("#at-hits");
+      <div class="at-best" id="at-best"></div>
+      <div class="at-pacts"><button type="button" class="lt-btn" data-cancel>Cancel</button><button type="button" class="lt-btn primary" data-yes disabled>${CHECK}Correct</button></div></div>`);
+    const inp = r.querySelector("#at-q"), box = r.querySelector("#at-best"), yes = r.querySelector("[data-yes]");
+    let best = null, n = 0;
     r.querySelector("[data-cancel]").onclick = () => { r.innerHTML = ""; resume(); };
-    let n = 0;
+    yes.onclick = () => { if (best) best.already ? already(best, best.already) : markIn(best, true); };
+    inp.onkeydown = ev => { if (ev.key === "Enter" && !yes.disabled) { ev.preventDefault(); yes.click(); } };
     inp.oninput = () => {
       const q = inp.value.trim(), k = ++n;
-      if (q.length < 2) { hits.innerHTML = ""; return; }
+      if (q.length < 2) { best = null; yes.disabled = true; box.innerHTML = ""; return; }
       api(`/api/attendance/search?${Q}&q=${encodeURIComponent(q)}`).then(d => {
         if (k !== n) return;
-        hits.innerHTML = d.students.length ? d.students.map((s, i) => `<button type="button" class="at-hit${s.already ? " in" : ""}" data-i="${i}"><b>${esc([s.last, s.first].filter(Boolean).join(", "))}</b><span>${esc([s.num, s.email].filter(Boolean).join(" · "))}</span>${s.already ? `<em>Already in</em>` : ""}</button>`).join("")
-          : `<p class="lx-help">No one on the class list matches.</p>`;
-        hits.querySelectorAll("[data-i]").forEach(b => { b.onclick = () => { const s = d.students[+b.dataset.i]; s.already ? already(s, s.already) : markIn(s, card, !card); }; });
-      }, x => { hits.innerHTML = `<p class="lx-help">${esc(x.message)}</p>`; });
+        best = d.students[0] || null;
+        const a = best && best.already; yes.disabled = !best || !!a;   // (already in: it says so, and there's nothing to do)
+        box.innerHTML = best ? `<h3>${esc([best.last, best.first].filter(Boolean).join(", "))}</h3><p class="at-meta">${esc([best.num, best.email].filter(Boolean).join(" · "))}</p>${a ? `<p class="at-why at-bad-t">Already entered${a.by ? ` by ${esc(a.by)}` : ""}${a.at ? ` at ${hm(a.at)}` : ""}.</p>` : ""}`
+          : `<p class="at-why">No one on the class list matches.</p>`;
+      }, x => { best = null; yes.disabled = true; box.innerHTML = `<p class="at-why">${esc(x.message)}</p>`; });
     };
     setTimeout(() => inp.focus(), 0);
   }
-  function markIn(s, card, hand = false) {
+  function markIn(s, hand = false) {
     res(`<div class="at-panel"><p class="at-why">Putting ${esc(s.first)} in…</p></div>`);
-    api("/api/attendance/mark", B({ session: S.id, student: s.num, card: card || undefined, hand: hand || undefined })).then(d => {
+    api("/api/attendance/mark", B({ session: S.id, student: s.num, hand: hand || undefined })).then(d => {
       buzz(120);
       S.count = d.count; O.total += 1;
       const m = $("#at-mine"); if (m) m.textContent = d.count; drawCounts();
-      res(`<div class="at-panel ok"><span class="at-ok">${CHECK}</span><div><h3>${esc(`${s.first} ${s.last}`)} is in.</h3>${card ? `<p class="at-meta">Card ${esc(card)} is now registered to them.</p>` : ""}</div></div>`);
+      res(`<div class="at-panel ok"><span class="at-ok">${CHECK}</span><div><h3>${esc(`${s.first} ${s.last}`)} is in.</h3></div></div>`);
       resume(1300);
     }, x => {
       if (x.code === "already") return api(`/api/attendance/search?${Q}&q=${encodeURIComponent(s.num)}`).then(d => already(s, (d.students.find(y => y.num === s.num) || {}).already), () => already(s, null));
@@ -300,7 +240,6 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
   // The page: your session (one you started, still going), or, none, back to the section.
   load().then(() => { if (!scan) { drawOverview(); poll(); return; } S = mine(); if (!S) return onDone(); scanner(); poll(); },
     x => { host.innerHTML = `<p class="ed-help err">Couldn't read the attendance. ${esc(x.message)}</p>`; });
-  // Put back after being away: the camera picks up again if it's still on; if it stopped, the overview (with Continue Scanning).
   // The section, put back (the editor redrawing, or back from taking attendance): up to date.
   host._back = () => { if (scan || !O) return; if (!polling) poll(); load().then(refreshOverview); };
   host._stop = stopCam;

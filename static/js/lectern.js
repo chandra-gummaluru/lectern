@@ -26,7 +26,7 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { attendancePage } from "./attendance.js";
-import { discussionsPage, mountDiscussion, unanswered } from "./discussions.js";
+import { discussionsPage, mountDiscussion, unanswered, css as hubCSS } from "./discussions.js";
 import { studentsCard } from "./students.js";
 import { emailCard } from "./mailsettings.js";
 import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind, SECTION_ICON, sortSections } from "./groups.js";
@@ -51,6 +51,7 @@ const ICON = {
   lectures: svgI('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
   out: svgI('<path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>'),
   folder: svgI('<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2.5h7.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/>', 1.8),
+  search: svgI('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>', 2),
   chat: svgI('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>', 1.8),
   page: svgI('<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 9h18M8 13h3M8 16h6"/>', 1.8),
   grades: svgI('<path d="M4 20V4M4 20h16"/><path d="m8 15 3.5-4 3 2.5L20 7"/>', 1.8),
@@ -1071,6 +1072,8 @@ const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" 
 
 // The same page lists remark requests (k = "remark": the course page's Request Remark), kept in the same file.
 async function accomPage(c, t, q = "", k = "") {
+  hubCSS();
+  if (accomUI.k !== `${c}/${t}/${k}`) { accomUI.k = `${c}/${t}/${k}`; accomUI.q = ""; accomUI.ev = ""; }   // each list its own search
   const RM = k === "remark", here = x => go({ page: "accom", ...(RM ? { k } : {}), c, t, ...x });
   pageHTML(q ? `<div class="lt-in lt-accom"><div class="lx ed"><div id="lt-acc"><div class="lt-loading" style="min-height:160px">Reading the request…</div></div></div></div>`
     : `<div class="lt-in lt-accom"><div class="lx">
@@ -1090,7 +1093,9 @@ async function accomPage(c, t, q = "", k = "") {
   const draw = () => {
     if (q) return drawOne();
     const all = data.requests.slice().sort((a, b) => String(b.submitted).localeCompare(String(a.submitted)));
-    const byEv = all.filter(r => !accomUI.ev || r.eval === accomUI.ev);
+    const words = String(accomUI.q || "").toLowerCase().split(/\s+/).filter(Boolean);
+    const hay = r => `${r.first} ${r.last} ${r.student} ${r.email} ${r.evalName} ${r.standard || ""} ${plainOf(r.details || "")} ${r.decidedBy || ""}`.toLowerCase();
+    const byEv = all.filter(r => (!accomUI.ev || r.eval === accomUI.ev) && words.every(w => hay(r).includes(w)));
     const pending = byEv.filter(r => r.status === "pending"), decided = byEv.filter(r => r.status !== "pending");
     const list = accomUI.show === "pending" ? pending : accomUI.show === "decided" ? decided : byEv;
     const evNames = [...new Map(all.map(r => [r.eval, r.evalName])).entries()];
@@ -1099,16 +1104,20 @@ async function accomPage(c, t, q = "", k = "") {
       book && !asks.length ? `<p class="lt-note">No evaluation takes requests yet. In <button type="button" class="lt-link" data-evals>Evaluations</button>, open one and set its <b>${RM ? "Remark Requests" : "Accommodations"}</b>; then save the gradebook so its buttons appear.</p>` : "",
       data.bad ? `<p class="lt-note err"><code>accommodations.json</code> couldn't be read.</p>` : "",
     ].join("");
-    const seg = (k, label, n) => `<button type="button" data-show="${k}" aria-pressed="${accomUI.show === k}">${label}${n != null ? ` <span>${n}</span>` : ""}</button>`;
-    $("#lt-acc").innerHTML = `${notes}
-      <div class="lt-acc-bar"><div class="lx-seg" role="group" aria-label="Show">${seg("pending", "Waiting", pending.length)}${seg("decided", "Decided", decided.length)}${seg("all", "All")}</div>
-        <div class="lt-filters">${evNames.length > 1 ? `<select class="lt-filter" id="acc-ev" aria-label="Evaluation"><option value="">All Evaluations</option>${evNames.map(([id, n]) => `<option value="${esc(id)}"${accomUI.ev === id ? " selected" : ""}>${esc(n || id)}</option>`).join("")}</select>` : ""}
-        <button type="button" class="lt-btn" id="acc-refresh">Refresh</button></div></div>
-      ${list.length ? `<div class="lx-list lt-reqs">${list.map(reqCard).join("")}</div>`
-        : `<p class="lx-empty">${accomUI.show === "pending" ? (all.length ? "Nothing waiting: every request has a decision." : "No requests yet.") : "None."}</p>`}`;
+    // The same list as Lectern's Discussions (and the course page's): its head (what's shown, then search, the
+    // evaluation and the switch) and its rows, in the course page's own styles.
+    const seg = (k2, label, n) => `<button type="button" data-show="${k2}" aria-pressed="${accomUI.show === k2}">${label}${n ? ` ${n}` : ""}</button>`;
+    const noun = RM ? "remark request" : "request";
+    $("#lt-acc").innerHTML = `${notes}<div class="hb lt-dc"><section class="dc">
+      <div class="dc-head"><h2 class="ec-sec dc-title">${accomUI.show === "pending" ? "Waiting" : accomUI.show === "decided" ? "Decided" : "All"} <span>· ${list.length} ${noun}${list.length === 1 ? "" : "s"}</span></h2>
+        <div class="dc-tools"><label class="dc-search">${ICON.search}<input type="search" id="acc-q" placeholder="Search requests" aria-label="Search requests" value="${esc(accomUI.q || "")}"></label>
+          ${evNames.length > 1 ? `<select class="lt-dc-item" id="acc-ev" aria-label="Evaluation"><option value="">Every Evaluation</option>${evNames.map(([id, n]) => `<option value="${esc(id)}"${accomUI.ev === id ? " selected" : ""}>${esc(n || id)}</option>`).join("")}</select>` : ""}
+          <div class="dc-sort" role="tablist">${seg("pending", "Waiting", pending.length)}${seg("decided", "Decided", decided.length)}${seg("all", "All", 0)}</div></div></div>
+      ${list.length ? `<div class="dc-threads">${list.map(reqRow).join("")}</div>`
+        : `<p class="dc-none">${words.length ? "No requests match your search." : accomUI.show === "pending" ? (all.length ? "Nothing waiting: every request has a decision." : "No requests yet.") : "None."}</p>`}</section></div>`;
+    const qi = $("#acc-q"); if (qi) qi.oninput = () => { accomUI.q = qi.value; const at = qi.selectionStart; draw(); const i = $("#acc-q"); if (i) { i.focus(); i.setSelectionRange(at, at); } };
     $("#lt-acc").querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { accomUI.show = b.dataset.show; draw(); }; });
     const f = $("#acc-ev"); if (f) f.onchange = () => { accomUI.ev = f.value; draw(); };
-    $("#acc-refresh").onclick = () => accomPage(c, t, "", k);
     const ev = $("#lt-acc [data-evals]"); if (ev) ev.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t });
     $("#lt-acc").querySelectorAll("[data-req]").forEach(card => {
       const open = () => here({ q: card.dataset.req });
@@ -1126,9 +1135,9 @@ async function accomPage(c, t, q = "", k = "") {
     const D = decisionsOf(r), pend = r.status === "pending";
     $("#lt-acc").innerHTML = `<div class="lx-editor lt-req-ed st-${esc(r.status)}">
         <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${r.type === "remark" ? ICON.evals : ICON.accom}</span>
-          <div class="gr-tt"><p class="gr-kind">${esc(r.type === "remark" ? "Remark Request" : KIND(r))}</p><h2><button type="button" class="lt-link lt-req-who" id="acc-name-open" title="Their page in the gradebook">${esc([r.last, r.first].filter(Boolean).join(", "))}</button><span class="lt-req-of"> / ${r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName)}</span></h2></div>
+          <div class="gr-tt"><p class="gr-kind">${r.type === "remark" ? "Remark Request" : "Accommodation Request"}</p><h2><button type="button" class="lt-link lt-req-who" id="acc-name-open" title="Their page in the gradebook">${esc([r.last, r.first].filter(Boolean).join(", "))}</button><span class="lt-req-of"> / ${r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName)}</span></h2></div>
           <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
-        <p class="lt-req-meta"><button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>${r.email ? ` · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ""} · Asked ${esc(fmtStamp(r.submitted))}</p>
+        <p class="lt-req-meta">${r.type === "remark" ? "" : `${esc(KIND(r))} · `}<button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>${r.email ? ` · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ""} · Asked ${esc(fmtStamp(r.submitted))}</p>
         <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision and Discussion</h3>
@@ -1192,14 +1201,25 @@ async function accomPage(c, t, q = "", k = "") {
   const threadHTML = r => [...decisionsOf(r).map(x => ({ t: x.decided || "", h: decisionHTML(x) })), ...replies(r).map(x => ({ t: x.at || "", h: studentReplyHTML(x) }))]
     .sort((a, b) => String(a.t).localeCompare(String(b.t))).map(x => x.h).join("");
   const lastWord = r => r.status === "pending" ? "Waiting for a decision" : `${STATUS[r.status]}${r.decidedBy ? ` by ${r.decidedBy}` : ""}${r.decided ? ` · ${fmtStamp(r.decided)}` : ""}${(r.history || []).length ? ` · changed ${r.history.length} time${r.history.length > 1 ? "s" : ""}` : ""}`;
-  const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
-      <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
-      <div class="lx-main hd-main"><div class="hd">
-        <p class="lx-kind">${r.unread ? `<span class="lt-new">New reply</span>` : ""}${esc(r.evalName)} · ${esc(KIND(r))}</p>
-        <h3>${esc(r.first)} ${esc(r.last)}</h3>
-        <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)}</p></div>
+  // A request, in the Item Head style (docs/ui-patterns.md): what it is by a small icon, "Last, First / Evaluation",
+  // the student's line; the status on the right; what they asked, and the last word on it.
+  const reqRow = r => `<div class="dc-t lt-rq-row st-${esc(r.status)}">
+      <span class="lt-rq-st" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
+      <button type="button" class="dc-t-b" data-req="${esc(r.id)}">
+        <span class="dc-t-flags"><span class="lt-dc-where">${r.type === "remark" ? ICON.evals : ICON.accom}${r.type === "remark" ? "Remark Request" : "Accommodation Request"}</span>${r.status === "pending" ? `<span class="lt-dc-open">Waiting</span>` : ""}${r.unread ? `<span class="lt-dc-open">New reply</span>` : ""}</span>
+        <b class="dc-t-title">${esc([r.last, r.first].filter(Boolean).join(", "))}<span class="lt-dc-of"> / ${esc(r.evalName)}</span></b>
+        <span class="dc-t-meta">${esc([r.type === "remark" ? "" : KIND(r), r.student, r.email, `asked ${fmtStamp(r.submitted)}`].filter(Boolean).join(" · "))}</span>
+        <span class="dc-t-clip">${esc(r.kind === "standard" ? r.standard : plainOf(r.details))}</span>
+        ${r.status === "pending" ? "" : `<span class="dc-t-meta lt-rq-last v-${esc(r.status)}">${esc(lastWord(r))}</span>`}
+      </button></div>`;
+  const reqCard = r => `<article class="lx-row lt-req lt-req-item hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
+      <div class="lx-main hd-main"><div class="lt-rq-head">
+        <span class="lt-rq-ic" aria-hidden="true">${r.type === "remark" ? ICON.evals : ICON.accom}</span><p class="lx-kind">${r.unread ? `<span class="lt-new">New reply</span>` : ""}${r.type === "remark" ? "Remark Request" : "Accommodation Request"}</p>
+        <h3>${esc([r.last, r.first].filter(Boolean).join(", "))}<span class="lt-req-of"> / ${esc(r.evalName)}</span></h3>
+        <p class="lx-when">${esc([r.type === "remark" ? "" : KIND(r), r.student, r.email, `Asked ${fmtStamp(r.submitted)}`].filter(Boolean).join(" · "))}</p>
+        <span class="lt-req-pill v-${esc(r.status)}">${esc(r.status === "pending" ? "Waiting" : STATUS[r.status] || r.status)}</span></div>
         <p class="lx-clip">${esc(r.kind === "standard" ? r.standard : plainOf(r.details))}</p>
-        <p class="lt-req-last v-${esc(r.status)}">${esc(lastWord(r))}</p>
+        ${r.status === "pending" ? "" : `<p class="lt-req-last">${esc(lastWord(r))}</p>`}
       </div>
       <span class="lx-side hd-side lt-req-go" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span>
     </article>`;

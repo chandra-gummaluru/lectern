@@ -8,11 +8,12 @@
    Each evaluation, activity and announcement in Lectern also has its own discussion under it (mountDiscussion). */
 
 let cssOn = false;
-function css() {
+export function css() {
   if (cssOn) return; cssOn = true;
   const l = document.createElement("link"); l.rel = "stylesheet"; l.href = "/css/hub-in-lectern.css"; document.head.appendChild(l);
 }
 const KIND = { eval: "Evaluation", act: "Activity", ann: "Announcement" };
+const CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>';
 const ago = s => { const d = (Date.now() / 1000 - s); return d < 60 ? "just now" : d < 3600 ? `${Math.floor(d / 60)} min ago` : d < 86400 ? `${Math.floor(d / 3600)} h ago` : d < 86400 * 30 ? `${Math.floor(d / 86400)} d ago` : new Date(s * 1000).toLocaleDateString("en-CA", { month: "short", day: "numeric" }); };
 const plain = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/@\{[pus]:[^}]*\}/g, "@someone").replace(/\*\*|[*`~=]/g, "").replace(/\s+/g, " ").trim();
 
@@ -63,8 +64,8 @@ export function discussionsPage({ $, esc, pageHTML, go, api, renderPath, steps, 
         return `<div class="dc-t${w && w.team ? " dc-team" : ""}${p.removed || p.deleted ? " gone" : ""}">
           <span class="dc-vote dc-up dc-ro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V6M6 11l6-6 6 6"/></svg><b>${p.votes}</b></span>
           <button class="dc-t-b" data-open="${esc(p.target)}|${p.id}">
-            <span class="dc-t-flags"><span class="lt-dc-where">${esc(`${KIND[p.target.split(":")[0]]} · ${nameOf(p.target)}`)}</span>${p.answered ? "" : `<span class="lt-dc-open">Unanswered</span>`}${p.removed ? `<span class="dc-flag">Removed</span>` : ""}${p.deleted ? `<span class="dc-flag">Deleted by its author</span>` : ""}</span>
-            <b class="dc-t-title">${esc(p.title || "(untitled)")}</b>
+            <span class="dc-t-flags"><span class="lt-dc-where">${CHAT}Discussion Post</span>${p.answered ? "" : `<span class="lt-dc-open">Unanswered</span>`}${p.removed ? `<span class="dc-flag">Removed</span>` : ""}${p.deleted ? `<span class="dc-flag">Deleted by its author</span>` : ""}</span>
+            <b class="dc-t-title">${esc(p.title || "(untitled)")}<span class="lt-dc-of"> / ${esc(nameOf(p.target))}</span></b>
             <span class="dc-t-meta">${w ? `${w.team ? `<span class="dc-staffname">${esc(w.name)}</span>` : esc(w.name)}${w.real ? ` <i class="dc-real">${esc(w.real)}</i>` : ""} · ` : ""}${ago(p.at)} · ${p.comments} comment${p.comments === 1 ? "" : "s"}</span>
             ${p.body ? `<span class="dc-t-clip">${esc(plain(p.body))}</span>` : ""}
           </button></div>`; }).join("") || `<p class="dc-none">${S.show === "open" ? (D.posts.length ? "Nothing unanswered: every post has a reply from the teaching team." : "No posts yet.") : qs.length || S.item ? "No posts match." : "No posts yet."}</p>`}</div></section>`;

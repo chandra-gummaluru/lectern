@@ -653,13 +653,16 @@ function myRequests() {
   fetch(`${root.dataset.api}/accommodations`, { credentials: "same-origin" }).then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "Your requests couldn't be loaded. Try again in a moment.")))))
     .then(d => {
       const R = d.requests || [];
-      box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending";
-        const line = [`Requested ${when(r.submitted)}`, st === "pending" ? REQ_WORD.pending : `${REQ_WORD[st]} ${when(r.decided)}${r.decidedBy ? ` by ${r.decidedBy}` : ""}`].filter(Boolean).join(" · ");
+      // Each request in the Item Head style (docs/ui-patterns.md): a small icon by the kicker, the evaluation as the
+      // title, one line of facts; the status on the right; then what they asked, and the decision as a comment.
+      const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+      box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
+        const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
         return `<div class="wk-item wk-go ma-req st-${st}" data-go="#evaluation/${encodeURIComponent(r.eval)}" role="link" tabindex="0" title="Open ${esc(r.evalName || "the evaluation")}">
-          <span class="hs-ic ma-ic" title="${esc(REQ_WORD[st])}" aria-label="${esc(REQ_WORD[st])}">${REQ_IC[st]}</span>
-          <div class="wk-b"><p class="hs-kick">${r.type === "remark" ? "Remark Request" : "Accommodation Request"} / ${esc(r.evalName || "Evaluation")}</p><h3>${r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard Accommodation" : "Alternate Accommodation"}</h3><p class="wk-when">${esc(line)}</p>
-            ${r.kind === "standard" && r.type !== "remark" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
-            ${r.note ? `<div class="ma-note"><b>${esc(r.decidedBy || "Your instructor")}</b>${markdown(r.note)}</div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
+          <div class="wk-b"><div class="ma-head"><span class="ma-kic">${rm ? REDO : HEART}</span><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p>
+              <h3>${esc(r.evalName || "Evaluation")}</h3><p class="ma-facts">${esc(facts)}</p><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></div>
+            ${!rm && r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
+            ${st !== "pending" ? `<div class="ma-cmt"><span class="ma-av" aria-hidden="true">${esc(ini(r.decidedBy))}</span><div class="ma-cb"><p class="ma-ch"><b>${esc(r.decidedBy || "Your instructor")}</b><span>${esc(when(r.decided))}</span><span class="ma-v v-${st}">${esc(REQ_WORD[st])}</span></p>${r.note ? `<div class="ma-cn">${markdown(r.note)}</div>` : ""}</div></div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }

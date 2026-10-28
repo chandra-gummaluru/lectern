@@ -1094,10 +1094,35 @@ async function accomPage(c, t, q = "", k = "") {
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision${D.length > 1 ? "s" : ""}</h3>
         ${D.length ? `<div class="lt-req-hist">${D.map(decisionHTML).join("")}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
-        <div class="lt-req-acts lt-req-foot">${pend
-          ? `<button type="button" class="lt-btn" data-decide="rejected">Reject</button><button type="button" class="lt-btn primary" data-decide="approved">Approve</button>`
-          : `<button type="button" class="lt-btn" data-decide="${esc(r.status)}">Change the Note</button><button type="button" class="lt-btn" data-decide="${r.status === "approved" ? "rejected" : "approved"}">${r.status === "approved" ? "Reject Instead" : "Approve Instead"}</button>`}</div>
+        <div class="lt-req-reply" id="acc-reply-box"><button type="button" class="lt-reply-btn" id="acc-reply">${REPLY_IC}${pend ? "Decide" : "Reply"}</button></div>
       </div>`;
+    // Reply: like a discussion's, a rich text box, with the decision it goes with (each reply is a decision,
+    // emailed to the student; the earlier ones stay, above).
+    $("#acc-reply").onclick = () => {
+      const box = $("#acc-reply-box");
+      let pick = pend ? "" : r.status;
+      box.innerHTML = `<div class="lt-req-compose">
+          <div class="lt-req-rt"></div>
+          <div class="lt-req-cfoot"><span class="lx-seg" role="group" aria-label="Decision">${[["approved", "Approve"], ["rejected", "Reject"]].map(([v, l]) => `<button type="button" data-pick="${v}" aria-pressed="${pick === v}">${l}</button>`).join("")}</span>
+            <span class="lt-req-cnote">${cfg.email ? `Emailed to ${esc(r.email || "the student")}.` : "No email: the server's isn't set up."}</span>
+            <button type="button" class="lt-btn" id="acc-cancel">Cancel</button><button type="button" class="lt-btn primary" id="acc-send"${pick ? "" : " disabled"}>Reply</button></div>
+          <p class="lt-err" id="acc-err"></p></div>`;
+      const note = richText(box.querySelector(".lt-req-rt"), { value: "", placeholder: r.type === "remark" ? "e.g. Question 2 is now 8/10: your mark is updated." : "e.g. Write it Thursday at 6 in BA 2135.", label: "Reply to the student" });
+      setTimeout(() => note.el.focus(), 0);
+      const send = box.querySelector("#acc-send");
+      box.querySelectorAll("[data-pick]").forEach(x => { x.onclick = () => { pick = x.dataset.pick; box.querySelectorAll("[data-pick]").forEach(y => y.setAttribute("aria-pressed", String(y === x))); send.disabled = false; }; });
+      box.querySelector("#acc-cancel").onclick = () => drawOne();
+      send.onclick = async () => {
+        if (!pick) return;
+        send.disabled = true; send.textContent = "Sending…";
+        try {
+          const d = await Auth.api("/api/accommodations/decide", { owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision: pick, note: note.get() });
+          Object.assign(r, d.request);
+          toast(`${pick === "approved" ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);
+          if (mine()) drawOne();
+        } catch (e) { send.disabled = false; send.textContent = "Reply"; box.querySelector("#acc-err").textContent = e.message; }
+      };
+    };
     $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(r, b.dataset.decide); });
     const evB = $("#acc-ev-open"); if (evB) evB.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t }, { where: { view: "evals", evalEd: r.eval, groupEd: "", student: "", stAcc: "", stFrom: "" } });
     const stB = $("#acc-st-open"); if (stB) stB.onclick = () => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: r.student, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } });
@@ -1114,6 +1139,7 @@ async function accomPage(c, t, q = "", k = "") {
   const plainOf = md => String(md || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`]+/g, "").replace(/^\s*(?:[-*]|\d+\.)\s+/gm, "").replace(/\s+/g, " ").trim();
   const initials = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
   // Each decision, the earlier ones first (a changed decision keeps the ones before it).
+  const REPLY_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 6 6v1"/></svg>';
   const decisionsOf = r => [...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])];
   const decisionHTML = r => `<div class="lt-cmt lt-cmt-staff"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
       <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}<span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></p>

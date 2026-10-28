@@ -1114,3 +1114,15 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .lt-cmt-staff .lt-cmt-h b { color: #9a7400; }
 @media (prefers-color-scheme: dark) { .lt-cmt-staff .lt-cmt-av { background: #3a3220; box-shadow: inset 0 0 0 1px #6b5a2a; color: #e3c46a; } .lt-cmt-staff .lt-cmt-h b { color: #e3c46a; } }
 .lt-cmt-staff .lt-cmt-v { font-weight: 600; }
+
+/* A request's Reply (like a discussion's): a rich text box with Approve / Reject. */
+.lt-req-reply { margin: 10px 0 0 42px; }
+.lt-reply-btn { display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px; border: 0; background: none; font: 600 14px var(--font-ui); color: var(--home-ink-3); cursor: pointer; }
+.lt-reply-btn:hover { color: var(--home-ink); }
+.lt-reply-btn svg { width: 17px; height: 17px; }
+.lt-req-compose { display: grid; gap: 10px; }
+.lt-req-cfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lt-req-cnote { flex: 1; min-width: 140px; font-size: 13px; color: var(--home-ink-3); }
+.lt-req-cfoot .lx-seg button[data-pick="approved"][aria-pressed="true"] { color: #2f8f5b; }
+.lt-req-cfoot .lx-seg button[data-pick="rejected"][aria-pressed="true"] { color: #c0392b; }
+.lt-req-compose .lt-err:empty { display: none; }

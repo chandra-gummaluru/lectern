@@ -664,7 +664,6 @@ function myRequests() {
       const R = d.requests || [];
       // Each request in the Item Head style (docs/ui-patterns.md): a small icon by the kicker, the evaluation as the
       // title, one line of facts; the status on the right; then what they asked (the decision and the discussion are on its own page).
-      const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
       box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
         const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
         return `<div class="wk-item wk-go ma-req st-${st}" data-go="#myrequest/${encodeURIComponent(r.id)}" role="link" tabindex="0" title="Open this request">

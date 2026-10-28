@@ -6,7 +6,7 @@
    each card held up shows who it is (by its barcode, if it's registered; or by its printed name and number, read
    with OCR), and Correct puts them in. Not Them (or a card nobody has) finds the student by name or number, and
    registers the card to them. A student is in once, whoever scans them: the second time says who entered them.
-   Stop Attendance ends your session, with its count. The section shows every session (each person's, with its
+   Leaving the page ends your session, with its count. The section shows every session (each person's, with its
    note and count) and the total, as they happen. */
 
 const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -83,7 +83,7 @@ function cardFrame(v, cv) {
 // The evaluation editor's Attendance section (above Grading): mounted once per evaluation (Lectern.attendanceEl)
 // and kept, so the editor redrawing (as you change things) doesn't stop the camera.
 // Two ways: the section (scan: false), with the total, + Take Attendance and the sessions; and the page that taking it
-// opens (scan: true), with the camera, until Stop Attendance (back to the section).
+// opens (scan: true), with the camera, until you leave it (which ends your session).
 export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = false, onScan = () => {}, onDone: done = () => {}, path = () => {} }) {
   const Q = `owner=${encodeURIComponent(owner)}&offering=${encodeURIComponent(`${c}/${t}`)}&e=${encodeURIComponent(e)}`;
   const B = x => ({ owner: owner || undefined, offering: `${c}/${t}`, e, ...x });
@@ -149,13 +149,11 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
     path(O.eval);
     const tt = `${esc(O.eval.name)}${O.eval.title && O.eval.title !== O.eval.name ? `<span class="lt-req-of"> / ${esc(O.eval.title)}</span>` : ""}`;
     host.innerHTML = `<div class="lx-editor lt-req-ed at-card at-scan">
-      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${tt}</h2></div>
-        <button type="button" class="lt-btn lx-acts" id="at-stop">Stop Attendance</button></div>
+      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${tt}</h2></div></div>
       <p class="lt-req-meta">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
       <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg"></p><div id="at-res" class="at-res"></div></div>
       <div class="at-hand-row"><button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
     </div>`;
-    $("#at-stop").onclick = stopping;
     $("#at-hand").onclick = () => findStudent("");
     startCam();
   }
@@ -210,11 +208,14 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
     }
   }
   function stopCam() { if (cam) { cam.getTracks().forEach(x => x.stop()); cam = null; } }
+  // Leaving the page (anywhere: the path, Back) ends your session, with its count; the section then shows it.
   function stopping() {
-    busy = true; stopCam();
-    api("/api/attendance/stop", B({ session: S.id })).then(d => { toast(`Stopped: ${d.count} student${d.count === 1 ? "" : "s"} in this session.`); }, x => toast(x.message))
-      .finally(() => { S = null; busy = false; onDone(); });
+    if (!S) return; const se = S; S = null; busy = true; clearTimeout(timer); stopCam(); host.innerHTML = "";
+    api("/api/attendance/stop", B({ session: se.id })).then(d => { toast(`Stopped: ${d.count} student${d.count === 1 ? "" : "s"} in this session.`); }, x => toast(x.message))
+      .finally(() => window.dispatchEvent(new CustomEvent("lt-attendance", { detail: e })));
   }
+  if (scan) { const off = () => { window.removeEventListener("hashchange", off); stopping(); }; window.addEventListener("hashchange", off); }
+  else window.addEventListener("lt-attendance", ev => { if (ev.detail === e && here() && O) load().then(refreshOverview); });
   // Who it is (or what's wrong) covers the camera, until it's dealt with.
   const res = html => { const r = $("#at-res"); if (r) { r.innerHTML = html; const c = $("#at-cam"); if (c) c.scrollIntoView({ block: "nearest" }); } return r; };
   const resume = (after = 0) => setTimeout(() => { busy = false; const r = $("#at-res"); if (r && !r.querySelector("input")) r.innerHTML = ""; }, after);

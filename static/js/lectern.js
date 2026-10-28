@@ -1085,12 +1085,11 @@ async function accomPage(c, t, q = "", k = "") {
     if (!r) { $("#lt-acc").innerHTML = `<p class="lx-empty">That request isn't there any more. <button type="button" class="lt-link" id="acc-back">See all requests</button></p>`; $("#acc-back").onclick = () => here({}); return; }
     renderPath([HOME_STEP, offeringStep(c, t), { label: RM ? "Remark Requests" : "Accommodations", go: () => here({}) }, { label: `${r.first} ${r.last}`.trim() || "Request" }]);
     const D = decisionsOf(r), pend = r.status === "pending";
-    const fact = (k, v) => v ? `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>` : "";
     $("#lt-acc").innerHTML = `<div class="lx-editor lt-req-ed st-${esc(r.status)}">
-        <div class="lx-ed-head"><span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
-          <div class="lt-req-tt"><p class="lx-kind">${esc(r.evalName)} · ${esc(KIND(r))}</p><h2>${esc(r.first)} ${esc(r.last)}</h2></div>
+        <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${r.type === "remark" ? ICON.evals : ICON.accom}</span>
+          <div class="gr-tt"><p class="gr-kind">${esc(r.type === "remark" ? "Remark Request" : KIND(r))}</p><h2>${esc([r.last, r.first].filter(Boolean).join(", "))}<span class="lt-req-of"> / ${r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName)}</span></h2></div>
           <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
-        <dl class="lt-req-facts">${fact("Evaluation", r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName))}${fact("Student number", `<button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>`)}${fact("Email", r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : "")}${fact("Asked", esc(fmtStamp(r.submitted)))}</dl>
+        <p class="lt-req-meta"><button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>${r.email ? ` · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ""} · Asked ${esc(fmtStamp(r.submitted))}</p>
         <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision${D.length > 1 ? "s" : ""}</h3>
@@ -1116,8 +1115,8 @@ async function accomPage(c, t, q = "", k = "") {
   const initials = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
   // Each decision, the earlier ones first (a changed decision keeps the ones before it).
   const decisionsOf = r => [...(Array.isArray(r.history) ? r.history : []), ...(r.status !== "pending" ? [r] : [])];
-  const decisionHTML = r => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
-      <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b><span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}</p>
+  const decisionHTML = r => `<div class="lt-cmt lt-cmt-staff"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
+      <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}<span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></p>
         ${r.note ? `<div class="lt-cmt-n lt-cmt-md">${window.HubView ? window.HubView.markdown(r.note) : esc(r.note)}</div>` : ""}</div></div>`;
   const lastWord = r => r.status === "pending" ? "Waiting for a decision" : `${STATUS[r.status]}${r.decidedBy ? ` by ${r.decidedBy}` : ""}${r.decided ? ` · ${fmtStamp(r.decided)}` : ""}${(r.history || []).length ? ` · changed ${r.history.length} time${r.history.length > 1 ? "s" : ""}` : ""}`;
   const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">

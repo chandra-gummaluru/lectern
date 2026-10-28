@@ -2733,8 +2733,8 @@ const pushUndo = () => { undoStack.push(JSON.stringify(model)); if (undoStack.le
 // instructors and staff). The rest is disabled as it's drawn (lockDown), and a change that touches it anyway is undone.
 const ACCESS = () => (HOSTED && window.Lectern.access ? window.Lectern.access() : "all");
 const ED_OK = new Set(["attend", "rq-open", "open-accom", "acc-open", "acc-back", "done"]);
-const ACT_OK = { marks: new Set(["cell-st", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "up-marks", "view", "acc-cell"]),
-  view: new Set(["crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "view", "acc-cell"]) };
+const ACT_OK = { marks: new Set(["attend", "cell-st", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "up-marks", "view", "acc-cell"]),
+  view: new Set(["attend", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "view", "acc-cell"]) };
 const notMarks = m => JSON.stringify({ ...m, marks: null });
 let allowedBase = null;   // the model as it may be, apart from the marks (for "marks"), or entirely (for "view"): set as it's first drawn
 const baseOf = m => (ACCESS() === "marks" ? notMarks(m) : JSON.stringify(m));
@@ -3091,7 +3091,7 @@ function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a
   return `<div class="erow hd-row${sub ? " sub" : ""}${of ? " mkrow" : ""}" style="--c:${colorOf(e)}" data-act="ed-eval" data-id="${esc(e.id)}" role="button" tabindex="0"${of ? "" : ` draggable="true"`} ${sub ? `data-member="${esc(e.id)}" data-group="${esc(g.id)}"` : of ? "" : `data-unit="e:${esc(e.id)}"`}>
     ${evIcon(e, true)}<div class="er-main hd-main"><div class="hd"><div class="er-top"><div class="er-tt"><p class="er-kind">${esc(e.name)}</p><h3>${esc(titleOf(e) || e.name)}</h3></div>${of ? `<span class="er-mk">${PIC.makeup}Makeup for ${esc(shortName(of))}</span>` : ""}</div>
       <p class="er-when">${esc(whenSentence(e))}${secDatesNote(e) ? `<span class="er-sd">${esc(secDatesNote(e))}</span>` : ""}</p></div>
-      <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div></div>`;
+      <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div>${HOSTED && window.Lectern.openAttendance && e.type === "test" ? `<span class="hd-side er-side"><button type="button" class="ec-btn2" data-act="attend" data-id="${esc(e.id)}" title="Scan students' ID cards as they come in">${ATTEND_SVG}Take Attendance</button></span>` : ""}</div>`;
 }
 // Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
 function buildBtn(e) {
@@ -3177,7 +3177,7 @@ function drawEvalEditor() {
   const e = evalById(m.dataset.eval); if (!e) { ui.evalEd = ""; return render(); }
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED && window.Lectern.openAttendance ? `<button type="button" class="btn" data-ed="attend" title="Scan students' ID cards as they come in">${ATTEND_SVG}Take Attendance</button>` : ""}${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <h3 class="ed-sec ed-first">General</h3>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
@@ -3478,7 +3478,6 @@ document.addEventListener("click", ev => {
     if (m.classList.contains("on-page")) return goPage(() => { ui.stAcc = to; });
     m.dataset.acc = ui.stAcc = to; return drawStudentEditor();
   }
-  if (a === "attend") { if (window.Lectern && window.Lectern.openAttendance) window.Lectern.openAttendance(m.dataset.eval || ui.evalEd); return; }
   if (a === "rq-open") { if (window.Lectern && window.Lectern.openRequest) window.Lectern.openRequest(b.dataset.v); return; }
   if (a === "open-accom") { if (window.Lectern && window.Lectern.openAccom) window.Lectern.openAccom(); return; }
   if (a === "acc-clear") { const n = m.dataset.student, id = m.dataset.acc; change(() => { if (model.overrides[n]) delete model.overrides[n][id]; }); m.dataset.acc = ui.stAcc = ""; return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
@@ -4205,6 +4204,7 @@ function act(b) {
       evalEditor(e.id); const f = $('.editor [data-f="label"]'); if (f) { f.focus(); f.select(); } return;
     }
     case "ed-eval": return evalEditor(b.dataset.id);
+    case "attend": return window.Lectern && window.Lectern.openAttendance && window.Lectern.openAttendance(b.dataset.id);
     case "ev-dup": {   // a copy right after it (in its group, if it's in one), named from the same label: Lab 2 → Lab 3
       const x = evalById(b.dataset.id); if (!x) return;
       const c = clone(x);

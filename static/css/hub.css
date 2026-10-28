@@ -1041,3 +1041,10 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb-menu a.hb-upd { display: grid !important; gap: 1px; height: auto; padding: 7px 10px; line-height: 1.3; }
 .hb-menu a.hb-upd b { font-weight: 600; color: var(--ink); }
 .hb-menu a.hb-upd span { font-size: 13px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+
+/* About the Course: each section's (and person's) times as a table: the days, the hours and the places in
+   columns, their icons lined up; who runs it under its name. */
+.ab-times { grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: 24px; row-gap: 6px; justify-content: start; }
+.ab-times > .ab-time { display: contents; }
+.ab-who { margin: 2px 0 0 !important; font-size: 14px !important; color: var(--ink-2) !important; }
+.ab-who + .ab-times { margin-top: 10px; }

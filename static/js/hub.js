@@ -588,7 +588,7 @@ const PAGES = {
     const item = (ic, kick, title, rest) => `<div class="wk-item">${ic}<div class="wk-b"><p class="hs-kick">${kick}</p><h3>${esc(title)}</h3>${rest}</div></div>`;
     const secs = G.slice().sort((x, y) => (["lecture", "tutorial", "lab"].indexOf(x.kind) - ["lecture", "tutorial", "lab"].indexOf(y.kind)) || String(x.name).localeCompare(String(y.name), undefined, { numeric: true }))
       .map(g => item(`<span class="hs-ic">${KIND_ICON[g.kind] || KIND_ICON.other}</span>`, esc(SEC[g.kind] || "Section"), g.name || "Section",
-        `${(g.items || []).length ? timesHTML(g.items) : ""}${(g.who || []).length ? `<p class="ab-who">${esc(g.who.join(", "))}</p>` : ""}`)).join("");
+        `${(g.who || []).length ? `<p class="ab-who">${esc(g.who.join(", "))}</p>` : ""}${(g.items || []).length ? timesHTML(g.items) : ""}`)).join("");
     const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
     const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
     const people = T.map(p => { const oh = (p.times || []).filter(x => x.kind === "office" && x.day);

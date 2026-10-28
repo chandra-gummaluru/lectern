@@ -108,6 +108,9 @@ body.gb-limited #view :is([data-act], [data-ed]):disabled, body.gb-limited #tb-r
 body.gb-limited #view .editor :is(input[type=text], input[type=number], input:not([type]), textarea):disabled { background: var(--strip, #f2f1ed); color: var(--ink-3, #80848b); }
 body.gb-limited #view :disabled:hover { filter: none; }
 body.gb-limited #view button.add:disabled, body.gb-limited #view [data-ed=mkadd]:disabled { display: none; }
+/* Take Attendance on a test's card: the size of Lectern's own buttons (the offering's Open … ones). */
+.erow [data-act="attend"] { height: 38px; padding: 0 15px; gap: 8px; border-radius: 9px; font-size: 14px; }
+.erow [data-act="attend"] svg { width: 16px; height: 16px; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at

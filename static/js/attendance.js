@@ -128,8 +128,7 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
       <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${titleHTML(O.eval)}</h2></div>
         <button type="button" class="lt-btn lx-acts" id="at-stop">Stop Attendance</button></div>
       <p class="lt-req-meta">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
-      <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg">Starting the camera…</p></div>
-      <div id="at-res" class="at-res"></div>
+      <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg"></p><div id="at-res" class="at-res"></div></div>
       <div class="at-hand-row"><button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
     </div>`;
     $("#at-stop").onclick = stopping;
@@ -189,7 +188,8 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
     api("/api/attendance/stop", B({ session: S.id })).then(d => { toast(`Stopped: ${d.count} student${d.count === 1 ? "" : "s"} in this session.`); }, x => toast(x.message))
       .finally(() => { S = null; busy = false; load().then(() => { if (here()) { drawOverview(); poll(); } }); });
   }
-  const res = html => { const r = $("#at-res"); if (r) { r.innerHTML = html; r.scrollIntoView({ block: "nearest" }); } return r; };
+  // Who it is (or what's wrong) covers the camera, until it's dealt with.
+  const res = html => { const r = $("#at-res"); if (r) { r.innerHTML = html; const c = $("#at-cam"); if (c) c.scrollIntoView({ block: "nearest" }); } return r; };
   const resume = (after = 0) => setTimeout(() => { busy = false; const r = $("#at-res"); if (r && !r.querySelector("input")) r.innerHTML = ""; }, after);
   const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) { /* no */ } };
   const whoHTML = (s, kick) => `<p class="gr-kind">${esc(kick)}</p><h3>${esc([s.last, s.first].filter(Boolean).join(", "))}</h3><p class="at-meta">${esc([s.num, s.email].filter(Boolean).join(" · "))}</p>`;

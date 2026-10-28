@@ -104,3 +104,13 @@ def test_instructors_delete_a_session_and_who_it_put_in(gh):
     o = me.get("/api/attendance?owner=chandra&offering=csc258/f26&e=mt").get_json()
     assert o["total"] == 0 and o["sessions"] == []
     assert P(sam, "/mark", session=s1["id"], student="1002").status_code == 404    # its scanner: it's gone
+
+
+def test_a_students_attendance(gh):
+    me = gh.client
+    s1 = P(me, "/start").get_json()["session"]
+    P(me, "/mark", session=s1["id"], student="1001")
+    P(me, "/start", e="a1")                                         # taken for Assignment 1 too, but nobody in yet
+    g = lambda n: me.get(f"/api/attendance/student?owner=chandra&offering=csc258/f26&num={n}").get_json()["evals"]
+    assert g("1001")["mt"]["in"]["by"] == "Chandra Gummaluru" and g("1001")["a1"]["in"] is None and "l1" not in g("1001")
+    assert g("1002")["mt"]["in"] is None

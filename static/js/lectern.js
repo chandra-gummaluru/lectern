@@ -1405,6 +1405,9 @@ Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); }
 // What the open offering's gradebook lets you change: everything (owner, coordinators), its marks (TAs), or
 // nothing (instructors, staff): the Grade Builder disables the rest, as the server would refuse it.
 Lectern.access = () => { const r = S.route; const role = r.c && r.t ? roleIn(r.c, r.t) : "owner"; return ["owner", "coordinator"].includes(role) ? "all" : role === "ta" ? "marks" : "view"; };
+// A student's attendance (the gradebook's student page): { evalId: { in: {at, by} | null } } for each evaluation it was taken for.
+Lectern.attendanceOf = num => { const r = S.route; if (!r.c || !r.t) return Promise.resolve({});
+  return Auth.api(`/api/attendance/student?owner=${encodeURIComponent(curOwner() || "")}&offering=${encodeURIComponent(`${r.c}/${r.t}`)}&num=${encodeURIComponent(num)}`).then(d => d.evals || {}, () => ({})); };
 Lectern.openAttendance = id => { const r = S.route; if (r.c && r.t) go({ page: "attend", c: r.c, t: r.t, e: String(id) }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).

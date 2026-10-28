@@ -16,6 +16,8 @@ Kept in the database (db.py's attendance tables, not the offering's files): it's
   POST /api/attendance/start   {owner, offering, e, note}  a new session (yours)
   POST /api/attendance/stop    {owner, offering, session}
   POST /api/attendance/delete  {owner, offering, session}   instructors: a session, and who it put in
+  GET  /api/attendance/student?owner&offering&num          a student's attendance: each evaluation it was taken for,
+                                                           and whether they were in (when, and who entered them)
   POST /api/attendance/lookup  {owner, offering, e, card}  who the card is, and whether they're in already
   GET  /api/attendance/search?owner&offering&e&q          students by name or number
   POST /api/attendance/identify {owner, offering, e, text} whose student ID it is, by what's printed on it (the scanner reads
@@ -178,6 +180,18 @@ def delete_session():
         n = db.run("DELETE FROM attendance WHERE session_id = ?", (s["id"],)).rowcount
         db.run("DELETE FROM attendance_sessions WHERE id = ?", (s["id"],))
     return jsonify(ok=True, removed=n)
+
+
+@attendance_bp.get("/api/attendance/student")
+@team_api
+def of_student():
+    d = request.args
+    owner, o = _team(d)
+    num = str(d.get("num") or "")
+    taken = [r["eval"] for r in db.all_("SELECT DISTINCT eval FROM attendance_sessions WHERE owner_id = ? AND offering = ?", (owner, o))]
+    got = {r["eval"]: {"at": r["at"], "by": r["by_name"], "how": r["how"]} for r in db.all_(
+        "SELECT eval, at, by_name, how FROM attendance WHERE owner_id = ? AND offering = ? AND student = ?", (owner, o, num))}
+    return jsonify(evals={e: {"in": got.get(e)} for e in taken})
 
 
 @attendance_bp.post("/api/attendance/lookup")

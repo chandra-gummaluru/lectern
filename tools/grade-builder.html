@@ -1398,8 +1398,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .elist .dragging > * { visibility: hidden; }
 .egroup.dragging { border-radius: 12px; }
 /* a student's result on each evaluation, beside its button */
-.att-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 99px; font: 600 11.5px/18px var(--font-ui); vertical-align: 2px; }
-.att-tag.in { background: #e6f4ec; color: #1f6b43; } .att-tag.out { background: #fdecea; color: #b42318; }
+.acc-score.none.att-out b, .acc-score.none.att-out small { color: var(--danger); }
 .acc-score { flex: none; display: grid; justify-items: end; min-width: 92px; margin-right: 6px; font-family: var(--font-ui); }
 .acc-score b { font: 600 24px/1.1 var(--font-ui); font-variant-numeric: tabular-nums; color: var(--ok); }
 .acc-score.mid b { color: #a37b00; } .acc-score.low b { color: var(--ink); } .acc-score.bad b { color: var(--danger); } .acc-score.none b { color: var(--ink-3); font-weight: 400; }
@@ -3910,7 +3909,7 @@ function scoreHTML(s, e) {
   const m = markOf(s.num, e.id), mk = m.missed && makeupsOf(e).find(x => markOf(s.num, x.id).pts != null);
   if (mk) { if (!totalSet(mk)) return `<span class="acc-score none"><b>—</b><small>makeup ${fmtNum(markOf(s.num, mk.id).pts)} / ?</small></span>`; const p = ratio(markOf(s.num, mk.id).pts, mk) * 100; return `<span class="acc-score ${band(p)}"><b>${r1(p)}%</b><small>makeup ${fmtNum(markOf(s.num, mk.id).pts)} / ${fmtNum(mk.total)}</small></span>`; }
   if (statusOf(m)) return `<span class="acc-score ${["missed", "aiv"].includes(statusOf(m)) ? "bad" : "none"}"><b class="ns" title="${esc(STATUSES[statusOf(m)])}">${svg(STATUS_ICON[statusOf(m)])}</b><small>${esc(STATUSES[statusOf(m)].toLowerCase())}</small></span>`;   // like "— / not marked": the mark's place, then what it is
-  if (m.pts == null) return `<span class="acc-score none"><b>—</b><small>not marked</small></span>`;
+  if (m.pts == null) return `<span class="acc-score none"${HOSTED && e.type === "test" ? ` data-att="${esc(e.id)}"` : ""}><b>—</b><small>not marked</small></span>`;   // (a test they weren't at: "not attended", in red: fillAttendance)
   if (!totalSet(e)) return `<span class="acc-score none"><b>—</b><small>${fmtNum(m.pts)} / ?</small></span>`;
   const p = ratio(m.pts, e) * 100;
   return `<span class="acc-score ${band(p)}"><b>${r1(p)}%</b><small>${fmtNum(m.pts)} / ${fmtNum(e.total)}</small></span>`;
@@ -3999,15 +3998,14 @@ function reqsHTML(s, e) {
       <span class="rq-st v-${esc(r.status)}">${esc(REQ_STATUS[r.status] || r.status)}</span>${can ? svg("chev") : ""}</${can ? "button" : "div"}>`).join("")}</div>`;
 }
 let reqsOf = "";   // whose page the requests were read for (read again on another student's: they may have changed)
-// Whether they were at each test, once attendance is taken for it (Lectern's Attendance): Attended, or Not attended.
+// A test they weren't at (attendance was taken, and they weren't entered), not marked yet: "not attended", in red.
 const ATT = { num: "", at: 0, p: null };
 function fillAttendance(root, num) {
-  const tags = root.querySelectorAll("[data-att]"); if (!tags.length || !window.Lectern || !window.Lectern.attendanceOf) return;
+  const els = root.querySelectorAll("[data-att]"); if (!els.length || !window.Lectern || !window.Lectern.attendanceOf) return;
   if (ATT.num !== num || Date.now() - ATT.at > 20000) { ATT.num = num; ATT.at = Date.now(); ATT.p = window.Lectern.attendanceOf(num); }
-  ATT.p.then(A => tags.forEach(t => { const a = A[t.dataset.att]; if (!a) return;
-    t.hidden = false; t.className = `att-tag ${a.in ? "in" : "out"}`;
-    t.textContent = a.in ? "Attended" : "Not attended";
-    t.title = a.in ? `Entered by ${a.in.by || "the teaching team"}, ${new Date(a.in.at * 1000).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}${a.in.how === "hand" ? " (by hand)" : ""}` : "Attendance was taken, and they weren't entered";
+  ATT.p.then(A => els.forEach(el => { const a = A[el.dataset.att]; if (!a || a.in) return;
+    el.classList.add("att-out"); el.title = "Attendance was taken, and they weren't entered";
+    const sm = el.querySelector("small"); if (sm) sm.textContent = "not attended";
   }));
 }
 function drawStudentEditor() {
@@ -4048,7 +4046,7 @@ function drawStudentEditor() {
   }
   const accRow = (x, sub) => {
     const { o, p, w } = accPolicy(s, x), own = !sub && Object.keys(o).length;
-    return `<div class="acc-row${own ? " own" : ""}${sub ? " sub" : ""}" style="--c:${colorOf(x)}">${evIcon(x)}<div class="acc-t"><b>${esc(x.name)}${HOSTED && x.type === "test" ? `<span class="att-tag" data-att="${esc(x.id)}" hidden></span>` : ""}</b>
+    return `<div class="acc-row${own ? " own" : ""}${sub ? " sub" : ""}" style="--c:${colorOf(x)}">${evIcon(x)}<div class="acc-t"><b>${esc(x.name)}</b>
         <small>${sub ? accMemberNote(s, x) : own ? `${o.weight != null ? `Weight ${fmtNum(o.weight)}%. ` : ""}${policySentence(x, p, w)}` : `${fmtNum(x.weight)}%. ${policySentence(x)}`}</small></div>
         ${scoreHTML(s, x)}${sub ? "" : `<button type="button" class="ec-btn2" data-ed="acc-open" data-v="${esc(x.id)}">${PIC.edit}${own ? "Edit" : "Change"}</button>`}</div>`;
   };

@@ -1050,3 +1050,29 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ab-who { margin: 2px 0 0 !important; font-size: 14px !important; color: var(--ink-2) !important; }
 .ab-who + .ab-times { margin-top: 10px; }
 .ab-times.ab-contact { display: flex; flex-wrap: wrap; } .ab-times.ab-contact > .ab-time { display: flex; }
+
+/* About the Course: the week as a calendar (a column a day, an hour a row), each meeting a block. */
+.cal-card { margin-bottom: 26px; padding: 20px 20px 16px; }
+.cal-scroll { overflow-x: auto; }
+.cal { display: grid; grid-template-columns: 52px repeat(var(--n), minmax(96px, 1fr)); min-width: calc(52px + var(--n) * 96px); }
+.cal-h { padding: 0 0 8px; text-align: center; font: 700 11.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.cal-times { position: relative; }
+.cal-times span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cal-times span:first-child { transform: none; }
+.cal-day { position: relative; border-left: 1px solid var(--line); }
+.cal-day:last-child { border-right: 1px solid var(--line); }
+.cal-day > i { position: absolute; left: 0; right: 0; border-top: 1px solid var(--line); }
+.cal-ev { position: absolute; display: grid; align-content: start; gap: 1px; padding: 5px 7px; overflow: hidden; border: 0; border-left: 3px solid var(--k); border-radius: 6px; background: color-mix(in srgb, var(--k) 14%, var(--card)); text-align: left; font: 12px/1.3 var(--font-ui); color: var(--ink-2); cursor: pointer; }
+.cal-ev b { font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ev:hover, .cal-ev.on { background: color-mix(in srgb, var(--k) 26%, var(--card)); }
+.cal-ev.on { box-shadow: 0 0 0 2px var(--k); }
+.k-lecture { --k: #b58a00; } .k-tutorial { --k: #3a6ea5; } .k-lab { --k: #2f8f5b; } .k-office { --k: #8a8f98; } .k-other { --k: #8a6db5; }
+.cal-more { margin-top: 14px; }
+.cal-hint { margin: 0; font-size: 13.5px; color: var(--ink-3); }
+.cal-det { padding: 12px 14px; border-left: 3px solid var(--k); border-radius: 8px; background: var(--strip); }
+.cal-det h3 { margin: 0; font: 500 20px/1.2 var(--font-serif); color: var(--ink); }
+.cal-det .ab-times { margin-top: 6px; }
+.cal-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 12.5px; color: var(--ink-3); }
+.cal-key span { display: inline-flex; align-items: center; gap: 6px; } .cal-key i { width: 10px; height: 10px; border-radius: 3px; background: var(--k); }
+.cal-day { border-bottom: 1px solid var(--line); }

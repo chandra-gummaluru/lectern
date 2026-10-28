@@ -586,22 +586,23 @@ const PAGES = {
       return `<div class="ab-times">${L.map(l => `<div class="ab-time">${fact(CAL, esc(l.days.join(", ")))}${l.x.start ? fact(CLOCK, esc([l.x.start, l.x.end].filter(Boolean).join("–"))) : ""}${l.x.where ? fact(PIN, l.x.map ? `<a href="${esc(l.x.map)}" target="_blank" rel="noopener" title="${esc(l.x.address || "On the map")}">${esc(l.x.where)}</a>` : esc(l.x.where)) : ""}</div>`).join("")}</div>`; };
     const SEC = { lecture: "Lecture Section", tutorial: "Tutorial Section", lab: "Lab Section" };
     const item = (ic, kick, title, rest) => `<div class="wk-item">${ic}<div class="wk-b"><p class="hs-kick">${kick}</p><h3>${esc(title)}</h3>${rest}</div></div>`;
-    const secs = G.slice().sort((x, y) => (["lecture", "tutorial", "lab"].indexOf(x.kind) - ["lecture", "tutorial", "lab"].indexOf(y.kind)) || String(x.name).localeCompare(String(y.name), undefined, { numeric: true }))
+    const secsUnused = G.slice().sort((x, y) => (["lecture", "tutorial", "lab"].indexOf(x.kind) - ["lecture", "tutorial", "lab"].indexOf(y.kind)) || String(x.name).localeCompare(String(y.name), undefined, { numeric: true }))
       .map(g => item(`<span class="hs-ic">${KIND_ICON[g.kind] || KIND_ICON.other}</span>`, esc(SEC[g.kind] || "Section"), g.name || "Section",
         `${(g.who || []).length ? `<p class="ab-who">${esc(g.who.join(", "))}</p>` : ""}${(g.items || []).length ? timesHTML(g.items) : ""}`)).join("");
     const ROLE = { coordinator: "Coordinator", instructor: "Instructor", ta: "TA", staff: "Staff" };
     const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
-    const people = T.map(p => { const oh = (p.times || []).filter(x => x.kind === "office" && x.day);
-      return item(`<span class="hs-av ab-av" aria-hidden="true">${esc(ini(p.name))}</span>`, esc(ROLE[p.role] || ""), p.name,
-        `<div class="ab-times ab-contact">${p.email ? `<div class="ab-time">${fact(MAIL, `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`)}${p.office ? fact(PIN, esc(p.office)) : ""}</div>` : ""}</div>
-        ${oh.length ? `<p class="ab-oh">Office Hours</p>${timesHTML(oh)}` : ""}`); }).join("");
+    const people = T.map(p => item(`<span class="hs-av ab-av" aria-hidden="true">${esc(ini(p.name))}</span>`, esc(ROLE[p.role] || ""), p.name,
+        `<div class="ab-times ab-contact">${p.email ? `<div class="ab-time">${fact(MAIL, `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`)}${p.office ? fact(PIN, esc(p.office)) : ""}</div>` : ""}</div>`)).join("");
+    // The week, as a calendar: each section's meetings and the team's office hours, a block each (its kind's
+    // icon, its name and room); clicking one says more under the calendar.
+    const secs = weekCalendar(G, T);
     // The course's rules (the gradebook's), a row each.
     const RULE = svg('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>');
     const rules = (a.rules || []).filter(r => r.title || r.text).map(r => item(`<span class="hs-ic">${RULE}</span>`, "Policy", r.title || "Policy", r.text ? `<div class="hs-body">${markdown(r.text)}</div>` : "")).join("");
     const c = D.course;
     // The title, then each section, each person and each policy a card of its own.
     return `${path([["About the Course"]])}${head("About the Course", esc([c.term, c.school].filter(Boolean).join(" · ")))}
-      <div class="ab-page">${[secs, people, rules].filter(Boolean).map(x => `<div class="hs-cards">${x}</div>`).join("")}</div>
+      <div class="ab-page">${secs}${[people, rules].filter(Boolean).map(x => `<div class="hs-cards">${x}</div>`).join("")}</div>
       ${rest.replace(/\s/g, "") ? `<div class="ab-rest">${rest}</div>` : ""}`;
   },
   // Requesting an accommodation for one evaluation (#request/<id>): drawn once what can be asked for is in.
@@ -660,6 +661,49 @@ function myRequests() {
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }
+
+// ── About the Course's week: a calendar of the sections' meetings and the office hours ───────
+const minutes = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return m ? +m[1] * 60 + +m[2] : null; };
+let CAL_EV = [];
+function weekCalendar(G, T) {
+  const SEC = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab" };
+  const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
+  const E = [];
+  (G || []).forEach(g => (g.items || []).forEach(x => { const a = minutes(x.start), b = minutes(x.end) ?? (a != null ? a + 60 : null);
+    if (x.day && a != null) E.push({ kind: g.kind || "other", day: x.day, a, b, title: g.name || "Section", kick: SEC[g.kind] || "Section", where: x.where || "", map: x.map || "", address: x.address || "", who: (g.who || []).join(", "), start: x.start, end: x.end }); }));
+  (T || []).forEach(p => (p.times || []).filter(x => x.kind === "office" && x.day).forEach(x => { const a = minutes(x.start), b = minutes(x.end) ?? (a != null ? a + 60 : null);
+    if (a != null) E.push({ kind: "office", day: x.day, a, b, title: `Office Hours · ${ini(p.name)}`, kick: "Office Hours", where: x.where || p.office || "", map: x.map || "", address: x.address || "", who: p.name, start: x.start, end: x.end }); }));
+  if (!E.length) return "";
+  CAL_EV = E;
+  const days = [1, 2, 3, 4, 5, ...[6, 7].filter(d => E.some(e => e.day === d))];
+  const lo = Math.floor(Math.min(...E.map(e => e.a)) / 60) * 60, hi = Math.ceil(Math.max(...E.map(e => e.b)) / 60) * 60;
+  const H = 54, px = m => ((m - lo) / 60) * H;
+  // Meetings at the same time on a day share its width.
+  const col = d => { const L = E.map((e, i) => ({ e, i })).filter(x => x.e.day === d).sort((x, y) => x.e.a - y.e.a), lanes = [];
+    L.forEach(x => { let k = lanes.findIndex(end => end <= x.e.a); if (k < 0) { k = lanes.length; lanes.push(0); } lanes[k] = x.e.b; x.k = k; });
+    return L.map(x => { const n = Math.max(1, ...L.filter(y => y.e.a < x.e.b && x.e.a < y.e.b).map(y => y.k + 1));
+      return `<button type="button" class="cal-ev k-${esc(x.e.kind)}" data-ev="${x.i}" style="top:${px(x.e.a)}px;height:${Math.max(22, px(x.e.b) - px(x.e.a) - 3)}px;left:calc(${x.k / n * 100}% + 2px);width:calc(${100 / n}% - 4px)" title="${esc(`${x.e.title}, ${x.e.start}–${x.e.end}${x.e.where ? `, ${x.e.where}` : ""}`)}">
+        <b>${esc(x.e.title)}</b><span>${esc(x.e.start)}–${esc(x.e.end)}</span>${x.e.where ? `<span>${esc(x.e.where)}</span>` : ""}</button>`; }).join(""); };
+  const hours = []; for (let m = lo; m < hi; m += 60) hours.push(m);
+  return `<article class="ec-card cal-card"><div class="cal-scroll"><div class="cal" style="--n:${days.length}">
+      <div class="cal-h"></div>${days.map(d => `<div class="cal-h">${DAY3[d]}</div>`).join("")}
+      <div class="cal-times" style="height:${px(hi)}px">${hours.map(m => `<span style="top:${px(m)}px">${String(m / 60).padStart(2, "0")}:00</span>`).join("")}</div>
+      ${days.map(d => `<div class="cal-day" style="height:${px(hi)}px">${hours.map(m => `<i style="top:${px(m)}px"></i>`).join("")}${col(d)}</div>`).join("")}
+    </div></div>
+    <div class="cal-more" id="cal-more"><p class="cal-hint">Click a meeting to see more.</p></div>
+    <div class="cal-key">${[["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["office", "Office Hours"]].filter(([k]) => E.some(e => e.kind === k)).map(([k, n]) => `<span class="k-${k}"><i></i>${n}</span>`).join("")}</div>
+  </article>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".cal-ev"); if (!b) return;
+  const x = CAL_EV[+b.dataset.ev], box = document.getElementById("cal-more"); if (!x || !box) return;
+  document.querySelectorAll(".cal-ev.on").forEach(y => y.classList.remove("on")); b.classList.add("on");
+  const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
+  const CLOCK = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
+  box.innerHTML = `<div class="cal-det k-${esc(x.kind)}"><p class="hs-kick">${esc(x.kick)}</p><h3>${esc(x.kind === "office" ? `${x.who}'s Office Hours` : x.title)}</h3>
+    ${x.kind !== "office" && x.who ? `<p class="ab-who">${esc(x.who)}</p>` : ""}
+    <div class="ab-times ab-contact"><div class="ab-time"><span class="ec-wd"><span class="hs-ic sm">${CLOCK}</span>${esc(DAY3[x.day])}, ${esc(x.start)}–${esc(x.end)}</span>${x.where ? `<span class="ec-wd"><span class="hs-ic sm">${PIN}</span>${x.map ? `<a href="${esc(x.map)}" target="_blank" rel="noopener" title="${esc(x.address || "On the map")}">${esc(x.where)}</a>` : esc(x.where)}</span>` : ""}</div></div></div>`;
+});
 
 // ── What's new (replies to discussions they're in; requests decided): a count on the account button ──
 let UPD = null;

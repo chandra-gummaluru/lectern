@@ -123,13 +123,14 @@ def main():
 
         # 4. The course page's About: the group with its times and who runs them; office hours; the team.
         v = b.new_context(viewport={"width": 1360, "height": 900}).new_page()
-        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".ab-page .wk-item")
-        sec = v.locator(".ab-page .wk-item").first
-        expect(sec).to_contain_text("LEC0101"); expect(sec).to_contain_text("Lecture Section"); expect(sec.locator(".ab-time").first).to_contain_text("Mon, Wed10:00–11:00")
-        expect(v.locator(".hb-main")).to_contain_text("Tutorial Section"); expect(v.locator(".hb-main")).to_contain_text("Thu15:00–16:00"); expect(sec).to_contain_text("Chandra Gummaluru")
-        expect(sec.locator("a[href*='openstreetmap.org']").first).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map
+        v.goto(srv.base + "c/chandra/csc258/f26/#about"); v.wait_for_selector(".cal-ev")
+        # The week, as a calendar: LEC0101 on Monday and Wednesday, TUT0101 on Thursday, and office hours on Tuesday.
+        assert v.locator(".cal-ev.k-lecture").count() == 2 and v.locator(".cal-ev.k-tutorial").count() == 1 and v.locator(".cal-ev.k-office").count() == 1
+        expect(v.locator(".cal-ev.k-lecture").first).to_contain_text("LEC0101"); expect(v.locator(".cal-ev.k-lecture").first).to_contain_text("10:00–11:00")
+        v.locator(".cal-ev.k-lecture").first.click()
+        expect(v.locator("#cal-more")).to_contain_text("Chandra Gummaluru")
+        expect(v.locator("#cal-more a[href*='openstreetmap.org']")).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")
-        expect(v.locator(".hb-main")).to_contain_text("OFFICE HOURS", ignore_case=True)
         v.wait_for_timeout(700); v.screenshot(path=f"{OUT}/192-hub-groups.png", full_page=True)
         print("4 the hub shows the sections, office hours and team")
         b.close()

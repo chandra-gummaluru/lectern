@@ -663,7 +663,7 @@ function myRequests() {
     .then(d => {
       const R = d.requests || [];
       // Each request in the Item Head style (docs/ui-patterns.md): a small icon by the kicker, the evaluation as the
-      // title, one line of facts; the status on the right; then what they asked, and the decision as a comment.
+      // title, one line of facts; the status on the right; then what they asked (the decision and the discussion are on its own page).
       const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
       box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
         const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
@@ -671,7 +671,7 @@ function myRequests() {
           <div class="wk-b"><div class="ma-head"><span class="ma-kic">${rm ? REDO : HEART}</span><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p>
               <h3>${evalTitle({ name: r.evalName, title: (unitOf(r.eval) || {}).u?.title })}</h3><p class="ma-facts">${esc(facts)}</p><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></div>
             ${!rm && r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
-            ${st !== "pending" ? `<div class="ma-cmt"><span class="ma-av" aria-hidden="true">${esc(ini(r.decidedBy))}</span><div class="ma-cb"><p class="ma-ch"><b>${esc(r.decidedBy || "Your instructor")}</b><span>${esc(when(r.decided))}</span><span class="ma-v v-${st}">${esc(REQ_WORD[st])}</span></p>${r.note ? `<div class="ma-cn">${markdown(r.note)}</div>` : ""}</div></div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
+           </div>${CHEV}</div>`; }).join("")}</div>`
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }

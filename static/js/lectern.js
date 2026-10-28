@@ -578,7 +578,16 @@ function renderPage() {
   if (r.page === "discuss") { const key = hashFor(r);
     return discussionsPage({ $, esc, pageHTML, go, api: Auth.api, renderPath, steps: [HOME_STEP, offeringStep(r.c, r.t)], handle: curOwner() || S.user.handle, c: r.c, t: r.t, r,
       here: () => hashFor(S.route) === key, hashOf: x => hashFor({ ...x, o: r.o }) }); }
-  if (r.page === "attend") return Lectern.openAttendance(r.e);   // (an old link: attendance is a section of the evaluation's editor now)
+  if (r.page === "attend") {   // taking attendance: the camera, for your session (the editor's Attendance section starts it)
+    const key = hashFor(r), toEval = { label: "Evaluations", go: () => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }) };
+    renderPath([HOME_STEP, offeringStep(r.c, r.t), toEval, { label: "Attendance" }]);
+    pageHTML(`<div class="lt-in lt-att"><div class="lx ed"><div id="at-box"><div class="lt-loading" style="min-height:160px">Reading attendance…</div></div></div></div>`);
+    const box = $("#at-box");
+    mountAttendance(box, { esc, toast, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: r.e, scan: true,
+      onDone: () => { if (hashFor(S.route) === key) Lectern.openAttendance(r.e); },
+      path: ev => renderPath([HOME_STEP, offeringStep(r.c, r.t), toEval, { label: ev.name, go: () => Lectern.openAttendance(r.e) }, { label: "Attendance" }]) });
+    return { leave: () => box._stop && box._stop() };
+  }
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id, api: Auth.api, owner: () => curOwner() || S.user.handle,
     // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
@@ -1410,7 +1419,7 @@ Lectern.attendanceOf = num => { const r = S.route; if (!r.c || !r.t) return Prom
 const ATT = new Map();
 Lectern.attendanceEl = id => { const r = S.route, key = `${curOwner()}/${r.c}/${r.t}/${id}`;
   let el = ATT.get(key);
-  if (!el) { el = document.createElement("div"); mountAttendance(el, { esc, toast, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: String(id) }); ATT.set(key, el); }
+  if (!el) { el = document.createElement("div"); mountAttendance(el, { esc, toast, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: String(id), onScan: () => go({ page: "attend", c: r.c, t: r.t, e: String(id) }) }); ATT.set(key, el); }
   else if (el._back) setTimeout(el._back, 0);
   return el; };
 Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;

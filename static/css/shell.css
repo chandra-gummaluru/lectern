@@ -1138,7 +1138,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-start { margin: 18px 0 4px; display: grid; gap: 8px; }
 .at-start .lx-f input { height: 42px; font-size: 15px; }
 .at-start .lt-req-acts { display: flex; justify-content: flex-end; gap: 8px; }
-.at-sess { display: grid; border: 1px solid var(--home-line-2); border-radius: 10px; overflow: hidden; }
+.at-sess { display: grid; border: 1px solid var(--home-line-2); border-radius: 10px; overflow: hidden auto; max-height: 204px; overscroll-behavior: contain; }   /* past three sessions, it scrolls */
 .at-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
 .at-row + .at-row { border-top: 1px solid var(--home-line); }
 .at-rb { flex: 1; min-width: 0; }
@@ -1265,7 +1265,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-sec .at-start { margin: 0; gap: 6px; }
 .at-sec .at-start .pf input { height: 40px; }
 .at-sec .at-start .ed-help { margin: 0; }
-.at-sec .at-go-row, .at-sec .at-acts { display: flex; margin: 4px 0 0; }
+.at-sec .at-go-row, .at-sec .at-acts { display: flex; justify-content: flex-end; margin: 4px 0 0; }
 .at-sec .ed-sub { margin: 8px 0 0; }
 .at-sec .at-scan { max-width: 600px; margin: 0; gap: 12px; }
 .at-sec .at-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

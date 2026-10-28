@@ -900,7 +900,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .dc-new svg { width: 15px; height: 15px; }
 .dc-title-in { display: block; width: 100%; box-sizing: border-box; padding: 11px 12px 4px; border: 0; background: transparent; font: 500 19px/1.3 var(--font-serif); color: var(--ink); outline: none; }
 .dc-title-in::placeholder { color: var(--ink-3); }
-.dc-threads { display: grid; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+.dc-threads { display: grid; border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden auto; max-height: 390px; overscroll-behavior: contain; }   /* past about three posts, it scrolls: the page stays short */
 .dc-t { display: flex; align-items: stretch; }
 .dc-t + .dc-t { border-top: 1px solid var(--line); }
 .dc-t.gone { opacity: .55; }

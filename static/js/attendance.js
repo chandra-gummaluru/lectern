@@ -82,19 +82,22 @@ function cardFrame(v, cv) {
 
 // The evaluation editor's Attendance section (above Grading): mounted once per evaluation (Lectern.attendanceEl)
 // and kept, so the editor redrawing (as you change things) doesn't stop the camera.
-export function mountAttendance(host, { esc, toast, api, owner, c, t, e }) {
+// Two ways: the section (scan: false), with the total, + Take Attendance and the sessions; and the page that taking it
+// opens (scan: true), with the camera, until Stop Attendance (back to the section).
+export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = false, onScan = () => {}, onDone: done = () => {}, path = () => {} }) {
   const Q = `owner=${encodeURIComponent(owner)}&offering=${encodeURIComponent(`${c}/${t}`)}&e=${encodeURIComponent(e)}`;
   const B = x => ({ owner: owner || undefined, offering: `${c}/${t}`, e, ...x });
   let O = null, S = null, timer = 0, cam = null, busy = false, lastCode = "", lastAt = 0, polling = false;
   const $ = s => host.querySelector(s);
+  const onDone = () => { clearTimeout(timer); stopCam(); host.innerHTML = ""; done(); };   // (the page: its camera off, and gone)
   const here = () => host.isConnected;
-  host.classList.add("at-sec");
+  if (!scan) host.classList.add("at-sec");
   // Its typing is its own: not the editor's (which would take it as a change to the gradebook).
   ["input", "change", "keydown"].forEach(k => host.addEventListener(k, ev => ev.stopPropagation()));
   host.innerHTML = `<p class="ed-help">Reading attendance…</p>`;
 
   const load = () => api(`/api/attendance?${Q}`).then(d => { O = d; return d; });
-  function poll() { clearTimeout(timer); polling = true; timer = setTimeout(() => { if (!here()) { polling = false; return; } load().then(() => { if (S) drawCounts(); else refreshOverview(); poll(); }, () => poll()); }, 5000); }
+  function poll() { if (scan && !S) return; clearTimeout(timer); polling = true; timer = setTimeout(() => { if (!here()) { polling = false; return; } load().then(() => { if (S) drawCounts(); else refreshOverview(); poll(); }, () => poll()); }, 5000); }
 
   // ── The overview: the total; a new session's information and + Take Attendance (or, yours still going, Continue
   // Scanning); and every session. It's kept up to date in place, so what's being typed stays. ──
@@ -119,6 +122,7 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e }) {
     }; });
   }
   function refreshOverview() {   // the poll: the total and the sessions, in place
+    if (scan) return;
     const m = $("#at-meta"), l = $("#at-sess-box"); if (!m || !l) return drawOverview();
     if (!!mine() !== !!$("#at-resume") && !(($("#at-note") || {}).value)) return drawOverview();
     m.textContent = metaHTML();
@@ -134,17 +138,20 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e }) {
       <h4 class="ed-sub">Sessions</h4>
       <div id="at-sess-box">${sessHTML()}</div>`;
     bindSessions(host);
-    if (open) { $("#at-resume").onclick = () => { S = open; scanner(); }; return; }
+    if (open) { $("#at-resume").onclick = () => onScan(); return; }
     const goB = $("#at-go"), note = $("#at-note");
-    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: note.value })).then(d => { S = d.session; scanner(); }, x => { goB.disabled = false; toast(x.message); }); };
+    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: note.value })).then(() => onScan(), x => { goB.disabled = false; toast(x.message); }); };
     goB.onclick = startIt; note.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); startIt(); } };
   }
 
   // ── Scanning: this session's line, with Stop; the camera; Enter by Hand ──
   function scanner() {
-    host.innerHTML = `<div class="at-scan">
-      <div class="at-bar"><p class="ed-help at-sum">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
-        <button type="button" class="lt-btn" id="at-stop">Stop Attendance</button></div>
+    path(O.eval);
+    const tt = `${esc(O.eval.name)}${O.eval.title && O.eval.title !== O.eval.name ? `<span class="lt-req-of"> / ${esc(O.eval.title)}</span>` : ""}`;
+    host.innerHTML = `<div class="lx-editor lt-req-ed at-card at-scan">
+      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${tt}</h2></div>
+        <button type="button" class="lt-btn lx-acts" id="at-stop">Stop Attendance</button></div>
+      <p class="lt-req-meta">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
       <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg"></p><div id="at-res" class="at-res"></div></div>
       <div class="at-hand-row"><button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
     </div>`;
@@ -206,7 +213,7 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e }) {
   function stopping() {
     busy = true; stopCam();
     api("/api/attendance/stop", B({ session: S.id })).then(d => { toast(`Stopped: ${d.count} student${d.count === 1 ? "" : "s"} in this session.`); }, x => toast(x.message))
-      .finally(() => { S = null; busy = false; load().then(drawOverview); });
+      .finally(() => { S = null; busy = false; onDone(); });
   }
   // Who it is (or what's wrong) covers the camera, until it's dealt with.
   const res = html => { const r = $("#at-res"); if (r) { r.innerHTML = html; const c = $("#at-cam"); if (c) c.scrollIntoView({ block: "nearest" }); } return r; };
@@ -284,14 +291,17 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e }) {
       resume(1300);
     }, x => {
       if (x.code === "already") return api(`/api/attendance/search?${Q}&q=${encodeURIComponent(s.num)}`).then(d => already(s, (d.students.find(y => y.num === s.num) || {}).already), () => already(s, null));
-      if (x.code === "stopped" || x.code === "no-session") { toast(x.message); S = null; stopCam(); load().then(drawOverview); return; }
+      if (x.code === "stopped" || x.code === "no-session") { toast(x.message); S = null; stopCam(); onDone(); return; }
       res(`<div class="at-panel bad"><p class="at-why">${esc(x.message)}</p><div class="at-pacts"><button type="button" class="lt-btn primary" data-next>Next</button></div></div>`).querySelector("[data-next]").onclick = () => resume();
     });
   }
 
-  load().then(() => { drawOverview(); poll(); },
+  // The page: your session (one you started, still going), or, none, back to the section.
+  load().then(() => { if (!scan) { drawOverview(); poll(); return; } S = mine(); if (!S) return onDone(); scanner(); poll(); },
     x => { host.innerHTML = `<p class="ed-help err">Couldn't read the attendance. ${esc(x.message)}</p>`; });
   // Put back after being away: the camera picks up again if it's still on; if it stopped, the overview (with Continue Scanning).
-  host._back = () => { if (!polling && O) poll(); if (S && !cam) { S = null; busy = false; load().then(drawOverview); } };
+  // The section, put back (the editor redrawing, or back from taking attendance): up to date.
+  host._back = () => { if (scan || !O) return; if (!polling) poll(); load().then(refreshOverview); };
+  host._stop = stopCam;
   return host;
 }

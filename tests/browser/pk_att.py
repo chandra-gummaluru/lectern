@@ -42,10 +42,8 @@ with Server() as srv, sync_playwright() as p:
     # The same card again, after a moment: already in.
     me.wait_for_selector(".at-panel.bad", timeout=20000); me.screenshot(path=f"{OUT}/att-5-already.png"); print("again:", me.inner_text(".at-panel.bad .at-why"))
     me.click(".at-panel [data-next]")
-    # The editor redrawing (it takes the section out and puts it back): the camera keeps going.
-    me.evaluate("() => { const s = document.querySelector('.at-sec'), p = s.parentNode; s.remove(); p.appendChild(s); }"); me.wait_for_timeout(800)
-    print("video playing after redraw:", me.evaluate("() => !document.querySelector('#at-video').paused"))
-    me.locator(".at-sec").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/att-scan-in-editor.png")
+    print("scan page:", me.evaluate("location.hash"), "|", me.inner_text(".at-scan .gr-tt"))
+    me.screenshot(path=f"{OUT}/att-scan-page.png")
     b2 = browser("zoe"); c2 = b2.new_context(viewport={"width": 420, "height": 860}, permissions=["camera"]); block_cdns(c2); ta = c2.new_page(); ta.on("pageerror", lambda e: errs.append(str(e)))
     srv.sign_in(ta, email="sam@utoronto.ca", hash="#/~chandra/csc258/f26/attendance/mt"); ta.wait_for_selector("#at-note"); ta.fill("#at-note", "BA 1180"); ta.click("#at-go")
     ta.wait_for_selector(".at-panel.find", timeout=20000); ta.fill("#at-q", "ng"); ta.wait_for_selector(".at-hit"); ta.screenshot(path=f"{OUT}/att-6-unknown.png")
@@ -55,5 +53,5 @@ with Server() as srv, sync_playwright() as p:
     me.click("#at-stop"); me.wait_for_selector(".at-sess"); me.wait_for_timeout(800); me.screenshot(path=f"{OUT}/att-7-sessions.png", full_page=True)
     print("total:", me.inner_text("#at-meta"), "| trash:", me.locator(".at-del").count())
     me.locator(".at-del").first.click(); me.wait_for_timeout(300); me.locator(".at-sess").screenshot(path=f"{OUT}/att-del-armed.png"); me.locator(".at-del.armed").click(); me.wait_for_timeout(1500)
-    print("after delete:", me.inner_text("#at-meta"), "| sessions:", me.locator(".at-row").count()); me.screenshot(path=f"{OUT}/att-del-after.png")
+    print("after delete:", me.inner_text("#at-meta"), "| sessions:", me.locator(".at-row").count(), me.locator(".at-sec").count(), me.locator("[data-att-slot]").count(), me.locator(".editor[data-eval]").count(), me.evaluate("[...document.querySelectorAll('.at-sec')].map(x=>x.parentElement.outerHTML.slice(0,80)+' | '+x.closest('[data-lt-tool]')?.dataset.ltTool)")); me.screenshot(path=f"{OUT}/att-del-after.png")
     print("errors:", errs)

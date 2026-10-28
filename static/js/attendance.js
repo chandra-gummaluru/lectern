@@ -1,20 +1,20 @@
-/* Attendance: who was there for an evaluation, taken by the teaching team scanning students' ID cards with a
-   phone's camera (server/attendance.py). From the evaluation's Take Attendance button.
+/* Attendance: who was there for a test, taken by the teaching team scanning students' ID cards with a phone's
+   camera (server/attendance.py). A section of the evaluation's editor, above Grading (the test card's Take
+   Attendance button opens it).
 
-     #/<course>/<term>/attendance/<eval id>
-
-   Start Attendance (with a note: the room, or the last names you're taking) begins your session; each card
-   held up shows who it is (by its barcode, if it's registered; or by its printed name and number, read with
-   OCR), and Correct puts them in. Not Them (or a card nobody has) finds the
-   student by name or number, and registers the card to them. A student is in once, whoever scans them:
-   the second time says who entered them. Stop Attendance ends your session, with its count. The page shows
-   every session (each person's, with its note and count) and the total, as they happen. */
+   + Take Attendance (with Session Information: the room, or the last names you're taking) begins your session;
+   each card held up shows who it is (by its barcode, if it's registered; or by its printed name and number, read
+   with OCR), and Correct puts them in. Not Them (or a card nobody has) finds the student by name or number, and
+   registers the card to them. A student is in once, whoever scans them: the second time says who entered them.
+   Stop Attendance ends your session, with its count. The section shows every session (each person's, with its
+   note and count) and the total, as they happen. */
 
 const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const ATTEND_ICON = SVG('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4.5"/>');
 const SCAN = SVG('<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 12h10"/>');
 const SEARCH = SVG('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>');
 const TRASH = SVG('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>');
+const PLUS = SVG('<path d="M12 5v14M5 12h14"/>');
 const CHECK = SVG('<path d="m5 12.5 4.5 4.5L19 7"/>');
 const FORMATS = ["codabar", "code_39", "code_128", "code_93", "itf", "ean_13", "ean_8", "upc_a", "qr_code"];
 const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -80,76 +80,71 @@ function cardFrame(v, cv) {
   return cv;
 }
 
-export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, e, steps, renderPath, here }) {
+// The evaluation editor's Attendance section (above Grading): mounted once per evaluation (Lectern.attendanceEl)
+// and kept, so the editor redrawing (as you change things) doesn't stop the camera.
+export function mountAttendance(host, { esc, toast, api, owner, c, t, e }) {
   const Q = `owner=${encodeURIComponent(owner)}&offering=${encodeURIComponent(`${c}/${t}`)}&e=${encodeURIComponent(e)}`;
   const B = x => ({ owner: owner || undefined, offering: `${c}/${t}`, e, ...x });
-  let O = null, S = null, timer = 0, cam = null, busy = false, lastCode = "", lastAt = 0;
-  const titleHTML = ev => `${esc(ev.name)}${ev.title && ev.title !== ev.name ? `<span class="lt-req-of"> / ${esc(ev.title)}</span>` : ""}`;
-  pageHTML(`<div class="lt-in lt-att"><div class="lx ed"><div id="at-box"><div class="lt-loading" style="min-height:160px">Reading attendance…</div></div></div></div>`);
+  let O = null, S = null, timer = 0, cam = null, busy = false, lastCode = "", lastAt = 0, polling = false;
+  const $ = s => host.querySelector(s);
+  const here = () => host.isConnected;
+  host.classList.add("at-sec");
+  // Its typing is its own: not the editor's (which would take it as a change to the gradebook).
+  ["input", "change", "keydown"].forEach(k => host.addEventListener(k, ev => ev.stopPropagation()));
+  host.innerHTML = `<p class="ed-help">Reading attendance…</p>`;
 
   const load = () => api(`/api/attendance?${Q}`).then(d => { O = d; return d; });
-  function poll() { clearTimeout(timer); timer = setTimeout(() => { if (!here()) return stopCam(); load().then(() => { if (!here()) return; if (S) drawCounts(); else refreshOverview(); poll(); }, () => poll()); }, 5000); }
+  function poll() { clearTimeout(timer); polling = true; timer = setTimeout(() => { if (!here()) { polling = false; return; } load().then(() => { if (S) drawCounts(); else refreshOverview(); poll(); }, () => poll()); }, 5000); }
 
-  // ── The overview: the total, and every session ──
-  // The overview: the total; a new session's information and Start Scanning (or, yours still going, Continue
-  // Scanning); and every session. It's kept up to date in place, so what's being typed stays.
+  // ── The overview: the total; a new session's information and + Take Attendance (or, yours still going, Continue
+  // Scanning); and every session. It's kept up to date in place, so what's being typed stays. ──
   const metaHTML = () => `${O.total} of ${O.enrolled} students in · ${O.sessions.length} session${O.sessions.length === 1 ? "" : "s"}`;
   const sessHTML = () => O.sessions.length ? `<div class="at-sess">${O.sessions.slice().reverse().map(s => `<div class="at-row${s.stopped ? "" : " live"}">
       <span class="lt-cmt-av" aria-hidden="true">${esc(ini(s.by))}</span>
-      <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-del="${s.id}" title="Delete this session" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
-    : `<p class="lx-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`;
+      <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-at-del="${s.id}" title="Delete this session" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
+    : `<p class="ed-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`;
   const mine = () => O.sessions.find(s => s.mine && !s.stopped);
   function bindSessions(box) {
     // Delete: click once and it turns red; click again, within a few seconds, to delete.
-    box.querySelectorAll("[data-del]").forEach(b => { b.onclick = () => {
-      const se = O.sessions.find(x => String(x.id) === b.dataset.del); if (!se) return;
+    box.querySelectorAll("[data-at-del]").forEach(b => { b.onclick = () => {
+      const se = O.sessions.find(x => String(x.id) === b.dataset.atDel); if (!se) return;
       if (!b.classList.contains("armed")) {
-        box.querySelectorAll(".at-del.armed").forEach(x => { x.classList.remove("armed"); x.innerHTML = TRASH; });
+        box.querySelectorAll(".at-del.armed").forEach(x => x.classList.remove("armed"));
         b.classList.add("armed"); b.title = `Click again to delete it, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in`;
-        clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("armed"); b.innerHTML = TRASH; b.title = "Delete this session"; }, 4000);
+        clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("armed"); b.title = "Delete this session"; }, 4000);
         return;
       }
       clearTimeout(b._t); b.disabled = true;
-      api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(() => { if (here()) drawOverview(); }); }, x => { b.disabled = false; toast(x.message); });
+      api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(drawOverview); }, x => { b.disabled = false; toast(x.message); });
     }; });
   }
   function refreshOverview() {   // the poll: the total and the sessions, in place
-    const box = $("#at-box"), m = $("#at-meta"), l = $("#at-sess-box"); if (!box || !m || !l) return drawOverview();
-    if (!!mine() !== !!box.querySelector("#at-resume") && !(($("#at-note") || {}).value)) return drawOverview();
+    const m = $("#at-meta"), l = $("#at-sess-box"); if (!m || !l) return drawOverview();
+    if (!!mine() !== !!$("#at-resume") && !(($("#at-note") || {}).value)) return drawOverview();
     m.textContent = metaHTML();
     if (!l.querySelector(".at-del.armed")) { l.innerHTML = sessHTML(); bindSessions(l); }   // (not while a delete waits for its second click)
   }
   function drawOverview() {
-    const box = $("#at-box"); if (!box) return;
-    renderPath([...steps, { label: `${O.eval.name}: Attendance` }]);
     const open = mine();
-    box.innerHTML = `<div class="lx-editor lt-req-ed at-card">
-      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${titleHTML(O.eval)}</h2></div></div>
-      <p class="lt-req-meta" id="at-meta">${metaHTML()}</p>
-      ${open ? `<div class="at-acts"><button type="button" class="lt-btn primary" id="at-resume">${SCAN}Continue Scanning</button></div>`
-        : `<div class="at-start"><label class="lx-f">Session Information<input type="text" id="at-note" maxlength="120" placeholder="e.g. BA 1170, last names A–L" autocomplete="off"></label>
-          <p class="lx-help">Who you're taking attendance of, so it's easy to tell the sessions apart later.</p>
-          <div class="lt-req-acts"><button type="button" class="lt-btn primary" id="at-go">${SCAN}Start Scanning</button></div></div>`}
-      <h3 class="lx-sec">Sessions</h3>
-      <div id="at-sess-box">${sessHTML()}</div>
-    </div>`;
-    const q = x => box.querySelector(x);
-    bindSessions(box);
-    if (open) { q("#at-resume").onclick = () => { S = open; scanner(); }; return; }
-    const goB = q("#at-go");
-    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: q("#at-note").value })).then(d => { S = d.session; scanner(); }, x => { goB.disabled = false; toast(x.message); }); };
-    goB.onclick = startIt; q("#at-note").onkeydown = ev => { if (ev.key === "Enter") startIt(); };
+    host.innerHTML = `<p class="ed-help at-sum" id="at-meta">${metaHTML()}</p>
+      ${open ? `<div class="at-acts"><button type="button" class="lt-btn" id="at-resume">${SCAN}Continue Scanning</button></div>`
+        : `<div class="at-start"><label class="pf"><span>Session Information</span><input type="text" id="at-note" maxlength="120" placeholder="e.g. BA 1170, last names A–L" autocomplete="off"></label>
+          <p class="ed-help">Who you're taking attendance of, so it's easy to tell the sessions apart later.</p>
+          <div class="at-go-row"><button type="button" class="lt-btn add" id="at-go">${PLUS}Take Attendance</button></div></div>`}
+      <h4 class="ed-sub">Sessions</h4>
+      <div id="at-sess-box">${sessHTML()}</div>`;
+    bindSessions(host);
+    if (open) { $("#at-resume").onclick = () => { S = open; scanner(); }; return; }
+    const goB = $("#at-go"), note = $("#at-note");
+    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: note.value })).then(d => { S = d.session; scanner(); }, x => { goB.disabled = false; toast(x.message); }); };
+    goB.onclick = startIt; note.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); startIt(); } };
   }
 
-  // ── Scanning ──
+  // ── Scanning: this session's line, with Stop; the camera; Enter by Hand ──
   function scanner() {
-    const box = $("#at-box"); if (!box) return;
-    renderPath([...steps, { label: `${O.eval.name}: Attendance`, go: () => { stopping(); } }, { label: "Scanning" }]);
-    // As the overview is (the Item Head style): ATTENDANCE, the evaluation, this session's line; Stop on the right.
-    box.innerHTML = `<div class="lx-editor lt-req-ed at-card at-scan">
-      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${titleHTML(O.eval)}</h2></div>
-        <button type="button" class="lt-btn lx-acts" id="at-stop">Stop Attendance</button></div>
-      <p class="lt-req-meta">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
+    host.innerHTML = `<div class="at-scan">
+      <div class="at-bar"><p class="ed-help at-sum">${S.note ? `${esc(S.note)} · ` : ""}<span id="at-mine">${S.count || 0}</span> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
+        <button type="button" class="lt-btn" id="at-stop">Stop Attendance</button></div>
       <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg"></p><div id="at-res" class="at-res"></div></div>
       <div class="at-hand-row"><button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
     </div>`;
@@ -158,17 +153,21 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
     startCam();
   }
   function drawCounts() { const a = $("#at-all"); if (a) a.textContent = O.total; }
+  // Taken out of the page for a moment (the editor redrawing) is fine; gone for longer (the editor closed), the camera stops.
+  let goneAt = 0;
+  const away = () => { if (here()) { goneAt = 0; return false; } if (!goneAt) goneAt = Date.now(); return Date.now() - goneAt > 1500; };
   async function startCam() {
     const v = $("#at-video"), msg = $("#at-cam-msg");
     try {
       const read = await reader();
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-      if (!here() || !v.isConnected) { stream.getTracks().forEach(x => x.stop()); return; }
+      if (!S || !v.isConnected) { stream.getTracks().forEach(x => x.stop()); return; }
       cam = stream; v.srcObject = stream; await v.play(); msg.textContent = "";
       const tick = async () => {
         if (!cam) return;
-        if (!here() || !v.isConnected) return stopCam();
-        if (!busy && v.readyState >= 2) {
+        if (away()) return stopCam();
+        if (here() && v.paused) v.play().catch(() => {});
+        if (!busy && here() && v.readyState >= 2) {
           let code = ""; try { code = await read(v); } catch (_) { code = ""; }
           if (code && !(code === lastCode && Date.now() - lastAt < 2500)) { lastCode = code; lastAt = Date.now(); scanned(code); }
         }
@@ -181,8 +180,7 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
       ocr().then(w => {
         const look = async () => {
           if (!cam) return;
-          if (!here() || !v.isConnected) return;
-          if (!busy && !reading && v.readyState >= 2) {
+          if (!busy && !reading && here() && v.readyState >= 2) {
             reading = true;
             try {
               const f = cardFrame(v, cv);
@@ -208,7 +206,7 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
   function stopping() {
     busy = true; stopCam();
     api("/api/attendance/stop", B({ session: S.id })).then(d => { toast(`Stopped: ${d.count} student${d.count === 1 ? "" : "s"} in this session.`); }, x => toast(x.message))
-      .finally(() => { S = null; busy = false; load().then(() => { if (here()) { drawOverview(); poll(); } }); });
+      .finally(() => { S = null; busy = false; load().then(drawOverview); });
   }
   // Who it is (or what's wrong) covers the camera, until it's dealt with.
   const res = html => { const r = $("#at-res"); if (r) { r.innerHTML = html; const c = $("#at-cam"); if (c) c.scrollIntoView({ block: "nearest" }); } return r; };
@@ -286,12 +284,14 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
       resume(1300);
     }, x => {
       if (x.code === "already") return api(`/api/attendance/search?${Q}&q=${encodeURIComponent(s.num)}`).then(d => already(s, (d.students.find(y => y.num === s.num) || {}).already), () => already(s, null));
-      if (x.code === "stopped" || x.code === "no-session") { toast(x.message); S = null; stopCam(); load().then(() => drawOverview()); return; }
+      if (x.code === "stopped" || x.code === "no-session") { toast(x.message); S = null; stopCam(); load().then(drawOverview); return; }
       res(`<div class="at-panel bad"><p class="at-why">${esc(x.message)}</p><div class="at-pacts"><button type="button" class="lt-btn primary" data-next>Next</button></div></div>`).querySelector("[data-next]").onclick = () => resume();
     });
   }
 
-  load().then(() => { if (!here()) return; drawOverview(); poll(); },
-    x => { const b = $("#at-box"); if (b) b.innerHTML = `<p class="lt-note err">Couldn't read the attendance. ${esc(x.message)}</p>`; });
-  return { leave: stopCam };
+  load().then(() => { drawOverview(); poll(); },
+    x => { host.innerHTML = `<p class="ed-help err">Couldn't read the attendance. ${esc(x.message)}</p>`; });
+  // Put back after being away: the camera picks up again if it's still on; if it stopped, the overview (with Continue Scanning).
+  host._back = () => { if (!polling && O) poll(); if (S && !cam) { S = null; busy = false; load().then(drawOverview); } };
+  return host;
 }

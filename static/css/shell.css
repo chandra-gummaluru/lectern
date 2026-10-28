@@ -1258,3 +1258,17 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-row .at-del.armed { background: #c0392b; color: #fff; border-color: #c0392b; border-radius: 8px; font: 600 13px var(--font-ui); }
 .at-row .at-del.armed:hover { background: #a93226; }
 .at-row .at-del.armed { width: 32px; padding: 0; justify-content: center; }
+
+/* Attendance, as a section of the evaluation's editor (above Grading) */
+.at-sec { display: grid; gap: 10px; margin-top: 6px; }
+.at-sec .at-sum { margin: 0; }
+.at-sec .at-start { margin: 0; gap: 6px; }
+.at-sec .at-start .pf input { height: 40px; }
+.at-sec .at-start .ed-help { margin: 0; }
+.at-sec .at-go-row, .at-sec .at-acts { display: flex; margin: 4px 0 0; }
+.at-sec .ed-sub { margin: 8px 0 0; }
+.at-sec .at-scan { max-width: 600px; margin: 0; gap: 12px; }
+.at-sec .at-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.at-sec .at-bar .at-sum { min-width: 0; }
+.at-sec .at-hand-row { display: flex; justify-content: center; }
+.at-sec .lt-btn svg { width: 16px; height: 16px; }

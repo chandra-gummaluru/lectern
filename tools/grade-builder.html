@@ -2746,8 +2746,8 @@ function lockDown() {
   const mode = ACCESS(); if (mode === "all") return;
   document.body.classList.add("gb-limited");
   document.querySelectorAll("#view, .modal, #tb-right").forEach(root => {
-    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
-    root.querySelectorAll("[contenteditable=true]").forEach(x => x.setAttribute("contenteditable", "false"));
+    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind, [data-att-slot] *, [data-dc-slot] *") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
+    root.querySelectorAll("[contenteditable=true]").forEach(x => { if (!x.closest("[data-dc-slot]")) x.setAttribute("contenteditable", "false"); });
     root.querySelectorAll("[data-ed]").forEach(b => { if (!ED_OK.has(b.dataset.ed)) b.disabled = true; });
     root.querySelectorAll("[data-act]").forEach(b => { if (!ACT_OK[mode].has(b.dataset.act)) b.disabled = true; });
     root.querySelectorAll("[data-f], [data-disc], [data-rel], [data-acm], [data-rmk]").forEach(x => { x.disabled = true; });
@@ -3191,6 +3191,7 @@ function drawEvalEditor() {
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
     <h3 class="ed-sec">${(e.dates || []).length ? "Dates" : e.type === "test" ? "Date" : "Due Date"}</h3>
     ${secDatesHTML(e)}
+    ${HOSTED && window.Lectern.attendanceEl && e.type === "test" ? `<h3 class="ed-sec">Attendance</h3><div data-att-slot="${esc(e.id)}"></div>` : ""}
     <h3 class="ed-sec">Grading</h3>
     <div class="ed-grid pw">
       ${docLinks.has(e.id) ? `<label class="pf"><span>Points</span><input type="number" value="${esc(e.total)}" disabled title="The total of its ${docLinks.get(e.id).layout === "handout" ? "handout" : "exam"}"></label>` : fld("total", "Points", e.total == null || e.total === "" ? "?" : e.total, "text", ' inputmode="decimal" placeholder="e.g. 20, or ? for not yet" autocomplete="off"')}
@@ -3210,6 +3211,7 @@ function drawEvalEditor() {
     ${HOSTED && window.Lectern.discussionEl && e.discussion !== false ? `<div data-dc-slot="eval:${esc(e.id)}"></div>` : ""}
 `;
   if (HOSTED && window.Lectern.fillDiscussions) window.Lectern.fillDiscussions(m);
+  const att = $("[data-att-slot]", m); if (att) att.appendChild(window.Lectern.attendanceEl(e.id));
   mountSecDates(m, e);
   drawNotices(e);
 }

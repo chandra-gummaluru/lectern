@@ -25,7 +25,7 @@ import { accountPage } from "./account.js";
 import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
-import { attendancePage } from "./attendance.js";
+import { mountAttendance } from "./attendance.js";
 import { discussionsPage, mountDiscussion, unanswered, css as hubCSS } from "./discussions.js";
 import { studentsCard } from "./students.js";
 import { emailCard } from "./mailsettings.js";
@@ -578,10 +578,7 @@ function renderPage() {
   if (r.page === "discuss") { const key = hashFor(r);
     return discussionsPage({ $, esc, pageHTML, go, api: Auth.api, renderPath, steps: [HOME_STEP, offeringStep(r.c, r.t)], handle: curOwner() || S.user.handle, c: r.c, t: r.t, r,
       here: () => hashFor(S.route) === key, hashOf: x => hashFor({ ...x, o: r.o }) }); }
-  if (r.page === "attend") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Attendance" }]);
-    const key = hashFor(r);
-    return attendancePage({ $, esc, pageHTML, toast, go, confirmBox, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: r.e, renderPath, here: () => hashFor(S.route) === key,
-      steps: [HOME_STEP, offeringStep(r.c, r.t), { label: "Evaluations", go: () => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: r.e, groupEd: "", student: "", stAcc: "", stFrom: "" } }) }] }); }
+  if (r.page === "attend") return Lectern.openAttendance(r.e);   // (an old link: attendance is a section of the evaluation's editor now)
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id, api: Auth.api, owner: () => curOwner() || S.user.handle,
     // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
@@ -1408,7 +1405,17 @@ Lectern.access = () => { const r = S.route; const role = r.c && r.t ? roleIn(r.c
 // A student's attendance (the gradebook's student page): { evalId: { in: {at, by} | null } } for each evaluation it was taken for.
 Lectern.attendanceOf = num => { const r = S.route; if (!r.c || !r.t) return Promise.resolve({});
   return Auth.api(`/api/attendance/student?owner=${encodeURIComponent(curOwner() || "")}&offering=${encodeURIComponent(`${r.c}/${r.t}`)}&num=${encodeURIComponent(num)}`).then(d => d.evals || {}, () => ({})); };
-Lectern.openAttendance = id => { const r = S.route; if (r.c && r.t) go({ page: "attend", c: r.c, t: r.t, e: String(id) }); };
+// An evaluation's attendance: the Attendance section of its editor (above Grading), mounted once and kept while
+// you're in the offering, so the editor redrawing doesn't stop the camera. Take Attendance opens the editor at it.
+const ATT = new Map();
+Lectern.attendanceEl = id => { const r = S.route, key = `${curOwner()}/${r.c}/${r.t}/${id}`;
+  let el = ATT.get(key);
+  if (!el) { el = document.createElement("div"); mountAttendance(el, { esc, toast, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: String(id) }); ATT.set(key, el); }
+  else if (el._back) setTimeout(el._back, 0);
+  return el; };
+Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;
+  go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: String(id), groupEd: "", student: "", stAcc: "", stFrom: "" } });
+  let n = 0; const find = () => { const s = document.querySelector(`[data-att-slot="${CSS.escape(String(id))}"]`); if (s) { const h = s.previousElementSibling || s; h.scrollIntoView({ block: "start", behavior: "smooth" }); } else if (++n < 40) setTimeout(find, 100); }; setTimeout(find, 150); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).
 Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", ...(String(id).startsWith("m-") ? { k: "remark" } : {}), c: r.c, t: r.t, q: String(id) }); };

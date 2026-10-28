@@ -1,4 +1,4 @@
-/* Attendance: who was there for an evaluation, taken by the teaching team scanning students' TCards with a
+/* Attendance: who was there for an evaluation, taken by the teaching team scanning students' ID cards with a
    phone's camera (server/attendance.py). From the evaluation's Take Attendance button.
 
      #/<course>/<term>/attendance/<eval id>
@@ -123,12 +123,14 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
   function scanner() {
     const box = $("#at-box"); if (!box) return;
     renderPath([...steps, { label: `${O.eval.name}: Attendance`, go: () => { stopping(); } }, { label: "Scanning" }]);
-    box.innerHTML = `<div class="at-scan">
-      <div class="at-bar"><div class="at-bar-t"><p class="gr-kind">Attendance · ${titleHTML(O.eval)}</p><p class="at-bar-n">${S.note ? `${esc(S.note)} · ` : ""}<b id="at-mine">${S.count || 0}</b> this session · <span id="at-all">${O.total}</span> in all</p></div>
-        <button type="button" class="lt-btn" id="at-stop">Stop Attendance</button></div>
-      <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted></video><div class="at-aim"></div><p class="at-cam-tip">Hold the TCard in the frame</p><p class="at-cam-msg" id="at-cam-msg">Starting the camera…</p></div>
+    // As the overview is (the Item Head style): ATTENDANCE, the evaluation, this session's line; Stop on the right.
+    box.innerHTML = `<div class="lx-editor lt-req-ed at-card at-scan">
+      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${titleHTML(O.eval)}</h2></div>
+        <button type="button" class="lt-btn lx-acts" id="at-stop">Stop Attendance</button></div>
+      <p class="lt-req-meta">${S.note ? `${esc(S.note)} · ` : ""}<b class="at-total" id="at-mine">${S.count || 0}</b> this session · <span id="at-all">${O.total}</span> of ${O.enrolled} in all</p>
+      <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted disablepictureinpicture></video><div class="at-aim"></div><p class="at-cam-tip">Hold the student ID in the frame</p><p class="at-cam-msg" id="at-cam-msg">Starting the camera…</p></div>
       <div id="at-res" class="at-res"></div>
-      <button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button>
+      <div class="at-hand-row"><button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button></div>
     </div>`;
     $("#at-stop").onclick = stopping;
     $("#at-hand").onclick = () => findStudent("");

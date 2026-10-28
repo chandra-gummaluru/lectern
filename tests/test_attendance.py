@@ -64,12 +64,29 @@ def test_only_the_teaching_team(gh, client):
 
 def test_a_student_registers_their_card(gh):
     st = hub_student("maya.castillo@mail.utoronto.ca")
-    assert st.get(f"{HUB}/tcard").get_json() == {"card": ""}
-    assert st.post(f"{HUB}/tcard", json={"card": "12"}, headers=H).status_code == 400
-    assert st.post(f"{HUB}/tcard", json={"card": "2100 7012 3456"}, headers=H).get_json()["card"] == "210070123456"
-    assert st.get(f"{HUB}/tcard").get_json()["card"] == "210070123456"
+    assert st.get(f"{HUB}/student-id").get_json() == {"card": ""}
+    assert st.post(f"{HUB}/student-id", json={"card": "12"}, headers=H).status_code == 400
+    assert st.post(f"{HUB}/student-id", json={"card": "2100 7012 3456"}, headers=H).get_json()["card"] == "210070123456"
+    assert st.get(f"{HUB}/student-id").get_json()["card"] == "210070123456"
     assert P(gh.client, "/lookup", card="210070123456").get_json()["student"]["num"] == "1001"
     zoe = hub_student("zoe.ng@mail.utoronto.ca")
-    r = zoe.post(f"{HUB}/tcard", json={"card": "210070123456"}, headers=H)
+    r = zoe.post(f"{HUB}/student-id", json={"card": "210070123456"}, headers=H)
     assert r.status_code == 409 and r.get_json()["code"] == "taken"
-    assert st.post(f"{HUB}/tcard", json={"card": "1"}).status_code == 403   # not from the course page
+    assert st.post(f"{HUB}/student-id", json={"card": "1"}).status_code == 403   # not from the course page
+
+
+def test_a_card_read_by_its_text():
+    from server.attendance import identify_text
+    book = {"students": [{"num": "1009876543", "first": "Maya", "last": "Castillo"}, {"num": "1001234567", "first": "Zoë", "last": "Ng"},
+                         {"num": "1007777777", "first": "Mayank", "last": "Castellano"}, {"num": "1005555555", "first": "Gone", "last": "Away", "dropped": True}]}
+    best = lambda t: [s["num"] for _, s in identify_text(book, t)][:1]
+    assert best("UNIVERSITY OF TORONTO\nMAYA CASTILLO\nStudent 1009876543\nExp 2028") == ["1009876543"]
+    assert best("UNIVERSITY OF TORONTO MAYA CASTlLLO 1OO9 876 543") == ["1009876543"]   # a misread letter; a number in parts
+    assert best("ZOE NG") == ["1001234567"]
+    assert best("GONE AWAY 1005555555") == []      # dropped
+    assert best("UNIVERSITY OF TORONTO") == []
+
+
+def test_identify(gh):
+    r = P(gh.client, "/identify", text="UNIVERSITY OF TORONTO MAYA CASTILLO").get_json()
+    assert r["sure"] and r["students"][0]["num"] == "1001"

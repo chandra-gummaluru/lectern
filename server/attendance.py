@@ -1,7 +1,7 @@
-"""Attendance: who was there for an evaluation (an exam, a test), taken by the teaching team scanning TCards.
+"""Attendance: who was there for an evaluation (an exam, a test), taken by the teaching team scanning students' ID cards.
 
 Anyone on the offering's team takes it, at any time, several at once. Each starts a session (with a note:
-the room, or the last names they're taking), scans students' TCards (or finds a student by hand), and
+the room, or the last names they're taking), scans students' ID cards (or finds a student by hand), and
 stops it: so each session has its own count, and the evaluation its total.
 
   A scan       the card's number → the student it's registered to (students register theirs on the course
@@ -17,10 +17,10 @@ Kept in the database (db.py's attendance tables, not the offering's files): it's
   POST /api/attendance/stop    {owner, offering, session}
   POST /api/attendance/lookup  {owner, offering, e, card}  who the card is, and whether they're in already
   GET  /api/attendance/search?owner&offering&e&q          students by name or number
-  POST /api/attendance/identify {owner, offering, e, text} who a TCard is, by what's printed on it (the scanner reads
+  POST /api/attendance/identify {owner, offering, e, text} whose student ID it is, by what's printed on it (the scanner reads
                                                            it, OCR): its student number, or its first and last names
   POST /api/attendance/mark    {owner, offering, e, session, student, card?}  they're in (card: register it to them)
-  Course page (a signed-in student): GET / POST /api/hub/<handle>/<course>/<term>/tcard {card}
+  Course page (a signed-in student): GET / POST /api/hub/<handle>/<course>/<term>/student-id {card}
 """
 import functools
 import re
@@ -249,7 +249,8 @@ def identify():
     owner, o = _team(d)
     e = _eval_id(d.get("e"))
     text = str(d.get("text") or "")[:4000]
-    hits = identify_text(_book_of(owner, o), text)
+    # Only a card's number, or both its names: one name alone is too easy to read in a busy picture.
+    hits = [h for h in identify_text(_book_of(owner, o), text) if h[0] >= 75]
     if not hits:
         return jsonify(students=[])
     best = hits[0][0]
@@ -288,7 +289,7 @@ def mark():
 
 
 # ── The course page: a student registers their own card ──────────────
-@attendance_bp.get("/api/hub/<handle>/<course>/<term>/tcard")
+@attendance_bp.get("/api/hub/<handle>/<course>/<term>/student-id")
 def hub_card(handle, course, term):
     try:
         uid, o, email = _hub_student(handle, course, term)
@@ -301,7 +302,7 @@ def hub_card(handle, course, term):
         return _err(Refusal(x.status, str(x)))
 
 
-@attendance_bp.post("/api/hub/<handle>/<course>/<term>/tcard")
+@attendance_bp.post("/api/hub/<handle>/<course>/<term>/student-id")
 def hub_set_card(handle, course, term):
     try:
         if request.headers.get("X-Lectern") != "1":
@@ -311,7 +312,7 @@ def hub_set_card(handle, course, term):
         num = str(s.get("num"))
         card = card_of((request.get_json(silent=True) or {}).get("card"))
         if not re.fullmatch(r"[0-9A-Z]{5,24}", card):
-            raise Refusal(400, "That doesn't look like a TCard number: it's the number under the barcode on your card.")
+            raise Refusal(400, "That doesn't look like a student ID number: it's the number under the barcode on your card.")
         with db.transaction():
             r = db.one("SELECT student FROM tcards WHERE owner_id = ? AND offering = ? AND card = ?", (uid, o, card))
             if r and r["student"] != num:

@@ -665,14 +665,15 @@ function myRequests() {
 // ── About the Course's week: a calendar of the sections' meetings and the office hours ───────
 const minutes = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return m ? +m[1] * 60 + +m[2] : null; };
 let CAL_EV = [];
+const OH_IC = svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>');
 function weekCalendar(G, T) {
   const SEC = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab" };
   const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
   const E = [];
   (G || []).forEach(g => (g.items || []).forEach(x => { const a = minutes(x.start), b = minutes(x.end) ?? (a != null ? a + 60 : null);
-    if (x.day && a != null) E.push({ kind: g.kind || "other", day: x.day, a, b, title: g.name || "Section", kick: SEC[g.kind] || "Section", where: x.where || "", map: x.map || "", address: x.address || "", who: (g.who || []).join(", "), start: x.start, end: x.end }); }));
+    if (x.day && a != null) E.push({ kind: g.kind || "other", mine: !!g.mine, day: x.day, a, b, title: g.name || "Section", kick: SEC[g.kind] || "Section", where: x.where || "", map: x.map || "", address: x.address || "", who: (g.who || []).join(", "), start: x.start, end: x.end }); }));
   (T || []).forEach(p => (p.times || []).filter(x => x.kind === "office" && x.day).forEach(x => { const a = minutes(x.start), b = minutes(x.end) ?? (a != null ? a + 60 : null);
-    if (a != null) E.push({ kind: "office", day: x.day, a, b, title: `Office Hours · ${ini(p.name)}`, kick: "Office Hours", where: x.where || p.office || "", map: x.map || "", address: x.address || "", who: p.name, start: x.start, end: x.end }); }));
+    if (a != null) E.push({ kind: "office", mine: !!x.mine, day: x.day, a, b, title: `Office Hours · ${ini(p.name)}`, kick: "Office Hours", where: x.where || p.office || "", map: x.map || "", address: x.address || "", who: p.name, start: x.start, end: x.end }); }));
   if (!E.length) return "";
   CAL_EV = E;
   const days = [1, 2, 3, 4, 5, ...[6, 7].filter(d => E.some(e => e.day === d))];
@@ -682,8 +683,8 @@ function weekCalendar(G, T) {
   const col = d => { const L = E.map((e, i) => ({ e, i })).filter(x => x.e.day === d).sort((x, y) => x.e.a - y.e.a), lanes = [];
     L.forEach(x => { let k = lanes.findIndex(end => end <= x.e.a); if (k < 0) { k = lanes.length; lanes.push(0); } lanes[k] = x.e.b; x.k = k; });
     return L.map(x => { const n = Math.max(1, ...L.filter(y => y.e.a < x.e.b && x.e.a < y.e.b).map(y => y.k + 1));
-      return `<button type="button" class="cal-ev k-${esc(x.e.kind)}" data-ev="${x.i}" style="top:${px(x.e.a)}px;height:${Math.max(22, px(x.e.b) - px(x.e.a) - 3)}px;left:calc(${x.k / n * 100}% + 2px);width:calc(${100 / n}% - 4px)" title="${esc(`${x.e.title}, ${x.e.start}–${x.e.end}${x.e.where ? `, ${x.e.where}` : ""}`)}">
-        <b>${esc(x.e.title)}</b><span>${esc(x.e.start)}–${esc(x.e.end)}</span>${x.e.where ? `<span>${esc(x.e.where)}</span>` : ""}</button>`; }).join(""); };
+      return `<button type="button" class="cal-ev k-${esc(x.e.kind)}${x.e.mine ? " mine" : ""}" data-ev="${x.i}" style="top:${px(x.e.a)}px;height:${Math.max(22, px(x.e.b) - px(x.e.a) - 3)}px;left:calc(${x.k / n * 100}% + 2px);width:calc(${100 / n}% - 4px)" title="${esc(`${x.e.title}, ${x.e.start}–${x.e.end}${x.e.where ? `, ${x.e.where}` : ""}`)}">
+        <b><span class="cal-ic">${x.e.kind === "office" ? OH_IC : KIND_ICON[x.e.kind] || KIND_ICON.other}</span>${esc(x.e.title)}</b><span>${esc(x.e.start)}–${esc(x.e.end)}</span>${x.e.where ? `<span>${esc(x.e.where)}</span>` : ""}</button>`; }).join(""); };
   const hours = []; for (let m = lo; m < hi; m += 60) hours.push(m);
   return `<article class="ec-card cal-card"><div class="cal-scroll"><div class="cal" style="--n:${days.length}">
       <div class="cal-h"></div>${days.map(d => `<div class="cal-h">${DAY3[d]}</div>`).join("")}
@@ -691,7 +692,7 @@ function weekCalendar(G, T) {
       ${days.map(d => `<div class="cal-day" style="height:${px(hi)}px">${hours.map(m => `<i style="top:${px(m)}px"></i>`).join("")}${col(d)}</div>`).join("")}
     </div></div>
     <div class="cal-more" id="cal-more"><p class="cal-hint">Click a meeting to see more.</p></div>
-    <div class="cal-key">${[["lecture", "Lecture"], ["tutorial", "Tutorial"], ["lab", "Lab"], ["office", "Office Hours"]].filter(([k]) => E.some(e => e.kind === k)).map(([k, n]) => `<span class="k-${k}"><i></i>${n}</span>`).join("")}</div>
+    ${E.some(e => e.mine) ? `<div class="cal-key"><span><i></i>Yours</span></div>` : ""}
   </article>`;
 }
 document.addEventListener("click", e => {
@@ -700,7 +701,7 @@ document.addEventListener("click", e => {
   document.querySelectorAll(".cal-ev.on").forEach(y => y.classList.remove("on")); b.classList.add("on");
   const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
   const CLOCK = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
-  box.innerHTML = `<div class="cal-det k-${esc(x.kind)}"><p class="hs-kick">${esc(x.kick)}</p><h3>${esc(x.kind === "office" ? `${x.who}'s Office Hours` : x.title)}</h3>
+  box.innerHTML = `<div class="cal-det${x.mine ? " mine" : ""}"><p class="hs-kick">${esc(x.kick)}</p><h3>${esc(x.kind === "office" ? `${x.who}'s Office Hours` : x.title)}</h3>
     ${x.kind !== "office" && x.who ? `<p class="ab-who">${esc(x.who)}</p>` : ""}
     <div class="ab-times ab-contact"><div class="ab-time"><span class="ec-wd"><span class="hs-ic sm">${CLOCK}</span>${esc(DAY3[x.day])}, ${esc(x.start)}–${esc(x.end)}</span>${x.where ? `<span class="ec-wd"><span class="hs-ic sm">${PIN}</span>${x.map ? `<a href="${esc(x.map)}" target="_blank" rel="noopener" title="${esc(x.address || "On the map")}">${esc(x.where)}</a>` : esc(x.where)}</span>` : ""}</div></div></div>`;
 });

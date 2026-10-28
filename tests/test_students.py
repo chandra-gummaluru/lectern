@@ -167,10 +167,10 @@ def test_a_student_sees_their_own_sections(client, course):
     s = app.test_client(); sign_in(s, "maya@mail.utoronto.ca")
     j = s.get(HUB).get_json()
     about = j["data"]["about"]
-    assert [g["name"] for g in about["groups"]] == ["LEC0102"]
-    names = [p["name"] for p in about["team"]]
-    assert any("bea" in n.lower() for n in names) and not any("alan" in n.lower() for n in names), names
-    assert all(x.get("sid") in (None, "g2") for p in about["team"] for x in p["times"])
+    # Every section (the calendar), theirs marked; the people who run theirs marked too
+    assert [(g["name"], bool(g.get("mine"))) for g in about["groups"]] == [("LEC0101", False), ("LEC0102", True)]
+    mine = [p["name"] for p in about["team"] if p.get("mine")]
+    assert any("bea" in n.lower() for n in mine) and not any("alan" in n.lower() for n in mine), mine
     ev = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
     assert ev["date"] == "2026-10-05" and ev["time"] == "18:00" and "dates" not in ev
     staff = client.get(HUB).get_json()["data"]["about"]   # the teaching team: every section

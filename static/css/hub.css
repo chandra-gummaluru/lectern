@@ -1076,3 +1076,16 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .cal-key { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 12.5px; color: var(--ink-3); }
 .cal-key span { display: inline-flex; align-items: center; gap: 6px; } .cal-key i { width: 10px; height: 10px; border-radius: 3px; background: var(--k); }
 .cal-day { border-bottom: 1px solid var(--line); }
+
+/* The calendar in the course page's own colours: each meeting off-white, the signed-in student's own yellow. */
+.cal-ev { border: 1px solid var(--line-2) !important; border-radius: 7px; background: var(--strip) !important; color: var(--ink-2); }
+.cal-ev:hover, .cal-ev.on { background: color-mix(in srgb, var(--ink) 6%, var(--strip)) !important; }
+.cal-ev.on { box-shadow: 0 0 0 2px var(--ink-3); }
+.cal-ev.mine { background: var(--accent-bg) !important; border-color: var(--accent-line) !important; }
+.cal-ev.mine:hover, .cal-ev.mine.on { background: color-mix(in srgb, var(--accent) 22%, var(--card)) !important; }
+.cal-ev.mine.on { box-shadow: 0 0 0 2px var(--accent); }
+.cal-ev b { display: flex; align-items: center; gap: 4px; }
+.cal-ic { flex: none; display: inline-grid; color: var(--ink-3); } .cal-ic svg { width: 12px; height: 12px; }
+.cal-det { border-left: 0 !important; border: 1px solid var(--line-2); background: var(--strip); }
+.cal-det.mine { background: var(--accent-bg); border-color: var(--accent-line); }
+.cal-key i { background: var(--accent-bg) !important; box-shadow: inset 0 0 0 1px var(--accent-line); }

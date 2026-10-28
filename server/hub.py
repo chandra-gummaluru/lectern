@@ -600,17 +600,16 @@ def hub_api(handle, course, term):
             from .students import roster
             mine = set((roster(o["id"], offering).get(student) or {}).get("groups") or [])
         ok = lambda x: not x.get("groups") or bool(set(x["groups"]) & mine)
-        # A student in sections sees only theirs on About: their sections, and the people who run them (with
-        # those sections' times and their office hours), the coordinators and staff.
+        # A student in sections sees every section on About (its calendar), theirs marked "mine"; and the office
+        # hours of the people who run theirs (for their sections, or for everyone), too.
         sections = all_b["about"].get("groups")
         if student and mine and sections:
-            all_b["about"]["groups"] = [g for g in sections if g.get("id") in mine]
+            all_b["about"]["groups"] = [{**g, **({"mine": True} if g.get("id") in mine else {})} for g in sections]
             team = []
             for p in all_b["about"].get("team") or []:
-                theirs = set(p.get("sections") or []) & mine
-                if not (theirs or p.get("lead") or p.get("role") == "staff"):
-                    continue
-                team.append({**p, "times": [x for x in p.get("times") or [] if not x.get("sid") or x["sid"] in mine]})
+                theirs = bool(set(p.get("sections") or []) & mine)
+                team.append({**p, **({"mine": True} if theirs else {}),
+                             "times": [{**x, **({"mine": True} if (x.get("sid") in mine) or (not x.get("sid") and theirs) else {})} for x in p.get("times") or []]})
             all_b["about"]["team"] = team
         for w in all_b["lectures"]["weeks"]:
             w["cards"] = [c for c in w["cards"] if ok(c)]

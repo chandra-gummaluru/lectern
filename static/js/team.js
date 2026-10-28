@@ -23,11 +23,14 @@ const DAY3 = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const itemLine = x => [[DAY3[x.day] || "", x.start ? (x.end ? `${x.start}–${x.end}` : x.start) : ""].filter(Boolean).join(" "), x.where].filter(Boolean).join(" · ") || "No time yet";
 export const DAYS = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const uid = () => Math.random().toString(36).slice(2, 10);
+const ROLE_HELP = { coordinator: "Does everything here, the team too.", instructor: "Adds and changes the activities and announcements for the sections they run.", ta: "Enters marks for every student, and decides remark requests.", staff: "Decides accommodation requests from any section; changes nothing else." };
 const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const SECTION_HINT = { lecture: "e.g. LEC0101", tutorial: "e.g. TUT0102", lab: "e.g. PRA0101", office: "Optional", other: "e.g. Review sessions" };
 
 export function teamMemberPage(ctx, r) {
-  const { $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, steps, api, owner, ROLE_NAME, groups } = ctx;
+  const { $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, steps, api, owner, ROLE_NAME, A_ROLE, confirmBox, left, groups } = ctx;
+  const base = () => `/api/teams/${encodeURIComponent(owner())}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
+  let team = null;
   const { c, t } = r, id = String(r.p || "");
   const path = `${c}/${t}/team.json`, repo = area(Store.PRIV);
   const edit = canEdit(c, t);
@@ -36,9 +39,8 @@ export function teamMemberPage(ctx, r) {
 
   async function load() {
     pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading…</div></div>`);
-    let team;
     try {
-      const [f, tm] = await Promise.all([st.data ? null : Store.readFile(repo, path), api(`/api/teams/${encodeURIComponent(owner())}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`)]);
+      const [f, tm] = await Promise.all([st.data ? null : Store.readFile(repo, path), api(base())]);
       if (!st.data) { st.data = f ? JSON.parse(f.text) : { format: "lectern-team/1", people: {} }; st.sha = f ? f.sha : null; }
       if (!st.data.people || typeof st.data.people !== "object") st.data.people = {};
       team = tm;
@@ -65,6 +67,9 @@ export function teamMemberPage(ctx, r) {
   function draw(who, canChange) {
     renderPath([...steps, { label: who.name || who.email }]);
     const me = st.data.people[id] || {}, times = me.times || [], dis = canChange ? "" : " disabled";
+    // Their role, and taking them off the team: for coordinators (not the owner's, nor their own); leaving, for themselves.
+    const lead = team && (team.you === "owner" || team.you === "coordinator"), mine = team && String(team.me) === id;
+    const mayRole = lead && who.role !== "owner" && !mine, self = mine && who.role !== "owner";
     // The sections they run (picked here, kept with the sections). Their office hours: their own, here.
     const G = sortSections(st.groups || []), run = G.filter(g => runsSection(g, id));
     const office = times.map((x, i) => [x, i]).filter(([x]) => x.kind === "office");
@@ -77,8 +82,11 @@ export function teamMemberPage(ctx, r) {
       ${canChange ? "" : `<p class="lt-note lx-note">An instructor sets these.</p>`}
       <div class="lx-editor tm-ed" style="--c:#c99a06">
         <div class="lx-ed-head tm-head"><span class="tm-av" aria-hidden="true">${esc(ini)}</span><div class="gr-tt"><h2>${esc(who.name || who.email)}</h2><p class="tm-sub">${esc(ROLE_NAME[who.role] || who.role)}${who.name && who.email ? ` · ${esc(who.email)}` : ""}</p></div>
-          <span class="lx-acts">${canChange ? `<span class="lx-status" id="tm-status"></span>` : ""}</span></div>
-        <h3 class="lx-sec lx-first">General</h3>
+          <span class="lx-acts">${canChange ? `<span class="lx-status" id="tm-status"></span>` : ""}${mayRole ? `<button type="button" class="lx-ic" id="tm-remove" title="Remove them from the team" aria-label="Remove them from the team">${ICON.trash}</button>` : self ? `<button type="button" class="lx-btn" id="tm-leave">Leave the Team</button>` : ""}</span></div>
+        ${mayRole ? `<h3 class="lx-sec lx-first">Role</h3>
+        <span class="lt-seg" role="radiogroup" aria-label="Role">${[["coordinator", "Coordinator"], ["instructor", "Instructor"], ["ta", "TA"], ["staff", "Staff"]].map(([v, n]) => `<button type="button" role="radio" data-role="${v}" aria-checked="${who.role === v}" aria-pressed="${who.role === v}">${n}</button>`).join("")}</span>
+        <p class="lx-help" id="tm-role-help">${esc(ROLE_HELP[who.role] || "")}</p>` : ""}
+        <h3 class="lx-sec${mayRole ? "" : " lx-first"}">General</h3>
         <label class="lt-check tm-show"><input type="checkbox" id="tm-show"${me.show === false ? "" : " checked"}${dis}> Show them on the course page</label>
         <div class="lx-grid two tm-two"><label class="lx-f">Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${esc(who.email)}"${dis}></label>
           <label class="lx-f">Office<input type="text" id="tm-office" value="${esc(me.office || "")}" placeholder="e.g. BA 4010"${dis}></label></div>
@@ -102,6 +110,23 @@ export function teamMemberPage(ctx, r) {
       </div>
     </div></div>`);
     document.querySelectorAll(".tm-page [data-group]").forEach(b => { b.onclick = () => go({ page: "groups", c, t, g: b.dataset.group }); });
+    document.querySelectorAll(".tm-page [data-role]").forEach(b => { b.onclick = async () => {
+      if (b.getAttribute("aria-pressed") === "true") return;
+      try {
+        await api(`${base()}/role`, { user: Number(id), role: b.dataset.role });
+        who.role = b.dataset.role; toast(`${who.name || who.email} is now ${A_ROLE[who.role]}.`); draw(who, canChange);
+      } catch (e) { toast(e.message); }
+    }; });
+    const rm = $("#tm-remove");
+    if (rm) rm.onclick = async () => {
+      if (!await confirmBox("Remove them from the team?", `${esc(who.name || who.email)} won't see this offering any more. You can add them again.`, "Remove")) return;
+      try { await api(`${base()}/remove`, { user: Number(id) }); toast(`${who.name || who.email} is off the team.`); go({ page: "offering", c, t }); } catch (e) { toast(e.message); }
+    };
+    const lv = $("#tm-leave");
+    if (lv) lv.onclick = async () => {
+      if (!await confirmBox("Leave this team?", `You won't see ${esc(c)}/${esc(t)} any more, unless someone adds you again.`, "Leave")) return;
+      try { await api(`${base()}/remove`, { user: Number(id) }); left(); } catch (e) { toast(e.message); }
+    };
     // Office hours' Where: a place (picked on the map, or typed) and a room.
     document.querySelectorAll(".tm-times [data-plc-i]").forEach(h => {
       const x = times[+h.dataset.plcI]; if (!x) return;

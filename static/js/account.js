@@ -177,7 +177,7 @@ export async function accountPage(ctx) {
   const box = $("#ac-sessions"); if (!box) return;
   box.innerHTML = `<div class="lt-olist">${list.map(s => `<div class="lt-orow lt-sess">
       <b>${esc(device(s.agent))}</b><span class="lt-orow-n">${esc(s.ip)} · signed in ${esc(when(s.created))} · last active ${esc(when(s.lastSeen))}</span>
-      <span class="lt-orow-r">${s.current ? `<span class="lt-on">This one</span>` : `<button type="button" class="lt-link" data-out="${esc(s.id)}">Sign out</button>`}</span></div>`).join("")}</div>`;
+      <span class="lt-orow-r">${s.current ? `<span class="lt-tag">This one</span>` : `<button type="button" class="lt-link" data-out="${esc(s.id)}">Sign out</button>`}</span></div>`).join("")}</div>`;
   const others = $("#ac-others");
   others.hidden = list.length < 2;
   others.onclick = async () => { await api("/api/auth/sessions/revoke", { id: "others" }); toast("Signed out everywhere else."); accountPage(ctx); };

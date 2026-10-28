@@ -566,7 +566,8 @@ function renderPage() {
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim() })) : []; },
     activities: async () => { const t = await readPriv(`${r.c}/${r.t}/lectures.json`).catch(() => null); let d = null; try { d = t ? JSON.parse(t) : null; } catch (_) {}
       return ((d && d.weeks) || []).filter(w => !w.isBreak).flatMap(w => (w.cards || []).map(x => ({ id: x.id, week: w.label || "Week", name: x.title || x.label || "Untitled", kind: x.kind || "lecture", groups: Array.isArray(x.groups) ? x.groups.map(String) : x.group ? [String(x.group)] : [] }))); } }, r);
-  if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME,
+  if (r.page === "team") return teamMemberPage({ $, esc, pageHTML, toast, go, Store, area, canEdit, ICON, renderPath, route: () => S.route, ROLE_NAME, A_ROLE, confirmBox,
+    left: async () => { toast(`You left ${r.c}/${r.t}.`); await listAll().catch(() => null); go({ page: "home" }); },
     steps: [HOME_STEP, offeringStep(r.c, r.t)], api: Auth.api, owner: () => curOwner() || S.user.handle,
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups) }, r);
   if (r.page === "groups") return groupPage({ $, esc, pageHTML, toast, confirmBox, go, Store, repo: area(Store.PRIV), canEdit, ICON, renderPath, route: () => S.route,
@@ -901,10 +902,9 @@ async function teamPart(c, t) {
   const roleSel = p => roleSeg(p.role, `data-role="${p.id}"`, `Role for ${p.email}`);
   box.innerHTML = `<div class="lt-st-head"><p class="lt-part-text">${lead ? "Coordinators do everything here (the team too). Instructors add and change their sections' activities and announcements. TAs enter marks for every student and decide remark requests. Staff decide accommodation requests." : "The people who work on this offering."}</p>${lead ? `<div class="lt-st-acts"><button type="button" class="lt-btn add" id="lt-team-new">${ICON.plus}Add a Team Member</button></div>` : ""}</div>
     <div class="lt-olist lt-team-list">${d.people.map(p => `<div class="lt-orow lt-user">
-        <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="Their activities (lectures, tutorials, labs, office hours) and contact details, for the course page"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
+        <button type="button" class="lt-user-who lt-user-open" data-person="${p.id}" title="${lead && p.role !== "owner" ? "Their role, the sections they run, office hours and contact details" : "Their sections, office hours and contact details"}"><b>${esc(p.name || p.email)}${p.id === d.me ? " (you)" : ""}</b><span>${esc(p.email)}</span></button>
         <span class="lt-orow-r">${p.role === "owner" ? `<span class="lt-tag lt-owner">Owner</span>`
-          : lead && p.id !== d.me ? `${roleSel(p)}<button type="button" class="lt-link lt-del" data-remove="${p.id}">Remove</button>`
-          : `<span class="lt-tag${p.role === "ta" || p.role === "staff" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>${p.id === d.me ? `<button type="button" class="lt-link lt-del" data-remove="${p.id}">Leave</button>` : ""}`}</span>
+          : `<span class="lt-tag${p.role === "ta" || p.role === "staff" ? " dim" : ""}">${ROLE_NAME[p.role]}</span>`}</span>
       </div>`).join("")}
       ${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited as ${A_ROLE[i.role] || "an instructor"}: waiting for them to accept</span></div>
         <span class="lt-orow-r"><button type="button" class="lt-link" data-uninvite="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>
@@ -939,7 +939,7 @@ async function teamPart(c, t) {
       <p class="lt-err" id="tm-new-err"></p>
       <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Send the Invitation</button></div>`, (m, close) => {
     let newRole = "ta";
-    const HELP = { coordinator: "Does everything here, the team too.", instructor: "Adds and changes the activities and announcements for the sections they run (set on their page).", ta: "Enters marks for every student, and sees the gradebook and exams.", staff: "Decides accommodation requests from any activity group; changes nothing else." };
+    const HELP = { coordinator: "Does everything here, the team too.", instructor: "Adds and changes the activities and announcements for the sections they run (set on their page).", ta: "Enters marks for every student and decides remark requests; sees the gradebook and exams.", staff: "Decides accommodation requests from any activity group; changes nothing else." };
     const help = () => { m.querySelector("#tm-new-help").textContent = HELP[newRole]; };
     help();
     m.querySelectorAll("button[data-newrole]").forEach(b => { b.onclick = () => { newRole = b.dataset.v; m.querySelectorAll("button[data-newrole]").forEach(x => { const on = x === b; x.setAttribute("aria-pressed", on); x.setAttribute("aria-checked", on); }); help(); }; });

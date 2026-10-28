@@ -101,6 +101,13 @@ button.rq-row:hover { border-color: #80848b; box-shadow: 0 4px 14px rgb(0 0 0 / 
 @media (max-width: 640px) { .sd-row { grid-template-columns: 1fr auto; } .sd-row .sd-for { grid-column: 1 / -1; } }
 .ed-sec.ed-first { margin-top: 6px !important; padding-top: 0 !important; border-top: 0 !important; }
 .ed-sub { margin: 16px 0 4px; font: 600 12.5px var(--font-ui); color: var(--ink-2); }
+/* What you may not change (a TA: all but the marks; instructors and staff: everything), shown as it is: off. */
+body.gb-limited #view :is(button, input, select, textarea):disabled, body.gb-limited .modal :is(button, input, select, textarea):disabled { cursor: default; }
+body.gb-limited #view .editor :is(button, select):disabled, body.gb-limited #view .editor input:is([type=checkbox], [type=radio]):disabled,
+body.gb-limited #view :is([data-act], [data-ed]):disabled, body.gb-limited #tb-right button:disabled { opacity: .55; }
+body.gb-limited #view .editor :is(input[type=text], input[type=number], input:not([type]), textarea):disabled { background: var(--strip, #f2f1ed); color: var(--ink-3, #80848b); }
+body.gb-limited #view :disabled:hover { filter: none; }
+body.gb-limited #view button.add:disabled, body.gb-limited #view [data-ed=mkadd]:disabled { display: none; }
 </style>
 <style>
 /* Layout: a slim tool bar over a "stage" that shows the course page at
@@ -2722,8 +2729,41 @@ function updateStatus() {
 }
 let typingTimer = 0;
 const pushUndo = () => { undoStack.push(JSON.stringify(model)); if (undoStack.length > 300) undoStack.shift(); redoStack = []; };
-function change(fn) { pushUndo(); clearTimeout(typingTimer); typingTimer = 0; fn(); unsaved = true; render(); }
-function noteTyping() { if (!typingTimer) pushUndo(); clearTimeout(typingTimer); typingTimer = setTimeout(() => { typingTimer = 0; }, 900); unsaved = true; }
+// ── What you may change (in Lectern: window.Lectern.access()): "all", only the "marks" (a TA), or nothing ("view":
+// instructors and staff). The rest is disabled as it's drawn (lockDown), and a change that touches it anyway is undone.
+const ACCESS = () => (HOSTED && window.Lectern.access ? window.Lectern.access() : "all");
+const ED_OK = new Set(["attend", "rq-open", "open-accom", "acc-open", "acc-back", "done"]);
+const ACT_OK = { marks: new Set(["cell-st", "crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "up-marks", "view", "acc-cell"]),
+  view: new Set(["crumb", "ed-eval", "ed-group", "ed-student", "fx-filter", "fx-menu", "go-evals", "goto", "m-export", "only-acc", "sec", "sort", "st-pick", "st-unpick", "st-what-menu", "st-who-menu", "student", "view", "acc-cell"]) };
+const notMarks = m => JSON.stringify({ ...m, marks: null });
+let allowedBase = null;   // the model as it may be, apart from the marks (for "marks"), or entirely (for "view"): set as it's first drawn
+const baseOf = m => (ACCESS() === "marks" ? notMarks(m) : JSON.stringify(m));
+function lockDown() {
+  const mode = ACCESS(); if (mode === "all") return;
+  document.body.classList.add("gb-limited");
+  document.querySelectorAll("#view, .modal, #tb-right").forEach(root => {
+    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
+    root.querySelectorAll("[contenteditable=true]").forEach(x => x.setAttribute("contenteditable", "false"));
+    root.querySelectorAll("[data-ed]").forEach(b => { if (!ED_OK.has(b.dataset.ed)) b.disabled = true; });
+    root.querySelectorAll("[data-act]").forEach(b => { if (!ACT_OK[mode].has(b.dataset.act)) b.disabled = true; });
+    root.querySelectorAll("[data-f], [data-disc], [data-rel], [data-acm], [data-rmk]").forEach(x => { x.disabled = true; });
+  });
+}
+let lockQueued = false;
+new MutationObserver(() => { if (lockQueued || ACCESS() === "all") return; lockQueued = true; queueMicrotask(() => { lockQueued = false; lockDown(); }); }).observe(document.documentElement, { childList: true, subtree: true });
+// A change that goes past what you may change: undone, with why.
+function allowedOnly() {
+  const mode = ACCESS(); if (mode === "all") return true;
+  if (allowedBase == null) return true;
+  const now = baseOf(model);
+  if (now === allowedBase) return true;
+  model = mode === "marks" ? { ...JSON.parse(allowedBase), marks: model.marks } : JSON.parse(allowedBase);
+  toast(mode === "marks" ? "As a TA you can enter marks, but not change the rest." : "You can look at the gradebook, but not change it.");
+  render();
+  return false;
+}
+function change(fn) { pushUndo(); clearTimeout(typingTimer); typingTimer = 0; fn(); if (!allowedOnly()) { undoStack.pop(); return; } unsaved = true; render(); }
+function noteTyping() { if (!allowedOnly()) return; if (!typingTimer) pushUndo(); clearTimeout(typingTimer); typingTimer = setTimeout(() => { typingTimer = 0; }, 900); unsaved = true; }
 function undo() { if (!undoStack.length) return; redoStack.push(JSON.stringify(model)); model = JSON.parse(undoStack.pop()); unsaved = true; render(); }
 function redo() { if (!redoStack.length) return; undoStack.push(JSON.stringify(model)); model = JSON.parse(redoStack.pop()); unsaved = true; render(); }
 let derivedTimer = 0, noteTimer = 0, polTimer = 0;
@@ -2743,6 +2783,7 @@ function render() {
   v.innerHTML = ui.view === "grades" ? gridHTML() : ui.view === "evals" ? evalsHTML() : ui.view === "stats" ? statsHTML() : ui.view === "settings" ? settingsHTML() : studentsHTML();
   if (ui.view === "students" && ui.student) drawStudentEditor();
   if (ui.view === "evals") { drawEvalEditor(); drawGroupEditor(); }
+  if (allowedBase == null && ACCESS() !== "all") allowedBase = baseOf(model);
   window.scrollTo(0, y);
   if (focus) { const inp = cellInput(focus.s, focus.e); if (inp) inp.focus({ preventScroll: true }); }
   placeBar(); drawDock(); updateStatus();
@@ -4294,7 +4335,7 @@ async function fetchBook(path) {
 }
 function loadBook(book, path, sha, label) {
   if (unsaved) undoStack.push(JSON.stringify(model));
-  model = book; gh.path = path; gh.sha = sha; if (path) gh.last = path; fileName = path ? "" : label || ""; unsaved = !sha && !!path;
+  model = book; allowedBase = null; gh.path = path; gh.sha = sha; if (path) gh.last = path; fileName = path ? "" : label || ""; unsaved = !sha && !!path;
   ui.view = model.evals.length ? "grades" : "evals"; ui.cell = null; ui.find = ""; ui.student = ""; ui.stAcc = "";
   leaveHome(); render();
 }

@@ -739,7 +739,7 @@ function offeringPage(c, t) {
     ${S.listError ? `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)}</p>` : ""}
     ${role === "staff" ? `<p class="lt-note">As staff you decide accommodation requests (any section's), and can look at everything else here, but not change it.</p>` : ""}
     ${role === "instructor" ? `<p class="lt-note">As an instructor you add and change the activities and announcements for your sections (the ones you run: set on your page in the teaching team). Everything else is the coordinators'.</p>` : ""}
-    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook for every student, and look at the evaluations and exams. Changes to anything else are for the coordinators: Lectern won't save them.</p>` : ""}
+    ${ta ? `<p class="lt-note">As a TA you can enter marks in the gradebook for every student, and look at the evaluations and exams.</p>` : ""}
     <div class="lt-three lt-off-parts">
       <section class="lt-part lt-wide">
         <div class="lt-part-head">${ICON.mail}<h2>Announcements</h2></div>
@@ -1349,6 +1349,9 @@ Lectern.requests = async () => {
 Lectern.back = num => { const f = S.studentFrom; if (!f || (num != null && f.num !== String(num))) return false; S.studentFrom = null; go(f.route); return true; };
 // A change in a builder that isn't a step of its own (the page it was on is about to be left).
 Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); } finally { setTimeout(() => { H.applying = was && H.applying; }, 300); } };
+// What the open offering's gradebook lets you change: everything (owner, coordinators), its marks (TAs), or
+// nothing (instructors, staff): the Grade Builder disables the rest, as the server would refuse it.
+Lectern.access = () => { const r = S.route; const role = r.c && r.t ? roleIn(r.c, r.t) : "owner"; return ["owner", "coordinator"].includes(role) ? "all" : role === "ta" ? "marks" : "view"; };
 Lectern.openAttendance = id => { const r = S.route; if (r.c && r.t) go({ page: "attend", c: r.c, t: r.t, e: String(id) }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).

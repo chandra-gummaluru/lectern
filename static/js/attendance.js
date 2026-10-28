@@ -96,16 +96,16 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
   function drawOverview() {
     const open = mine();
     host.innerHTML = `<p class="ed-help at-sum" id="at-meta">${metaHTML()}</p>
+      <h4 class="ed-sub">Sessions</h4>
+      <div id="at-sess-box">${sessHTML()}</div>
       ${open ? `<div class="at-acts"><button type="button" class="lt-btn" id="at-resume">${SCAN}Continue Scanning</button></div>`
         : `<div class="at-start"><label class="pf"><span>Session Information</span><input type="text" id="at-note" maxlength="120" placeholder="e.g. BA 1170, last names A–L" autocomplete="off"></label>
           <p class="ed-help">Who you're taking attendance of, so it's easy to tell the sessions apart later.</p>
-          <div class="at-go-row"><button type="button" class="lt-btn add" id="at-go">${PLUS}Take Attendance</button></div></div>`}
-      <h4 class="ed-sub">Sessions</h4>
-      <div id="at-sess-box">${sessHTML()}</div>`;
+          <div class="at-go-row"><button type="button" class="lt-btn add" id="at-go">${PLUS}Take Attendance</button></div></div>`}`;
     bindSessions(host);
     if (open) { $("#at-resume").onclick = () => onScan(); return; }
     const goB = $("#at-go"), note = $("#at-note");
-    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: note.value })).then(() => onScan(), x => { goB.disabled = false; toast(x.message); }); };
+    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: note.value })).then(() => { note.value = ""; goB.disabled = false; onScan(); }, x => { goB.disabled = false; toast(x.message); }); };
     goB.onclick = startIt; note.onkeydown = ev => { if (ev.key === "Enter") { ev.preventDefault(); startIt(); } };
   }
 

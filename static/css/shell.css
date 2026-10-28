@@ -1262,7 +1262,7 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* Attendance, as a section of the evaluation's editor (above Grading) */
 .at-sec { display: grid; gap: 10px; margin-top: 6px; }
 .at-sec .at-sum { margin: 0; }
-.at-sec .at-start { margin: 0; gap: 6px; }
+.at-sec .at-start { margin: 10px 0 0; gap: 6px; }
 .at-sec .at-start .pf input { height: 40px; }
 .at-sec .at-start .ed-help { margin: 0; }
 .at-sec .at-go-row, .at-sec .at-acts { display: flex; justify-content: flex-end; margin: 4px 0 0; }
@@ -1277,3 +1277,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-best h3 { margin: 0; }
 .at-best .at-why { margin-top: 4px; }
 .at-bad-t { color: var(--danger, #c0392b) !important; }
+.at-sec .at-sum + .ed-sub { margin-top: 2px; }

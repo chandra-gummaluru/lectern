@@ -88,11 +88,14 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
   pageHTML(`<div class="lt-in lt-att"><div class="lx ed"><div id="at-box"><div class="lt-loading" style="min-height:160px">Reading attendance…</div></div></div></div>`);
 
   const load = () => api(`/api/attendance?${Q}`).then(d => { O = d; return d; });
-  function poll() { clearTimeout(timer); timer = setTimeout(() => { if (!here()) return stopCam(); load().then(() => { if (!here()) return; S ? drawCounts() : drawOverview(); poll(); }, () => poll()); }, 5000); }
+  function poll() { clearTimeout(timer); timer = setTimeout(() => { if (!here()) return stopCam(); load().then(() => { if (!here()) return; if (S) drawCounts(); else if (!writing) drawOverview(); poll(); }, () => poll()); }, 5000); }
 
   // ── The overview: the total, and every session ──
+  // (While a note is being written for a new session, the overview isn't drawn again under it.)
+  let writing = false;
   function drawOverview(starting = false) {
     const box = $("#at-box"); if (!box) return;
+    writing = starting;
     renderPath([...steps, { label: `${O.eval.name}: Attendance` }]);
     const mineOpen = O.sessions.find(s => s.mine && !s.stopped);
     box.innerHTML = `<div class="lx-editor lt-req-ed at-card">

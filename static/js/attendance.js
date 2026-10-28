@@ -100,12 +100,12 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
     : `<p class="lx-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`;
   const mine = () => O.sessions.find(s => s.mine && !s.stopped);
   function bindSessions(box) {
-    // Delete: click once and it turns red ("Delete?"); click again, within a few seconds, to delete.
+    // Delete: click once and it turns red; click again, within a few seconds, to delete.
     box.querySelectorAll("[data-del]").forEach(b => { b.onclick = () => {
       const se = O.sessions.find(x => String(x.id) === b.dataset.del); if (!se) return;
       if (!b.classList.contains("armed")) {
         box.querySelectorAll(".at-del.armed").forEach(x => { x.classList.remove("armed"); x.innerHTML = TRASH; });
-        b.classList.add("armed"); b.innerHTML = `${TRASH}<span>Delete?</span>`; b.title = `Click again to delete it, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in`;
+        b.classList.add("armed"); b.title = `Click again to delete it, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in`;
         clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("armed"); b.innerHTML = TRASH; b.title = "Delete this session"; }, 4000);
         return;
       }

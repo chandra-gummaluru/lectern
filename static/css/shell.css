@@ -1257,3 +1257,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-row .at-del { display: inline-flex; align-items: center; gap: 6px; width: auto; min-width: 32px; padding: 0 8px; }
 .at-row .at-del.armed { background: #c0392b; color: #fff; border-color: #c0392b; border-radius: 8px; font: 600 13px var(--font-ui); }
 .at-row .at-del.armed:hover { background: #a93226; }
+.at-row .at-del.armed { width: 32px; padding: 0; justify-content: center; }

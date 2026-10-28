@@ -17,6 +17,8 @@ Kept in the database (db.py's attendance tables, not the offering's files): it's
   POST /api/attendance/stop    {owner, offering, session}
   POST /api/attendance/lookup  {owner, offering, e, card}  who the card is, and whether they're in already
   GET  /api/attendance/search?owner&offering&e&q          students by name or number
+  POST /api/attendance/identify {owner, offering, e, text} who a TCard is, by what's printed on it (the scanner reads
+                                                           it, OCR): its student number, or its first and last names
   POST /api/attendance/mark    {owner, offering, e, session, student, card?}  they're in (card: register it to them)
   Course page (a signed-in student): GET / POST /api/hub/<handle>/<course>/<term>/tcard {card}
 """
@@ -193,6 +195,67 @@ def search():
             if len(out) >= 8:
                 break
     return jsonify(students=out)
+
+
+def _fold(x):
+    import unicodedata
+    x = unicodedata.normalize("NFKD", str(x or "")).encode("ascii", "ignore").decode().upper()
+    return re.sub(r"[^A-Z0-9]+", " ", x).strip()
+
+
+def _near(a, b):
+    """a and b the same word, but for one letter read wrong (OCR), for words of 5 letters or more."""
+    if a == b:
+        return True
+    if min(len(a), len(b)) < 5 or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) <= 1
+    s, t = (a, b) if len(a) < len(b) else (b, a)
+    return any(t[:i] + t[i + 1:] == s for i in range(len(t)))
+
+
+def identify_text(book, text):
+    """The students a card's printed text could be, best first: [(score, student)]. Its student number is enough
+    (OCR reads O for 0 and so on, so those are read as digits); else their last name and first name."""
+    T = _fold(text)
+    words = T.split()
+    fix = str.maketrans({"O": "0", "Q": "0", "D": "0", "I": "1", "L": "1", "S": "5", "B": "8"})
+    # Numbers as read: words that are mostly digits (a letter or two misread), and all of them run together
+    # (a number read with spaces in it).
+    nums = [re.sub(r"\D", "", w.translate(fix)) for w in words if sum(c.isdigit() for c in w) >= max(3, len(w) - 2)]
+    runs = set(n for n in nums if len(n) >= 6) | {"".join(nums)}
+    out = []
+    for s in _students(book):
+        num = re.sub(r"\D", "", str(s.get("num") or ""))
+        score = 0
+        if len(num) >= 6 and any(num in r for r in runs):
+            score += 100
+        last, first = _fold(s.get("last")).split(), _fold(s.get("first")).split()
+        if last and all(any(_near(x, w) for w in words) for x in last):
+            score += 45
+        if first and any(any(_near(x, w) for w in words) for x in first):
+            score += 30
+        if score >= 45:
+            out.append((score, s))
+    out.sort(key=lambda x: -x[0])
+    return out
+
+
+@attendance_bp.post("/api/attendance/identify")
+@team_api
+def identify():
+    d = _args() or {}
+    owner, o = _team(d)
+    e = _eval_id(d.get("e"))
+    text = str(d.get("text") or "")[:4000]
+    hits = identify_text(_book_of(owner, o), text)
+    if not hits:
+        return jsonify(students=[])
+    best = hits[0][0]
+    # Sure: a number, or both names, and nobody else as good.
+    sure = best >= 75 and (len(hits) == 1 or hits[1][0] < best)
+    return jsonify(sure=sure, students=[{**_who(s), "score": sc, "already": _in(owner, o, e, str(s.get("num") or ""))} for sc, s in hits[:5]])
 
 
 @attendance_bp.post("/api/attendance/mark")

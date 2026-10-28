@@ -3,8 +3,9 @@
 
      #/<course>/<term>/attendance/<eval id>
 
-   Start Attendance (with a note: the room, or the last names you're taking) begins your session; each scan
-   shows who the card is registered to, and Correct puts them in. Not Them (or a card nobody has) finds the
+   Start Attendance (with a note: the room, or the last names you're taking) begins your session; each card
+   held up shows who it is (by its barcode, if it's registered; or by its printed name and number, read with
+   OCR), and Correct puts them in. Not Them (or a card nobody has) finds the
    student by name or number, and registers the card to them. A student is in once, whoever scans them:
    the second time says who entered them. Stop Attendance ends your session, with its count. The page shows
    every session (each person's, with its note and count) and the total, as they happen. */
@@ -49,6 +50,33 @@ async function reader() {
     const ok = r.find(x => x.isValid && x.text);
     return ok ? ok.text : "";
   };
+}
+
+// ── Reading what's printed on the card (OCR: Tesseract, as WebAssembly in a worker, static/vendor/tesseract/):
+// its name and student number, matched against the class list (server: identify) ──
+const TS = "/static/vendor/tesseract/";
+let ocrP = null;
+function ocr() {
+  return ocrP || (ocrP = new Promise((ok, no) => {
+    const go = () => window.Tesseract.createWorker("eng", 1, { workerPath: `${TS}worker.min.js`, corePath: TS, langPath: TS.replace(/\/$/, ""), workerBlobURL: false, gzip: true })
+      .then(w => w.setParameters({ tessedit_pageseg_mode: "11" }).then(() => ok(w))).catch(no);
+    if (window.Tesseract) return go();
+    const s = document.createElement("script"); s.src = `${TS}tesseract.min.js`; s.onload = go; s.onerror = () => { ocrP = null; no(new Error("The card reader couldn't load.")); };
+    document.head.appendChild(s);
+  }));
+}
+// The card, as framed (the guide on the camera): cropped, grey and sharpened a little, for OCR.
+function cardFrame(v, cv) {
+  const w = v.videoWidth, h = v.videoHeight; if (!w || !h) return null;
+  // The guide is 84% of the view's width, at a card's shape, centred; the view shows the video "cover".
+  const box = v.getBoundingClientRect(), k = Math.max(box.width / w, box.height / h);
+  const vw = box.width / k, vh = box.height / k, gw = vw * 0.84, gh = gw / 1.586;
+  const sx = (w - vw) / 2 + (vw - gw) / 2, sy = (h - vh) / 2 + (vh - Math.min(gh, vh * 0.94)) / 2;
+  cv.width = 1200; cv.height = Math.round(1200 / 1.586);
+  const cx = cv.getContext("2d", { willReadFrequently: true });
+  cx.filter = "grayscale(1) contrast(1.35)";
+  cx.drawImage(v, sx, sy, gw, Math.min(gh, vh * 0.94), 0, 0, cv.width, cv.height);
+  return cv;
 }
 
 export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, e, steps, renderPath, here }) {
@@ -98,7 +126,7 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
     box.innerHTML = `<div class="at-scan">
       <div class="at-bar"><div class="at-bar-t"><p class="gr-kind">Attendance · ${titleHTML(O.eval)}</p><p class="at-bar-n">${S.note ? `${esc(S.note)} · ` : ""}<b id="at-mine">${S.count || 0}</b> this session · <span id="at-all">${O.total}</span> in all</p></div>
         <button type="button" class="lt-btn" id="at-stop">Stop Attendance</button></div>
-      <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted></video><div class="at-aim"></div><p class="at-cam-msg" id="at-cam-msg">Starting the camera…</p></div>
+      <div class="at-cam" id="at-cam"><video id="at-video" playsinline muted></video><div class="at-aim"></div><p class="at-cam-tip">Hold the TCard in the frame</p><p class="at-cam-msg" id="at-cam-msg">Starting the camera…</p></div>
       <div id="at-res" class="at-res"></div>
       <button type="button" class="lt-btn at-hand" id="at-hand">${SEARCH}Enter by Hand</button>
     </div>`;
@@ -124,6 +152,30 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
         setTimeout(tick, 120);
       };
       tick();
+      // And its printed name and number, a few times a second's worth apart (OCR is slower than a barcode).
+      const cv = document.createElement("canvas");
+      let reading = false, lastWho = "", lastWhoAt = 0;
+      ocr().then(w => {
+        const look = async () => {
+          if (!cam) return;
+          if (!here() || !v.isConnected) return;
+          if (!busy && !reading && v.readyState >= 2) {
+            reading = true;
+            try {
+              const f = cardFrame(v, cv);
+              const text = f ? (await w.recognize(f)).data.text : "";
+              if (!busy && cam && text.replace(/\W/g, "").length >= 6) {
+                const d = await api("/api/attendance/identify", B({ text }));
+                const s0 = d.students && d.students[0];
+                if (s0 && !busy && !(s0.num === lastWho && Date.now() - lastWhoAt < 4000)) { lastWho = s0.num; lastWhoAt = Date.now(); recognised(d); }
+              }
+            } catch (_) { /* try again */ }
+            reading = false;
+          }
+          setTimeout(look, 350);
+        };
+        look();
+      }, () => {});
     } catch (x) {
       if (msg) msg.textContent = x && x.name === "NotAllowedError" ? "Lectern can't use the camera: allow it in your browser's settings, or enter students by hand." : `The camera didn't start${x && x.message ? ` (${x.message})` : ""}. You can enter students by hand.`;
       const cm = $("#at-cam"); if (cm) cm.classList.add("off");
@@ -156,6 +208,25 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
       r.querySelector("[data-yes]").onclick = () => markIn(d.student, "");
       r.querySelector("[data-no]").onclick = () => findStudent(d.card);
     }, x => { res(`<div class="at-panel bad"><p class="at-why">${esc(x.message)}</p><div class="at-pacts"><button type="button" class="lt-btn primary" data-next>Next</button></div></div>`).querySelector("[data-next]").onclick = () => resume(); });
+  }
+  // The card, read by its text: who it is (Correct puts them in), or, not sure, which of a few it is.
+  function recognised(d) {
+    busy = true; buzz(40);
+    const L = d.students, s = L[0];
+    if (d.sure) {
+      if (s.already) return already(s, s.already);
+      const r = res(`<div class="at-panel ask">${whoHTML(s, "Is this them?")}
+        <div class="at-pacts"><button type="button" class="lt-btn" data-no>Not Them</button><button type="button" class="lt-btn primary" data-yes>${CHECK}Correct</button></div></div>`);
+      r.querySelector("[data-yes]").onclick = () => markIn(s, "");
+      r.querySelector("[data-no]").onclick = () => findStudent("");
+      return;
+    }
+    const r = res(`<div class="at-panel find"><p class="gr-kind">Which one is it?</p><p class="at-why">The card could be any of these.</p>
+      <div class="at-hits">${L.map((x, i) => `<button type="button" class="at-hit${x.already ? " in" : ""}" data-i="${i}"><b>${esc([x.last, x.first].filter(Boolean).join(", "))}</b><span>${esc([x.num, x.email].filter(Boolean).join(" · "))}</span>${x.already ? `<em>Already in</em>` : ""}</button>`).join("")}</div>
+      <div class="at-pacts"><button type="button" class="lt-btn" data-other>Someone Else</button><button type="button" class="lt-btn" data-cancel>Cancel</button></div></div>`);
+    r.querySelectorAll("[data-i]").forEach(b => { b.onclick = () => { const x = L[+b.dataset.i]; x.already ? already(x, x.already) : markIn(x, ""); }; });
+    r.querySelector("[data-other]").onclick = () => findStudent("");
+    r.querySelector("[data-cancel]").onclick = () => { r.innerHTML = ""; resume(); };
   }
   // Find the student by name or number: a card that's unknown, or someone else's, is registered to them.
   function findStudent(card, unknown = false) {

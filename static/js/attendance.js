@@ -101,7 +101,7 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
       ${starting ? `<div class="at-start"><label class="lx-f">Note for this session<input type="text" id="at-note" maxlength="120" placeholder="e.g. BA 1170, last names A–L" autocomplete="off"></label>
           <p class="lx-help">Who you're taking attendance of, so it's easy to tell the sessions apart later.</p>
           <div class="lt-req-acts"><button type="button" class="lt-btn" id="at-cancel">Cancel</button><button type="button" class="lt-btn primary" id="at-go">${SCAN}Start Scanning</button></div></div>`
-        : `<div class="at-acts">${mineOpen ? `<button type="button" class="lt-btn primary at-big" id="at-resume">${SCAN}Continue Scanning</button>` : `<button type="button" class="lt-btn primary at-big" id="at-new">${SCAN}Start Attendance</button>`}</div>`}
+        : `<div class="at-acts">${mineOpen ? `<button type="button" class="lt-btn primary" id="at-resume">${SCAN}Continue Scanning</button>` : `<button type="button" class="lt-btn primary" id="at-new">${SCAN}Start Attendance</button>`}</div>`}
       <h3 class="lx-sec">Sessions</h3>
       ${O.sessions.length ? `<div class="at-sess">${O.sessions.slice().reverse().map(s => `<div class="at-row${s.stopped ? "" : " live"}">
           <span class="lt-cmt-av" aria-hidden="true">${esc(ini(s.by))}</span>

@@ -1133,8 +1133,8 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* Attendance (attendance.js): the total and the sessions; scanning with the camera, and who each card is. */
 .at-total { color: inherit; }
 .at-acts { margin: 18px 0 4px; }
-.at-big { height: 48px; padding: 0 22px; font-size: 15.5px; }
-.at-big svg, .at-start .lt-btn svg, .at-hand svg { width: 18px; height: 18px; }
+
+.at-start .lt-btn svg, .at-hand svg, .at-acts .lt-btn svg { width: 16px; height: 16px; }
 .at-start { margin: 18px 0 4px; display: grid; gap: 8px; }
 .at-start .lx-f input { height: 42px; font-size: 15px; }
 .at-start .lt-req-acts { display: flex; justify-content: flex-end; gap: 8px; }

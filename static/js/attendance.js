@@ -80,7 +80,7 @@ function cardFrame(v, cv) {
   return cv;
 }
 
-export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, e, steps, renderPath, here, confirmBox }) {
+export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, e, steps, renderPath, here }) {
   const Q = `owner=${encodeURIComponent(owner)}&offering=${encodeURIComponent(`${c}/${t}`)}&e=${encodeURIComponent(e)}`;
   const B = x => ({ owner: owner || undefined, offering: `${c}/${t}`, e, ...x });
   let O = null, S = null, timer = 0, cam = null, busy = false, lastCode = "", lastAt = 0;
@@ -100,17 +100,24 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
     : `<p class="lx-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`;
   const mine = () => O.sessions.find(s => s.mine && !s.stopped);
   function bindSessions(box) {
-    box.querySelectorAll("[data-del]").forEach(b => { b.onclick = async () => {
+    // Delete: click once and it turns red ("Delete?"); click again, within a few seconds, to delete.
+    box.querySelectorAll("[data-del]").forEach(b => { b.onclick = () => {
       const se = O.sessions.find(x => String(x.id) === b.dataset.del); if (!se) return;
-      const ok = await confirmBox("Delete this session?", `${esc(se.by)}'s session${se.note ? ` (${esc(se.note)})` : ""}${se.stopped ? "" : ", still going,"} goes, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in aren't in any more.`, "Delete");
-      if (!ok) return;
-      api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(() => { if (here()) drawOverview(); }); }, x => toast(x.message));
+      if (!b.classList.contains("armed")) {
+        box.querySelectorAll(".at-del.armed").forEach(x => { x.classList.remove("armed"); x.innerHTML = TRASH; });
+        b.classList.add("armed"); b.innerHTML = `${TRASH}<span>Delete?</span>`; b.title = `Click again to delete it, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in`;
+        clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("armed"); b.innerHTML = TRASH; b.title = "Delete this session"; }, 4000);
+        return;
+      }
+      clearTimeout(b._t); b.disabled = true;
+      api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(() => { if (here()) drawOverview(); }); }, x => { b.disabled = false; toast(x.message); });
     }; });
   }
   function refreshOverview() {   // the poll: the total and the sessions, in place
     const box = $("#at-box"), m = $("#at-meta"), l = $("#at-sess-box"); if (!box || !m || !l) return drawOverview();
     if (!!mine() !== !!box.querySelector("#at-resume") && !(($("#at-note") || {}).value)) return drawOverview();
-    m.textContent = metaHTML(); l.innerHTML = sessHTML(); bindSessions(l);
+    m.textContent = metaHTML();
+    if (!l.querySelector(".at-del.armed")) { l.innerHTML = sessHTML(); bindSessions(l); }   // (not while a delete waits for its second click)
   }
   function drawOverview() {
     const box = $("#at-box"); if (!box) return;

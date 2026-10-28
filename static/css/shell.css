@@ -1254,3 +1254,6 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-cam .at-res, .at-cam .at-res > .at-panel { box-sizing: border-box; } .at-cam .at-res > .at-panel { max-width: 100%; } .at-cam:has(.at-res:not(:empty)) .at-aim { display: none; }
 .at-row .at-del { flex: none; margin-left: 4px; }
 .at-row .at-del svg { width: 17px; height: 17px; }
+.at-row .at-del { display: inline-flex; align-items: center; gap: 6px; width: auto; min-width: 32px; padding: 0 8px; }
+.at-row .at-del.armed { background: #c0392b; color: #fff; border-color: #c0392b; border-radius: 8px; font: 600 13px var(--font-ui); }
+.at-row .at-del.armed:hover { background: #a93226; }

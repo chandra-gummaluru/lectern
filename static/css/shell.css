@@ -1239,3 +1239,9 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-card.at-scan { max-width: none; margin: 6px 0 0; }
 .at-card.at-scan .at-cam { aspect-ratio: auto; height: min(58vh, 56vw); }
 @media (max-width: 640px) { .at-card.at-scan .at-cam { height: min(62vh, 110vw); } }
+/* An Item Head's title on a phone: one line, cut short with … rather than running under what's on its right. */
+@media (max-width: 640px) {
+  .lx-ed-head:has(> .gr-tt > .gr-kind) { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .lx-ed-head:has(> .gr-tt > .gr-kind) h2 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lx-ed-head:has(> .gr-tt > .gr-kind) h2 .lt-link { white-space: nowrap; }
+}

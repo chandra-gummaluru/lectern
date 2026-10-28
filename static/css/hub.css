@@ -1049,3 +1049,4 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ab-times > .ab-time { display: contents; }
 .ab-who { margin: 2px 0 0 !important; font-size: 14px !important; color: var(--ink-2) !important; }
 .ab-who + .ab-times { margin-top: 10px; }
+.ab-times.ab-contact { display: flex; flex-wrap: wrap; } .ab-times.ab-contact > .ab-time { display: flex; }

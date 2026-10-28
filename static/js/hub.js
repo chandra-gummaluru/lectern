@@ -593,7 +593,7 @@ const PAGES = {
     const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
     const people = T.map(p => { const oh = (p.times || []).filter(x => x.kind === "office" && x.day);
       return item(`<span class="hs-av ab-av" aria-hidden="true">${esc(ini(p.name))}</span>`, esc(ROLE[p.role] || ""), p.name,
-        `<div class="ab-times">${p.email ? `<div class="ab-time">${fact(MAIL, `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`)}${p.office ? fact(PIN, esc(p.office)) : ""}</div>` : ""}</div>
+        `<div class="ab-times ab-contact">${p.email ? `<div class="ab-time">${fact(MAIL, `<a href="mailto:${esc(p.email)}">${esc(p.email)}</a>`)}${p.office ? fact(PIN, esc(p.office)) : ""}</div>` : ""}</div>
         ${oh.length ? `<p class="ab-oh">Office Hours</p>${timesHTML(oh)}` : ""}`); }).join("");
     // The course's rules (the gradebook's), a row each.
     const RULE = svg('<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>');

@@ -1044,7 +1044,8 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 
 /* About the Course: each section's (and person's) times as a table: the days, the hours and the places in
    columns, their icons lined up; who runs it under its name. */
-.ab-times { grid-template-columns: max-content max-content minmax(0, 1fr); column-gap: 24px; row-gap: 6px; justify-content: start; }
+.ab-times { grid-template-columns: 9.5em 8em minmax(0, 1fr); column-gap: 16px; row-gap: 6px; }   /* the same columns in every card, so they line up down the page */
+@media (max-width: 640px) { .ab-times { grid-template-columns: max-content max-content minmax(0, 1fr); } }
 .ab-times > .ab-time { display: contents; }
 .ab-who { margin: 2px 0 0 !important; font-size: 14px !important; color: var(--ink-2) !important; }
 .ab-who + .ab-times { margin-top: 10px; }

@@ -253,3 +253,11 @@ def test_an_evaluations_dates_for_some_sections(client, user, anon):
     j = client.get("/api/hub/chandra/csc258/f26").get_json()
     got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == e["id"])
     assert got["dates"] == [{"groups": ["g1"], "date": "2026-10-05", "time": "18:00"}]
+
+
+def test_a_part_the_course_doesnt_use_is_off(client, user):
+    publish(user, with_tabs(announcements="off", accommodations="off"))
+    j = app.test_client().get("/api/hub/chandra/csc258/f26").get_json()
+    ids = [t["id"] for t in j["tabs"]]
+    assert "announcements" not in ids and "accommodations" not in ids and "evaluations" in ids
+    assert "announcements" not in j["data"]

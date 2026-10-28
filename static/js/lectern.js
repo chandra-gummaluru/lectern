@@ -778,6 +778,11 @@ function offeringPage(c, t) {
         <div class="lt-part-head">${ICON.user}<h2>Students</h2></div>
         <div class="lt-team-body"><p class="lt-part-text">Loading…</p></div>
       </section>
+      ${edit ? `<section class="lt-part lt-wide lt-team" id="lt-parts">
+        <div class="lt-part-head">${ICON.page}<h2>Course Page</h2></div>
+        <p class="lt-part-text">The parts the course page has, and who sees each. Turn off the ones this course doesn't use.</p>
+        <div class="lt-team-body pp-body"><p class="lt-part-text">Loading…</p></div>
+      </section>` : ""}
       ${edit ? `<section class="lt-part lt-wide lt-team" id="lt-email">
         <div class="lt-part-head">${ICON.mail}<h2>Email</h2></div>
         <p class="lt-part-text">How emails to the class go out, and the signature on them.</p>
@@ -805,6 +810,7 @@ function offeringPage(c, t) {
   teamPart(c, t);
   groupsPart(c, t);
   studentsPart(c, t);
+  if (edit) partsCard(c, t);
   if (edit) emailCard({ box: $("#lt-email .em-body"), esc, toast, api: Auth.api, owner: curOwner() || S.user.handle, c, t });
   // Exams and handouts that no evaluation builds (made before they were linked): still reachable here.
   if (o.exams.length) docLinks(c, t).then(links => {
@@ -1184,6 +1190,40 @@ async function syncScheme(c, t, o) {
   d.page.scheme = sc;
   await Store.writeText(repo, path, JSON.stringify(d, null, 1) + "\n", `Update ${c} ${t} marking scheme`, f.sha);
   if (open) cp.stale = true;   // it opens again, from the file
+}
+
+// The offering's Course Page card: each part of the course page public, for signed-in people only, or off (a
+// part the course doesn't use isn't on its course page at all). It's the course page's own tabs setting
+// (course.json's page.tabs), saved straight away.
+const HUB_PARTS = [["announcements", "Announcements"], ["lectures", "Activities"], ["evaluations", "Evaluations"], ["about", "About the Course"], ["accommodations", "My Requests"]];
+async function partsCard(c, t) {
+  const o = curOwner(), repo = area(Store.PUB, o), path = `${c}/${t}/course.json`, box = $("#lt-parts .pp-body");
+  const mine = () => S.route.page === "offering" && S.route.c === c && S.route.t === t;
+  let f = null;
+  try { f = await Store.readFile(repo, path); } catch (e) { if (box) box.innerHTML = `<p class="lt-part-text">${esc(e.message)}</p>`; return; }
+  if (!mine() || !box) return;
+  if (!f) { box.innerHTML = `<p class="lt-part-text">The course page isn't published yet.</p>`; return; }
+  let d; try { d = JSON.parse(f.text); } catch (_) { box.innerHTML = `<p class="lt-part-text">Its course.json couldn't be read.</p>`; return; }
+  const tabs = () => (d.page && d.page.tabs) || {};
+  const cur = id => tabs()[id] || (id === "accommodations" ? "signed-in" : "public");
+  const draw = () => {
+    box.innerHTML = `<div class="pp-rows">${HUB_PARTS.map(([id, name]) => `<div class="pp-row${cur(id) === "off" ? " off" : ""}"><b>${esc(name)}</b>
+      <span class="lx-seg" role="group" aria-label="${esc(name)}">${[...(id === "accommodations" ? [] : [["public", "Public"]]), ["signed-in", "Signed In"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-part="${id}" data-v="${v}" aria-pressed="${cur(id) === v}">${l}</button>`).join("")}</span></div>`).join("")}</div>
+      <p class="lx-help">Public: anyone with the link. Signed In: students in the course, and the teaching team. Off: not on the course page.</p>`;
+    box.querySelectorAll("[data-part]").forEach(b => { b.onclick = async () => {
+      if (cur(b.dataset.part) === b.dataset.v) return;
+      box.querySelectorAll("[data-part]").forEach(x => { x.disabled = true; });
+      try {
+        const g = await Store.readFile(repo, path), x = JSON.parse(g.text);   // the latest, then this one change
+        x.page = x.page || {}; x.page.tabs = { ...(x.page.tabs || {}), [b.dataset.part]: b.dataset.v };
+        await Store.writeText(repo, path, JSON.stringify(x, null, 1) + "\n", `Course page: ${HUB_PARTS.find(p => p[0] === b.dataset.part)[1]} ${b.dataset.v}`, g.sha);
+        d = x; const cp = Lectern.tools.course; if (cp && cp.api && cp.api.state().path === path) cp.stale = true;
+        toast(b.dataset.v === "off" ? `${HUB_PARTS.find(p => p[0] === b.dataset.part)[1]} is off: it's not on the course page.` : "Saved.");
+      } catch (e) { toast(e.message); }
+      if (mine()) draw();
+    }; });
+  };
+  draw();
 }
 
 // An evaluation's dates for some sections: [{ groups, date, time }] (the gradebook's).

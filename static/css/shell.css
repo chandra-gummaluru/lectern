@@ -1077,3 +1077,11 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 /* A count on a button's corner (requests waiting for a decision). */
 .lt-btn.lt-has-badge { position: relative; overflow: visible; }
 .lt-badge { position: absolute; top: -8px; right: -8px; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: grid; place-items: center; border-radius: 10px; background: #c0392b; color: #fff; font: 700 11.5px/1 var(--font-ui); box-shadow: 0 0 0 2px var(--home-card); }
+
+/* The offering's Course Page card: a row a part, its name and Public / Signed In / Off. */
+.lt-part.lt-team#lt-parts > .lt-part-text { flex: none; padding-bottom: 14px; }
+.pp-rows { display: grid; gap: 0; border: 1px solid var(--home-line-2); border-radius: 10px; overflow: hidden; }
+.pp-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; font-size: 14.5px; }
+.pp-row + .pp-row { border-top: 1px solid var(--home-line); }
+.pp-row b { font-weight: 600; color: var(--home-ink); }
+.pp-row.off b { color: var(--home-ink-3); }

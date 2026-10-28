@@ -351,7 +351,7 @@ def visibility(page):
     if "about" not in tabs and "overview" in tabs:   # About was Overview (and Policies)
         tabs["about"] = tabs["overview"]
     for k, v in tabs.items():
-        if k in vis and k not in ALWAYS_SIGNED_IN and v in ("public", "signed-in"):
+        if k in vis and ((k not in ALWAYS_SIGNED_IN and v in ("public", "signed-in")) or v == "off"):   # off: a part the course doesn't use
             vis[k] = v
     return vis
 
@@ -660,6 +660,8 @@ def hub_api(handle, course, term):
     head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:
+        if vis[tid] == "off":   # not used by this course: not on its course page at all
+            continue
         open_ = vis[tid] == "public" or signed
         tabs.append({"id": tid, "title": title, "visibility": vis[tid], "open": open_})
         if open_:

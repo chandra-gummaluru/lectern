@@ -108,6 +108,7 @@ function lockedSec(id, title) {
   return `<section class="hs-sec"><div class="hs-sec-h hs-off"><h2>${esc(title)}</h2>${LOCK}</div><div class="hs-locked"><span>For people in the course.</span><a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a></div></section>`;
 }
 function lockedPage(id, title) {
+  if (!tab(id)) return PAGES.home();   // a part this course doesn't use
   return `${path([[title]])}<div class="hb-locked">${LOCK}<h2>${esc(title)}</h2><p>${id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p>
     <a class="hb-btn primary" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`;
 }

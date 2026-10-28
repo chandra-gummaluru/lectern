@@ -260,3 +260,11 @@ def test_a_part_the_course_doesnt_use_is_off(client, user):
     ids = [t["id"] for t in j["tabs"]]
     assert "announcements" not in ids and "accommodations" not in ids and "evaluations" in ids
     assert "announcements" not in j["data"]
+
+
+def test_a_course_can_hide_its_sign_in_button(client, user):
+    publish(user)
+    assert app.test_client().get("/api/hub/chandra/csc258/f26").get_json()["signInButton"] is True
+    page = with_tabs(); page["signInButton"] = False
+    publish(user, page)
+    assert app.test_client().get("/api/hub/chandra/csc258/f26").get_json()["signInButton"] is False

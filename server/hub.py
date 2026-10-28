@@ -748,5 +748,7 @@ def hub_api(handle, course, term):
         # Where discussion is off (no Discussion on its page).
         closed=sorted(closed_discussions(o["id"], course, term)),
         lectern=app_url(), signIn=f"/c/{o['handle']}/{offering}/sign-in",
+        # The header's Sign in button: shown unless the course turned it off (course.json's page.signInButton).
+        signInButton=page.get("signInButton") is not False,
         pages=f"{pages_base()}{o['handle']}/{offering}/",
     )

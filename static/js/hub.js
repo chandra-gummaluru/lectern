@@ -858,7 +858,7 @@ function header() {
     };
     document.addEventListener("click", e => { if (menu && !menu.contains(e.target)) close(); });
     document.addEventListener("keydown", e => { if (menu && e.key === "Escape") { close(); btn.focus(); } });
-  } else if (!v.signedIn) { who.innerHTML = `<a class="hb-acct" href="${esc(D.signIn || D.lectern)}">${USER}<span>Sign in</span></a>`; }
+  } else if (!v.signedIn) { who.innerHTML = D.signInButton === false ? "" : `<a class="hb-acct" href="${esc(D.signIn || D.lectern)}">${USER}<span>Sign in</span></a>`; }   // (a course can turn the button off)
   else {
     who.innerHTML = `<div class="hb-acct-wrap"><button type="button" class="hb-acct" id="hb-acct" aria-haspopup="menu" aria-expanded="false">${USER}<span>${esc(v.name)}</span>${DOWN}</button></div>`;
     const btn = $("hb-acct"); let menu = null;

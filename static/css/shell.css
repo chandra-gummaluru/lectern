@@ -1085,3 +1085,17 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .pp-row + .pp-row { border-top: 1px solid var(--home-line); }
 .pp-row b { font-weight: 600; color: var(--home-ink); }
 .pp-row.off b { color: var(--home-ink-3); }
+
+/* Email card: rows like the Course Page card; each opens in place to edit */
+.em-row { padding: 12px 14px; }
+.em-row + .em-row { border-top: 1px solid var(--home-line); }
+.em-line { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.em-txt { display: grid; gap: 2px; min-width: 0; font-size: 14.5px; }
+.em-txt b { font-weight: 600; color: var(--home-ink); }
+.em-val { color: var(--home-ink-2); overflow-wrap: anywhere; }
+.em-sig { white-space: pre-line; }
+.em-none, .em-via { color: var(--home-ink-3); font-size: 13.5px; }
+.em-btns { display: flex; gap: 8px; flex: none; }
+.em-form { margin-top: 12px; }
+.em-form textarea { width: 100%; box-sizing: border-box; min-height: 76px; padding: 8px 10px; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); color: var(--home-ink); font: 14px/1.45 var(--font-ui); resize: vertical; }
+.em-foot { margin: 12px 0 0; }

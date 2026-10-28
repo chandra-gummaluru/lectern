@@ -8,25 +8,16 @@
                           receipts and decisions, and whether a new announcement is emailed by default.
    Sign-in and confirmation codes always go: they're how students get in. */
 
-const KINDS = [
-  ["grades", "Marks", "When an evaluation's marks are out (on saving the gradebook), and Email Them for marks changed later."],
-  ["accomReceipts", "Accommodation receipts", "A copy of each accommodation request, to the student who made it."],
-  ["accomDecisions", "Accommodation decisions", "When a request is approved or rejected, with your note."],
-  ["remarkReceipts", "Remark receipts", "A copy of each remark request, to the student who made it."],
-  ["remarkDecisions", "Remark decisions", "When a remark request is decided, with your note."],
-  ["announcements", "Announcements", "A new announcement is emailed when it's saved (each one can still be changed)."],
-];
 
 export function emailCard({ box, esc, toast, api, owner, c, t }) {
   const U = `/api/mail/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
   let D = null, editing = false;
   const load = () => api(U).then(d => { D = d; draw(); }, e => { box.innerHTML = `<p class="lt-part-text">${esc(e.message)}</p>`; });
 
-  function senderHTML() {
+  let sigEditing = false;
+  function senderForm() {
     const s = D.settings, own = s.source === "offering";
-    if (!editing) return `<p class="lt-part-text">${s.host ? `Emails go out ${s.from ? `from <b>${esc(s.from)}</b> ` : ""}through <b>${esc(s.host)}</b>${own ? ", this offering's own settings." : ", Lectern's server settings."}` : "Email isn't set up: nothing goes to students until it is."}</p>
-      <div class="lt-part-acts"><button type="button" class="lt-btn" id="em-edit">${own ? "Change the Sender" : "Use This Offering's Own Sender"}</button>${own ? `<button type="button" class="lt-btn" id="em-rm">Use Lectern's Instead</button>` : ""}</div>`;
-    return `<div class="lx-grid two">
+    return `<div class="em-form"><div class="lx-grid two">
         <label class="lx-f lx-span2">From<input type="text" id="em-from" value="${esc(own ? s.from : "")}" placeholder="CSC258 &lt;csc258@utoronto.ca&gt;" autocomplete="off"></label>
         <label class="lx-f">SMTP Server<input type="text" id="em-host" value="${esc(own ? s.host : "")}" placeholder="smtp.gmail.com" autocomplete="off" spellcheck="false"></label>
         <label class="lx-f">Security<select id="em-sec">${[["starttls", "STARTTLS"], ["ssl", "SSL"], ["none", "None"]].map(([v, l]) => `<option value="${v}"${(own ? s.security : "starttls") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
@@ -36,22 +27,29 @@ export function emailCard({ box, esc, toast, api, owner, c, t }) {
       </div>
       <p class="lx-help">Lectern sends a test email to <b>${esc(D.you)}</b> first; the settings are kept only if it goes through. The password is kept encrypted and never shown again.</p>
       <p class="em-err" id="em-err" role="alert"></p>
-      <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-cancel">Cancel</button><button type="button" class="lt-btn primary" id="em-save">Send Test and Save</button></div>`;
+      <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-cancel">Cancel</button><button type="button" class="lt-btn primary" id="em-save">Send Test and Save</button></div></div>`;
   }
   function draw() {
-    const p = D.prefs;
-    box.innerHTML = `
-      <h3 class="lx-sec lx-first">Sender</h3>${senderHTML()}
-      <h3 class="lx-sec">Signature</h3>
-      <div class="lx-grid one"><label class="lx-f">Signature<textarea id="em-sig" rows="3" placeholder="e.g. — The CSC258 teaching team">${esc(p.signature)}</textarea></label></div>
-      <p class="lx-help">Added to the end of every email to students.</p>
-      <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-psave" disabled>Save</button></div>
-      <p class="lx-help">Students are emailed only about a new announcement, a decision on their accommodation or remark request, and their marks being out or changed.</p>`;
-    const q = s => box.querySelector(s);
-    const prefs = () => ({ replyTo: "", signature: q("#em-sig").value, send: {} });
-    const savePrefs = (btn) => api(`${U}/prefs`, prefs()).then(r => { D.prefs = r.prefs; if (btn) btn.disabled = true; toast("Email settings saved."); }, e => toast(e.message));
-    q("#em-sig").oninput = () => { q("#em-psave").disabled = false; };
-    q("#em-psave").onclick = () => savePrefs(q("#em-psave"));
+    const s = D.settings, own = s.source === "offering", sig = (D.prefs.signature || "").trim();
+    const who = s.host ? `${s.from ? esc(s.from) : "No From address"}` : "Not set up: nothing goes to students until it is.";
+    const via = s.host ? `<span class="em-via">Through ${esc(s.host)} · ${own ? "this offering's own settings" : "Lectern's settings"}</span>` : "";
+    box.innerHTML = `<div class="pp-rows em-rows">
+      <div class="em-row${editing ? " open" : ""}"><div class="em-line">
+          <div class="em-txt"><b>Sender</b><span class="em-val">${who}</span>${via}</div>
+          ${editing ? "" : `<div class="em-btns">${own ? `<button type="button" class="lt-btn" id="em-rm">Use Lectern's</button>` : ""}<button type="button" class="lt-btn" id="em-edit">${own ? "Change" : "Use Our Own"}</button></div>`}
+        </div>${editing ? senderForm() : ""}</div>
+      <div class="em-row${sigEditing ? " open" : ""}"><div class="em-line">
+          <div class="em-txt"><b>Signature</b>${sigEditing ? `<span class="em-via">Added to the end of every email to students.</span>` : sig ? `<span class="em-val em-sig">${esc(sig)}</span>` : `<span class="em-val em-none">None</span>`}</div>
+          ${sigEditing ? "" : `<div class="em-btns"><button type="button" class="lt-btn" id="em-sedit">${sig ? "Edit" : "Add"}</button></div>`}
+        </div>${sigEditing ? `<div class="em-form"><textarea id="em-sig" rows="3" placeholder="e.g. — The CSC258 teaching team">${esc(D.prefs.signature || "")}</textarea>
+          <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-scancel">Cancel</button><button type="button" class="lt-btn primary" id="em-psave">Save</button></div></div>` : ""}</div>
+    </div>
+    <p class="lx-help em-foot">Students are emailed only about a new announcement, a decision on their accommodation or remark request, and their marks being out or changed.</p>`;
+    const q = x => box.querySelector(x);
+    if (sigEditing) {
+      q("#em-scancel").onclick = () => { sigEditing = false; draw(); };
+      q("#em-psave").onclick = () => api(`${U}/prefs`, { replyTo: "", signature: q("#em-sig").value, send: {} }).then(r => { D.prefs = r.prefs; sigEditing = false; draw(); toast("Signature saved."); }, e => toast(e.message));
+    } else q("#em-sedit").onclick = () => { sigEditing = true; draw(); q("#em-sig").focus(); };
     if (!editing) {
       q("#em-edit").onclick = () => { editing = true; draw(); q("#em-from").focus(); };
       const rm = q("#em-rm"); if (rm) rm.onclick = () => api(`${U}/settings`, { action: "remove" }).then(r => { D.settings = r.settings; draw(); toast("Back to Lectern's sender."); }, e => toast(e.message));

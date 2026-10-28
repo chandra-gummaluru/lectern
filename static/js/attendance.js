@@ -14,6 +14,7 @@ const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 export const ATTEND_ICON = SVG('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4.5"/>');
 const SCAN = SVG('<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 12h10"/>');
 const SEARCH = SVG('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>');
+const TRASH = SVG('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>');
 const CHECK = SVG('<path d="m5 12.5 4.5 4.5L19 7"/>');
 const FORMATS = ["codabar", "code_39", "code_128", "code_93", "itf", "ean_13", "ean_8", "upc_a", "qr_code"];
 const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -79,7 +80,7 @@ function cardFrame(v, cv) {
   return cv;
 }
 
-export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, e, steps, renderPath, here }) {
+export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, e, steps, renderPath, here, confirmBox }) {
   const Q = `owner=${encodeURIComponent(owner)}&offering=${encodeURIComponent(`${c}/${t}`)}&e=${encodeURIComponent(e)}`;
   const B = x => ({ owner: owner || undefined, offering: `${c}/${t}`, e, ...x });
   let O = null, S = null, timer = 0, cam = null, busy = false, lastCode = "", lastAt = 0;
@@ -104,11 +105,16 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
       <h3 class="lx-sec">Sessions</h3>
       ${O.sessions.length ? `<div class="at-sess">${O.sessions.slice().reverse().map(s => `<div class="at-row${s.stopped ? "" : " live"}">
           <span class="lt-cmt-av" aria-hidden="true">${esc(ini(s.by))}</span>
-          <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`}</p></div>
-          <span class="at-n"><b>${s.count}</b> in</span></div>`).join("")}</div>`
+          <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-del="${s.id}" title="Delete this session" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
         : `<p class="lx-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`}
     </div>`;
     const q = s => box.querySelector(s);
+    box.querySelectorAll("[data-del]").forEach(b => { b.onclick = async () => {
+      const se = O.sessions.find(x => String(x.id) === b.dataset.del); if (!se) return;
+      const ok = await confirmBox("Delete this session?", `${esc(se.by)}'s session${se.note ? ` (${esc(se.note)})` : ""}${se.stopped ? "" : ", still going,"} goes, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in aren't in any more.`, "Delete");
+      if (!ok) return;
+      api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(() => { if (here()) drawOverview(); }); }, x => toast(x.message));
+    }; });
     if (starting) {
       q("#at-note").focus();
       q("#at-cancel").onclick = () => drawOverview();

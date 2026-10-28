@@ -15,6 +15,7 @@ Kept in the database (db.py's attendance tables, not the offering's files): it's
   GET  /api/attendance?owner&offering&e                  the evaluation, its total and its sessions
   POST /api/attendance/start   {owner, offering, e, note}  a new session (yours)
   POST /api/attendance/stop    {owner, offering, session}
+  POST /api/attendance/delete  {owner, offering, session}   instructors: a session, and who it put in
   POST /api/attendance/lookup  {owner, offering, e, card}  who the card is, and whether they're in already
   GET  /api/attendance/search?owner&offering&e&q          students by name or number
   POST /api/attendance/identify {owner, offering, e, text} whose student ID it is, by what's printed on it (the scanner reads
@@ -62,15 +63,21 @@ def team_api(fn):
     return run
 
 
-def _team(d):
-    """The offering, its owner and the viewer's role: anyone on its teaching team."""
+def _team(d, need=ROLES):
+    """The offering, its owner and the viewer's role: anyone on its teaching team (or, need: those roles)."""
     from .teams import role_of
     o = _offering(d.get("offering"))
     owner = _owner(d.get("owner")) if d.get("owner") else g.user["id"]
     role = role_of(g.user["id"], owner, o)
     if role not in ROLES:
         raise Refusal(404 if not role else 403, "Only the offering's teaching team can take attendance.")
+    if role not in need:
+        raise Refusal(403, "Only the offering's instructors can do that.")
+    g.att_role = role
     return owner, o
+
+
+LEADS = ("owner", "coordinator", "instructor")
 
 
 def _ev(book, e):
@@ -118,7 +125,7 @@ def overview():
                           (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.id) AS n
                    FROM attendance_sessions s WHERE s.owner_id = ? AND s.offering = ? AND s.eval = ? ORDER BY s.started""", (owner, o, e))
     total = db.one("SELECT COUNT(*) AS n FROM attendance WHERE owner_id = ? AND offering = ? AND eval = ?", (owner, o, e))["n"]
-    return jsonify(eval={"id": e, "name": ev.get("name") or e, "title": ev.get("title") or ""}, total=total, enrolled=len(_students(book)),
+    return jsonify(eval={"id": e, "name": ev.get("name") or e, "title": ev.get("title") or ""}, total=total, enrolled=len(_students(book)), canDelete=g.att_role in LEADS,
                    sessions=[{"id": s["id"], "by": s["user_name"], "mine": s["user_id"] == g.user["id"], "note": s["note"], "started": s["started"],
                               "stopped": s["stopped"], "count": s["n"]} for s in S])
 
@@ -157,6 +164,20 @@ def stop():
         db.run("UPDATE attendance_sessions SET stopped = ? WHERE id = ?", (time.time(), s["id"]))
     n = db.one("SELECT COUNT(*) AS n FROM attendance WHERE session_id = ?", (s["id"],))["n"]
     return jsonify(ok=True, count=n)
+
+
+@attendance_bp.post("/api/attendance/delete")
+@team_api
+def delete_session():
+    d = _args() or {}
+    owner, o = _team(d, LEADS)
+    s = db.one("SELECT * FROM attendance_sessions WHERE id = ? AND owner_id = ? AND offering = ?", (int(d.get("session") or 0), owner, o))
+    if not s:
+        raise Refusal(404, "That session isn't there any more.")
+    with db.transaction():
+        n = db.run("DELETE FROM attendance WHERE session_id = ?", (s["id"],)).rowcount
+        db.run("DELETE FROM attendance_sessions WHERE id = ?", (s["id"],))
+    return jsonify(ok=True, removed=n)
 
 
 @attendance_bp.post("/api/attendance/lookup")

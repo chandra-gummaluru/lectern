@@ -90,3 +90,17 @@ def test_a_card_read_by_its_text():
 def test_identify(gh):
     r = P(gh.client, "/identify", text="UNIVERSITY OF TORONTO MAYA CASTILLO").get_json()
     assert r["sure"] and r["students"][0]["num"] == "1001"
+
+
+def test_instructors_delete_a_session_and_who_it_put_in(gh):
+    me, sam = gh.client, ta(gh)
+    s1 = P(sam, "/start", note="BA 1170").get_json()["session"]
+    P(sam, "/mark", session=s1["id"], student="1001")
+    assert sam.get("/api/attendance?owner=chandra&offering=csc258/f26&e=mt").get_json()["canDelete"] is False
+    assert P(sam, "/delete", session=s1["id"]).status_code == 403                 # a TA: no
+    o = me.get("/api/attendance?owner=chandra&offering=csc258/f26&e=mt").get_json()
+    assert o["canDelete"] and o["total"] == 1
+    assert P(me, "/delete", session=s1["id"]).get_json()["removed"] == 1
+    o = me.get("/api/attendance?owner=chandra&offering=csc258/f26&e=mt").get_json()
+    assert o["total"] == 0 and o["sessions"] == []
+    assert P(sam, "/mark", session=s1["id"], student="1002").status_code == 404    # its scanner: it's gone

@@ -1252,3 +1252,5 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-cam .at-res > .at-panel { width: min(100%, 520px); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
 .at-cam.off .at-res { position: static; background: none; padding: 0; }
 .at-cam .at-res, .at-cam .at-res > .at-panel { box-sizing: border-box; } .at-cam .at-res > .at-panel { max-width: 100%; } .at-cam:has(.at-res:not(:empty)) .at-aim { display: none; }
+.at-row .at-del { flex: none; margin-left: 4px; }
+.at-row .at-del svg { width: 17px; height: 17px; }

@@ -580,7 +580,7 @@ function renderPage() {
       here: () => hashFor(S.route) === key, hashOf: x => hashFor({ ...x, o: r.o }) }); }
   if (r.page === "attend") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Attendance" }]);
     const key = hashFor(r);
-    return attendancePage({ $, esc, pageHTML, toast, go, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: r.e, renderPath, here: () => hashFor(S.route) === key,
+    return attendancePage({ $, esc, pageHTML, toast, go, confirmBox, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: r.e, renderPath, here: () => hashFor(S.route) === key,
       steps: [HOME_STEP, offeringStep(r.c, r.t), { label: "Evaluations", go: () => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: r.e, groupEd: "", student: "", stAcc: "", stFrom: "" } }) }] }); }
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id, api: Auth.api, owner: () => curOwner() || S.user.handle,

@@ -639,6 +639,13 @@ const PAGES = {
     setTimeout(() => seenUpd("requests"), 0);
     return `${path([["My Requests"]])}${head("My Requests", "Your accommodation and remark requests, and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
   },
+  // One of the student's requests (#myrequest/<id>), in the Item Head style: what they asked for, then the
+  // decision and the discussion with the teaching team, where they can reply.
+  myrequest(arg) {
+    if (!open("accommodations")) return lockedPage("accommodations", "My Requests");
+    setTimeout(() => MyRequest.start(arg), 0);
+    return `${path([["My Requests", "#accommodations"], ["Request"]])}<article class="ec-card rq-page" id="mr-card"><p class="hs-empty">Loading…</p></article>`;
+  },
 };
 
 const REQ_IC = {
@@ -660,7 +667,7 @@ function myRequests() {
       const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
       box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
         const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
-        return `<div class="wk-item wk-go ma-req st-${st}" data-go="#evaluation/${encodeURIComponent(r.eval)}" role="link" tabindex="0" title="Open ${esc(r.evalName || "the evaluation")}">
+        return `<div class="wk-item wk-go ma-req st-${st}" data-go="#myrequest/${encodeURIComponent(r.id)}" role="link" tabindex="0" title="Open this request">
           <div class="wk-b"><div class="ma-head"><span class="ma-kic">${rm ? REDO : HEART}</span><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p>
               <h3>${evalTitle({ name: r.evalName, title: (unitOf(r.eval) || {}).u?.title })}</h3><p class="ma-facts">${esc(facts)}</p><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></div>
             ${!rm && r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
@@ -668,6 +675,57 @@ function myRequests() {
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }
+
+const MyRequest = (() => {
+  const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const stamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }); };
+  const REPLY = svg('<path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 6 6v1"/>');
+  let R = null;
+  const thread = r => [
+    ...[...(r.history || []), ...(r.status !== "pending" ? [r] : [])].map(x => ({ t: x.decided || "", h: `<div class="ma-cmt"><span class="ma-av" aria-hidden="true">${esc(ini(x.decidedBy))}</span><div class="ma-cb"><p class="ma-ch"><b>${esc(x.decidedBy || "Your instructor")}</b><span>${esc(stamp(x.decided))}</span><span class="ma-v v-${esc(x.status)}">${esc(REQ_WORD[x.status] || "")}</span></p>${x.note ? `<div class="ma-cn">${markdown(x.note)}</div>` : ""}</div></div>` })),
+    ...(r.replies || []).map(x => ({ t: x.at || "", h: `<div class="ma-cmt you"><span class="ma-av" aria-hidden="true">${esc(ini(x.name))}</span><div class="ma-cb"><p class="ma-ch"><b>${esc(x.name || "You")}</b><span>${esc(stamp(x.at))}</span></p><div class="ma-cn">${markdown(x.text || "")}</div></div></div>` })),
+  ].sort((a, b) => String(a.t).localeCompare(String(b.t))).map(x => x.h).join("");
+  function draw() {
+    const card = document.getElementById("mr-card"); if (!card) return;
+    const r = R, st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
+    const u = (unitOf(r.eval) || {}).u || {};
+    const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${stamp(r.submitted)}`].filter(Boolean).join(" · ");
+    const T = thread(r);
+    card.innerHTML = `<header class="ec-head"><span class="hs-ic ec-ic">${rm ? REDO : HEART}</span><div class="ec-tt"><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p><h1>${evalTitle({ name: r.evalName, title: u.title })}</h1><p class="ec-subline">${esc(facts)}</p></div><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></header>
+      <h2 class="ec-sec">What You Asked For</h2><div>${!rm && r.kind === "standard" ? `<div class="mr-ask"><p>${esc(r.standard || "The standard accommodation")}</p></div>` : `<div class="mr-ask">${markdown(r.details || "")}</div>`}</div>
+      <h2 class="ec-sec">Decision and Discussion</h2><div>
+        ${T ? `<div class="mr-thread">${T}</div>` : `<p class="hs-empty mr-none">No decision yet: your instructor will look at it. You'll get an email when it's decided.</p>`}
+        <div class="mr-reply" id="mr-reply"><button type="button" class="mr-reply-btn" id="mr-rbtn">${REPLY}Reply</button></div></div>`;
+    document.getElementById("mr-rbtn").onclick = compose;
+    document.title = `${r.evalName || "Request"} · ${D.course.code || D.course.title}`;
+  }
+  function compose() {
+    const box = document.getElementById("mr-reply");
+    box.innerHTML = `<div class="mr-compose"><div id="mr-rt"></div><p class="rq-err" id="mr-err" role="alert"></p>
+      <div class="mr-foot"><span class="mr-note">Your instructor sees it in Lectern.</span><button type="button" class="hb-btn" id="mr-cancel">Cancel</button><button type="button" class="hb-btn primary" id="mr-send">Reply</button></div></div>`;
+    let rt = null;
+    import("/static/js/richtext.js").then(m => { rt = m.richText(document.getElementById("mr-rt"), { value: "", placeholder: "Write a reply…", label: "Reply" }); setTimeout(() => rt.el.focus(), 0); });
+    document.getElementById("mr-cancel").onclick = draw;
+    const send = document.getElementById("mr-send");
+    send.onclick = () => {
+      const text = rt ? rt.get().trim() : "";
+      if (!text) { document.getElementById("mr-err").textContent = "Write a reply first."; return; }
+      send.disabled = true; send.textContent = "Sending…";
+      fetch(`${root.dataset.api}/accommodations/${encodeURIComponent(R.id)}/reply`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
+        .then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "Your reply couldn't be sent. Try again in a moment.")))))
+        .then(d => { R = d.request; draw(); }, e => { send.disabled = false; send.textContent = "Reply"; document.getElementById("mr-err").textContent = e.message; });
+    };
+  }
+  function start(id) {
+    fetch(`${root.dataset.api}/accommodations`, { credentials: "same-origin" }).then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "Your requests couldn't be loaded. Try again in a moment.")))))
+      .then(d => { const card = document.getElementById("mr-card"); if (!card) return; R = (d.requests || []).find(x => x.id === id);
+        if (!R) { card.innerHTML = `<p class="hs-empty">That request isn't there any more. <a href="#accommodations">See your requests</a>.</p>`; return; }
+        const p = document.querySelector(".hs-path b:last-child, .hb-path b:last-child"); if (p) p.textContent = R.evalName || "Request";
+        draw(); },
+      e => { const card = document.getElementById("mr-card"); if (card) card.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
+  }
+  return { start };
+})();
 
 // ── About the Course's week: a calendar of the sections' meetings and the office hours ───────
 const minutes = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || "")); return m ? +m[1] * 60 + +m[2] : null; };
@@ -693,24 +751,34 @@ function weekCalendar(G, T) {
       return `<button type="button" class="cal-ev k-${esc(x.e.kind)}${x.e.mine ? " mine" : ""}" data-ev="${x.i}" style="top:${px(x.e.a)}px;height:${Math.max(22, px(x.e.b) - px(x.e.a) - 3)}px;left:calc(${x.k / n * 100}% + 2px);width:calc(${100 / n}% - 4px)" title="${esc(`${x.e.title}, ${x.e.start}–${x.e.end}${x.e.where ? `, ${x.e.where}` : ""}`)}">
         <b><span class="cal-ic">${x.e.kind === "office" ? OH_IC : KIND_ICON[x.e.kind] || KIND_ICON.other}</span>${esc(x.e.title)}</b><span>${esc(x.e.start)}–${esc(x.e.end)}</span>${x.e.where ? `<span>${esc(x.e.where)}</span>` : ""}</button>`; }).join(""); };
   const hours = []; for (let m = lo; m < hi; m += 60) hours.push(m);
-  return `<article class="ec-card cal-card"><div class="cal-scroll"><div class="cal" style="--n:${days.length}">
+  return `<article class="ec-card cal-card"><div class="cal-stage"><div class="cal-scroll"><div class="cal" style="--n:${days.length}">
       <div class="cal-h"></div>${days.map(d => `<div class="cal-h">${DAY3[d]}</div>`).join("")}
       <div class="cal-times" style="height:${px(hi)}px">${hours.map(m => `<span style="top:${px(m)}px">${String(m / 60).padStart(2, "0")}:00</span>`).join("")}</div>
       ${days.map(d => `<div class="cal-day" style="height:${px(hi)}px">${hours.map(m => `<i style="top:${px(m)}px"></i>`).join("")}${col(d)}</div>`).join("")}
-    </div></div>
-    <div class="cal-more" id="cal-more"><p class="cal-hint">Click a meeting to see more.</p></div>
-    ${E.some(e => e.mine) ? `<div class="cal-key"><span><i></i>Yours</span></div>` : ""}
+    </div></div><div class="cal-det" id="cal-det" hidden></div></div>
+    <div class="cal-key">${E.some(e => e.mine) ? `<span><i></i>Yours</span>` : ""}<span class="cal-hint">Click a meeting for its details.</span></div>
   </article>`;
 }
+// A meeting's details cover the calendar (the same size), with Back (or Esc) to the week.
+function calClose() { const d = document.getElementById("cal-det"); if (!d || d.hidden) return; d.hidden = true; d.closest(".cal-stage").classList.remove("open"); const on = document.querySelector(".cal-ev.on"); if (on) { on.classList.remove("on"); on.focus(); } }
+document.addEventListener("keydown", e => { if (e.key === "Escape") calClose(); });
 document.addEventListener("click", e => {
+  if (e.target.closest("#cal-back")) return calClose();
   const b = e.target.closest(".cal-ev"); if (!b) return;
-  const x = CAL_EV[+b.dataset.ev], box = document.getElementById("cal-more"); if (!x || !box) return;
+  const x = CAL_EV[+b.dataset.ev], box = document.getElementById("cal-det"); if (!x || !box) return;
   document.querySelectorAll(".cal-ev.on").forEach(y => y.classList.remove("on")); b.classList.add("on");
   const PIN = svg('<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>');
   const CLOCK = svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>');
-  box.innerHTML = `<div class="cal-det${x.mine ? " mine" : ""}"><p class="hs-kick">${esc(x.kick)}</p><h3>${esc(x.kind === "office" ? `${x.who}'s Office Hours` : x.title)}</h3>
-    ${x.kind !== "office" && x.who ? `<p class="ab-who">${esc(x.who)}</p>` : ""}
-    <div class="ab-times ab-contact"><div class="ab-time"><span class="ec-wd"><span class="hs-ic sm">${CLOCK}</span>${esc(DAY3[x.day])}, ${esc(x.start)}–${esc(x.end)}</span>${x.where ? `<span class="ec-wd"><span class="hs-ic sm">${PIN}</span>${x.map ? `<a href="${esc(x.map)}" target="_blank" rel="noopener" title="${esc(x.address || "On the map")}">${esc(x.where)}</a>` : esc(x.where)}</span>` : ""}</div></div></div>`;
+  const BACK = svg('<path d="m15 6-6 6 6 6"/>');
+  const office = x.kind === "office";
+  const all = CAL_EV.filter(y => y.kind === x.kind && y.title === x.title).sort((p, q) => p.day - q.day || p.a - q.a);
+  const meets = !office && all.length > 1 ? all.map(y => `${DAY3[y.day]} ${y.start}–${y.end}${y.where && y.where !== x.where ? ` (${y.where})` : ""}`).join(", ") : "";
+  box.innerHTML = `<button type="button" class="hb-btn cal-back" id="cal-back">${BACK}Back to the Week</button>
+    <header class="ec-head"><span class="hs-ic ec-ic">${office ? OH_IC : KIND_ICON[x.kind] || KIND_ICON.other}</span><div class="ec-tt"><p class="hs-kick">${esc(x.kick)}</p><h1>${esc(office ? x.who : x.title)}</h1>${!office && x.who ? `<p class="ec-subline">${esc(x.who)}</p>` : ""}</div>${x.mine ? `<span class="cal-yours">${office ? "Your instructor" : "Your section"}</span>` : ""}</header>
+    <div class="cal-facts"><p><span class="hs-ic sm">${CLOCK}</span>${esc(DAY3[x.day])}, ${esc(x.start)}–${esc(x.end)}</p>${x.where ? `<p><span class="hs-ic sm">${PIN}</span>${x.map ? `<a href="${esc(x.map)}" target="_blank" rel="noopener" title="${esc(x.address || "On the map")}">${esc(x.where)}</a>` : esc(x.where)}</p>` : ""}</div>
+    ${meets ? `<p class="cal-also">This section meets: <b>${esc(meets)}</b></p>` : ""}`;
+  box.hidden = false; box.closest(".cal-stage").classList.add("open");
+  document.getElementById("cal-back").focus();
 });
 
 // ── What's new (replies to discussions they're in; requests decided): a count on the account button ──

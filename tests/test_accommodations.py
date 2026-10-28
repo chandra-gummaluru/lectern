@@ -363,3 +363,19 @@ def test_requests_close_when_the_marks_are_out(gh):
     gh.put("csc258/f26/grades.json", json.dumps(b))
     r = st.post(f"{HUB}/accommodation", json=d, headers=H)
     assert r.status_code == 410 and "marks came out" in r.get_json()["error"]
+
+
+def test_a_student_replies_to_their_request(gh):
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    assert ask(st, "maya.castillo@mail.utoronto.ca", e="a1", id="1001", first="Maya", last="Castillo", kind="alternate", details="Later, please.").status_code == 201
+    rid = st.get(f"{HUB}/accommodations").get_json()["requests"][0]["id"]
+    assert st.post(f"{HUB}/accommodations/{rid}/reply", json={"text": "  "}, headers=H).status_code == 400
+    r = st.post(f"{HUB}/accommodations/{rid}/reply", json={"text": "Also, **Thursday** works best."}, headers=H)
+    assert r.status_code == 200 and r.get_json()["request"]["replies"][0]["text"] == "Also, **Thursday** works best."
+    got = requests_of(gh)[-1]
+    assert got["unread"] is True and got["replies"][0]["name"] == "Maya Castillo"
+    mine = st.get(f"{HUB}/accommodations").get_json()["requests"][0]
+    assert mine["replies"][0]["text"].startswith("Also") and mine["history"] == [] and "unread" not in mine
+    # Someone else can't reply to it.
+    other = hub_student("zoe.ng@mail.utoronto.ca")
+    assert other.post(f"{HUB}/accommodations/{rid}/reply", json={"text": "Hi"}, headers=H).status_code == 404

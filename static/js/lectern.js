@@ -798,10 +798,10 @@ function offeringPage(c, t) {
   if (acc && o.grades) readAccom(c, t).then(d => {
     if (S.route.page !== "offering" || S.route.c !== c || S.route.t !== t || !d) return;
     [["#lt-accom-sum", "#lt-accom", false], ["#lt-rmk-sum", "#lt-rmk", true]].forEach(([sum, btn, rm]) => {
-      const b = $(btn), n = d.requests.filter(x => x.status === "pending" && (x.type === "remark") === rm).length;
+      const b = $(btn), n = d.requests.filter(x => (x.status === "pending" || x.unread) && (x.type === "remark") === rm).length;
       if (!b || !n) return;   // how many are waiting for a decision: a count on the button's corner
       b.classList.add("primary", "lt-has-badge");
-      b.insertAdjacentHTML("beforeend", `<span class="lt-badge" title="${n} waiting for a decision" aria-label="${n} waiting for a decision">${n > 99 ? "99+" : n}</span>`);
+      b.insertAdjacentHTML("beforeend", `<span class="lt-badge" title="${n} waiting for you (a decision, or a reply)" aria-label="${n} waiting for you">${n > 99 ? "99+" : n}</span>`);
     });
   }).catch(() => {});
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
@@ -1093,7 +1093,7 @@ async function accomPage(c, t, q = "", k = "") {
         <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision and Discussion</h3>
-        ${D.length ? `<div class="lt-req-hist">${D.map(decisionHTML).join("")}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
+        ${D.length || replies(r).length ? `<div class="lt-req-hist">${threadHTML(r)}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
         <div class="lt-req-reply" id="acc-reply-box"><button type="button" class="lt-reply-btn" id="acc-reply">${REPLY_IC}${pend ? "Decide" : "Reply"}</button></div>
       </div>`;
     // Reply: like a discussion's, a rich text box, with the decision it goes with (each reply is a decision,
@@ -1145,11 +1145,18 @@ async function accomPage(c, t, q = "", k = "") {
   const decisionHTML = r => `<div class="lt-cmt lt-cmt-staff"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(r.decidedBy))}</span>
       <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(r.decidedBy || "The teaching team")}</b>${r.decided ? `<span class="lt-cmt-t">${esc(fmtStamp(r.decided))}</span>` : ""}<span class="lt-cmt-v v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></p>
         ${r.note ? `<div class="lt-cmt-n lt-cmt-md">${window.HubView ? window.HubView.markdown(r.note) : esc(r.note)}</div>` : ""}</div></div>`;
+  // The discussion: the decisions (each reply from the teaching team is one) and the student's replies, in order.
+  const replies = r => (Array.isArray(r.replies) ? r.replies : []);
+  const studentReplyHTML = x => `<div class="lt-cmt"><span class="lt-cmt-av" aria-hidden="true">${esc(initials(x.name))}</span>
+      <div class="lt-cmt-b"><p class="lt-cmt-h"><b>${esc(x.name || "The student")}</b>${x.at ? `<span class="lt-cmt-t">${esc(fmtStamp(x.at))}</span>` : ""}</p>
+        <div class="lt-cmt-n lt-cmt-md">${window.HubView ? window.HubView.markdown(x.text || "") : esc(x.text)}</div></div></div>`;
+  const threadHTML = r => [...decisionsOf(r).map(x => ({ t: x.decided || "", h: decisionHTML(x) })), ...replies(r).map(x => ({ t: x.at || "", h: studentReplyHTML(x) }))]
+    .sort((a, b) => String(a.t).localeCompare(String(b.t))).map(x => x.h).join("");
   const lastWord = r => r.status === "pending" ? "Waiting for a decision" : `${STATUS[r.status]}${r.decidedBy ? ` by ${r.decidedBy}` : ""}${r.decided ? ` · ${fmtStamp(r.decided)}` : ""}${(r.history || []).length ? ` · changed ${r.history.length} time${r.history.length > 1 ? "s" : ""}` : ""}`;
   const reqCard = r => `<article class="lx-row lt-req hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
       <span class="lt-req-ic" title="${esc(STATUS[r.status] || r.status)}" aria-label="${esc(STATUS[r.status] || r.status)}">${ST_ICON[r.status] || ST_ICON.pending}</span>
       <div class="lx-main hd-main"><div class="hd">
-        <p class="lx-kind">${esc(r.evalName)} · ${esc(KIND(r))}</p>
+        <p class="lx-kind">${r.unread ? `<span class="lt-new">New reply</span>` : ""}${esc(r.evalName)} · ${esc(KIND(r))}</p>
         <h3>${esc(r.first)} ${esc(r.last)}</h3>
         <p class="lx-when">${esc(fmtStamp(r.submitted))} · ${esc(r.student)}</p></div>
         <p class="lx-clip">${esc(r.kind === "standard" ? r.standard : plainOf(r.details))}</p>

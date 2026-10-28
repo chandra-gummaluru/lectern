@@ -558,13 +558,62 @@ def hub_mine(handle, course, term):
         text, _ = Repo(uid, "priv").read_text(f"{o}/{FILE}")
         d = _parse(text)
         me = str(email).strip().lower()
-        keep = ("id", "type", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note")
-        mine = [{k: r.get(k, "") for k in keep} for r in d["requests"] if isinstance(r, dict) and str(r.get("email") or "").strip().lower() == me]
+        mine = [_for_student(r) for r in d["requests"] if isinstance(r, dict) and str(r.get("email") or "").strip().lower() == me]
         mine.sort(key=lambda r: str(r.get("submitted") or ""), reverse=True)
         return jsonify(requests=mine)
     except StoreError as e:
         return _err(Refusal(e.status, str(e)))
     except Refusal as x:
+        return _err(x)
+
+
+MAX_REPLIES = 100
+
+
+def _for_student(r):
+    """A request as its student sees it: what they asked, every decision (the earlier ones too) and their replies."""
+    keep = ("id", "type", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note")
+    out = {k: r.get(k, "") for k in keep}
+    out["history"] = [{k: h.get(k, "") for k in ("status", "decided", "decidedBy", "note")} for h in (r.get("history") or []) if isinstance(h, dict)]
+    out["replies"] = [{k: x.get(k, "") for k in ("at", "name", "text")} for x in (r.get("replies") or []) if isinstance(x, dict)]
+    return out
+
+
+# A student's reply to their request (its discussion, after a decision or while it waits): rich text, kept on the
+# request ("replies"); it marks the request unread for the teaching team (a count on Lectern's button) until one
+# of them replies. Nobody is emailed (the instructor checks Lectern).
+#   POST /api/hub/<handle>/<course>/<term>/accommodations/<id>/reply   { text }
+@accom_bp.post("/api/hub/<handle>/<course>/<term>/accommodations/<rid>/reply")
+def hub_reply(handle, course, term, rid):
+    try:
+        d = _body()
+        _limit("submit")
+        uid, o, email = _hub_student(handle, course, term)
+        text_ = clean_details(d.get("text"))
+        if not text_:
+            raise Refusal(400, "Write a reply first.")
+        if len(text_) > MAX_DETAILS:
+            raise Refusal(400, f"That's too long: keep it under {MAX_DETAILS} characters.")
+        me = str(email).strip().lower()
+
+        def add(f):
+            r = next((x for x in f["requests"] if isinstance(x, dict) and x.get("id") == rid and str(x.get("email") or "").strip().lower() == me), None)
+            if not r:
+                raise Refusal(404, "That request isn't there any more.")
+            reps = r.get("replies") if isinstance(r.get("replies"), list) else []
+            if len(reps) >= MAX_REPLIES:
+                raise Refusal(429, "This request has a lot of replies. Please talk to your instructor.", "too-many")
+            r["replies"] = reps + [{"at": _now(), "name": f"{r.get('first') or ''} {r.get('last') or ''}".strip(), "text": text_}]
+            r["unread"] = True
+            return dict(r)
+
+        r = _update(uid, o, add, lambda r: f"Reply from {r.get('student')} on their request for {r.get('evalName')}", "student")
+        return jsonify(ok=True, request=_for_student(r))
+    except StoreError as e:
+        return _err(Refusal(e.status, str(e)))
+    except Refusal as x:
+        return _err(x)
+    except AuthRefusal as x:
         return _err(x)
 
 
@@ -727,7 +776,7 @@ def decide():
             if r.get("status") in ("approved", "rejected"):   # a changed decision: the earlier one stays, as history
                 r["history"] = (r.get("history") if isinstance(r.get("history"), list) else [])[-49:] + [
                     {"status": r["status"], "decided": r.get("decided", ""), "decidedBy": r.get("decidedBy", ""), "note": r.get("note", "")}]
-            r.update(status=decision, decided=_now(), decidedBy=who, note=note)
+            r.update(status=decision, decided=_now(), decidedBy=who, note=note, unread=False)
             return dict(r)
 
         r = _update(owner, o, apply,

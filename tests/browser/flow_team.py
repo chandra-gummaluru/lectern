@@ -128,10 +128,10 @@ def main():
         assert v.locator(".cal-ev.k-lecture").count() == 2 and v.locator(".cal-ev.k-tutorial").count() == 1 and v.locator(".cal-ev.k-office").count() == 1
         expect(v.locator(".cal-ev.k-lecture").first).to_contain_text("LEC0101"); expect(v.locator(".cal-ev.k-lecture").first).to_contain_text("10:00–11:00")
         v.locator(".cal-ev.k-lecture").first.click()
-        expect(v.locator("#cal-more")).to_contain_text("Chandra Gummaluru")
-        expect(v.locator("#cal-more a[href*='openstreetmap.org']")).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map
+        expect(v.locator("#cal-det")).to_contain_text("Chandra Gummaluru")
+        expect(v.locator("#cal-det a[href*='openstreetmap.org']")).to_have_text("BA 1170, Bahen Centre for Information Technology")   # linked to the map
         expect(v.locator(".hb-main")).to_contain_text("BA 4010")
-        v.wait_for_timeout(700); v.screenshot(path=f"{OUT}/192-hub-groups.png", full_page=True)
+        v.wait_for_timeout(700); v.locator(".cal-card").screenshot(path=f"{OUT}/cal-det.png"); v.click("#cal-back"); assert v.locator("#cal-det").is_hidden(); v.screenshot(path=f"{OUT}/192-hub-groups.png", full_page=True)
         print("4 the hub shows the sections, office hours and team")
         b.close()
     print("\n".join(errors) or "no page errors")

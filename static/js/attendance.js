@@ -88,44 +88,50 @@ export function attendancePage({ $, esc, pageHTML, toast, go, api, owner, c, t, 
   pageHTML(`<div class="lt-in lt-att"><div class="lx ed"><div id="at-box"><div class="lt-loading" style="min-height:160px">Reading attendance…</div></div></div></div>`);
 
   const load = () => api(`/api/attendance?${Q}`).then(d => { O = d; return d; });
-  function poll() { clearTimeout(timer); timer = setTimeout(() => { if (!here()) return stopCam(); load().then(() => { if (!here()) return; if (S) drawCounts(); else if (!writing) drawOverview(); poll(); }, () => poll()); }, 5000); }
+  function poll() { clearTimeout(timer); timer = setTimeout(() => { if (!here()) return stopCam(); load().then(() => { if (!here()) return; if (S) drawCounts(); else refreshOverview(); poll(); }, () => poll()); }, 5000); }
 
   // ── The overview: the total, and every session ──
-  // (While a note is being written for a new session, the overview isn't drawn again under it.)
-  let writing = false;
-  function drawOverview(starting = false) {
-    const box = $("#at-box"); if (!box) return;
-    writing = starting;
-    renderPath([...steps, { label: `${O.eval.name}: Attendance` }]);
-    const mineOpen = O.sessions.find(s => s.mine && !s.stopped);
-    box.innerHTML = `<div class="lx-editor lt-req-ed at-card">
-      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${titleHTML(O.eval)}</h2></div></div>
-      <p class="lt-req-meta"><span class="at-total">${O.total}</span> of ${O.enrolled} students in · ${O.sessions.length} session${O.sessions.length === 1 ? "" : "s"}</p>
-      ${starting ? `<div class="at-start"><label class="lx-f">Note for this session<input type="text" id="at-note" maxlength="120" placeholder="e.g. BA 1170, last names A–L" autocomplete="off"></label>
-          <p class="lx-help">Who you're taking attendance of, so it's easy to tell the sessions apart later.</p>
-          <div class="lt-req-acts"><button type="button" class="lt-btn" id="at-cancel">Cancel</button><button type="button" class="lt-btn primary" id="at-go">${SCAN}Start Scanning</button></div></div>`
-        : `<div class="at-acts">${mineOpen ? `<button type="button" class="lt-btn primary" id="at-resume">${SCAN}Continue Scanning</button>` : `<button type="button" class="lt-btn primary" id="at-new">${SCAN}Start Attendance</button>`}</div>`}
-      <h3 class="lx-sec">Sessions</h3>
-      ${O.sessions.length ? `<div class="at-sess">${O.sessions.slice().reverse().map(s => `<div class="at-row${s.stopped ? "" : " live"}">
-          <span class="lt-cmt-av" aria-hidden="true">${esc(ini(s.by))}</span>
-          <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-del="${s.id}" title="Delete this session" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
-        : `<p class="lx-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`}
-    </div>`;
-    const q = s => box.querySelector(s);
+  // The overview: the total; a new session's information and Start Scanning (or, yours still going, Continue
+  // Scanning); and every session. It's kept up to date in place, so what's being typed stays.
+  const metaHTML = () => `${O.total} of ${O.enrolled} students in · ${O.sessions.length} session${O.sessions.length === 1 ? "" : "s"}`;
+  const sessHTML = () => O.sessions.length ? `<div class="at-sess">${O.sessions.slice().reverse().map(s => `<div class="at-row${s.stopped ? "" : " live"}">
+      <span class="lt-cmt-av" aria-hidden="true">${esc(ini(s.by))}</span>
+      <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-del="${s.id}" title="Delete this session" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
+    : `<p class="lx-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`;
+  const mine = () => O.sessions.find(s => s.mine && !s.stopped);
+  function bindSessions(box) {
     box.querySelectorAll("[data-del]").forEach(b => { b.onclick = async () => {
       const se = O.sessions.find(x => String(x.id) === b.dataset.del); if (!se) return;
       const ok = await confirmBox("Delete this session?", `${esc(se.by)}'s session${se.note ? ` (${esc(se.note)})` : ""}${se.stopped ? "" : ", still going,"} goes, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in aren't in any more.`, "Delete");
       if (!ok) return;
       api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(() => { if (here()) drawOverview(); }); }, x => toast(x.message));
     }; });
-    if (starting) {
-      q("#at-note").focus();
-      q("#at-cancel").onclick = () => drawOverview();
-      const goB = q("#at-go");
-      const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: q("#at-note").value })).then(d => { S = d.session; scanner(); }, x => { goB.disabled = false; toast(x.message); }); };
-      goB.onclick = startIt; q("#at-note").onkeydown = ev => { if (ev.key === "Enter") startIt(); };
-    } else if (mineOpen) q("#at-resume").onclick = () => { S = mineOpen; scanner(); };
-    else q("#at-new").onclick = () => drawOverview(true);
+  }
+  function refreshOverview() {   // the poll: the total and the sessions, in place
+    const box = $("#at-box"), m = $("#at-meta"), l = $("#at-sess-box"); if (!box || !m || !l) return drawOverview();
+    if (!!mine() !== !!box.querySelector("#at-resume") && !(($("#at-note") || {}).value)) return drawOverview();
+    m.textContent = metaHTML(); l.innerHTML = sessHTML(); bindSessions(l);
+  }
+  function drawOverview() {
+    const box = $("#at-box"); if (!box) return;
+    renderPath([...steps, { label: `${O.eval.name}: Attendance` }]);
+    const open = mine();
+    box.innerHTML = `<div class="lx-editor lt-req-ed at-card">
+      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${ATTEND_ICON}</span><div class="gr-tt"><p class="gr-kind">Attendance</p><h2>${titleHTML(O.eval)}</h2></div></div>
+      <p class="lt-req-meta" id="at-meta">${metaHTML()}</p>
+      ${open ? `<div class="at-acts"><button type="button" class="lt-btn primary" id="at-resume">${SCAN}Continue Scanning</button></div>`
+        : `<div class="at-start"><label class="lx-f">Session Information<input type="text" id="at-note" maxlength="120" placeholder="e.g. BA 1170, last names A–L" autocomplete="off"></label>
+          <p class="lx-help">Who you're taking attendance of, so it's easy to tell the sessions apart later.</p>
+          <div class="lt-req-acts"><button type="button" class="lt-btn primary" id="at-go">${SCAN}Start Scanning</button></div></div>`}
+      <h3 class="lx-sec">Sessions</h3>
+      <div id="at-sess-box">${sessHTML()}</div>
+    </div>`;
+    const q = x => box.querySelector(x);
+    bindSessions(box);
+    if (open) { q("#at-resume").onclick = () => { S = open; scanner(); }; return; }
+    const goB = q("#at-go");
+    const startIt = () => { goB.disabled = true; api("/api/attendance/start", B({ note: q("#at-note").value })).then(d => { S = d.session; scanner(); }, x => { goB.disabled = false; toast(x.message); }); };
+    goB.onclick = startIt; q("#at-note").onkeydown = ev => { if (ev.key === "Enter") startIt(); };
   }
 
   // ── Scanning ──

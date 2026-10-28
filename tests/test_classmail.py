@@ -176,3 +176,15 @@ def test_email_settings_reply_to_and_signature(client, course, smtp):
     client.post(f"{U}/send", json={"to": "all", "subject": "Hi", "body": "Hello."}, headers=H)
     m = smtp["many"][-1]
     assert m["reply_to"] == "csc258@utoronto.ca" and m["body"].rstrip().endswith("— The CSC258 team")
+
+
+def test_a_rich_text_signature_is_plain_text_and_html(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26"
+    client.post(f"{U}/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    client.post(f"{U}/prefs", json={"replyTo": "", "signature": "— **The CSC258 team**\n[Course page](https://example.com/c)"}, headers=H)
+    client.post(f"{U}/send", json={"to": "all", "subject": "Hi", "body": "Hello <all>."}, headers=H)
+    b = smtp["many"][-1]["body"]
+    assert b.rstrip().endswith("— The CSC258 team\nCourse page (https://example.com/c)") and "**" not in b
+    assert "<b>The CSC258 team</b>" in b.html and '<a href="https://example.com/c">Course page</a>' in b.html and "Hello &lt;all&gt;." in b.html
+    msg = mailer._message({"from": "x@y.ca"}, "s@u.ca", "Hi", b)
+    assert msg.is_multipart() and msg.get_body(("html",)) is not None

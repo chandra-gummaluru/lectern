@@ -1099,3 +1099,4 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .em-form { margin-top: 12px; }
 .em-form textarea { width: 100%; box-sizing: border-box; min-height: 76px; padding: 8px 10px; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); color: var(--home-ink); font: 14px/1.45 var(--font-ui); resize: vertical; }
 .em-foot { margin: 12px 0 0; }
+.em-sig .hb-md > * { margin: 0; } .em-sig .hb-md > * + * { margin-top: 6px; } .em-sig .hb-md { margin: 0; }

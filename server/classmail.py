@@ -78,7 +78,55 @@ def student_mail(owner_id, off, to, subject, text_, kind, reply_to=None):
 
 
 def signed(p, text_):
-    return f"{text_.rstrip()}\n\n{p['signature'].strip()}\n" if p.get("signature", "").strip() else text_
+    """The email with the offering's signature at the end. The signature is rich text (the Markdown of
+    richtext.js: **bold**, *italic*, [text](url), "- " and "1. " lists): the plain-text email gets it as
+    readable text, and an HTML part (mailer.Mail.html) gets it drawn."""
+    sig = (p.get("signature") or "").strip()
+    if not sig:
+        return text_
+    return mailer.Mail(f"{text_.rstrip()}\n\n{md_plain(sig)}\n",
+                       html=f"{text_html(text_)}<br>{md_html(sig)}")
+
+
+_LINK = re.compile(r"\[([^\]]*)\]\(((?:https?://|mailto:)[^)\s]+)\)")
+
+
+def md_plain(md):
+    md = _LINK.sub(lambda m: m.group(1) if m.group(1) == m.group(2) else f"{m.group(1)} ({m.group(2)})", md)
+    return re.sub(r"\*\*(.+?)\*\*|\*(.+?)\*", lambda m: m.group(1) or m.group(2), md)
+
+
+def _esc(x):
+    return x.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+def _inline(x):
+    out, at = [], 0
+    for m in _LINK.finditer(x):
+        out.append(_esc(x[at:m.start()]))
+        out.append(f'<a href="{_esc(m.group(2))}">{_esc(m.group(1))}</a>')
+        at = m.end()
+    out.append(_esc(x[at:]))
+    h = "".join(out)
+    h = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", h)
+    return re.sub(r"\*(.+?)\*", r"<i>\1</i>", h).replace("\n", "<br>")
+
+
+def md_html(md):
+    parts = []
+    for blk in re.split(r"\n\s*\n", md.strip()):
+        lines = blk.split("\n")
+        if all(re.match(r"\s*[-*] ", l) for l in lines):
+            parts.append("<ul>" + "".join("<li>" + _inline(re.sub(r"^\s*[-*] ", "", l)) + "</li>" for l in lines) + "</ul>")
+        elif all(re.match(r"\s*\d+[.)] ", l) for l in lines):
+            parts.append("<ol>" + "".join("<li>" + _inline(re.sub(r"^\s*\d+[.)] ", "", l)) + "</li>" for l in lines) + "</ol>")
+        else:
+            parts.append(f"<p style=\"margin:0 0 10px\">{_inline(blk)}</p>")
+    return "".join(parts)
+
+
+def text_html(t):
+    return "".join('<p style="margin:0 0 10px">' + _esc(b).replace("\n", "<br>") + "</p>" for b in re.split(r"\n\s*\n", t.strip()))
 
 
 def _settings_json(owner_id, off):

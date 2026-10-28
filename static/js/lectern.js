@@ -1209,8 +1209,8 @@ async function partsCard(c, t) {
   const cur = id => tabs()[id] || (id === "accommodations" ? "signed-in" : "public");
   const draw = () => {
     box.innerHTML = `<div class="pp-rows">${HUB_PARTS.map(([id, name]) => `<div class="pp-row${cur(id) === "off" ? " off" : ""}"><b>${esc(name)}</b>
-      <span class="lx-seg" role="group" aria-label="${esc(name)}">${[...(id === "accommodations" ? [] : [["public", "Public"]]), ["signed-in", "Signed In"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-part="${id}" data-v="${v}" aria-pressed="${cur(id) === v}">${l}</button>`).join("")}</span></div>`).join("")}</div>
-      <p class="lx-help">Public: anyone with the link. Signed In: students in the course, and the teaching team. Off: not on the course page.</p>`;
+      <span class="lx-seg" role="group" aria-label="${esc(name)}">${[...(id === "accommodations" ? [] : [["public", "Public"]]), ["signed-in", "Enrolled"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-part="${id}" data-v="${v}" aria-pressed="${cur(id) === v}">${l}</button>`).join("")}</span></div>`).join("")}</div>
+      <p class="lx-help">Public: anyone with the link. Enrolled: students in the course (signed in), and the teaching team. Off: not on the course page.</p>`;
     box.querySelectorAll("[data-part]").forEach(b => { b.onclick = async () => {
       if (cur(b.dataset.part) === b.dataset.v) return;
       box.querySelectorAll("[data-part]").forEach(x => { x.disabled = true; });

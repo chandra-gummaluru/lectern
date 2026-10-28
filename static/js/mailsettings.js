@@ -9,6 +9,10 @@
    Sign-in and confirmation codes always go: they're how students get in. */
 
 
+import { richText } from "./richtext.js";
+
+const md = x => (window.HubView && window.HubView.markdown ? window.HubView.markdown(x) : String(x).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]));
+
 export function emailCard({ box, esc, toast, api, owner, c, t }) {
   const U = `/api/mail/${encodeURIComponent(owner)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}`;
   let D = null, editing = false;
@@ -32,24 +36,24 @@ export function emailCard({ box, esc, toast, api, owner, c, t }) {
   function draw() {
     const s = D.settings, own = s.source === "offering", sig = (D.prefs.signature || "").trim();
     const who = s.host ? `${s.from ? esc(s.from) : "No From address"}` : "Not set up: nothing goes to students until it is.";
-    const via = s.host ? `<span class="em-via">Through ${esc(s.host)} · ${own ? "this offering's own settings" : "Lectern's settings"}</span>` : "";
     box.innerHTML = `<div class="pp-rows em-rows">
       <div class="em-row${editing ? " open" : ""}"><div class="em-line">
-          <div class="em-txt"><b>Sender</b><span class="em-val">${who}</span>${via}</div>
+          <div class="em-txt"><b>Sender</b><span class="em-val">${who}</span></div>
           ${editing ? "" : `<div class="em-btns">${own ? `<button type="button" class="lt-btn" id="em-rm">Use Lectern's</button>` : ""}<button type="button" class="lt-btn" id="em-edit">${own ? "Change" : "Use Our Own"}</button></div>`}
         </div>${editing ? senderForm() : ""}</div>
       <div class="em-row${sigEditing ? " open" : ""}"><div class="em-line">
-          <div class="em-txt"><b>Signature</b>${sigEditing ? `<span class="em-via">Added to the end of every email to students.</span>` : sig ? `<span class="em-val em-sig">${esc(sig)}</span>` : `<span class="em-val em-none">None</span>`}</div>
+          <div class="em-txt"><b>Signature</b>${sigEditing ? `<span class="em-via">Added to the end of every email to students.</span>` : sig ? `<div class="em-val em-sig">${md(sig)}</div>` : `<span class="em-val em-none">None</span>`}</div>
           ${sigEditing ? "" : `<div class="em-btns"><button type="button" class="lt-btn" id="em-sedit">${sig ? "Edit" : "Add"}</button></div>`}
-        </div>${sigEditing ? `<div class="em-form"><textarea id="em-sig" rows="3" placeholder="e.g. — The CSC258 teaching team">${esc(D.prefs.signature || "")}</textarea>
+        </div>${sigEditing ? `<div class="em-form"><div id="em-sig"></div>
           <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="em-scancel">Cancel</button><button type="button" class="lt-btn primary" id="em-psave">Save</button></div></div>` : ""}</div>
     </div>
     <p class="lx-help em-foot">Students are emailed only about a new announcement, a decision on their accommodation or remark request, and their marks being out or changed.</p>`;
     const q = x => box.querySelector(x);
     if (sigEditing) {
+      const rt = richText(q("#em-sig"), { value: D.prefs.signature || "", placeholder: "e.g. — The CSC258 teaching team", label: "Signature" });
       q("#em-scancel").onclick = () => { sigEditing = false; draw(); };
-      q("#em-psave").onclick = () => api(`${U}/prefs`, { replyTo: "", signature: q("#em-sig").value, send: {} }).then(r => { D.prefs = r.prefs; sigEditing = false; draw(); toast("Signature saved."); }, e => toast(e.message));
-    } else q("#em-sedit").onclick = () => { sigEditing = true; draw(); q("#em-sig").focus(); };
+      q("#em-psave").onclick = () => api(`${U}/prefs`, { replyTo: "", signature: rt.get(), send: {} }).then(r => { D.prefs = r.prefs; sigEditing = false; draw(); toast("Signature saved."); }, e => toast(e.message));
+    } else q("#em-sedit").onclick = () => { sigEditing = true; draw(); const e = q("#em-sig [contenteditable]"); if (e) e.focus(); };
     if (!editing) {
       q("#em-edit").onclick = () => { editing = true; draw(); q("#em-from").focus(); };
       const rm = q("#em-rm"); if (rm) rm.onclick = () => api(`${U}/settings`, { action: "remove" }).then(r => { D.settings = r.settings; draw(); toast("Back to Lectern's sender."); }, e => toast(e.message));

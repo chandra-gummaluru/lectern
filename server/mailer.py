@@ -54,15 +54,25 @@ def configured():
     return bool(settings()["host"])
 
 
+class Mail(str):
+    """A plain-text email body that also has an HTML version (.html), sent as its alternative."""
+    def __new__(cls, text, html=""):
+        o = super().__new__(cls, text)
+        o.html = html
+        return o
+
+
 def _message(cfg, to, subject, body, reply_to=None):
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = cfg.get("from") or cfg.get("user") or "lectern@localhost", to, subject
     msg["Message-ID"] = make_msgid(domain="lectern")
     if reply_to:
         msg["Reply-To"] = reply_to
-    msg.set_content(body)
+    msg.set_content(str(body))
+    if getattr(body, "html", ""):
+        msg.add_alternative(f'<!doctype html><html><body style="font:15px/1.5 -apple-system,Segoe UI,Arial,sans-serif;color:#1f2328">{body.html}</body></html>', subtype="html")
     if keep:
-        sent.append({"to": to, "subject": subject, "body": body, "from": msg["From"], "reply_to": reply_to or ""})
+        sent.append({"to": to, "subject": subject, "body": str(body), "html": getattr(body, "html", ""), "from": msg["From"], "reply_to": reply_to or ""})
         del sent[:-20]
     return msg
 

@@ -1087,12 +1087,12 @@ async function accomPage(c, t, q = "", k = "") {
     const D = decisionsOf(r), pend = r.status === "pending";
     $("#lt-acc").innerHTML = `<div class="lx-editor lt-req-ed st-${esc(r.status)}">
         <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${r.type === "remark" ? ICON.evals : ICON.accom}</span>
-          <div class="gr-tt"><p class="gr-kind">${esc(r.type === "remark" ? "Remark Request" : KIND(r))}</p><h2>${esc([r.last, r.first].filter(Boolean).join(", "))}<span class="lt-req-of"> / ${r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName)}</span></h2></div>
+          <div class="gr-tt"><p class="gr-kind">${esc(r.type === "remark" ? "Remark Request" : KIND(r))}</p><h2><button type="button" class="lt-link lt-req-who" id="acc-name-open" title="Their page in the gradebook">${esc([r.last, r.first].filter(Boolean).join(", "))}</button><span class="lt-req-of"> / ${r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName)}</span></h2></div>
           <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
         <p class="lt-req-meta"><button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>${r.email ? ` · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ""} · Asked ${esc(fmtStamp(r.submitted))}</p>
         <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
         ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
-        <h3 class="lx-sec">Decision${D.length > 1 ? "s" : ""}</h3>
+        <h3 class="lx-sec">Decision and Discussion</h3>
         ${D.length ? `<div class="lt-req-hist">${D.map(decisionHTML).join("")}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
         <div class="lt-req-reply" id="acc-reply-box"><button type="button" class="lt-reply-btn" id="acc-reply">${REPLY_IC}${pend ? "Decide" : "Reply"}</button></div>
       </div>`;
@@ -1125,7 +1125,8 @@ async function accomPage(c, t, q = "", k = "") {
     };
     $("#lt-acc").querySelectorAll("[data-decide]").forEach(b => { b.onclick = () => decideDialog(r, b.dataset.decide); });
     const evB = $("#acc-ev-open"); if (evB) evB.onclick = () => go({ page: "tool", tool: "grades", part: "evals", c, t }, { where: { view: "evals", evalEd: r.eval, groupEd: "", student: "", stAcc: "", stFrom: "" } });
-    const stB = $("#acc-st-open"); if (stB) stB.onclick = () => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: r.student, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } });
+    const toStudent = () => go({ page: "tool", tool: "grades", part: "book", c, t }, { where: { view: "students", student: r.student, stFrom: "grades", stAcc: "", evalEd: "", groupEd: "" } });
+    ["#acc-st-open", "#acc-name-open"].forEach(sel => { const x = $(sel); if (x) x.onclick = toStudent; });
   }
   // A request, as the other parts' cards are: what it is above the student's name; when and who under it; what
   // they asked for; the decision; Approve and Reject (or the other way, once decided) on the right.

@@ -1089,3 +1089,5 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .cal-det { border-left: 0 !important; border: 1px solid var(--line-2); background: var(--strip); }
 .cal-det.mine { background: var(--accent-bg); border-color: var(--accent-line); }
 .cal-key i { background: var(--accent-bg) !important; box-shadow: inset 0 0 0 1px var(--accent-line); }
+.ab-desc { margin: -6px 0 22px; max-width: 70ch; font-size: 15.5px; color: var(--ink-2); }
+.ab-desc .hb-md > :last-child { margin-bottom: 0; }

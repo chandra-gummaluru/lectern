@@ -572,7 +572,8 @@ const PAGES = {
     const a = data("about"), G = a.groups, T = a.team || [];
     // The rest (the course page's own sections, the rules) as it was drawn; without sections, the team's times too.
     const rest = HubView.draw({ ...D, data: { ...D.data, about: { ...a, description: "", ...(G ? { team: [], groups: null, rules: [] } : {}) } } }, "about").replace(/<h2 class="hb-h2">About the course<\/h2>/, "");
-    if (!G) return `${path([["About the Course"]])}${head("About the Course", "")}${rest}`;
+    const desc = a.description ? `<div class="hs-body ab-desc">${markdown(a.description)}</div>` : "";
+    if (!G) return `${path([["About the Course"]])}${head("About the Course", "")}${desc}${rest}`;
     const mine = D.viewer && D.viewer.role === "student";
     // One card, as a week's page is: each section and each person a row (their kind's icon, or their initials),
     // with their times as lines of icons: the days, the hours, and where.
@@ -602,7 +603,7 @@ const PAGES = {
     const c = D.course;
     // The title, then each section, each person and each policy a card of its own.
     return `${path([["About the Course"]])}${head("About the Course", esc([c.term, c.school].filter(Boolean).join(" · ")))}
-      <div class="ab-page">${secs}${[people, rules].filter(Boolean).map(x => `<div class="hs-cards">${x}</div>`).join("")}</div>
+      ${desc}<div class="ab-page">${secs}${[people, rules].filter(Boolean).map(x => `<div class="hs-cards">${x}</div>`).join("")}</div>
       ${rest.replace(/\s/g, "") ? `<div class="ab-rest">${rest}</div>` : ""}`;
   },
   // Requesting an accommodation for one evaluation (#request/<id>): drawn once what can be asked for is in.
@@ -755,7 +756,7 @@ function header() {
   t.title = t.textContent;
   // The course's description, in the header under the term and school.
   const a = data("about"), hin = document.querySelector(".hb-head-in");
-  if (a && a.description && hin && !$("hb-desc")) hin.insertAdjacentHTML("afterend", `<div class="hb-desc-h" id="hb-desc">${markdown(a.description)}</div>`);
+  // (The course's description is on About the Course, not in the header.)
   const ROLE = { owner: "Instructor", instructor: "Instructor", ta: "TA", staff: "Staff", student: "Student" };
   // Who's signed in, as Lectern's bar has it: a button with their name that opens a menu (or Sign in).
   // Students sign in to this course page (its own sign-in: email and a code); the teaching team is signed in to Lectern.

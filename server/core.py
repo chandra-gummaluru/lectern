@@ -127,7 +127,7 @@ def _headers(resp):
     h.setdefault('X-Content-Type-Options', 'nosniff')
     h.setdefault('Referrer-Policy', 'same-origin')
     h.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
-    h.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
+    h.setdefault('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=()')
     if request.is_secure:
         h.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     if not (request.path or '').startswith('/p/'):
@@ -148,7 +148,8 @@ def csp(extra_scripts=""):
     return "; ".join([
         "default-src 'self'",
         # Only Lectern's own code: /static/ and /tools/ (not /p/, where people's published files are).
-        f"script-src {request.host_url}static/ {request.host_url}tools/ {KATEX}{(' ' + extra_scripts) if extra_scripts else ''}",
+        # 'wasm-unsafe-eval': WebAssembly from /static/vendor/ (Attendance's barcode reader); it can't run a string as code.
+        f"script-src {request.host_url}static/ {request.host_url}tools/ {KATEX} 'wasm-unsafe-eval'{(' ' + extra_scripts) if extra_scripts else ''}",
         f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com {KATEX}",
         f"font-src 'self' data: https://fonts.gstatic.com {KATEX}",
         "img-src 'self' data: blob: https:",

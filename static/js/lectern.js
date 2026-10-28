@@ -25,6 +25,7 @@ import { accountPage } from "./account.js";
 import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
+import { attendancePage } from "./attendance.js";
 import { studentsCard } from "./students.js";
 import { emailCard } from "./mailsettings.js";
 import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind, SECTION_ICON, sortSections } from "./groups.js";
@@ -243,6 +244,7 @@ function parseHash() {
     if (tool === "team" && e) return { page: "team", c, t, o, p: e };
     if ((tool === "groups" || tool === "sections") && e) return { page: "groups", c, t, o, g: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
+    if (tool === "attendance" && e && slugOK(e)) return { page: "attend", c, t, o, e };
     return { page: "offering", c, t, o };
   }
   if (p.length === 1 && p[0] === "account") return { page: "account" };
@@ -254,7 +256,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -553,6 +555,10 @@ function renderPage() {
     evaluations: async () => { const b = await getBook(r.c, r.t).catch(() => null); return b ? (b.evals || []).map(e => ({ id: e.id, name: e.name || e.label || "Evaluation", type: e.type || "assignment", title: String(e.title || "").trim(), date: e.date || "", time: e.time || "", dates: secDates(e) })) : []; },
     openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
     groups: () => readGroups(Store, area(Store.PRIV), r.c, r.t).then(x => x.data.groups), me: S.user.id }, r);
+  if (r.page === "attend") { renderPath([HOME_STEP, offeringStep(r.c, r.t), { label: "Attendance" }]);
+    const key = hashFor(r);
+    return attendancePage({ $, esc, pageHTML, toast, go, api: Auth.api, owner: curOwner() || "", c: r.c, t: r.t, e: r.e, renderPath, here: () => hashFor(S.route) === key,
+      steps: [HOME_STEP, offeringStep(r.c, r.t), { label: "Evaluations", go: () => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: r.e, groupEd: "", student: "", stAcc: "", stFrom: "" } }) }] }); }
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id, api: Auth.api, owner: () => curOwner() || S.user.handle,
     // What an announcement can be about (an activity, an evaluation), and the groups it can be for.
@@ -1343,6 +1349,7 @@ Lectern.requests = async () => {
 Lectern.back = num => { const f = S.studentFrom; if (!f || (num != null && f.num !== String(num))) return false; S.studentFrom = null; go(f.route); return true; };
 // A change in a builder that isn't a step of its own (the page it was on is about to be left).
 Lectern.quiet = fn => { const was = H.applying; H.applying = true; try { fn(); } finally { setTimeout(() => { H.applying = was && H.applying; }, 300); } };
+Lectern.openAttendance = id => { const r = S.route; if (r.c && r.t) go({ page: "attend", c: r.c, t: r.t, e: String(id) }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).
 Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", ...(String(id).startsWith("m-") ? { k: "remark" } : {}), c: r.c, t: r.t, q: String(id) }); };

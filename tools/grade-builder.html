@@ -3130,12 +3130,13 @@ stage.addEventListener("dragend", () => {
 
 // ── The window for one evaluation ────────────────────────────────────
 function evalEditor(id) { goPage(() => { ui.view = "evals"; ui.evalEd = id; ui.groupEd = ""; ui.cell = null; }); }   // its page
+const ATTEND_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4.5"/></svg>';
 function drawEvalEditor() {
   const m = $(".editor[data-eval]"); if (!m) return;
   const e = evalById(m.dataset.eval); if (!e) { ui.evalEd = ""; return render(); }
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED && window.Lectern.openAttendance ? `<button type="button" class="btn" data-ed="attend" title="Scan students' TCards as they come in">${ATTEND_SVG}Take Attendance</button>` : ""}${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <h3 class="ed-sec ed-first">General</h3>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
@@ -3434,6 +3435,7 @@ document.addEventListener("click", ev => {
     if (m.classList.contains("on-page")) return goPage(() => { ui.stAcc = to; });
     m.dataset.acc = ui.stAcc = to; return drawStudentEditor();
   }
+  if (a === "attend") { if (window.Lectern && window.Lectern.openAttendance) window.Lectern.openAttendance(m.dataset.eval || ui.evalEd); return; }
   if (a === "rq-open") { if (window.Lectern && window.Lectern.openRequest) window.Lectern.openRequest(b.dataset.v); return; }
   if (a === "open-accom") { if (window.Lectern && window.Lectern.openAccom) window.Lectern.openAccom(); return; }
   if (a === "acc-clear") { const n = m.dataset.student, id = m.dataset.acc; change(() => { if (model.overrides[n]) delete model.overrides[n][id]; }); m.dataset.acc = ui.stAcc = ""; return m.classList.contains("on-page") ? render() : drawStudentEditor(); }

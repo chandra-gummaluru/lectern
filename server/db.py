@@ -242,6 +242,39 @@ CREATE TABLE IF NOT EXISTS student_sessions ( -- a student signed in to one cour
   expires   REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS student_sessions_who ON student_sessions(owner_id, offering, email);
+CREATE TABLE IF NOT EXISTS attendance_sessions (  -- someone taking attendance for an evaluation, from Start to Stop
+  id        INTEGER PRIMARY KEY,
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  eval      TEXT NOT NULL,
+  user_id   INTEGER NOT NULL,
+  user_name TEXT NOT NULL DEFAULT '',
+  note      TEXT NOT NULL DEFAULT '',            -- who they're taking: a room, a range of last names
+  started   REAL NOT NULL,
+  stopped   REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS attendance_sessions_eval ON attendance_sessions(owner_id, offering, eval);
+CREATE TABLE IF NOT EXISTS attendance (           -- a student was there (once per evaluation)
+  owner_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering   TEXT NOT NULL,
+  eval       TEXT NOT NULL,
+  student    TEXT NOT NULL,                       -- their number in the gradebook
+  session_id INTEGER NOT NULL,
+  by_name    TEXT NOT NULL DEFAULT '',
+  how        TEXT NOT NULL DEFAULT 'scan',        -- scan | hand
+  at         REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, eval, student)
+);
+CREATE TABLE IF NOT EXISTS tcards (               -- each student's TCard number, in an offering
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  card      TEXT NOT NULL,
+  student   TEXT NOT NULL,
+  set_by    TEXT NOT NULL DEFAULT '',             -- "student", or the name of who registered it
+  at        REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, card),
+  UNIQUE (owner_id, offering, student)
+);
 CREATE TABLE IF NOT EXISTS events (           -- a record of security events (sign-ins, changes)
   id      INTEGER PRIMARY KEY,
   user_id INTEGER,

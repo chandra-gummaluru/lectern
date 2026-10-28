@@ -639,6 +639,14 @@ const PAGES = {
     setTimeout(() => seenUpd("requests"), 0);
     return `${path([["My Requests"]])}${head("My Requests", "Your accommodation and remark requests, and what was decided.")}<div id="ma-box"><p class="hs-empty">Loading…</p></div>`;
   },
+  // Their TCard's number (#tcard), so the teaching team can scan them in at a test (Lectern's Attendance).
+  tcard() {
+    const v = D.viewer;
+    setTimeout(TCard.start, 0);
+    return `${path([["My TCard"]])}<article class="ec-card rq-page" id="tc-card">
+      <header class="ec-head"><span class="hs-ic ec-ic">${TCARD_IC}</span><div class="ec-tt"><p class="hs-kick">TCard</p><h1>Your TCard</h1><p class="ec-subline">At tests and exams, the teaching team scans it to check you in.</p></div></header>
+      <div id="tc-box">${v.role === "student" ? `<p class="hs-empty">Loading…</p>` : `<p class="hs-empty">Sign in to the course page to add your TCard.</p>`}</div></article>`;
+  },
   // One of the student's requests (#myrequest/<id>), in the Item Head style: what they asked for, then the
   // decision and the discussion with the teaching team, where they can reply.
   myrequest(arg) {
@@ -674,6 +682,32 @@ function myRequests() {
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
 }
+
+const TCARD_IC = svg('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 15h4M7 9v3M10 9v3M13 9v3M16 9v3"/>');
+const TCard = (() => {
+  const api = (method, body) => fetch(`${root.dataset.api}/tcard`, { method, credentials: "same-origin", headers: method === "GET" ? {} : { "X-Lectern": "1", "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined })
+    .then(r => r.json().then(d => (r.ok ? d : Promise.reject(new Error(d.error || "That didn't work. Try again in a moment.")))));
+  function draw(card, editing) {
+    const box = document.getElementById("tc-box"); if (!box) return;
+    if (card && !editing) {
+      box.innerHTML = `<div class="tc-have"><p class="tc-label">Card number</p><p class="tc-num">${esc(card)}</p></div>
+        <div class="rq-acts tc-acts"><button type="button" class="hb-btn" id="tc-edit">Change It</button></div>`;
+      document.getElementById("tc-edit").onclick = () => draw(card, true);
+      return;
+    }
+    box.innerHTML = `<form class="rq-form tc-form" id="tc-form" novalidate>
+        <label class="rq-f">Card Number<input type="text" id="tc-in" inputmode="numeric" autocomplete="off" value="${esc(card || "")}" placeholder="e.g. 21007012345678"></label>
+        <p class="rq-help">The number under the barcode on the back of your TCard.</p>
+        <p class="rq-err" id="tc-err" role="alert"></p>
+        <div class="rq-acts tc-acts">${card ? `<button type="button" class="hb-btn" id="tc-cancel">Cancel</button>` : ""}<button type="submit" class="hb-btn primary" id="tc-save">Save</button></div></form>`;
+    const f = document.getElementById("tc-form"), b = document.getElementById("tc-save");
+    const cancel = document.getElementById("tc-cancel"); if (cancel) cancel.onclick = () => draw(card, false);
+    f.onsubmit = ev => { ev.preventDefault(); b.disabled = true; document.getElementById("tc-err").textContent = "";
+      api("POST", { card: document.getElementById("tc-in").value }).then(d => draw(d.card, false), x => { b.disabled = false; document.getElementById("tc-err").textContent = x.message; }); };
+    document.getElementById("tc-in").focus();
+  }
+  return { start: () => { if (D.viewer.role !== "student") return; api("GET").then(d => draw(d.card, false), x => { const box = document.getElementById("tc-box"); if (box) box.innerHTML = `<p class="hs-empty">${esc(x.message)}</p>`; }); } };
+})();
 
 const MyRequest = (() => {
   const ini = n => String(n || "").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase() || "?";
@@ -852,7 +886,7 @@ function header() {
       menu.innerHTML = `${U.length ? `${U.map(item).join("")}<hr>` : ""}
         <p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
         ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
-        ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
+        ${v.role === "student" ? `<a role="menuitem" href="#tcard">My TCard</a><button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
       btn.after(menu); btn.setAttribute("aria-expanded", "true");
       menu.querySelectorAll(".hb-upd").forEach(a => { a.onclick = () => close(); });
       const out = $("hb-out");

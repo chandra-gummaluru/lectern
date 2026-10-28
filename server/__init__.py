@@ -38,6 +38,7 @@ from .hub import hub_bp
 from .students import students_bp
 from .places import places_bp
 from .discuss import discuss_bp
+from .attendance import attendance_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
@@ -51,3 +52,4 @@ app.register_blueprint(hub_bp)
 app.register_blueprint(students_bp)
 app.register_blueprint(places_bp)
 app.register_blueprint(discuss_bp)
+app.register_blueprint(attendance_bp)

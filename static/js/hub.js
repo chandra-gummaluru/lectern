@@ -615,7 +615,7 @@ const PAGES = {
     setTimeout(() => ReqForm.start(u), 0);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name, `#evaluation/${encodeURIComponent(u.id)}`], ["Request an Accommodation"]])}
       <article class="ec-card rq-page">
-        <header class="ec-head"><span class="hs-ic ec-ic">${HEART}</span><div class="ec-tt"><p class="hs-kick">Accommodation Request${u.title && u.title !== u.name ? ` / ${esc(u.name)}` : ""}</p><h1>${esc(u.title || u.name)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
+        <header class="ec-head"><span class="hs-ic ec-ic">${HEART}</span><div class="ec-tt"><p class="hs-kick">Accommodation Request</p><h1>${evalTitle(u)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
       </article>`;
   },
@@ -627,7 +627,7 @@ const PAGES = {
     setTimeout(() => RemarkForm.start(u), 0);
     return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name, `#evaluation/${encodeURIComponent(u.id)}`], ["Request a Remark"]])}
       <article class="ec-card rq-page">
-        <header class="ec-head"><span class="hs-ic ec-ic">${REDO}</span><div class="ec-tt"><p class="hs-kick">Remark Request${u.title && u.title !== u.name ? ` / ${esc(u.name)}` : ""}</p><h1>${esc(u.title || u.name)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
+        <header class="ec-head"><span class="hs-ic ec-ic">${REDO}</span><div class="ec-tt"><p class="hs-kick">Remark Request</p><h1>${evalTitle(u)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
       </article>`;
   },
@@ -646,6 +646,8 @@ const REQ_IC = {
   rejected: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m8.8 8.8 6.4 6.4M15.2 8.8l-6.4 6.4"/></svg>',
   pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.6"/><path d="M12 17h.01" stroke-width="2.8"/></svg>',
 };
+// An evaluation as a title: its name, then " / " and its title in gray when it has its own (Test 1 / Midterm Test).
+const evalTitle = u => `${esc(u.name || u.title || "Evaluation")}${u.title && u.name && u.title !== u.name ? `<span class="ec-of"> / ${esc(u.title)}</span>` : ""}`;
 const REQ_WORD = { approved: "Approved", rejected: "Rejected", pending: "Waiting for a decision" };
 function myRequests() {
   const box = document.getElementById("ma-box"); if (!box) return;
@@ -660,7 +662,7 @@ function myRequests() {
         const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
         return `<div class="wk-item wk-go ma-req st-${st}" data-go="#evaluation/${encodeURIComponent(r.eval)}" role="link" tabindex="0" title="Open ${esc(r.evalName || "the evaluation")}">
           <div class="wk-b"><div class="ma-head"><span class="ma-kic">${rm ? REDO : HEART}</span><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p>
-              <h3>${esc(r.evalName || "Evaluation")}</h3><p class="ma-facts">${esc(facts)}</p><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></div>
+              <h3>${evalTitle({ name: r.evalName, title: (unitOf(r.eval) || {}).u?.title })}</h3><p class="ma-facts">${esc(facts)}</p><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></div>
             ${!rm && r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
             ${st !== "pending" ? `<div class="ma-cmt"><span class="ma-av" aria-hidden="true">${esc(ini(r.decidedBy))}</span><div class="ma-cb"><p class="ma-ch"><b>${esc(r.decidedBy || "Your instructor")}</b><span>${esc(when(r.decided))}</span><span class="ma-v v-${st}">${esc(REQ_WORD[st])}</span></p>${r.note ? `<div class="ma-cn">${markdown(r.note)}</div>` : ""}</div></div>` : ""}</div>${CHEV}</div>`; }).join("")}</div>`
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;

@@ -26,6 +26,8 @@ SECTION HEADING
 
 Markup: `.lx-ed-head` > `.lx-kicon.big` + `.gr-tt` (`.gr-kind`, `h2`) [+ `.lt-req-pill`], then `p.lt-req-meta`. The CSS is in static/css/shell.css: `.lx-ed-head:has(> .gr-tt > .gr-kind)`, `.lt-req-of`, `.lt-req-meta` and `.lt-req-who`.
 
+For an evaluation, the title is its name, then its own title in gray: "Test 1 / Midterm Test". The kicker is just the type (REMARK REQUEST), with no evaluation in it.
+
 This is only for item pages. List previews (cards in a list) keep their own look.
 
 ## Comment Thread

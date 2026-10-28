@@ -130,7 +130,10 @@ def _headers(resp):
     h.setdefault('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(), payment=()')
     if request.is_secure:
         h.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
-    if not (request.path or '').startswith('/p/'):
+    if (request.path or '').startswith('/c/'):
+        # A course page: it can be embedded in the university's Quercus (Canvas) pages, and nowhere else.
+        h.setdefault('Content-Security-Policy', csp(frame_ancestors=EMBED_FROM))
+    elif not (request.path or '').startswith('/p/'):
         # Lectern's own pages: never inside another site's frame (clickjacking), no plugins, no <base> tricks.
         h.setdefault('X-Frame-Options', 'DENY')
         h.setdefault('Content-Security-Policy', csp())
@@ -144,17 +147,22 @@ def _headers(resp):
 KATEX = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/"
 
 
-def csp(extra_scripts=""):
+# Where a course page (/c/...) may be embedded: Lectern itself, and Quercus (U of T's Canvas, and Canvas's own
+# addresses, which Quercus's pages can be served from). LECTERN_EMBED_FROM, if set, replaces the list.
+EMBED_FROM = os.environ.get("LECTERN_EMBED_FROM", "https://q.utoronto.ca https://*.instructure.com")
+
+
+def csp(extra_scripts="", frame_ancestors=""):
     return "; ".join([
         "default-src 'self'",
         # Only Lectern's own code: /static/ and /tools/ (not /p/, where people's published files are).
-        # 'wasm-unsafe-eval': WebAssembly from /static/vendor/ (Attendance's barcode reader); it can't run a string as code.
+        # 'wasm-unsafe-eval': WebAssembly from /static/vendor/ (Attendance's card reader); it can't run a string as code.
         f"script-src {request.host_url}static/ {request.host_url}tools/ {KATEX} 'wasm-unsafe-eval'{(' ' + extra_scripts) if extra_scripts else ''}",
         f"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com {KATEX}",
         f"font-src 'self' data: https://fonts.gstatic.com {KATEX}",
         "img-src 'self' data: blob: https:",
         "connect-src 'self' https://api.github.com",
-        "frame-src 'none'", "frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
+        "frame-src 'none'", f"frame-ancestors 'self' {frame_ancestors}" if frame_ancestors else "frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
     ])
 
 

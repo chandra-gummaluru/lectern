@@ -71,6 +71,8 @@ Lectern must be served over **HTTPS**. Behind nginx (or another proxy) that hand
 
 **Back up** the data folder (`LECTERN_DATA_DIR`, default `data/` beside `app.py`): `lectern.db` (accounts), `files/` (everyone's courses), `history/` (old versions) and `secret.key`. Without `secret.key` (or `LECTERN_SECRET_KEY`, if you set one), two-factor secrets and recovery codes can't be checked. The folder is in `.gitignore`: never commit it.
 
+**Embedding a course page in Quercus:** in a Quercus page's HTML editor, `<iframe src="https://lectern.changapp.net/c/<handle>/<course>/<term>/" width="100%" height="900" style="border:0"></iframe>`. Course pages (`/c/…`) may be framed by `https://q.utoronto.ca` and `https://*.instructure.com` (`LECTERN_EMBED_FROM` replaces that list); Lectern's own pages can't be framed anywhere. Inside the frame, the public parts work; signing in (for the Enrolled parts) needs the page opened on its own, since browsers don't send Lectern's cookie inside another site's frame.
+
 Other settings: `LECTERN_INSTITUTION` (under the wordmark; default "University of Toronto"), `LECTERN_LEARN_MORE` (the splash's "Learn more" link; hidden when unset), `LECTERN_MAX_UPLOAD_MB` (one save, default 64).
 
 ## Teaching teams

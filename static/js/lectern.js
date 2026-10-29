@@ -115,13 +115,13 @@ function toast(msg) {
   root.append(el);
   setTimeout(() => el.remove(), 4200);
 }
-function modal(html, onReady, { sticky = false } = {}) {   // sticky: Escape and the backdrop don't close it
+function modal(html, onReady, { sticky = false, onClose = null } = {}) {   // sticky: Escape and the backdrop don't close it
   const bg = document.createElement("div");
   bg.className = "lt-modal-bg";
   bg.innerHTML = `<div class="lt-modal" role="dialog" aria-modal="true">${html}</div>`;
   $("#lt-modal-root").append(bg);
   const m = bg.firstElementChild;
-  const close = () => { bg.remove(); document.removeEventListener("keydown", onKey, true); };
+  const close = () => { bg.remove(); document.removeEventListener("keydown", onKey, true); if (onClose) onClose(); };
   const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); if (!sticky) close(); } };
   document.addEventListener("keydown", onKey, true);
   bg.addEventListener("mousedown", e => { if (e.target === bg && !sticky) close(); });
@@ -130,11 +130,18 @@ function modal(html, onReady, { sticky = false } = {}) {   // sticky: Escape and
   if (first) first.focus();
   return close;
 }
+// A question with two answers. Deleting (or removing) is red, and Enter answers it; closing it is No.
 function confirmBox(title, text, yes, no = "Cancel") {
-  return new Promise(res => modal(`<h2>${esc(title)}</h2><p>${text}</p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>${esc(no)}</button><button type="button" class="lt-btn primary" data-yes>${esc(yes)}</button></div>`, (m, close) => {
-    m.querySelector("[data-no]").onclick = () => { close(); res(false); };
-    m.querySelector("[data-yes]").onclick = () => { close(); res(true); };
-  }));
+  const danger = /^(delete|remove)\b/i.test(yes);
+  return new Promise(res => {
+    let answered = false;
+    const answer = v => { if (!answered) { answered = true; res(v); } };
+    modal(`<h2>${esc(title)}</h2>${text ? `<p>${text}</p>` : ""}<div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>${esc(no)}</button><button type="button" class="lt-btn ${danger ? "lt-btn-danger" : "primary"}" data-yes>${esc(yes)}</button></div>`, (m, close) => {
+      m.querySelector("[data-no]").onclick = () => { answer(false); close(); };
+      m.querySelector("[data-yes]").onclick = () => { answer(true); close(); };
+      if (danger) setTimeout(() => m.querySelector("[data-yes]").focus(), 0);
+    }, { onClose: () => answer(false) });
+  });
 }
 
 // ── Splash ───────────────────────────────────────────────────────────
@@ -463,20 +470,37 @@ async function reopenAfterTA(t, path) {
   } catch (e) { console.warn("[Lectern] reopen:", e); }
 }
 
-// ── Deleting takes two clicks: the first turns the button red ("Delete?"), the second deletes. ──
-// For every delete button in Lectern and its builders (not the course offering's, which asks you to type its name).
-const DELETES = 'button.trash, button.ic.trash, button.c.x[data-act="del"], button[data-act="del"], button[data-act="delcol"], button[data-act="tdel"], button[data-act="pol-fdel"], button[data-act="pol-bdel"], button[data-act="fld-del"], button[data-ed="delete"], button[data-ed="gdelete"], button[data-ed="sremove"], button[data-act="evdel"], button[data-act="grpdel"]';
-let armed = null, armTimer = 0;
-const disarm = () => { if (armed) { armed.classList.remove("lt-armed"); armed.removeAttribute("data-armed"); } armed = null; clearTimeout(armTimer); };
-document.addEventListener("click", e => {
+// ── Deleting asks first: every delete button in Lectern and its builders opens a dialog, and its Delete goes ahead. ──
+// (Not the course offering's, which asks you to type its name; nor the ones with a dialog of their own.)
+const DELETES = 'button.trash, button.ic.trash, button.c.x[data-act="del"], button[data-act="del"], button[data-act="delcol"], button[data-act="tdel"], button[data-act="pol-fdel"], button[data-act="pol-bdel"], button[data-act="fld-del"], button[data-ed="delete"], button[data-ed="gdelete"], button[data-ed="sremove"], button[data-act="evdel"], button[data-act="grpdel"], button[data-at-del], button[data-del], button[data-del-break], button[data-act="pdel"], button[data-act="delvar"], button[data-act="frm"]';
+// The question, from the button's own label: "Delete student (and their marks)" → "Delete student?", "And their marks."
+function deleteQuestion(b) {
+  let t = (b.getAttribute("title") || b.getAttribute("aria-label") || b.textContent || "").replace(/\s+/g, " ").trim().replace(/…$/, "");
+  if (!/^(delete|remove)\b/i.test(t)) t = "Delete this";
+  const m = t.match(/^(.*?)\s*\((.*)\)\s*$/);
+  const head = (m ? m[1] : t).replace(/^(delete|remove)$/i, "$1 this");
+  const more = m ? `${m[2][0].toUpperCase()}${m[2].slice(1)}.` : "";
+  return { head: `${head}?`, more, yes: /^remove\b/i.test(head) ? "Remove" : "Delete" };
+}
+let passing = null;
+function twin(b) {
+  const data = [...b.attributes].filter(x => x.name.startsWith("data-") || x.name === "id");
+  if (!data.length) return null;
+  const sel = `${b.tagName.toLowerCase()}${data.map(x => `[${x.name}="${CSS.escape(x.value)}"]`).join("")}`;
+  const all = document.querySelectorAll(sel);
+  return all.length === 1 ? all[0] : null;
+}
+document.addEventListener("click", async e => {
   const b = e.target.closest && e.target.closest(DELETES);
-  if (!b || b.disabled || b.id === "lt-del-off") { if (armed && !(e.target.closest && e.target.closest("[data-armed]"))) disarm(); return; }
-  if (b === armed) { disarm(); return; }   // the second click: let it through
+  if (!b || b.disabled || b.id === "lt-del-off") return;
+  if (b === passing) { passing = null; return; }   // asked and answered: let it through
   e.preventDefault(); e.stopImmediatePropagation(); e.stopPropagation();
-  disarm(); armed = b; b.classList.add("lt-armed"); b.setAttribute("data-armed", "1");
-  armTimer = setTimeout(disarm, 3500);
+  const q = deleteQuestion(b);
+  if (!await confirmBox(q.head, esc(q.more), q.yes)) return;
+  const go = document.body.contains(b) ? b : twin(b);   // redrawn while it asked (e.g. a list that refreshes): the same button
+  if (!go || go.disabled) return;
+  passing = go; go.click();
 }, true);
-document.addEventListener("keydown", e => { if (e.key === "Escape") disarm(); }, true);   // a builder's own Save button (e.g. an announcement's) saves the same way
 // Ctrl+S (⌘S) is the same Save, in a builder too.
 window.addEventListener("keydown", e => {
   if (!((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === "s")) return;

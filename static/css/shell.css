@@ -418,8 +418,6 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .lt-btn.lt-trash:hover:not(:disabled) { background: var(--danger-bg) !important; border-color: var(--danger-line) !important; color: var(--danger) !important; }
 
 /* A delete button after its first click: red, asking to be clicked again. */
-html body button.lt-armed.lt-armed.lt-armed.lt-armed[data-armed], html body button.lt-armed.lt-armed.lt-armed.lt-armed[data-armed]:hover { background: #b42318 !important; border-color: #b42318 !important; color: #fff !important; }   /* armed: a second click deletes */
-html body button.lt-armed[data-armed] svg { color: #fff !important; }
 
 /* A switch (two-factor sign-in on the account page): a track with a knob, and the word for where it is. */
 .lt-switch { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; padding: 4px 2px; border: 0; background: none; cursor: pointer; font: 600 13px var(--font-ui); color: var(--ink-2); }
@@ -1255,9 +1253,6 @@ html body button.lt-armed[data-armed] svg { color: #fff !important; }
 .at-row .at-del { flex: none; margin-left: 4px; }
 .at-row .at-del svg { width: 17px; height: 17px; }
 .at-row .at-del { display: inline-flex; align-items: center; gap: 6px; width: auto; min-width: 32px; padding: 0 8px; }
-.at-row .at-del.armed { background: #c0392b; color: #fff; border-color: #c0392b; border-radius: 8px; font: 600 13px var(--font-ui); }
-.at-row .at-del.armed:hover { background: #a93226; }
-.at-row .at-del.armed { width: 32px; padding: 0; justify-content: center; }
 
 /* Attendance, as a section of the evaluation's editor (above Grading) */
 .at-sec { display: grid; gap: 10px; margin-top: 6px; }

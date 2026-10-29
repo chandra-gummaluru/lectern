@@ -69,20 +69,14 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
   const metaHTML = () => `${O.total} of ${O.enrolled} students in · ${O.sessions.length} session${O.sessions.length === 1 ? "" : "s"}`;
   const sessHTML = () => O.sessions.length ? `<div class="at-sess">${O.sessions.slice().reverse().map(s => `<div class="at-row${s.stopped ? "" : " live"}">
       <span class="lt-cmt-av" aria-hidden="true">${esc(ini(s.by))}</span>
-      <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-at-del="${s.id}" title="Delete this session" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
+      <div class="at-rb"><p><b>${esc(s.by)}</b>${s.note ? `<span class="at-note">${esc(s.note)}</span>` : ""}</p><p class="at-when">${s.stopped ? `${hm(s.started)}–${hm(s.stopped)}` : `<span class="at-dot"></span>Scanning now, since ${hm(s.started)}`} · ${s.count} student${s.count === 1 ? "" : "s"} in</p></div>${O.canDelete ? `<button type="button" class="lx-ic quiet at-del" data-at-del="${s.id}" title="Delete this session (and the ${s.count} student${s.count === 1 ? "" : "s"} it put in)" aria-label="Delete this session">${TRASH}</button>` : ""}</div>`).join("")}</div>`
     : `<p class="ed-help">No one has taken attendance yet. Each person who takes it starts their own session, so each has its own count.</p>`;
   const mine = () => O.sessions.find(s => s.mine && !s.stopped);
   function bindSessions(box) {
-    // Delete: click once and it turns red; click again, within a few seconds, to delete.
+    // Delete: Lectern asks first (its delete dialog), then it goes.
     box.querySelectorAll("[data-at-del]").forEach(b => { b.onclick = () => {
       const se = O.sessions.find(x => String(x.id) === b.dataset.atDel); if (!se) return;
-      if (!b.classList.contains("armed")) {
-        box.querySelectorAll(".at-del.armed").forEach(x => x.classList.remove("armed"));
-        b.classList.add("armed"); b.title = `Click again to delete it, and the ${se.count} student${se.count === 1 ? "" : "s"} it put in`;
-        clearTimeout(b._t); b._t = setTimeout(() => { b.classList.remove("armed"); b.title = "Delete this session"; }, 4000);
-        return;
-      }
-      clearTimeout(b._t); b.disabled = true;
+      b.disabled = true;
       api("/api/attendance/delete", B({ session: se.id })).then(d => { toast(`Session deleted: ${d.removed} student${d.removed === 1 ? "" : "s"} taken out.`); return load().then(drawOverview); }, x => { b.disabled = false; toast(x.message); });
     }; });
   }
@@ -91,7 +85,7 @@ export function mountAttendance(host, { esc, toast, api, owner, c, t, e, scan = 
     const m = $("#at-meta"), l = $("#at-sess-box"); if (!m || !l) return drawOverview();
     if (!!mine() !== !!$("#at-resume") && !(($("#at-note") || {}).value)) return drawOverview();
     m.textContent = metaHTML();
-    if (!l.querySelector(".at-del.armed")) { l.innerHTML = sessHTML(); bindSessions(l); }   // (not while a delete waits for its second click)
+    l.innerHTML = sessHTML(); bindSessions(l);
   }
   function drawOverview() {
     const open = mine();

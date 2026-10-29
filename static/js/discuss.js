@@ -92,7 +92,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null, a
     const mine = p.who && p.who.you && !p.deleted;
     return `<div class="dc-acts"><button class="dc-up" data-up="${p.id}" aria-pressed="${p.voted}" title="Upvote">${I.up}${p.votes || ""}</button>
       ${top ? `<span class="dc-ncom">${count(p.id)} comment${count(p.id) === 1 ? "" : "s"}</span>` : `<button data-reply="${p.id}">${I.reply}Reply</button>`}
-      <span class="dc-staffacts">${mine ? `<button data-del="${p.id}">${I.trash}Delete</button>` : ""}${staff() ? `${top ? `<button data-mod="pin" data-v="${p.id}" data-on="${!p.pinned}">${I.pin}${p.pinned ? "Unpin" : "Pin"}</button>` : ""}${!(p.who && p.who.team) || p.endorsed ? `<button data-mod="endorse" data-v="${p.id}" data-on="${!p.endorsed}">${I.ok}${p.endorsed ? "Unendorse" : "Endorse"}</button>` : ""}${!mine || p.removed ? `<button data-mod="remove" data-v="${p.id}" data-on="${!p.removed}">${I.hide}${p.removed ? "Restore" : "Remove"}</button>` : ""}` : ""}</span></div>`;
+      <span class="dc-staffacts">${mine ? `<button data-del="${p.id}" title="Delete this post (classmates will see that it was deleted)">${I.trash}Delete</button>` : ""}${staff() ? `${top ? `<button data-mod="pin" data-v="${p.id}" data-on="${!p.pinned}">${I.pin}${p.pinned ? "Unpin" : "Pin"}</button>` : ""}${!(p.who && p.who.team) || p.endorsed ? `<button data-mod="endorse" data-v="${p.id}" data-on="${!p.endorsed}">${I.ok}${p.endorsed ? "Unendorse" : "Endorse"}</button>` : ""}${!mine || p.removed ? `<button data-mod="remove" data-v="${p.id}" data-on="${!p.removed}">${I.hide}${p.removed ? "Restore" : "Remove"}</button>` : ""}` : ""}</span></div>`;
   }
   function commentHTML(p) {
     const w = p.who, K = sorted(kids(p.id)), open = !S.folded.has(p.id), n = count(p.id);
@@ -193,7 +193,7 @@ export function mount(host, { api, target, signIn, post = null, onPost = null, a
     if (b.dataset.fold) { const id = +b.dataset.fold; S.folded.has(id) ? S.folded.delete(id) : S.folded.add(id); return draw(); }
     if (b.dataset.up) { const p = posts().find(x => x.id === +b.dataset.up); return call(`/${p.id}/vote`, { on: !p.voted }).then(update, fail); }
     if (b.dataset.mod) return call(`/${b.dataset.v}/moderate`, { [b.dataset.mod]: b.dataset.on === "true" }).then(update, fail);
-    if (b.dataset.del) { if (!confirm("Delete this? Classmates will see that it was deleted.")) return; return call(`/${b.dataset.del}/delete`, {}).then(update, fail); }
+    if (b.dataset.del) { if (!app && !confirm("Delete this? Classmates will see that it was deleted.")) return; /* in Lectern, its delete dialog has asked */ return call(`/${b.dataset.del}/delete`, {}).then(update, fail); }
     if (b.dataset.send != null) {
       const box = b.closest(".dc-box"), ta = box.querySelector(".rt-ed"), ti = box.querySelector(".dc-title-in"), text = tokens(ta);
       if (ti && !ti.value.trim()) return ti.focus();

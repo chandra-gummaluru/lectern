@@ -48,7 +48,9 @@ def run(steps_filter=None):
 
         page.click("#lt-path button.lt-step >> nth=1"); page.wait_for_timeout(600); shot("07-back-offering")
         print("path:", page.inner_text("#lt-path"))
-        page.click("[data-go='course']"); page.wait_for_timeout(3000); shot("08-course")
+        # The course page: the offering page links to it as students see it (View Course Page); Lectern edits it here.
+        assert page.get_attribute("#lt-view-page", "href"), "View Course Page"
+        page.evaluate("location.hash = '#/csc258/f26/course'"); page.wait_for_timeout(3000); shot("08-course")
         print("path:", page.inner_text("#lt-path"))
         page.evaluate("location.hash = '#/csc258/f26/exams/midterm'"); page.wait_for_timeout(3500); shot("09-exam")
         print("path:", page.inner_text("#lt-path"))

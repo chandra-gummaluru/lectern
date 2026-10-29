@@ -48,7 +48,8 @@ def main():
         print("midterm says:", page.locator(G + ".erow", has_text="Midterm").first.locator("p").nth(1).inner_text())
         # Maya: A1 10/10*30, makeup 15/20 for 15%, MT's 5% to the final (10/10 for 55%): 30 + 11.25 + 55 = 96.25
         page.evaluate("location.hash = '#/csc258/f26/gradebook'"); page.wait_for_timeout(1500)
-        print("grades:", page.eval_on_selector_all(G + ".c-grade .gp", "e => e.map(x => x.textContent)"))
+        gr = page.eval_on_selector_all(G + "tr[data-s]", "e => e.map(r => r.querySelector('.c-name b').textContent + ': ' + r.querySelector('td[data-grade]').textContent.trim())")
+        print("grades:", gr); assert len(gr) == 2, gr
         # New makeup from the editor
         page.evaluate("location.hash = '#/csc258/f26/evaluations'"); page.wait_for_timeout(1200)
         page.locator(G + ".erow", has_text="Assignment").first.click(); page.wait_for_timeout(400)
@@ -60,7 +61,7 @@ def main():
         page.locator(G + ".erow", has_text="Midterm").first.click(); page.wait_for_timeout(500)
         page.screenshot(path=f"{OUT}/152-makeup-ui.png", full_page=True)
         print("kinds:", page.eval_on_selector_all(G + "#rw-rows .rw-row.on", "e => e.map(x => [...x.querySelectorAll('.rw-kind button')].map(b => b.textContent + (b.getAttribute('aria-pressed') === 'true' ? '*' : '')).join('/'))"))
-        page.click("#lt-save"); page.wait_for_timeout(2000)
+        page.keyboard.press("Control+s"); page.wait_for_timeout(2000)
         r = gh.repos["chandra-gummaluru/courses-private"]; saved = json.loads(r.commits[r.head]["files"]["csc258/f26/grades.json"])
         print("saved MT missed:", [e["missed"] for e in saved["evals"] if e["id"] == "mt"], "| makeups:", [(e["name"], e.get("makeupFor")) for e in saved["evals"] if e.get("makeupFor")])
         b.close()

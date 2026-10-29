@@ -1,4 +1,5 @@
-"""The top bar stays the same inside the builders, and its one Save saves every builder with changes.
+"""The top bar stays the same inside the builders, and its one Save (Ctrl+S, or the account menu's) saves every
+builder with changes; the bar's Not saved pill says what's waiting.
 Run with the server going (python app.py), then: python tests/browser/flow_bar.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
@@ -23,9 +24,10 @@ def main():
         page.evaluate("""() => { sessionStorage.setItem('lectern.github', JSON.stringify({access_token:'tok', refresh_token:'r', expires_at: Date.now()+8*3600e3}));
                                  localStorage.setItem('lectern.repos', JSON.stringify({priv:'chandra-gummaluru/courses-private', pub:'chandra-gummaluru/courses'})); }""")
         page.reload(); page.wait_for_timeout(1500)
-        print("home bar:", bar(), "| save enabled:", page.is_enabled("#lt-save"))
+        unsaved = lambda: page.is_visible("#lt-unsaved")
+        print("home bar:", bar(), "| not saved:", unsaved())
         page.evaluate("location.hash = '#/csc108/f26/course'"); page.wait_for_timeout(2500); shot("120-course-bar")
-        print("course bar visible:", page.is_visible("#lt-bar"), "|", bar(), "| save enabled:", page.is_enabled("#lt-save"))
+        print("course bar visible:", page.is_visible("#lt-bar"), "|", bar(), "| not saved:", unsaved())
         print("builder Save visible:", page.is_visible("[data-lt-tool='course'] #save"), "| Copy HTML visible:", page.is_visible("[data-lt-tool='course'] #copy"))
         page.evaluate("location.hash = '#/csc108/f26/grades'"); page.wait_for_timeout(2500); shot("121-grades-bar")
         print("grades bar:", bar())
@@ -37,7 +39,8 @@ def main():
         page.keyboard.press("Control+s"); page.wait_for_timeout(3000); shot("124-saved")
         pv = gh.repos["chandra-gummaluru/courses-private"]; pb = gh.repos["chandra-gummaluru/courses"]
         print("private log:", pv.log, "\npublic log:", pb.log)
-        print("after save:", bar(), "| save enabled:", page.is_enabled("#lt-save"))
+        print("after save:", bar(), "| not saved:", unsaved())
+        assert not unsaved(), "everything saved"
         print("toasts:", page.eval_on_selector_all(".lt-toast", "els => els.map(e => e.textContent)"))
         page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(500); shot("125-exam-phone")
         b.close()

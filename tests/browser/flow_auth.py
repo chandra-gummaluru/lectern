@@ -83,23 +83,24 @@ def main():
         print("home:", page.inner_text(".lt-src"))
         assert "/p/chandra/" in page.inner_text(".lt-src")
 
-        # 5. A gradebook and a course page, saved to the server.
+        # 5. A course page (course.json, the hub), saved to the server.
         page.evaluate("location.hash = '#/csc258/f26/course'"); page.wait_for_timeout(2500); shot("a08-course")
         page.keyboard.press("Control+s"); page.wait_for_timeout(2000)
-        html = srv.text("pub", "csc258/f26/info.html")
-        assert html and "<html" in html.lower(), "the course page was saved on the server"
-        req = re.findall(r'class="cpb-req"[^>]*href="([^"]+)"', html)
-        print("request link:", req[:1])
-        assert req and "r=chandra&" in req[0].replace("&amp;", "&"), req
-        print("saved course page:", len(html), "bytes")
+        cj = srv.text("pub", "csc258/f26/course.json")
+        assert cj and json.loads(cj), "the course page was saved on the server"
+        print("saved course page:", len(cj), "bytes")
 
-        # 6. Published, and sandboxed.
-        r = page.request.get(srv.base + "p/chandra/csc258/f26/info.html")
+        # 6. The course page is public at /c/<handle>/<course>/<term>/; files in pub are public at /p/…, sandboxed;
+        # grades never are.
+        r = page.request.get(srv.base + "c/chandra/csc258/f26/")
+        assert r.status == 200 and "CSC258" in r.text(), r.status
+        srv.put("pub", {"csc258/f26/files/note.html": "<h1>A note</h1>"})
+        r = page.request.get(srv.base + "p/chandra/csc258/f26/files/note.html")
         assert r.status == 200 and r.headers["content-security-policy"].startswith("sandbox"), r.headers
-        pub = ctx.new_page(); pub.goto(srv.base + "p/chandra/csc258/f26/info.html"); pub.wait_for_timeout(500)
+        pub = ctx.new_page(); pub.goto(srv.base + "p/chandra/csc258/f26/files/note.html"); pub.wait_for_timeout(500)
         pub.screenshot(path=f"{OUT}/a09-published.png")
-        origin = pub.evaluate("origin"); print("published page's origin:", origin)
-        assert origin == "null", "a published page runs in an origin of its own"
+        origin = pub.evaluate("origin"); print("published file's origin:", origin)
+        assert origin == "null", "a published file runs in an origin of its own"
         pub.close()
         assert page.request.get(srv.base + "p/chandra/csc258/f26/grades.json").status == 404
 

@@ -21,7 +21,7 @@ def main():
         G, X = "[data-lt-tool='grades'] ", "[data-lt-tool='exams'] "
         path = lambda: page.inner_text("#lt-path").replace("\n", " ")
         page.goto(BASE + "#/csc258/f26/evaluations"); page.reload(); page.wait_for_timeout(2500)
-        open_eval(page, G, "mt"); page.click(G + ".ed-acts [data-act='ev-build']"); page.wait_for_timeout(3000)
+        open_eval(page, "mt"); page.click(G + ".ed-acts [data-act='ev-build']"); page.wait_for_timeout(3000)
         page.mouse.click(5, 880); page.wait_for_timeout(200)
         print("path:", path(), "| top row shown:", page.is_visible(X + ".tb"), "| float:", page.eval_on_selector_all(X + ".float-in button", "e => e.map(x => x.textContent.trim() || x.getAttribute('aria-label'))"))
         print("edit bar:", page.inner_text(X + "#ctx").replace("\n", " "))

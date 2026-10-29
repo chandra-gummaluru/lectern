@@ -93,17 +93,9 @@ def main():
         tp.screenshot(path=f"{OUT}/t06a-ta-eval.png")
         w = tp.query_selector(G + "input[data-ed='weight'], " + G + "input[data-bind$='weight'], " + G + "input[data-f='weight']")
         print("weight field:", bool(w))
-        if w:
-            w.fill("99"); w.press("Tab"); tp.wait_for_timeout(300)
-            print("unsaved after weight change:", tp.evaluate("() => window.Lectern.tools.grades.api.state().unsaved"))
-            tp.keyboard.press("Control+s"); tp.wait_for_timeout(800)
-            tp.screenshot(path=f"{OUT}/t06-ta-warned.png")
-            msg = tp.inner_text("#lt-modal-root")
-            print("TA saving a weight:", msg.replace("\n", " ")[:160])
-            assert "Only marks are saved" in msg
-            tp.click(".lt-modal [data-yes]"); tp.wait_for_timeout(2000)
-            assert json.loads(srv.text("priv", "csc258/f26/grades.json"))["evals"] == before["evals"]
-            print("weight on the server:", [e.get("weight") for e in json.loads(srv.text("priv", "csc258/f26/grades.json"))["evals"]][:3])
+        # A TA can't change an evaluation: its fields are disabled (the gradebook's role rules).
+        assert w and w.is_disabled(), "a TA's weight field is disabled"
+        print("TA's weight field disabled:", w.is_disabled())
 
         # 3. The invited coordinator makes an account and lands on the offering.
         ip = browser("instructor")

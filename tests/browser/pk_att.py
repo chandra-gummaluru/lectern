@@ -44,6 +44,6 @@ with Server() as srv, sync_playwright() as p:
     ta.locator("#lt-path button", has_text="Midterm").first.click(); ta.wait_for_selector("#at-note"); ta.wait_for_timeout(500)
     me.go_back(); me.wait_for_selector(".at-sess"); me.wait_for_timeout(1500); print("sessions now:", me.inner_text(".at-sess").replace("\n", " / "), "| note:", repr(me.input_value("#at-note")), "| go enabled:", me.is_enabled("#at-go")); me.locator(".at-sec").screenshot(path=f"{OUT}/att-sec-order.png"); me.screenshot(path=f"{OUT}/att-7-sessions.png", full_page=True)
     print("total:", me.inner_text("#at-meta"), "| trash:", me.locator(".at-del").count())
-    me.locator(".at-del").first.click(); me.wait_for_timeout(300); me.locator(".at-sess").screenshot(path=f"{OUT}/att-del-armed.png"); me.locator(".at-del.armed").click(); me.wait_for_timeout(1500)
+    me.locator(".at-del").first.click(); me.wait_for_selector(".lt-modal [data-yes]"); me.screenshot(path=f"{OUT}/att-del-asks.png"); me.click(".lt-modal [data-yes]"); me.wait_for_timeout(1500)
     print("after delete:", me.inner_text("#at-meta"), "| sessions:", me.locator(".at-row").count(), me.locator(".at-sec").count(), me.locator("[data-att-slot]").count(), me.locator(".editor[data-eval]").count(), me.evaluate("[...document.querySelectorAll('.at-sec')].map(x=>x.parentElement.outerHTML.slice(0,80)+' | '+x.closest('[data-lt-tool]')?.dataset.ltTool)")); me.screenshot(path=f"{OUT}/att-del-after.png")
     print("errors:", errs)

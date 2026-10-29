@@ -81,7 +81,7 @@ def main():
         assert links[:3] == ["All Announcements", "All Weeks", "Evaluations"], links   # under the newest announcement and this week: their All rows
         expect(v.locator(".hb-main")).to_contain_text("Midterm rooms posted")   # the newest announcement, in full
         v.click(".hs-row:has-text('About the Course')")
-        expect(v.locator("#hb-desc")).to_contain_text("From transistors to processors.")   # in the header
+        expect(v.locator(".ab-desc")).to_contain_text("From transistors to processors.")   # on About the Course
         expect(v.locator(".hb-title")).to_have_text("CSC258: Computer Organization and Design")
         expect(v.locator(".hb-sub")).to_have_text("Fall 2026 · University of Toronto")
         v.screenshot(path=f"{OUT}/203-hub-about.png", full_page=True)

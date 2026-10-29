@@ -22,8 +22,8 @@ def main():
                                  localStorage.setItem('lectern.repos', JSON.stringify({priv:'chandra-gummaluru/courses-private', pub:'chandra-gummaluru/courses'})); }""")
         page.goto(BASE + "#/csc108/f26/grades"); page.reload(); page.wait_for_timeout(2500)
         print("1 path:", page.inner_text("#lt-path").replace("\n", " "))
-        # Save the new gradebook with Lectern's Save.
-        page.click("#lt-save"); page.wait_for_timeout(2000); shot("21-saved")
+        # Save the new gradebook with Lectern's Save (Ctrl+S; also in the account menu).
+        page.keyboard.press("Control+s"); page.wait_for_timeout(2000); shot("21-saved")
         files = gh.repos["chandra-gummaluru/courses-private"].commits[gh.repos["chandra-gummaluru/courses-private"].head]["files"]
         print("2 saved files:", sorted(files), gh.repos["chandra-gummaluru/courses-private"].log)
 

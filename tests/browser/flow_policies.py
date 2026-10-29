@@ -1,12 +1,20 @@
-"""Course page: the Policies section (the gradebook's course rules, shown or hidden, and your own),
-and the week rows' announcement count.
-Run with the server going (python app.py), then: python tests/browser/flow_policies.py"""
-import json, os, sys, re
+"""The gradebook's course rules on the course page: its Settings choose which show (Show … on the course page,
+its About tab); the course page, opened in Lectern and saved, carries them (course.json's scheme), and the
+course page's About tab shows those, not the others.
+
+(The course page used to have a Policies section of its own, with your own policies and a week row's
+announcement count. Those are gone: rules come only from the gradebook now, and announcements have their own
+part, tested in flow_ann.py.)
+Run:  python tests/browser/flow_policies.py"""
+import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
 from fakegh import FakeGitHub, Repo
 from flow_github import OUT, BASE
 from flow_links import BOOK
+
+G = "[data-lt-tool='grades'] "
+
 
 def main():
     book = json.loads(json.dumps(BOOK))
@@ -25,55 +33,49 @@ def main():
         ctx.route("https://fonts.googleapis.com/**", lambda r: r.abort())
         page = ctx.new_page()
         page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
-        C = "[data-lt-tool='course'] "
-        page.goto(BASE)
-        page.evaluate("""() => { sessionStorage.setItem('lectern.github', JSON.stringify({access_token:'tok', refresh_token:'r', expires_at: Date.now()+8*3600e3}));
-                                 localStorage.setItem('lectern.repos', JSON.stringify({priv:'chandra-gummaluru/courses-private', pub:'chandra-gummaluru/courses'})); }""")
-        page.goto(BASE + "#/csc258/f26/course"); page.reload(); page.wait_for_timeout(2500)
-        print("sections:", page.eval_on_selector_all(C + ".e-sechead .grow > :first-child", "els => els.map(e => e.textContent)"))
-        pol = page.locator(C + ".e-sechead", has_text="Policies").first
-        pol.scroll_into_view_if_needed()
-        # open it in the editor if collapsed
-        print("rules:", page.eval_on_selector_all(C + ".e-gpol", "els => els.map(e => e.querySelector('b').textContent + ' [' + e.querySelector('.e-eye span').textContent + '] ' + e.querySelector('p').textContent)"))
-        page.locator(C + ".e-gpol", has_text="Rounding").locator(".e-eye").click(); page.wait_for_timeout(300)
-        page.locator(C + "button", has_text="+ Add policy").click(); page.wait_for_timeout(400)
-        page.locator(C + "[data-lt-tool='course'] .cpb-block textarea, " + C + ".cpb-block textarea").last.fill("Late work loses 10% a day."); page.wait_for_timeout(200)
-        page.locator(C + "button", has_text="+ Add policy").click(); page.wait_for_timeout(400)
-        page.locator(C + ".cpb-block textarea").last.fill("Secret: I round up borderline cases."); page.wait_for_timeout(200)
-        page.locator(C + ".cpb-block").last.locator(".e-eye").click(); page.wait_for_timeout(300)
-        page.locator(C + ".e-sechead", has_text="Policies").first.scroll_into_view_if_needed(); page.wait_for_timeout(200)
-        page.screenshot(path=f"{OUT}/130-policies-editor.png")
-        # an announcement in week 1, for the week row
-        page.locator(C + ".e-weekrow").first.click(); page.wait_for_timeout(400)
-        page.locator(C + "button", has_text="Add announcement").first.click(); page.wait_for_timeout(400)
-        page.keyboard.type("Welcome"); page.wait_for_timeout(200)
-        print("path:", page.inner_text("#lt-path").replace("\n", " "))
-        page.locator("#lt-path button.lt-step", has_text="Course Page").click(); page.wait_for_timeout(500)
-        print("week row:", page.inner_text(C + ".e-weekrow").replace("\n", " "), "| ann:", page.get_attribute(C + ".wr-ann", "title"))
-        page.locator(C + ".e-weekrow").first.screenshot(path=f"{OUT}/131-week-row.png")
-        page.click("#lt-save"); page.wait_for_timeout(2500)
-        r = gh.repos["chandra-gummaluru/courses"]; html = r.commits[r.head]["files"]["csc258/f26/info.html"]
-        sec = html[html.find("cpb-type-policies"):]
-        sec = sec[:sec.find("</details>")]
-        print("published headings:", re.findall(r'<h3[^>]*>([^<]*)</h3>', sec))
-        print("late shown:", "Late work" in sec, "| secret in visible text:", "Secret" in re.sub(r'data-json="[^"]*"', "", sec), "| rounding shown:", "rounded to the nearest" in sec, "| ranges shown:", "becomes 50" in re.sub(r'data-json="[^"]*"', "", sec))
-        page.reload(); page.wait_for_timeout(2500)
-        head = page.locator(C + ".e-sechead", has_text="Marking Scheme").first
-        print("scheme controls:", head.locator(".e-secctl").inner_text().replace("\n", " "))
-        head.locator("[data-act='sec-vis']").click(); page.wait_for_timeout(300)
-        page.screenshot(path=f"{OUT}/132-sections.png", full_page=True)
-        page.click("#lt-save"); page.wait_for_timeout(2500)
-        html = r.commits[r.head]["files"]["csc258/f26/info.html"] if False else gh.repos["chandra-gummaluru/courses"].commits[gh.repos["chandra-gummaluru/courses"].head]["files"]["csc258/f26/info.html"]
-        print("scheme hidden in file:", 'cpb-type-scheme" data-hidden' in html)
-        page.reload(); page.wait_for_timeout(2500)
-        print("still hidden:", page.locator(C + ".e-sechead", has_text="Marking Scheme").first.locator("[data-act='sec-vis'] span").inner_text())
-        print("add buttons:", page.eval_on_selector_all(C + ".e-addsec button", "e => e.map(x => x.textContent)"))
-        page.locator(C + ".e-addsec button").click(); page.wait_for_timeout(500)
-        print("sections now:", page.eval_on_selector_all(C + ".e-sechead .grow > :first-child", "els => els.map(e => e.textContent)"))
-        page.screenshot(path=f"{OUT}/133-add-section.png")
-        print("after reopen rules:", page.eval_on_selector_all(C + ".e-gpol .e-eye span", "els => els.map(e => e.textContent)"), "| own:", page.eval_on_selector_all(C + ".cpb-block .e-eye span", "els => els.map(e => e.textContent)"), "| unsaved:", page.inner_text("#lt-status"))
+
+        def publish():
+            """Save the gradebook, then open the course page (it takes the gradebook's rules) and save it."""
+            page.keyboard.press("Control+s"); page.wait_for_timeout(1500)
+            page.evaluate("location.hash = '#/csc258/f26/course'"); page.wait_for_selector("[data-lt-tool='course']"); page.wait_for_timeout(2500)
+            page.keyboard.press("Control+s"); page.wait_for_timeout(2000)
+            pub = gh.repos["chandra-gummaluru/courses"]
+            assert "csc258/f26/course.json" in pub.commits[pub.head]["files"], "the course page was saved"
+            r = page.request.get(BASE + "api/hub/chandra/csc258/f26", headers={"X-Lectern": "1"})
+            assert r.ok, r.status
+            d = r.json()["data"]
+            assert "about" in d, f"the course page's data has no About: {sorted(d)}"
+            return [x["title"] for x in d["about"]["rules"]]
+
+        # 1. Settings: which rules show. By default the rules (automatic fail) do; rounding and ranges don't.
+        page.goto(BASE + "#/csc258/f26/settings"); page.wait_for_selector(G + "[data-pshow='round']")
+        shown = lambda: {k: page.is_checked(G + f"[data-pshow='{k}']") for k in ("ranges", "round", "rules")}
+        print("show at first:", shown())
+        assert shown() == {"ranges": False, "round": False, "rules": True}
+        page.check(G + "[data-pshow='round']"); page.wait_for_timeout(300)
+        page.locator(G + "[data-pshow='round']").scroll_into_view_if_needed()
+        page.screenshot(path=f"{OUT}/130-policies-show.png")
+        rules = publish()
+        print("course page About, rounding on:", rules)
+        assert "Rounding" in rules and "Grade Adjustments" not in rules and any(t in rules for t in ("Automatic Fail", "Course Grade Rules"))
+
+        # 2. Rules off, ranges on.
+        page.goto(BASE + "#/csc258/f26/settings"); page.wait_for_selector(G + "[data-pshow='rules']")
+        page.uncheck(G + "[data-pshow='rules']"); page.check(G + "[data-pshow='ranges']"); page.wait_for_timeout(300)
+        rules = publish()
+        print("course page About, rules off and ranges on:", rules)
+        assert "Grade Adjustments" in rules and "Rounding" in rules and not any(t in rules for t in ("Automatic Fail", "Course Grade Rules"))
+
+        # 3. On the course page itself (as students see it), the About tab.
+        page.goto(BASE + "c/chandra/csc258/f26/#about"); page.wait_for_timeout(2500)
+        page.screenshot(path=f"{OUT}/131-about-tab.png", full_page=True)
+        body = page.inner_text("body")
+        print("About tab has Rounding:", "Rounding" in body, "| Grade Adjustments:", "Grade Adjustments" in body)
         b.close()
     print("\n".join(errors) or "no page errors")
+    assert not errors
+    print("flow_policies: OK")
+
 
 if __name__ == "__main__":
     main()

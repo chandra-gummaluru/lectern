@@ -56,12 +56,14 @@ def main():
         page.select_option(G + "[data-ed='fg-code']", "AII"); page.wait_for_timeout(300)
         print("ken now:", page.input_value(G + ".fg-in"), "|", page.inner_text(G + "#fg-note"))
         page.screenshot(path=f"{OUT}/203-ken.png")
-        # Delete takes two clicks
-        page.click(G + ".ed-acts [data-ed='sremove']"); page.wait_for_timeout(200)
-        print("after one click: still here:", bool(page.query_selector(G + ".editor.student")), "| armed:", page.evaluate("!!document.querySelector('.lt-armed')"))
-        page.screenshot(path=f"{OUT}/202-armed.png")
-        page.click(G + ".ed-acts [data-ed='sremove']"); page.wait_for_timeout(500)
-        print("after two:", grades())
+        # Delete asks first: Cancel keeps them; Delete deletes
+        page.click(G + ".ed-acts [data-ed='sremove']"); page.wait_for_selector(".lt-modal [data-yes]")
+        print("asks:", page.inner_text(".lt-modal").replace("\n", " | "))
+        page.screenshot(path=f"{OUT}/202-delete-asks.png")
+        page.click(".lt-modal [data-no]"); page.wait_for_timeout(200)
+        assert page.query_selector(G + ".editor.student"), "Cancel keeps them"
+        page.click(G + ".ed-acts [data-ed='sremove']"); page.click(".lt-modal [data-yes]"); page.wait_for_timeout(500)
+        print("after Delete:", grades())
         b.close()
     print("\n".join(errors) or "no page errors")
 

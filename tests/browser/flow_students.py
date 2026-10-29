@@ -87,7 +87,7 @@ def main():
         me.wait_for_selector("[data-lt-tool=grades] [data-ed=sremove]")
         expect(g.locator(".st-head h2")).to_have_text("Li, Ana")
         me.screenshot(path=f"{OUT}/213-student-page.png")
-        me.click("[data-lt-tool=grades] [data-ed=sremove]"); me.click("[data-lt-tool=grades] [data-ed=sremove]")   # Delete takes two clicks
+        me.click("[data-lt-tool=grades] [data-ed=sremove]"); me.click(".lt-modal [data-yes]")   # Delete asks first
         me.keyboard.press("Control+s"); me.wait_for_timeout(2000)
         assert sorted(s["num"] for s in book()["students"]) == ["1001", "1002"], [s["num"] for s in book()["students"]]
         me.wait_for_selector("#st-add")   # deleted: back on the offering's page, where the student was opened from

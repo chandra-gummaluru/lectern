@@ -1,11 +1,19 @@
-"""Cross-links: the course page reads its marking scheme and each week's evaluations from Grades;
-Build opens (or starts) an evaluation's exam or handout; a linked document's total is the evaluation's out of.
-Run with the server going (python app.py), then: python tests/browser/flow_links.py"""
-import json, os, sys
+"""Cross-links, end to end against the real server: the course page's Evaluations is the gradebook's marking
+scheme (it goes to course.json when the gradebook is saved); a linked document's total is its evaluation's out
+of; Build opens an evaluation's handout, or starts its exam or handout. Asserts as it goes; screenshots in shots/.
+
+Run:  python tests/browser/flow_links.py
+"""
+import json
+import os
+import sys
+
 sys.path.insert(0, os.path.dirname(__file__))
-from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from playwright.sync_api import sync_playwright, expect
+from harness import Server, OUT, block_cdns
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DATA = open(os.path.join(ROOT, "sample-data/demo-courses/csc258/f26/course.json"), encoding="utf-8").read()
 
 def ev(i, name, label, short, typ, w, date="", time="", total=10, missed=None):
     return {"id": i, "name": name, "label": label, "title": "", "short": short, "type": typ, "total": total, "weight": w, "date": date, "time": time,
@@ -21,71 +29,77 @@ BOOK = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 
         "students": [{"num": "1001", "first": "Maya", "last": "Castillo", "f": {}}], "marks": {"1001": {"a1": {"pts": 9}}}, "overrides": {}}
 HANDOUT = {"format": "exam-builder/2", "settings": {"title": "Assignment 1", "layout": "handout", "link": "a1"}, "items": [], "total": 25}
 
-def open_eval(page, G, eid):
-    """The evaluation's own page (where Build is), from wherever the gradebook is."""
-    if page.query_selector(G + f".editor[data-eval='{eid}']"): return
-    if page.query_selector(G + ".editor[data-eval]"):
-        page.locator("#lt-path button.lt-step", has_text="Evaluations").click(); page.wait_for_timeout(400)
-    page.click(G + f".erow[data-id='{eid}']"); page.wait_for_timeout(500)
+G, X = "[data-lt-tool='grades'] ", "[data-lt-tool='exams'] "
+
+
+def open_eval(page, eid):
+    """The evaluation's own page (where Build is). Lectern opens the gradebook where it was left."""
+    if "/evaluations" not in page.evaluate("location.hash"):
+        page.evaluate("location.hash = '#/csc258/f26/evaluations'")
+    page.wait_for_selector(G + ".erow, " + G + ".editor[data-eval]")
+    ed = page.query_selector(G + ".editor[data-eval]")
+    if ed and ed.get_attribute("data-eval") != eid:
+        page.locator("#lt-path button.lt-step", has_text="Evaluations").click()
+    if not page.query_selector(G + f".editor[data-eval='{eid}']"):
+        page.wait_for_selector(G + f".erow[data-id='{eid}']"); page.click(G + f".erow[data-id='{eid}']")
+    page.wait_for_selector(G + f".editor[data-eval='{eid}'] [data-act='ev-build']")
+
 
 def main():
-    gh = FakeGitHub()
-    gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(BOOK), "csc258/f26/a1/exam.json": json.dumps(HANDOUT)}))
-    gh.add(Repo("chandra-gummaluru/courses", False, {"csc258/f26/info.html": open(os.path.join(os.path.dirname(__file__), "old-course-page.html"), encoding="utf-8").read()}))
     errors = []
-    with sync_playwright() as p:
+    with Server() as srv, sync_playwright() as p:
+        srv.account()
+        srv.put("priv", {"csc258/f26/grades.json": json.dumps(BOOK), "csc258/f26/a1/exam.json": json.dumps(HANDOUT)})
+        srv.put("pub", {"csc258/f26/course.json": DATA})
         b = p.chromium.launch()
-        ctx = b.new_context(viewport={"width": 1360, "height": 900})
-        gh.attach(ctx)
-        ctx.route("https://cdnjs.cloudflare.com/**", lambda r: r.abort())
-        ctx.route("https://fonts.googleapis.com/**", lambda r: r.abort())
+        ctx = b.new_context(viewport={"width": 1360, "height": 900}); block_cdns(ctx)
         page = ctx.new_page()
         page.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
         shot = lambda n, full=False: page.screenshot(path=f"{OUT}/{n}.png", full_page=full)
         path = lambda: page.inner_text("#lt-path").replace("\n", " ")
-        page.goto(BASE)
-        page.evaluate("""() => { sessionStorage.setItem('lectern.github', JSON.stringify({access_token:'tok', refresh_token:'r', expires_at: Date.now()+8*3600e3}));
-                                 localStorage.setItem('lectern.repos', JSON.stringify({priv:'chandra-gummaluru/courses-private', pub:'chandra-gummaluru/courses'})); }""")
-        page.goto(BASE + "#/csc258/f26/course"); page.reload(); page.wait_for_timeout(2800)
-        C, G, X = "[data-lt-tool='course'] ", "[data-lt-tool='grades'] ", "[data-lt-tool='exams'] "
-        shot("80-course-with-scheme")
-        print("1 status:", page.inner_text(C + "#status").replace("\n", " "))
-        print("  week pills:", page.eval_on_selector_all(C + ".e-weekrow", "els => els.map(e => e.querySelector('.wr-name').textContent + ': ' + [...e.querySelectorAll('.wr-pill')].map(x => x.textContent).join(','))"))
-        page.locator(C + ".e-sechead", has_text="Marking Scheme").first.scroll_into_view_if_needed(); page.wait_for_timeout(200); shot("81-scheme-editor")
-        # Week 3: Assignment 1 and Lab 2 from Grades; give the assignment a submission link
-        page.click(C + ".e-weekrow >> nth=2"); page.wait_for_timeout(500)
-        print("2 week 3 evals:", page.eval_on_selector_all(C + ".e-gev-h", "els => els.map(e => e.textContent.trim())"))
-        page.click(C + "button[data-path='evalFiles.a1']"); page.wait_for_timeout(300)
-        page.fill(C + "input[data-bindv='evalFiles.a1.0.url']", "https://q.utoronto.ca/a1"); page.keyboard.press("Enter"); page.wait_for_timeout(300)
-        shot("82-week3-evals")
-        # Save the course page and look at what's published
-        page.click("#lt-save"); page.wait_for_timeout(2500)
-        okb = page.query_selector(C + "#pl-ok")
-        if okb: okb.click(); page.wait_for_timeout(1500)
-        if page.query_selector(C + ".modal button:has-text('Done')"): page.click(C + ".modal button:has-text('Done')"); page.wait_for_timeout(300)
-        r = gh.repos["chandra-gummaluru/courses"]; html = r.commits[r.head]["files"]["csc258/f26/info.html"]
-        open(f"{OUT}/saved-linked.html", "w").write(html)
-        print("3 published: scheme table", "cpb-scheme" in html, "| gev cards", html.count('class="cpb-gev"'), "| a1 link", "q.utoronto.ca/a1" in html, "| students?", "Castillo" in html)
-        # Edit in Grades: the gradebook, where Assignment 1's out of comes from its handout
-        shot("86-before-edit"); print("edit buttons:", len(page.query_selector_all(C + "[data-act=edit-grades]")), page.query_selector(".modal, [data-lt-tool=course] .modal") is not None)
-        page.click(C + "[data-act=edit-grades] >> nth=0"); page.wait_for_timeout(2000)
-        print("4 path:", path(), "| row buttons:", page.eval_on_selector_all(G + ".erow[data-id='a1'] .ec-acts > *", "els => els.map(e => e.textContent.trim())"))
-        print("  A1 out of:", page.eval_on_selector(G + ".erow[data-id='a1'] p:not(.er-when)", "e => e.textContent"))
+
+        # 1. Assignment 1's out of comes from its handout (25), and can't be typed over.
+        srv.sign_in(page, hash="#/csc258/f26/evaluations")
+        open_eval(page, "a1")
+        print("1 A1:", page.inner_text(G + ".editor[data-eval='a1']").split("Points")[1][:80].replace("\n", " "))
+        expect(page.locator(G + ".editor[data-eval='a1']")).to_contain_text("Out of 25: the total marks of its handout")
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-act='ev-build']")).to_have_text("Open handout")
         shot("83-grades-build")
-        # Build the midterm: a new exam, named and dated
-        open_eval(page, G, "mt"); page.click(G + ".ed-acts [data-act='ev-build']"); page.wait_for_timeout(3000)
-        print("5 path:", path(), "| layout cover:", bool(page.query_selector(X + ".cover-blk")))
+
+        # 2. Saving the gradebook puts its marking scheme on the course page.
+        page.keyboard.press("Control+s"); page.wait_for_timeout(2500)
+        g = json.loads(srv.text("priv", "csc258/f26/grades.json"))
+        assert next(e for e in g["evals"] if e["id"] == "a1")["total"] == 25, "the handout's total is saved as A1's out of"
+        sc = json.loads(srv.text("pub", "csc258/f26/course.json"))["page"]["scheme"]
+        print("2 scheme units:", [(u.get("name"), u.get("weight")) for u in sc["units"]])
+        assert [u["name"] for u in sc["units"]][:2] == ["Assignment 1", "Labs"], sc["units"]
+        v = ctx.new_page(); v.goto(srv.base + "c/chandra/csc258/f26/#evaluations"); v.wait_for_selector(".hs-ev")
+        txt = v.inner_text(".hb-main")
+        print("   course page:", txt.replace("\n", " | ")[:200])
+        assert "Assignment 1" in txt and "Labs" in txt and "Midterm" in txt and "15%" in txt, txt
+        v.screenshot(path=f"{OUT}/80-course-scheme.png", full_page=True); v.close()
+
+        # 3. Build the Midterm: a new exam, opened in the exam builder.
+        open_eval(page, "mt"); page.click(G + ".editor[data-eval='mt'] [data-act='ev-build']")
+        page.wait_for_selector("body.lt-tool-exams", timeout=15000); page.wait_for_timeout(1500)
+        print("3 path:", path(), "| cover:", bool(page.query_selector(X + ".cover-blk")))
+        assert "Exams" in path() or "Midterm" in path(), path()
+        assert page.query_selector(X + ".cover-blk"), "a test's document is an exam (a cover page)"
         shot("84-built-exam")
-        # A handout from an assignment: Lab 2
-        page.evaluate("location.hash = '#/csc258/f26/evaluations'"); page.wait_for_timeout(1500)
-        if page.query_selector(".lt-modal [data-yes]"): page.click(".lt-modal [data-yes]"); page.wait_for_timeout(800)
-        print("6 midterm button now:", (open_eval(page, G, "mt"), page.inner_text(G + ".ed-acts [data-act='ev-build']"))[1])
-        open_eval(page, G, "l2"); page.click(G + ".ed-acts [data-act='ev-build']"); page.wait_for_timeout(1500)
-        if page.query_selector(".lt-modal [data-yes]"): page.click(".lt-modal [data-yes]"); page.wait_for_timeout(1500)
-        print("7 path:", path(), "| handout head:", bool(page.query_selector(X + ".ho-head")), "| answer-space buttons:", len(page.query_selector_all(X + ".add-space")))
+
+        # 4. Lab 2: a handout (an assignment's document). The new exam isn't saved yet: Lectern may ask first.
+        open_eval(page, "mt")
+        print("4 midterm button now:", page.inner_text(G + ".editor[data-eval='mt'] [data-act='ev-build']"))
+        open_eval(page, "l2"); page.click(G + ".editor[data-eval='l2'] [data-act='ev-build']"); page.wait_for_timeout(1000)
+        if page.query_selector(".lt-modal [data-yes]"): page.click(".lt-modal [data-yes]"); page.wait_for_timeout(1000)
+        page.wait_for_selector(X + ".ho-head", timeout=15000)
+        print("5 path:", path(), "| handout head:", bool(page.query_selector(X + ".ho-head")), "| answer-space buttons:", len(page.query_selector_all(X + ".add-space")))
         shot("85-built-handout")
         b.close()
     print("\n".join(errors) or "no page errors")
+    assert not errors
+    print("flow_links: OK")
+
 
 if __name__ == "__main__":
     main()

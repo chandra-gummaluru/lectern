@@ -62,8 +62,9 @@
     font: 600 14.5px var(--sans); cursor: pointer; white-space: nowrap;
     transition: background .12s, border-color .12s, transform .12s;
 }
-.sp-btn--primary { background: var(--dark); color: #fff; min-width: 220px; }
-.sp-btn--primary:hover:not(:disabled) { background: #121a15; }
+/* Lectern's main button: white with a black outline, light yellow on hover (as in the app). */
+.sp-btn--primary { background: var(--card); border: 1.5px solid var(--ink); color: var(--ink); min-width: 220px; }
+.sp-btn--primary:hover:not(:disabled) { background: var(--gold-bg); }
 .sp-btn--quiet { background: var(--card); color: var(--ink); border-color: var(--line-2); }
 .sp-btn--quiet:hover:not(:disabled) { border-color: var(--ink-3); }
 .sp-btn:disabled { opacity: .6; cursor: wait; }

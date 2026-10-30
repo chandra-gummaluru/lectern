@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Lectern — University of Toronto</title>
+    <meta name="theme-color" content="#333333">
+    <link rel="icon" href="static/icons/icon.svg" type="image/svg+xml">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="static/css/splash.css">
+    <link rel="stylesheet" href="static/css/shell.css">
+    <script src="static/js/boot.js"></script>
+</head>
+<body>
+    <!-- ── Splash: one family with Beamer+ and Test Mail (serif wordmark, institution, a live preview,
+         an outline watermark), with its own look: a centred title over one wide, wordless window. ── -->
+    <div class="splash" id="splash">
+        <div class="sp-watermark" aria-hidden="true">
+            <svg viewBox="0 0 120 120">
+                <g transform="translate(60, 64) rotate(-8) scale(1.05)">
+                    <polygon points="-38,-30 38,-42 40,-32 -36,-20"/>
+                    <polygon points="-5,-25 5,-27 5,34 -5,34"/>
+                    <polygon points="-24,34 24,34 28,42 -28,42"/>
+                </g>
+            </svg>
+        </div>
+
+        <main class="sp-screen">
+            <header class="sp-copy">
+                <h1 class="sp-title">Lectern</h1>
+                <p class="sp-inst">University of Toronto</p>
+                <p class="sp-tag">Every course, from the first lecture to the final mark.</p>
+
+                <!-- Sign in. The other steps (a two-factor code, a forgotten password, an invitation) are drawn
+                     in #sp-panel by auth.js. The password goes only to this server, over HTTPS. -->
+                <form class="sp-form" id="sp-form" action="#" method="post" novalidate>
+                    <label class="sp-field"><span>Email</span>
+                        <input type="email" id="sp-email" name="email" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+                    <label class="sp-field"><span>Password</span>
+                        <span class="sp-pw"><input type="password" id="sp-pw" name="password" autocomplete="current-password" required><button type="button" class="sp-show" data-show="sp-pw" aria-label="Show password">Show</button></span></label>
+                    <button type="submit" class="sp-btn sp-btn--primary" id="sp-go">Sign in</button>
+                    <button type="button" class="sp-link" id="sp-forgot">Forgot your password?</button>
+                </form>
+                <div class="sp-form" id="sp-panel" hidden></div>
+                <div class="sp-under">
+                    
+                    <a class="sp-more" href="{{ learn_more }}" target="_blank" rel="noopener">Learn more</a>
+                </div>
+                <p class="sp-hint" id="splash-status" role="status" aria-live="polite"></p>
+            </header>
+
+            <!-- One wide window, drawn in outline: the weeks, the spread of marks, a page of the exam.
+                 No words; the only colour is the gold. A pen traces the curve and ticks the page. -->
+            <figure class="sp-preview" aria-hidden="true">
+                <svg class="sp-win" viewBox="0 0 960 290" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <rect class="w-frame" x="8" y="8" width="944" height="274" rx="22"/>
+                    <path class="w-rule" d="M8 50H952"/>
+                    <circle class="w-dot" cx="40" cy="29" r="5.5"/><circle class="w-dot" cx="60" cy="29" r="5.5"/><circle class="w-dot" cx="80" cy="29" r="5.5"/>
+
+                    <!-- the weeks -->
+                    <rect class="w-card" x="32" y="70" width="272" height="56" rx="10"/>
+                    <rect class="w-ln" x="52" y="86" width="96" height="9" rx="4.5"/>
+                    <rect class="w-ln2" x="52" y="103" width="150" height="7" rx="3.5"/>
+                    <rect class="w-chip" x="252" y="92" width="12" height="12" rx="3"/><rect class="w-chip" x="268" y="92" width="12" height="12" rx="3"/>
+
+                    <rect class="w-card is-sel" x="32" y="138" width="272" height="56" rx="10"/>
+                    <rect class="w-ln dk" x="52" y="154" width="120" height="9" rx="4.5"/>
+                    <rect class="w-ln2" x="52" y="171" width="110" height="7" rx="3.5"/>
+                    <rect class="w-gold" x="230" y="159" width="34" height="14" rx="7"/>
+                    <rect class="w-chip" x="268" y="160" width="12" height="12" rx="3"/>
+
+                    <rect class="w-card" x="32" y="206" width="272" height="56" rx="10"/>
+                    <rect class="w-ln" x="52" y="222" width="80" height="9" rx="4.5"/>
+                    <rect class="w-ln2" x="52" y="239" width="170" height="7" rx="3.5"/>
+                    <rect class="w-chip" x="252" y="228" width="12" height="12" rx="3"/><rect class="w-chip" x="268" y="228" width="12" height="12" rx="3"/>
+
+                    <!-- the spread of marks -->
+                    <rect class="w-card" x="328" y="70" width="304" height="192" rx="12"/>
+                    <rect class="w-head" x="352" y="88" width="84" height="14" rx="5"/>
+                    <rect class="w-ln2" x="446" y="91" width="40" height="8" rx="4"/>
+                    <rect class="w-bar" x="356" y="192" width="28" height="16" rx="3"/>
+                    <rect class="w-bar" x="392" y="178" width="28" height="30" rx="3"/>
+                    <rect class="w-bar w-gold" x="428" y="156" width="28" height="52" rx="3"/>
+                    <rect class="w-bar" x="464" y="134" width="28" height="74" rx="3"/>
+                    <rect class="w-bar" x="500" y="118" width="28" height="90" rx="3"/>
+                    <rect class="w-bar" x="536" y="150" width="28" height="58" rx="3"/>
+                    <rect class="w-bar" x="572" y="174" width="28" height="34" rx="3"/>
+                    <path class="w-rule" d="M350 208H610"/>
+                    <path class="w-pen p1" pathLength="1" d="M352 203C392 198 420 172 452 140S502 104 520 110 552 146 572 168 598 196 612 200"/>
+                    <rect class="w-ln2" x="352" y="226" width="150" height="7" rx="3.5"/><rect class="w-chip" x="594" y="223" width="14" height="12" rx="3"/>
+                    <rect class="w-ln2" x="352" y="244" width="110" height="7" rx="3.5"/><rect class="w-chip" x="594" y="241" width="14" height="12" rx="3"/>
+
+                    <!-- a page of the exam -->
+                    <rect class="w-tray" x="656" y="70" width="272" height="192" rx="12"/>
+                    <path class="w-sheet" d="M684 261V84H900V261"/>
+                    <rect class="w-head" x="760" y="97" width="64" height="9" rx="4.5"/>
+                    <path class="w-rule dk" d="M702 116H882"/>
+                    <rect class="w-chip" x="702" y="128" width="8" height="8" rx="2"/>
+                    <rect class="w-ln" x="718" y="128" width="124" height="8" rx="4"/>
+                    <rect class="w-ln2" x="862" y="129" width="18" height="6" rx="3"/>
+                    <rect class="w-gold-bg" x="702" y="144" width="180" height="26" rx="2"/>
+                    <path class="w-gold-edge" d="M703 145V169"/>
+                    <rect class="w-gold-ln" x="714" y="153" width="118" height="8" rx="4"/>
+                    <rect class="w-chip" x="702" y="182" width="8" height="8" rx="2"/>
+                    <rect class="w-ln" x="718" y="182" width="104" height="8" rx="4"/>
+                    <rect class="w-ln2" x="862" y="183" width="18" height="6" rx="3"/>
+                    <rect class="w-box" x="702" y="200" width="180" height="40" rx="3"/>
+                    <path class="w-pen p2" pathLength="1" d="M724 221L736 231 762 205"/>
+                </svg>
+            </figure>
+        </main>
+    </div>
+
+    <!-- ── The app: one top bar (with the path in it), then a page or a builder ── -->
+    <div class="lt-app" id="app" hidden>
+        <header class="lt-bar" id="lt-bar" role="toolbar" aria-label="Lectern">
+            <button type="button" class="lt-home" id="lt-home" title="Home: all courses" aria-label="Home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11 12 4l8 7"/><path d="M6 9.5V20h12V9.5"/></svg></button>
+            <nav class="lt-path" id="lt-path" aria-label="Where you are"></nav>
+            <span class="lt-status" id="lt-status"></span>
+            <span class="lt-acct-wrap"><button type="button" class="lt-acct" id="lt-acct" aria-haspopup="menu" aria-expanded="false"></button></span>
+        </header>
+        <main class="lt-page" id="lt-page"></main>
+        <div class="lt-tools" id="lt-tools"></div>
+    </div>
+    <div id="lt-modal-root"></div>
+    <div id="lt-toast-root"></div>
+
+    <script src="static/js/scope.js"></script>
+    <script src="static/js/hub-view.js"></script>
+    <script type="module" src="static/js/lectern.js"></script>
+</body>
+</html>

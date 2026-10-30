@@ -1,0 +1,148 @@
+/* ============================================================
+   Lectern splash. One family with beamer.changapp.net and
+   testmail.changapp.net: an EB Garamond wordmark with the institution
+   under it, an italic serif line, a live preview of the app, and a faint
+   outline watermark of the logo. Lectern's own: a soft sage-paper ground,
+   everything centred over one wide, wordless window in outline (weeks, a
+   spread of marks, a page of an exam), and the builders' gold as its one accent.
+   Tokens live on .splash so they never meet the app's or the tools'.
+   ============================================================ */
+
+.splash {
+    --paper:   #f3f4ef;   /* sage paper */
+    --card:    #ffffff;
+    --ink:     #1c211d;
+    --ink-2:   #4d564f;
+    --ink-3:   #7d857e;
+    --line:    #dcdfd6;
+    --line-2:  #c9cdc3;
+    --dark:    #1f2a23;   /* the primary button: green-black */
+    --gold:    #a67c00;   /* the builders' editing gold */
+    --gold-bg: #fbf3d9;
+    --danger:  #b42318;
+    --serif: "EB Garamond", Garamond, Georgia, serif;
+    --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    position: relative;
+    min-height: 100vh;
+    min-height: 100dvh;
+    background: var(--paper);
+    color: var(--ink);
+    font: 14px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+.splash *, .splash *::before, .splash *::after { box-sizing: border-box; }
+.splash[hidden] { display: none; }
+
+/* The lectern, drawn in outline, standing large and faint in the lower right. */
+.sp-watermark { position: fixed; right: -12vw; bottom: -30vh; width: min(58vw, 760px); z-index: 0; pointer-events: none; opacity: .08; }
+.sp-watermark svg { width: 100%; height: auto; display: block; overflow: visible; }
+.sp-watermark polygon { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+
+.sp-screen {
+    position: relative; z-index: 1;
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: clamp(14px, 2.6vh, 28px); padding: clamp(16px, 3vh, 32px) 24px clamp(36px, 8vh, 84px);
+}
+
+/* ── The copy: centred ── */
+.sp-copy { display: flex; flex-direction: column; align-items: center; text-align: center; animation: sp-in .6s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes sp-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.sp-title { margin: 0; font: 500 clamp(48px, min(6.4vw, 9vh), 76px)/.95 var(--serif); letter-spacing: -.025em; color: var(--ink); }
+.sp-inst { margin: 10px 0 0; font-size: 15px; font-weight: 500; letter-spacing: .01em; color: var(--ink-2); }
+.sp-inst::after { content: ""; display: block; width: 36px; height: 2px; margin: 16px auto 0; border-radius: 2px; background: #c99a06; }
+.sp-tag { margin: 12px 0 clamp(10px, 2vh, 18px); font: italic 400 clamp(18px, 1.9vw, 21px)/1.35 var(--serif); color: var(--ink-2); }
+
+.sp-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.sp-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    height: 44px; padding: 0 20px; border-radius: 9px; border: 1px solid transparent;
+    font: 600 14.5px var(--sans); cursor: pointer; white-space: nowrap;
+    transition: background .12s, border-color .12s, transform .12s;
+}
+.sp-btn--primary { background: var(--dark); color: #fff; min-width: 220px; }
+.sp-btn--primary:hover:not(:disabled) { background: #121a15; }
+.sp-btn--quiet { background: var(--card); color: var(--ink); border-color: var(--line-2); }
+.sp-btn--quiet:hover:not(:disabled) { border-color: var(--ink-3); }
+.sp-btn:disabled { opacity: .6; cursor: wait; }
+.sp-btn:focus-visible, .sp-remember input:focus-visible, .sp-more:focus-visible, .sp-hint button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Sign in (and its other steps: a two-factor code, a new password, an invitation) */
+.sp-form { display: grid; gap: 12px; width: min(340px, 100%); text-align: left; }
+.sp-form h2 { margin: 0; font: 500 26px/1.15 var(--serif); text-align: center; color: var(--ink); }
+.sp-form p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); text-align: center; }
+.sp-field { display: grid; gap: 5px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.sp-field small { font-weight: 400; color: var(--ink-3); line-height: 1.45; }
+.sp-field input { box-sizing: border-box; width: 100%; height: 42px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--card); color: var(--ink); font: 15px var(--sans); }
+.sp-field input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgb(166 124 0 / .16); }
+.sp-field input[readonly] { background: transparent; color: var(--ink-2); }
+.sp-field input.sp-code { font: 600 22px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing: .3em; text-align: center; }
+.sp-field input.sp-code::placeholder { font: 400 15px var(--sans); letter-spacing: 0; color: var(--ink-3); opacity: .7; }
+.sp-pw { position: relative; display: block; }
+.sp-pw input { padding-right: 62px; }
+.sp-show { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 30px; padding: 0 9px; border: 0; border-radius: 6px; background: none; font: 600 12px var(--sans); color: var(--ink-2); cursor: pointer; }
+.sp-show:hover { background: var(--paper); color: var(--ink); }
+.sp-form .sp-btn--primary { width: 100%; margin-top: 4px; }
+.sp-link { justify-self: center; border: 0; padding: 2px; background: none; font: 500 13px var(--sans); color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.sp-link:hover { color: var(--ink); }
+.sp-show:focus-visible, .sp-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.sp-addr { font: 12.5px ui-monospace, Menlo, Consolas, monospace; color: var(--ink-3); word-break: break-all; }
+.sp-err { margin: 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45; background: #fdf0ee; border: 1px solid #f3cdc7; color: var(--ink); }
+.sp-err:empty { display: none; }
+.sp-ok { margin: 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45; background: #eef7f0; border: 1px solid #c7e3cf; color: var(--ink); }
+
+.sp-under { display: flex; align-items: center; gap: 18px; margin-top: 10px; font-size: 13px; color: var(--ink-3); }
+.sp-remember { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+.sp-remember input { width: 15px; height: 15px; margin: 0; accent-color: var(--dark); cursor: pointer; }
+.sp-more { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+.sp-more:hover { color: var(--ink); }
+.sp-hint { min-height: 1.5em; margin: 6px 0 0; max-width: 34em; font-size: 13px; color: var(--ink-3); }
+.sp-hint.is-error { color: var(--danger); }
+.sp-hint button { border: 0; padding: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+/* ── The preview: one wide window in outline, as Beamer+'s is. Greys, a pen, and the gold. ── */
+.sp-preview { margin: 0; width: min(860px, 100%); animation: sp-in .6s cubic-bezier(.16, 1, .3, 1) .1s both; filter: drop-shadow(0 22px 34px rgb(31 42 35 / .10)); }
+.sp-win { display: block; width: 100%; height: auto; overflow: visible; }
+.sp-win .w-frame { fill: #f6f5f1; stroke: #a7a9ac; stroke-width: 2; }
+.sp-win .w-rule  { stroke: #b3b5b8; stroke-width: 1.5; }
+.sp-win .w-rule.dk { stroke: #55585c; }
+.sp-win .w-dot   { fill: #a7a9ac; }
+.sp-win .w-card  { fill: #fcfbf8; stroke: #b3b5b8; stroke-width: 1.5; }
+.sp-win .w-card.is-sel { fill: #e6e7e8; stroke: #55585c; stroke-width: 2; }
+.sp-win .w-tray  { fill: #eeeeea; stroke: #b3b5b8; stroke-width: 1.5; }
+.sp-win .w-sheet { fill: #fff; stroke: #c9cacb; stroke-width: 1.5; }
+.sp-win .w-head  { fill: #6e7175; }
+.sp-win .w-ln    { fill: #a3a6a9; }
+.sp-win .w-ln.dk { fill: #6e7175; }
+.sp-win .w-ln2   { fill: #d6d7d5; }
+.sp-win .w-chip  { fill: #6e7175; }
+.sp-win .w-bar   { fill: #cfd0d1; }
+.sp-win .w-box   { fill: #fff; stroke: #b3b5b8; stroke-width: 1.5; }
+.sp-win .w-gold    { fill: #e9c25a; }
+.sp-win .w-gold-bg { fill: #fbf3d9; }
+.sp-win .w-gold-edge { stroke: #c99a06; stroke-width: 3; stroke-linecap: butt; }
+.sp-win .w-gold-ln { fill: #ecd58f; }
+.sp-win .w-pen { stroke: #333538; stroke-width: 3.5; stroke-dasharray: 1; stroke-dashoffset: 1; animation: w-pen 9s cubic-bezier(.45, 0, .25, 1) infinite; }
+.sp-win .w-pen.p2 { animation-name: w-tick; }
+@keyframes w-pen  { 0%, 8% { stroke-dashoffset: 1; } 30%, 88% { stroke-dashoffset: 0; opacity: 1; } 96%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes w-tick { 0%, 36% { stroke-dashoffset: 1; } 44%, 88% { stroke-dashoffset: 0; opacity: 1; } 96%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .sp-copy, .sp-preview { animation: none; }
+    .sp-win .w-pen { animation: none; stroke-dashoffset: 0; }
+}
+
+@media (max-width: 760px) {
+    .sp-screen { gap: 32px; padding: 40px 16px; justify-content: flex-start; }
+    .sp-actions { flex-direction: column; width: 100%; max-width: 340px; }
+    .sp-btn { width: 100%; }
+    .sp-form { width: 100%; max-width: 340px; }
+    .sp-under { flex-direction: column; gap: 8px; }
+    .sp-watermark { width: 160vw; right: -50vw; bottom: -10vh; }
+}
+
+/* No scroll bars shown anywhere: things still scroll (wheel, touch, keys), just without the bar. */
+* { scrollbar-width: none !important; }
+::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }

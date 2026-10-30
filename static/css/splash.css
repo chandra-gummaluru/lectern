@@ -44,7 +44,7 @@
     position: relative; z-index: 1;
     min-height: 100vh; min-height: 100dvh;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: clamp(20px, 4vh, 40px); padding: clamp(20px, 5vh, 48px) 24px;
+    gap: clamp(14px, 2.6vh, 28px); padding: clamp(16px, 3vh, 32px) 24px clamp(36px, 8vh, 84px);
 }
 
 /* ── The copy: centred ── */
@@ -53,7 +53,7 @@
 .sp-title { margin: 0; font: 500 clamp(48px, min(6.4vw, 9vh), 76px)/.95 var(--serif); letter-spacing: -.025em; color: var(--ink); }
 .sp-inst { margin: 10px 0 0; font-size: 15px; font-weight: 500; letter-spacing: .01em; color: var(--ink-2); }
 .sp-inst::after { content: ""; display: block; width: 36px; height: 2px; margin: 16px auto 0; border-radius: 2px; background: #c99a06; }
-.sp-tag { margin: 14px 0 clamp(14px, 3vh, 24px); font: italic 400 clamp(18px, 1.9vw, 21px)/1.35 var(--serif); color: var(--ink-2); }
+.sp-tag { margin: 12px 0 clamp(10px, 2vh, 18px); font: italic 400 clamp(18px, 1.9vw, 21px)/1.35 var(--serif); color: var(--ink-2); }
 
 .sp-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .sp-btn {
@@ -93,12 +93,12 @@
 .sp-err:empty { display: none; }
 .sp-ok { margin: 0; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; line-height: 1.45; background: #eef7f0; border: 1px solid #c7e3cf; color: var(--ink); }
 
-.sp-under { display: flex; align-items: center; gap: 18px; margin-top: 14px; font-size: 13px; color: var(--ink-3); }
+.sp-under { display: flex; align-items: center; gap: 18px; margin-top: 10px; font-size: 13px; color: var(--ink-3); }
 .sp-remember { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
 .sp-remember input { width: 15px; height: 15px; margin: 0; accent-color: var(--dark); cursor: pointer; }
 .sp-more { color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
 .sp-more:hover { color: var(--ink); }
-.sp-hint { min-height: 1.5em; margin: 12px 0 0; max-width: 34em; font-size: 13px; color: var(--ink-3); }
+.sp-hint { min-height: 1.5em; margin: 6px 0 0; max-width: 34em; font-size: 13px; color: var(--ink-3); }
 .sp-hint.is-error { color: var(--danger); }
 .sp-hint button { border: 0; padding: 0; background: none; font: inherit; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 

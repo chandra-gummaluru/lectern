@@ -44,7 +44,7 @@
     position: relative; z-index: 1;
     min-height: 100vh; min-height: 100dvh;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: clamp(14px, 2.6vh, 28px); padding: clamp(16px, 3vh, 32px) 24px clamp(36px, 8vh, 84px);
+    gap: clamp(14px, 2.6vh, 28px); padding: clamp(20px, 4vh, 40px) 24px clamp(24px, 5vh, 52px);
 }
 
 /* ── The copy: centred ── */

@@ -16,7 +16,7 @@
 </head>
 <body>
     <!-- ── Splash: one family with Beamer+ and Test Mail (serif wordmark, institution, a live preview,
-         an outline watermark), with its own look: a centred title over a wide preview of a week. ── -->
+         an outline watermark), with its own look: a centred title over one wide, wordless window. ── -->
     <div class="splash" id="splash">
         <div class="sp-watermark" aria-hidden="true">
             <svg viewBox="0 0 120 120">
@@ -52,38 +52,64 @@
                 <p class="sp-hint" id="splash-status" role="status" aria-live="polite"></p>
             </header>
 
-            <!-- The three parts of a course, in miniature, each lifting in turn. -->
+            <!-- One wide window, drawn in outline: the weeks, the spread of marks, a page of the exam.
+                 No words; the only colour is the gold. A pen traces the curve and ticks the page. -->
             <figure class="sp-preview" aria-hidden="true">
-                <div class="mk3">
-                    <div class="mkc c1">
-                        <div class="mkc-h">Course Page</div>
-                        <div class="mkc-b">
-                            <div class="m-wk"><span><b>Week 3</b><i class="ln" style="width:70%"></i></span><em class="m-pill">Lab 2</em><span class="m-hrs"><i></i><i></i></span></div>
-                            <div class="m-wk"><span><b>Week 4</b><i class="ln" style="width:55%"></i></span><em class="m-pill dk">Quiz</em><span class="m-hrs"><i class="h2"></i></span></div>
-                            <div class="m-wk"><span><b>Week 5</b><i class="ln" style="width:80%"></i></span><span class="m-hrs"><i></i><i></i></span></div>
-                        </div>
-                    </div>
-                    <div class="mkc c2">
-                        <div class="mkc-h">Gradebook</div>
-                        <div class="mkc-b m-gb">
-                            <div class="m-avg"><b>78%</b><span>/ 80%</span></div>
-                            <div class="m-hist"><i style="height:18%"></i><i class="lo" style="height:30%"></i><i class="md" style="height:55%"></i><i style="height:80%"></i><i style="height:100%"></i><i style="height:62%"></i><i style="height:34%"></i></div>
-                            <div class="m-rows"><span><i class="ln" style="width:60%"></i><b>27</b></span><span><i class="ln" style="width:45%"></i><b>24</b></span></div>
-                        </div>
-                    </div>
-                    <div class="mkc c3">
-                        <div class="mkc-h">Exam</div>
-                        <div class="mkc-b m-ex">
-                            <div class="m-sheet">
-                                <div class="m-sh"><b>Midterm</b></div>
-                                <div class="m-q"><b>1</b><i class="ln" style="width:72%"></i><em>/4</em></div>
-                                <div class="m-sol"><i class="ln" style="width:60%"></i></div>
-                                <div class="m-q"><b>2</b><i class="ln" style="width:58%"></i><em>/6</em></div>
-                                <div class="m-box"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <svg class="sp-win" viewBox="0 0 960 360" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <rect class="w-frame" x="8" y="8" width="944" height="344" rx="24"/>
+                    <path class="w-rule" d="M8 58H952"/>
+                    <circle class="w-dot" cx="42" cy="33" r="6"/><circle class="w-dot" cx="64" cy="33" r="6"/><circle class="w-dot" cx="86" cy="33" r="6"/>
+
+                    <!-- the weeks -->
+                    <rect class="w-card" x="32" y="82" width="272" height="70" rx="10"/>
+                    <rect class="w-ln" x="52" y="104" width="96" height="9" rx="4.5"/>
+                    <rect class="w-ln2" x="52" y="124" width="150" height="7" rx="3.5"/>
+                    <rect class="w-chip" x="252" y="110" width="12" height="12" rx="3"/><rect class="w-chip" x="268" y="110" width="12" height="12" rx="3"/>
+
+                    <rect class="w-card is-sel" x="32" y="167" width="272" height="70" rx="10"/>
+                    <rect class="w-ln dk" x="52" y="189" width="120" height="9" rx="4.5"/>
+                    <rect class="w-ln2" x="52" y="209" width="110" height="7" rx="3.5"/>
+                    <rect class="w-gold" x="230" y="194" width="34" height="14" rx="7"/>
+                    <rect class="w-chip" x="268" y="195" width="12" height="12" rx="3"/>
+
+                    <rect class="w-card" x="32" y="252" width="272" height="70" rx="10"/>
+                    <rect class="w-ln" x="52" y="274" width="80" height="9" rx="4.5"/>
+                    <rect class="w-ln2" x="52" y="294" width="170" height="7" rx="3.5"/>
+                    <rect class="w-chip" x="252" y="280" width="12" height="12" rx="3"/><rect class="w-chip" x="268" y="280" width="12" height="12" rx="3"/>
+
+                    <!-- the spread of marks -->
+                    <rect class="w-card" x="328" y="82" width="304" height="240" rx="12"/>
+                    <rect class="w-head" x="352" y="104" width="84" height="16" rx="5"/>
+                    <rect class="w-ln2" x="446" y="108" width="40" height="8" rx="4"/>
+                    <rect class="w-bar" x="356" y="236" width="28" height="22" rx="3"/>
+                    <rect class="w-bar" x="392" y="218" width="28" height="40" rx="3"/>
+                    <rect class="w-bar w-gold" x="428" y="190" width="28" height="68" rx="3"/>
+                    <rect class="w-bar" x="464" y="160" width="28" height="98" rx="3"/>
+                    <rect class="w-bar" x="500" y="140" width="28" height="118" rx="3"/>
+                    <rect class="w-bar" x="536" y="182" width="28" height="76" rx="3"/>
+                    <rect class="w-bar" x="572" y="214" width="28" height="44" rx="3"/>
+                    <path class="w-rule" d="M350 258H610"/>
+                    <path class="w-pen p1" pathLength="1" d="M352 252C392 246 420 214 452 172S502 116 520 124 552 172 572 200 598 238 612 244"/>
+                    <rect class="w-ln2" x="352" y="282" width="150" height="7" rx="3.5"/><rect class="w-chip" x="594" y="279" width="14" height="12" rx="3"/>
+                    <rect class="w-ln2" x="352" y="302" width="110" height="7" rx="3.5"/><rect class="w-chip" x="594" y="299" width="14" height="12" rx="3"/>
+
+                    <!-- a page of the exam -->
+                    <rect class="w-tray" x="656" y="82" width="272" height="240" rx="12"/>
+                    <path class="w-sheet" d="M684 321V100H900V321"/>
+                    <rect class="w-head" x="760" y="116" width="64" height="10" rx="5"/>
+                    <path class="w-rule dk" d="M702 140H882"/>
+                    <rect class="w-chip" x="702" y="156" width="8" height="8" rx="2"/>
+                    <rect class="w-ln" x="718" y="156" width="124" height="8" rx="4"/>
+                    <rect class="w-ln2" x="862" y="157" width="18" height="6" rx="3"/>
+                    <rect class="w-gold-bg" x="702" y="176" width="180" height="30" rx="2"/>
+                    <path class="w-gold-edge" d="M703 177V205"/>
+                    <rect class="w-gold-ln" x="714" y="187" width="118" height="8" rx="4"/>
+                    <rect class="w-chip" x="702" y="224" width="8" height="8" rx="2"/>
+                    <rect class="w-ln" x="718" y="224" width="104" height="8" rx="4"/>
+                    <rect class="w-ln2" x="862" y="225" width="18" height="6" rx="3"/>
+                    <rect class="w-box" x="702" y="246" width="180" height="40" rx="3"/>
+                    <path class="w-pen p2" pathLength="1" d="M724 270L736 280 762 254"/>
+                </svg>
             </figure>
         </main>
     </div>

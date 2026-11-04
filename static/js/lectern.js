@@ -1334,7 +1334,7 @@ async function partsCard(c, t) {
       <span class="lx-seg" role="group" aria-label="${esc(name)}">${[...(id === "accommodations" ? [] : [["public", "Public"]]), ["signed-in", "Enrolled"], ["off", "Off"]].map(([v, l]) => `<button type="button" data-part="${id}" data-v="${v}" aria-pressed="${cur(id) === v}">${l}</button>`).join("")}</span></div>`).join("")}
       <div class="pp-row${d.page && d.page.signInButton === false ? " off" : ""}"><b>Sign In Button</b>
       <span class="lx-seg" role="group" aria-label="Sign In Button">${[["on", "Shown"], ["off", "Hidden"]].map(([v, l]) => `<button type="button" data-signin="${v}" aria-pressed="${(d.page && d.page.signInButton === false ? "off" : "on") === v}">${l}</button>`).join("")}</span></div></div>
-      <p class="lx-help">Public: anyone with the link. Enrolled: students in the course (signed in), and the teaching team. Off: not on the course page.</p>`;
+      <p class="lx-help">Public: anyone with the link. Enrolled: students in the course (signed in), and the teaching team. Off: not on the course page. With the Sign In button hidden, discussion is off for the whole course.</p>`;
     box.querySelectorAll("[data-signin]").forEach(b => { b.onclick = async () => {
       const off = b.dataset.signin === "off"; if ((d.page && d.page.signInButton === false) === off) return;
       box.querySelectorAll("[data-part], [data-signin]").forEach(x => { x.disabled = true; });
@@ -1344,7 +1344,7 @@ async function partsCard(c, t) {
         if (off) x.page.signInButton = false; else delete x.page.signInButton;
         await Store.writeText(repo, path, JSON.stringify(x, null, 1) + "\n", `Course page: Sign In button ${off ? "hidden" : "shown"}`, g ? g.sha : null);
         d = x; const cp = Lectern.tools.course; if (cp && cp.api && cp.api.state().path === path) cp.stale = true;
-        toast(off ? "The course page has no Sign in button now." : "Saved.");
+        toast(off ? "The course page has no Sign in button now, and no discussions." : "Saved.");
       } catch (e) { toast(e.message); }
       if (mine()) draw();
     }; });

@@ -167,6 +167,13 @@ def lectures_of(owner_id, course, term):
     return d if isinstance(d, dict) and isinstance(d.get("weeks"), list) else None
 
 
+def discussions_off(owner_id, course, term):
+    """Discussion is off for the whole course page when its Sign in button is hidden (course.json's
+    page.signInButton false): without a way to sign in, no one in the course could take part."""
+    page = page_data(owner_id, course, term)
+    return bool(page) and page.get("signInButton") is False
+
+
 def closed_discussions(owner_id, course, term):
     """The evaluations, activities and announcements whose discussion is off (Lectern: Allow Discussion
     unticked: "discussion": false), as discussion targets: {"eval:<id>", "act:<id>", "ann:<id>"}."""
@@ -750,5 +757,7 @@ def hub_api(handle, course, term):
         lectern=app_url(), signIn=f"/c/{o['handle']}/{offering}/sign-in",
         # The header's Sign in button: shown unless the course turned it off (course.json's page.signInButton).
         signInButton=page.get("signInButton") is not False,
+        # No Sign in button, no discussions: none on the course page at all.
+        discussion=page.get("signInButton") is not False,
         pages=f"{pages_base()}{o['handle']}/{offering}/",
     )

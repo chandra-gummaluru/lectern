@@ -94,6 +94,21 @@ def test_discussion_off(client, course):
     assert maya.get(HUB).get_json()["closed"] == ["ann:a1"]
 
 
+def test_no_sign_in_button_no_discussions(client, course):
+    from test_hub import publish, with_tabs
+    maya, _ = people(course)
+    assert maya.post(D, json={"t": "eval:mt", "title": "Q", "body": "x"}, headers=H).status_code == 201
+    assert maya.get(HUB).get_json()["discussion"] is True
+    page = with_tabs(lectures="signed-in"); page["signInButton"] = False
+    publish(course, page)
+    assert maya.get(HUB).get_json()["discussion"] is False
+    assert maya.get(f"{D}?t=eval:mt").status_code == 403
+    assert maya.get(f"{D}/counts").status_code == 403
+    assert maya.post(D, json={"t": "eval:mt", "title": "Q", "body": "x"}, headers=H).status_code == 403
+    assert client.post(D, json={"t": "eval:mt", "title": "Q", "body": "x"}, headers=APP).status_code == 403
+    assert len(client.get(f"{D}?t=eval:mt").get_json()["posts"]) == 1   # the teaching team still sees what was posted
+
+
 def test_new_replies_to_what_you_posted(client, course):
     maya, ben = people(course)
     pid = maya.post(D, json={"t": "eval:mt", "title": "Q3?", "body": "x"}, headers=H).get_json()["id"]

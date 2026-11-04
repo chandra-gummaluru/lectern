@@ -138,10 +138,11 @@ const CHAT = svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>');
 const dcLink = (t, href) => (D.viewer.signedIn && !dcOff(t) ? `<a class="hs-file dc-link" href="${href}">${CHAT}Discussion<span class="dc-link-n" data-dcn="${esc(t)}"></span></a>` : "");
 // An item's buttons in one row: its files and links, then its Discussion (as the files' buttons are).
 const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (link ? f.replace(/<\/div>$/, `${link}</div>`) : f) : `${soon ? `<p class="hs-soon">Files coming soon</p>` : ""}${link ? `<div class="hs-files">${link}</div>` : ""}`; };
-// Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked).
+// Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked), or for the whole
+// course (its Sign in button hidden: D.discussion false).
 const REDO = svg('<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>');
 const HEART = svg('<path d="M12 21s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 8.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16.6 12 21 12 21z"/>');
-const dcOff = t => (D.closed || []).includes(t);
+const dcOff = t => D.discussion === false || (D.closed || []).includes(t);
 const dcHere = t => (dcOff(t) ? "" : `<section class="dc" data-dc="${esc(t)}"></section>`);
 let DCN = null, DCN_AT = 0;
 function discussions(m) {

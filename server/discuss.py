@@ -61,6 +61,14 @@ def _viewer(handle, course, term):
     return o, off, {"kind": "student", "key": f"s:{email}", "id": email, "num": s.get("num", ""), "name": _name(s) or email}
 
 
+def _open(o, off, viewer):
+    """Discussion is off for the whole course when its page hides the Sign in button (hub.discussions_off):
+    students see none of it; the teaching team still sees what was posted, from Lectern."""
+    from .hub import discussions_off
+    if viewer["kind"] != "staff" and discussions_off(o["id"], *off.split("/", 1)):
+        raise Refusal(403, "Discussion is off for this course.", "closed")
+
+
 def _key(row):
     """Whose a post is, as a voter key: "s:<email>" or "u:<user id>"."""
     return ("u:" if row["author_kind"] == "staff" else "s:") + row["author"]
@@ -176,6 +184,7 @@ def _target(t):
 @handles
 def thread(handle, course, term):
     o, off, viewer = _viewer(handle, course, term)
+    _open(o, off, viewer)
     return jsonify(_thread(o, off, _target(request.args.get("t")), viewer))
 
 
@@ -183,6 +192,7 @@ def thread(handle, course, term):
 @handles
 def counts(handle, course, term):
     o, off, viewer = _viewer(handle, course, term)
+    _open(o, off, viewer)
     rows = db.all_("SELECT target, COUNT(*) AS n FROM discussion_posts WHERE owner_id = ? AND offering = ? AND parent_id IS NULL AND removed_by = '' AND deleted = 0 GROUP BY target", (o["id"], off))
     return jsonify(counts={r["target"]: r["n"] for r in rows})
 
@@ -193,6 +203,9 @@ def _writer(handle, course, term):
     o, off, viewer = _viewer(handle, course, term)
     if viewer["kind"] == "preview" or (viewer["kind"] == "staff" and request.headers.get("X-Lectern-App") != "1"):
         raise Refusal(403, "The teaching team takes part in discussions from Lectern: this course page is how students see it.", "from-lectern")
+    from .hub import discussions_off
+    if discussions_off(o["id"], *off.split("/", 1)):   # (for everyone: no one in the course could reply)
+        raise Refusal(403, "Discussion is off for this course.", "closed")
     return o, off, viewer
 
 
@@ -378,8 +391,10 @@ def updates_for(o, off, viewer):
     threads = {}
     for r in rows:
         threads.setdefault(root(r)["id"], []).append(r)
-    from .hub import closed_discussions
+    from .hub import closed_discussions, discussions_off
     shut = closed_discussions(o["id"], *off.split("/", 1))
+    if discussions_off(o["id"], *off.split("/", 1)):
+        threads = {}   # discussion's off for the whole course: no replies to tell anyone about
     for rid, T in threads.items():
         mine = [r["created"] for r in T if _key(r) == viewer["key"]]
         if not mine or by[rid]["target"] in shut:

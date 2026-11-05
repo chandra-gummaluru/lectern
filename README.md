@@ -71,7 +71,7 @@ Lectern must be served over **HTTPS**. Behind nginx (or another proxy) that hand
 
 **Back up** the data folder (`LECTERN_DATA_DIR`, default `data/` beside `app.py`): `lectern.db` (accounts), `files/` (everyone's courses), `history/` (old versions) and `secret.key`. Without `secret.key` (or `LECTERN_SECRET_KEY`, if you set one), two-factor secrets and recovery codes can't be checked. The folder is in `.gitignore`: never commit it.
 
-**Embedding a course page in Quercus:** in a Quercus page's HTML editor, `<iframe src="https://lectern.changapp.net/c/<handle>/<course>/<term>/" width="100%" height="900" style="border:0"></iframe>`. Course pages (`/c/…`) may be framed by `https://q.utoronto.ca` and `https://*.instructure.com` (`LECTERN_EMBED_FROM` replaces that list); Lectern's own pages can't be framed anywhere. Inside the frame, the public parts work; signing in (for the Enrolled parts) needs the page opened on its own, since browsers don't send Lectern's cookie inside another site's frame.
+**Embedding a course page in Quercus:** in a Quercus page's HTML editor, `<iframe src="https://lectern.changapp.net/c/<handle>/<course>/<term>/" width="100%" height="900" style="border:0"></iframe>`. Course pages (`/c/…`) may be framed by `https://q.utoronto.ca` and `https://utoronto.instructure.com` (`LECTERN_EMBED_FROM` replaces that list); Lectern's own pages can't be framed anywhere. Inside the frame, the public parts work; signing in (for the Enrolled parts) needs the page opened on its own, since browsers don't send Lectern's cookie inside another site's frame.
 
 Other settings: `LECTERN_INSTITUTION` (under the wordmark; default "University of Toronto"), `LECTERN_LEARN_MORE` (the splash's "Learn more" link; hidden when unset), `LECTERN_MAX_UPLOAD_MB` (one save, default 64).
 
@@ -90,7 +90,7 @@ Two people saving the same gradebook at once: the second is told it changed and 
 
 In **Evaluations**, each evaluation has an **Accommodations** section. Its standard accommodation is its own policy for missed work (its makeups, and where its weight moves), so there's nothing to type. Choose **Students must request the standard accommodation** (it then applies only once you approve), **Students can request an alternate accommodation**, and a **Request By** date and time (the same calendar as the evaluation's date). With either kind of request on, the course page shows **Request Accommodation** beside that evaluation (in its week and in the marking scheme). The course page has them once the gradebook is saved.
 
-The button opens a form on Lectern's server (`/request?r=<your handle>&o=<course>/<term>&e=<evaluation>`). The student gives their email, identifier, first and last name; all four must match the class list (the offering's Students card). Then they ask for the standard accommodation or describe an alternate one, and get a receipt by email. After the request-by time, the form and the course page say the deadline has passed.
+Students ask on the course page itself, signed in with the code it emails them (so only the student can ask in their own name). They also give their identifier, first and last name, which must match the class list. Then they ask for the standard accommodation or describe an alternate one; it's listed in My Requests on the course page. After the request-by time, the course page says the deadline has passed.
 
 Requests go in your private files, `csc258/f26/accommodations.json`. The offering's **Accommodations** page lists them; **Approve** or **Reject** (with an optional note) saves the decision and emails the student. A student who needs something else makes another request (up to 10 per evaluation).
 
@@ -146,7 +146,6 @@ server/
   tools.py              the builders, split for sharing one page: /tools/<name>.css|.json|.js|.html
   scope_css.py          scopes a builder's CSS to its own element
 templates/index.html    the splash (modelled on beamer.changapp.net) and the app's frame
-templates/request.html  the students' accommodation request form (static/js/request.js, static/css/request.css)
 templates/admin.html    the admin panel (static/js/admin.js, static/css/admin.css)
 static/css/             splash.css (Beamer+'s tokens and layout), shell.css (top bar, path, Home)
 static/js/

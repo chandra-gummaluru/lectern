@@ -88,9 +88,9 @@ export function teamMemberPage(ctx, r) {
         <p class="lx-help" id="tm-role-help">${esc(ROLE_HELP[who.role] || "")}</p>` : ""}
         <h3 class="lx-sec${mayRole ? "" : " lx-first"}">General</h3>
         <label class="lt-check tm-show"><input type="checkbox" id="tm-show"${me.show === false ? "" : " checked"}${dis}> Show them on the course page</label>
-        <div class="lx-grid two tm-two"><label class="lx-f">Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${esc(who.email)}"${dis}></label>
+        <div class="lx-grid two tm-two"><label class="lx-f">Email<input type="email" id="tm-email" value="${esc(me.email || "")}" placeholder="${who.role === "owner" ? esc(who.email) : ""}"${dis}></label>
           <label class="lx-f">Office<input type="text" id="tm-office" value="${esc(me.office || "")}" placeholder="e.g. BA 4010"${dis}></label></div>
-        <p class="lx-help">The email students see. Blank: ${esc(who.email)}.</p>
+        <p class="lx-help">The email students see. Blank: ${who.role === "owner" ? esc(who.email) : "no email shown"}.</p>
         <h3 class="lx-sec">Sections They Run</h3>
         ${G.length ? `<p class="lx-help">The lecture, tutorial and lab sections they teach. Instructors and TAs see and change things for their sections' students.</p>
           <div class="lx-f tm-run-pick"><div id="tm-runs-pick"></div></div><div id="tm-runs-box">${runsHTML(run)}</div>`

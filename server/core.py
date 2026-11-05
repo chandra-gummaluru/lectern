@@ -87,10 +87,6 @@ def _origin(url):
     return f"{p.scheme}://{p.netloc}".lower()
 
 
-# Student-facing endpoints: no account, no cookie used, open to any page (see accommodations.py).
-PUBLIC_POSTS = {"/api/accommodations/verify", "/api/accommodations/submit"}
-
-
 @app.before_request
 def _guard():
     # Only saves (a course page's uploads) may be big; sign-in and the rest are small JSON.
@@ -104,7 +100,7 @@ def _guard():
     # Changes made with a session cookie must come from Lectern's own pages: a custom header (which a
     # page on another site can't send without CORS, which we never allow) and, when the browser says
     # where the request came from, that it's here. SameSite cookies are a second layer.
-    if request.method not in ("GET", "HEAD", "OPTIONS") and request.path.startswith("/api/") and request.path not in PUBLIC_POSTS:
+    if request.method not in ("GET", "HEAD", "OPTIONS") and request.path.startswith("/api/"):
         if request.headers.get("X-Lectern") != "1":
             return jsonify(error="Refused: this request didn't come from Lectern."), 403
         org = request.headers.get("Origin")
@@ -147,9 +143,9 @@ def _headers(resp):
 KATEX = "https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/"
 
 
-# Where a course page (/c/...) may be embedded: Lectern itself, and Quercus (U of T's Canvas, and Canvas's own
-# addresses, which Quercus's pages can be served from). LECTERN_EMBED_FROM, if set, replaces the list.
-EMBED_FROM = os.environ.get("LECTERN_EMBED_FROM", "https://q.utoronto.ca https://*.instructure.com")
+# Where a course page (/c/...) may be embedded: Lectern itself, and Quercus (U of T's Canvas, at its own address
+# and at its Instructure one). Not every Canvas (*.instructure.com is anyone's). LECTERN_EMBED_FROM, if set, replaces the list.
+EMBED_FROM = os.environ.get("LECTERN_EMBED_FROM", "https://q.utoronto.ca https://utoronto.instructure.com")
 
 
 def csp(extra_scripts="", frame_ancestors=""):

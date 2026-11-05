@@ -316,11 +316,11 @@ const DRAW = {
     // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
     const request = e => {
       const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
-      const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null, rq = E.request;
+      const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
       if (by && !isNaN(by) && by < new Date()) return `<div class="hb-req-off">The deadline for accommodation requests has passed.</div>`;
       const when = by && !isNaN(by) ? `<span class="hb-req-by">Request by ${esc(by.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" }))}, ${esc(a.byTime || "23:59")}</span>` : "";
-      const url = rq && rq.url ? `${rq.url}?${new URLSearchParams({ r: rq.r, o: rq.o, e: e.id })}` : "";
-      return `<div class="hb-req">${url ? `<a class="hb-btn hb-req-btn" href="${esc(url)}" target="_blank" rel="noopener">Request Accommodation</a>` : `<span class="hb-btn hb-req-btn">Request Accommodation</span>`}${when}</div>`;
+      // A preview: students ask on the course page itself, signed in (#request/<id> there).
+      return `<div class="hb-req"><span class="hb-btn hb-req-btn">Request Accommodation</span>${when}</div>`;
     };
     const extras = e => `${note(e) ? `<p class="hb-eval-n">${esc(note(e))}</p>` : ""}${files(e) ? `<div class="hb-files">${files(e)}</div>` : ""}${request(e)}${edit(e)}`;
     // A marking scheme, as a syllabus has it: one list, each evaluation a row (its name and when, its weight on the

@@ -34,11 +34,38 @@ from .core import app_url, link_base
 students_bp = Blueprint("students", __name__)
 
 CODE_MINUTES = 10
-MAX_TRIES = 5
+CODE_DIGITS = 8           # 10^8 codes: guessing one, even across a whole class, is hopeless within the caps below
+MAX_TRIES = 5             # wrong tries per code
+DAILY_CODES = 10          # codes emailed to one student (per course page) in 24 hours
+DAILY_MISSES = 10         # wrong codes tried for one student in 24 hours; then no more until the day's over
 SESSION_DAYS = 120
 _EMAIL = re.compile(r"^[^\s@,;<>]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")
 _SLUG = re.compile(r"^[\w.-]{1,64}$")
 LIMITS = {"code-email": (5, 3600), "code-ip": (30, 3600), "verify-ip": (40, 600), "verify-email": (15, 600)}
+
+
+def _daily(owner_id, off, email, kind, cap):
+    """Kept in the database, so a restart doesn't reset it. Refuses once email has had cap of kind in 24 hours."""
+    t = time.time()
+    n = db.one("SELECT COUNT(*) AS n FROM student_code_log WHERE owner_id = ? AND offering = ? AND email = ? AND kind = ? AND at > ?",
+               (owner_id, off, email, kind, t - 86400))["n"]
+    if n >= cap:
+        raise Refusal(429, "Too many codes for this email today. Try again tomorrow, or contact your instructor.", "daily")
+
+
+def _log(owner_id, off, email, kind):
+    t = time.time()
+    with db.transaction() as c:
+        c.execute("DELETE FROM student_code_log WHERE at < ?", (t - 2 * 86400,))
+        c.execute("INSERT INTO student_code_log (owner_id, offering, email, kind, at) VALUES (?, ?, ?, ?, ?)", (owner_id, off, email, kind, t))
+
+
+def _new_code():
+    return f"{secrets.randbelow(10 ** CODE_DIGITS):0{CODE_DIGITS}d}"
+
+
+def _code_in(raw):
+    return re.sub(r"\D", "", str(raw or ""))[:CODE_DIGITS]
 
 
 def _limit(kind, key):
@@ -204,8 +231,12 @@ def send_code(handle, course, term):
         raise Refusal(400, "Enter your email address.")
     _limit("code-ip", ip())
     _limit("code-email", f"{o['id']}/{off}/{e}")
+    # Counted whether or not they're on the list, so the answers never say who's in the course.
+    _daily(o["id"], off, e, "sent", DAILY_CODES)
+    _daily(o["id"], off, e, "miss", DAILY_MISSES)
+    _log(o["id"], off, e, "sent")
     if on_list(o["id"], off, e):
-        code, t = f"{secrets.randbelow(10 ** 6):06d}", time.time()
+        code, t = _new_code(), time.time()
         with db.transaction() as c:
             c.execute("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
             c.execute("DELETE FROM student_codes WHERE expires < ?", (t,))
@@ -224,7 +255,10 @@ def send_code(handle, course, term):
 def send_confirm_code(owner_id, off, email, course, term, what):
     _limit("code-ip", ip())
     _limit("code-email", f"{owner_id}/{off}/{email}")
-    code, t = f"{secrets.randbelow(10 ** 6):06d}", time.time()
+    _daily(owner_id, off, email, "sent", DAILY_CODES)
+    _daily(owner_id, off, email, "miss", DAILY_MISSES)
+    _log(owner_id, off, email, "sent")
+    code, t = _new_code(), time.time()
     with db.transaction() as c:
         c.execute("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
         c.execute("DELETE FROM student_codes WHERE expires < ?", (t,))
@@ -239,14 +273,17 @@ def send_confirm_code(owner_id, off, email, course, term, what):
 
 def check_confirm_code(owner_id, off, email, code):
     """Raises a Refusal unless code is the one just emailed to them; used up once it's right."""
-    code = re.sub(r"\D", "", str(code or ""))[:6]
+    code = _code_in(code)
     _limit("verify-ip", ip())
     _limit("verify-email", f"{owner_id}/{off}/{email}")
+    _daily(owner_id, off, email, "miss", DAILY_MISSES)
     row = db.one("SELECT * FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
     wrong = Refusal(400, "That code isn't right, or it has expired. Check it, or get a new one.", "bad-code")
-    if not row or row["expires"] < time.time() or len(code) != 6:
+    if not row or row["expires"] < time.time() or len(code) != CODE_DIGITS:
+        _log(owner_id, off, email, "miss")
         raise wrong
     if not sec.same(row["code_mac"], sec.mac(f"{owner_id}/{off}/{email}/{code}", "student-confirm")):
+        _log(owner_id, off, email, "miss")
         if row["tries"] + 1 >= MAX_TRIES:
             db.run("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (owner_id, off, email))
         else:
@@ -260,14 +297,17 @@ def check_confirm_code(owner_id, off, email, code):
 def verify(handle, course, term):
     o, off = _offering(handle, course, term)
     d = body()
-    e, code = norm(text(d, "email")), re.sub(r"\D", "", str(d.get("code") or ""))[:6]
+    e, code = norm(text(d, "email")), _code_in(d.get("code"))
     _limit("verify-ip", ip())
     _limit("verify-email", f"{o['id']}/{off}/{e}")
+    _daily(o["id"], off, e, "miss", DAILY_MISSES)
     row = db.one("SELECT * FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
     wrong = Refusal(400, "That code isn't right, or it has expired. Check it, or get a new one.", "bad-code")
-    if not row or row["expires"] < time.time() or len(code) != 6:
+    if not row or row["expires"] < time.time() or len(code) != CODE_DIGITS:
+        _log(o["id"], off, e, "miss")
         raise wrong
     if not sec.same(row["code_mac"], sec.mac(f"{o['id']}/{off}/{e}/{code}", "student-code")):
+        _log(o["id"], off, e, "miss")
         if row["tries"] + 1 >= MAX_TRIES:
             db.run("DELETE FROM student_codes WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], off, e))
         else:

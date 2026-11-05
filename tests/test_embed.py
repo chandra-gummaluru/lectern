@@ -4,7 +4,7 @@
 def test_course_pages_embed_in_quercus(client):
     h = client.get("/c/nobody/csc108/f26/", base_url="https://localhost").headers
     assert "X-Frame-Options" not in h
-    assert "frame-ancestors 'self' https://q.utoronto.ca https://*.instructure.com" in h["Content-Security-Policy"]
+    assert "frame-ancestors 'self' https://q.utoronto.ca https://utoronto.instructure.com" in h["Content-Security-Policy"]
 
 
 def test_lectern_itself_is_never_framed(client):

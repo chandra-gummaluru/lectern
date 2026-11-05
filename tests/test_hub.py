@@ -135,10 +135,9 @@ def test_about_has_the_description_team_and_the_gradebooks_rules(client, user, a
     assert a["sections"] == [] and a["policies"] == [] and "Secret" not in json.dumps(a)
 
 
-def test_evaluations_say_where_to_request_accommodations(client, user, anon):
+def test_evaluations_dont_point_at_the_old_request_form(client, user, anon):
     publish(user)
-    rq = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["evaluations"]["request"]
-    assert rq["url"].endswith("/request") and rq["r"] == "chandra" and rq["o"] == "csc258/f26"
+    assert "request" not in anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["evaluations"]
 
 
 def test_evaluation_files_come_from_the_gradebook(client, user, anon):
@@ -181,6 +180,13 @@ def test_the_teaching_team_on_the_course_page(client, user, anon):
     r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/team.json": json.dumps(info).encode()}, "seed", r.head())
     team = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["about"]["team"]
     assert [(p["name"], p["role"], p["email"]) for p in team] == [("Chandra Gummaluru", "instructor", "chandra@utoronto.ca"), ("ALAN", "ta", "alan@cs.example.edu")]
+    # Without an email on their page, a member's account email isn't shown (only the owner's is).
+    del info["people"][str(tu["id"])]["email"]
+    r.commit({"csc258/f26/team.json": json.dumps(info).encode()}, "seed", r.head())
+    team2 = anon.get("/api/hub/chandra/csc258/f26").get_json()["data"]["about"]["team"]
+    assert [p["email"] for p in team2] == ["chandra@utoronto.ca", ""] and "alan@utoronto.ca" not in json.dumps(team2)
+    info["people"][str(tu["id"])]["email"] = "alan@cs.example.edu"
+    r.commit({"csc258/f26/team.json": json.dumps(info).encode()}, "seed", r.head())
     assert team[0]["times"][0]["section"] == "LEC0101" and team[1]["times"][0]["day"] == 4
     info["people"][str(tu["id"])]["show"] = False
     r.commit({"csc258/f26/team.json": json.dumps(info).encode()}, "seed", r.head())

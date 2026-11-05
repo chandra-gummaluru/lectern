@@ -232,6 +232,14 @@ CREATE TABLE IF NOT EXISTS student_codes (    -- a one-time code emailed to a st
   created   REAL NOT NULL,
   PRIMARY KEY (owner_id, offering, email)
 );
+CREATE TABLE IF NOT EXISTS student_code_log (  -- codes sent and wrong codes tried, per student email (a daily cap that survives restarts)
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  email     TEXT NOT NULL,
+  kind      TEXT NOT NULL,                    -- sent | miss
+  at        REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS student_code_log_who ON student_code_log (owner_id, offering, email, kind, at);
 CREATE TABLE IF NOT EXISTS student_sessions ( -- a student signed in to one course page
   id_hash   TEXT PRIMARY KEY,
   owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

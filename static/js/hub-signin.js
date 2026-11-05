@@ -25,7 +25,7 @@ $("si-code").onsubmit = async e => {
   e.preventDefault();
   $("si-err2").textContent = "";
   const code = $("si-c").value.replace(/\D/g, "");
-  if (code.length !== 6) { $("si-err2").textContent = "The code has 6 digits."; return; }
+  if (code.length !== 8) { $("si-err2").textContent = "The code has 8 digits."; return; }
   busy($("si-code"), true, "Signing in…");
   try { const r = await post("verify", { email, code }); location.href = r.back || root.dataset.back; }
   catch (x) { $("si-err2").textContent = x.message; busy($("si-code"), false, "Sign In"); }

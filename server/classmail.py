@@ -16,8 +16,10 @@ also used for the offering's accommodation emails.
                                                     saved only after a test email to you goes through
   POST /api/mail/<owner>/<course>/<term>/send       { to: "all" | "section:<name>", subject, body }
 """
+import ipaddress
 import json
 import re
+import socket
 import threading
 import time
 
@@ -34,6 +36,36 @@ MAX_BODY = 20000
 MAX_RECIPIENTS = 3000
 SENDS_PER_HOUR = 10
 _HOST = re.compile(r"^[A-Za-z0-9.-]{1,253}$")
+
+
+def _public_host(host):
+    """False when host is (or resolves to) a loopback, private, link-local or reserved address: an offering's
+    settings are for an email provider, and the test email mustn't become a way to probe the server's own network.
+    A name that doesn't resolve is let through (the test email then fails to connect, as it would anyway)."""
+    try:
+        infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
+    except (OSError, UnicodeError):
+        return True
+    for info in infos:
+        try:
+            a = ipaddress.ip_address(info[4][0].split("%")[0])
+        except ValueError:
+            return False
+        if not a.is_global or a.is_multicast:
+            return False
+    return True
+
+
+def _why(err):
+    """What went wrong with a test email, in general terms (not the remote server's own words)."""
+    e = str(err or "").lower()
+    if "authentic" in e or "username" in e or "password" in e or "535" in e or "534" in e:
+        return "the server didn't accept the user name or password."
+    if "timed out" in e or "timeout" in e:
+        return "the server didn't answer."
+    if "certificate" in e or "ssl" in e or "tls" in e:
+        return "a secure connection couldn't be made (check the security setting and port)."
+    return "Lectern couldn't connect to that server, or it refused the email."
 _ADDR = re.compile(r"^[^\s@]+@[a-z0-9-]+(\.[a-z0-9-]+)+$")
 
 
@@ -264,16 +296,28 @@ def set_settings(owner, course, term):
         raise Refusal(400, "The port is a number, e.g. 587.", "port")
     if any(ch in user + frm for ch in "\r\n"):
         raise Refusal(400, "That address can't have line breaks.", "from")
+    if user and security == "none":   # the password would cross the network in the clear
+        raise Refusal(400, "With a user name, choose STARTTLS or SSL, so the password isn't sent in the clear.", "security")
+    if not _public_host(host):
+        raise Refusal(400, "That SMTP server is on a private network. Use your email provider's server, e.g. smtp.gmail.com.", "host")
     pw = text(d, "smtpPassword", 500)
-    if not pw:   # blank: keep the one it has (never shown)
-        r = _row(o["id"], off)
-        pw = settings_for(o["id"], off).get("password", "") if r else ""
+    if not pw:   # blank: keep the one it has (never shown), but only for the same server and login,
+        r = _row(o["id"], off)   # so nobody can send the saved password somewhere else
+        old_cfg = json.loads(r["smtp"]) if r else {}
+        if r and old_cfg.get("password_enc"):
+            same = (old_cfg.get("host", "").lower(), str(old_cfg.get("port", "")), old_cfg.get("security", ""), old_cfg.get("user", "")) \
+                == (host.lower(), port, security, user)
+            if not same:
+                raise Refusal(400, "You changed the server or login: enter its password again.", "smtpPassword")
+            pw = settings_for(o["id"], off).get("password", "")
+        else:
+            pw = ""
     cfg = {"host": host, "port": port, "security": security, "user": user, "from": frm, "password": pw}
     err = mailer.deliver(g.user["email"], f"Lectern: email for {off} works",
                          f"Hi {g.user['name'] or g.user['email']},\n\nThis is the test email for {off}'s email settings in Lectern: "
                          f"it can send through {host}.\n", cfg=cfg)
     if err:
-        raise Refusal(400, f"The test email didn't go through, so nothing was saved: {err}", "smtp")
+        raise Refusal(400, f"The test email didn't go through, so nothing was saved: {_why(err)}", "smtp")
     stored = {k: cfg[k] for k in ("host", "port", "security", "user", "from")}
     if pw:
         stored["password_enc"] = sec.encrypt(pw, "smtp")

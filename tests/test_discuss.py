@@ -94,6 +94,31 @@ def test_discussion_off(client, course):
     assert maya.get(HUB).get_json()["closed"] == ["ann:a1"]
 
 
+def test_no_votes_once_discussion_is_off(client, course):
+    import json
+    from server import store
+    maya, ben = people(course)
+    r = store.Repo(course["id"], "priv")
+    ann = lambda on: {"csc258/f26/announcements.json": json.dumps({"items": [{"id": "a1", "title": "Hi", "body": "x", "date": "Sep 7, 2026", "discussion": on}]}).encode()}
+    r.commit(ann(True), "seed", r.head())
+    pid = maya.post(D, json={"t": "ann:a1", "title": "Q", "body": "x"}, headers=H).get_json()["id"]
+    r.commit(ann(False), "off", r.head())
+    assert ben.post(f"{D}/{pid}/vote", json={"on": True}, headers=H).status_code == 403
+
+
+def test_a_mention_doesnt_reveal_a_removed_or_distant_post(client, course):
+    maya, ben = people(course)
+    gone = maya.post(D, json={"t": "eval:mt", "title": "Oops", "body": "x"}, headers=H).get_json()["id"]
+    client.post(f"{D}/{gone}/moderate", json={"remove": True}, headers=APP)
+    far = maya.post(D, json={"t": "act:l1", "title": "Elsewhere", "body": "y"}, headers=H).get_json()["id"]
+    top = ben.post(D, json={"t": "eval:mt", "title": "Who?", "body": "Who wrote @{p:%d} and @{p:%d}?" % (gone, far)}, headers=H).get_json()["id"]
+    names = ben.get(f"{D}?t=eval:mt").get_json()["names"]
+    assert f"p:{gone}" not in names and f"p:{far}" not in names and top
+    assert "maya S" not in str(names)
+    staff = client.get(f"{D}?t=eval:mt").get_json()["names"]
+    assert staff[f"p:{gone}"]["name"] == "maya S"   # the teaching team still sees who
+
+
 def test_no_sign_in_button_no_discussions(client, course):
     from test_hub import publish, with_tabs
     maya, _ = people(course)

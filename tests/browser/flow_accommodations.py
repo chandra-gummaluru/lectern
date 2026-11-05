@@ -1,6 +1,6 @@
 """Accommodations, end to end against the real server (harness.Server, email recorded instead of sent):
-set them on an evaluation in the gradebook, the public request endpoint says what can be asked, a student
-asks through the request form, and the instructor approves one and rejects the other in Lectern.
+set them on an evaluation in the gradebook, a student signed in to the course page asks (through its API:
+the course page's own form is the hub's), and the instructor approves one and rejects the other in Lectern.
 
     python tests/browser/flow_accommodations.py
 """
@@ -74,42 +74,33 @@ def main():
         assert {k: mt["accom"].get(k) for k in ("approval", "alternate", "by", "byTime")} == {"approval": True, "alternate": True, "by": "2026-10-31", "byTime": "17:00"}
         assert "Midterm makeup" in mt["accom"]["standard"] and "Final Exam" in mt["accom"]["standard"], mt["accom"]["standard"]
 
-        # 2. What a student can ask for (the request form's first call): the Midterm; Lab 5's deadline passed.
-        # (The course page's Request Accommodation button is the hub's now, for signed-in students: not tested here.)
-        Q = "request?r=chandra&o=csc258%2Ff26&e="
-        info = page.request.get(srv.base + "api/accommodations/evaluation?" + Q.split("?")[1] + "mt").json()
+        # 2. A student signs in to the course page (the code it emails them), then asks what they can request.
+        import re
+        H = {"X-Lectern": "1", "Origin": srv.base.rstrip("/")}
+        HUB = srv.base + "api/hub/chandra/csc258/f26"
+        mia = book()["students"][0]; email = mia["f"]["email"].lower()
+        sc = b.new_context(); stq = sc.request
+        assert stq.post(HUB + "/code", data={"email": email}, headers=H).ok
+        code = re.search(r"\b(\d{8})\b", [m for m in outbox if m["to"] == email and "code" in m["subject"]][-1]["body"]).group(1)
+        assert stq.post(HUB + "/verify", data={"email": email, "code": code}, headers=H).ok
+        outbox.clear()
+        info = stq.get(HUB + "/accommodation?e=mt").json()
         print("midterm:", info["standard"], info["alternate"], info.get("deadline"))
         assert info["standard"]["approval"] and info["alternate"]
-        l5 = page.request.get(srv.base + "api/accommodations/evaluation?" + Q.split("?")[1] + "l5").json()
-        assert l5["deadline"]["passed"], l5
+        assert stq.get(HUB + "/accommodation?e=l5").json()["deadline"]["passed"]
+        # The old sign-in-free form is gone.
+        assert page.request.get(srv.base + "request?r=chandra&o=csc258%2Ff26&e=mt").status == 404
 
-        # 3. A student asks, through the request form
-        st = ctx.new_page()
-        st.on("pageerror", lambda e: errors.append(f"student pageerror: {e}"))
-        url = srv.base + Q + "mt"
-        st.goto(url); st.wait_for_timeout(800); shot(st, "acc-03-who")
-        print("form:", st.inner_text("#rq-course"), "|", st.inner_text("#rq-eval"))
-        mia = book()["students"][0]
-        st.fill("input[name=email]", "someone@gmail.com"); st.fill("input[name=id]", mia["num"]); st.fill("input[name=first]", mia["first"]); st.fill("input[name=last]", mia["last"])
-        st.click("button[type=submit]"); st.wait_for_timeout(600)
-        print("wrong email:", st.inner_text("#rq-err")); shot(st, "acc-04-not-found")
-        st.fill("input[name=email]", mia["f"]["email"].upper())
-        st.click("button[type=submit]"); st.wait_for_timeout(600); shot(st, "acc-05-choose")
-        st.check("input[value=alternate]"); st.click("button[type=submit]"); st.wait_for_timeout(200)
-        print("alternate without text:", st.inner_text("#rq-err"))
-        st.check("input[value=standard]"); st.click("button[type=submit]"); st.wait_for_timeout(900); shot(st, "acc-06-sent")
-        print("sent:", st.inner_text("#rq-card").replace("\n", " | "))
+        # 3. The student asks: the standard accommodation, then an alternate one.
+        ask = lambda **d: stq.post(HUB + "/accommodation", data={"e": "mt", "id": mia["num"], "first": mia["first"], "last": mia["last"], **d}, headers=H)
+        r = ask(id="0000000", kind="standard"); assert r.status == 400, r.status   # not their number
+        r = ask(kind="alternate"); assert r.status == 400                          # says what
+        assert ask(kind="standard").status == 201
         assert not outbox, "no receipt by email (it's in My Requests on the course page)"
-        st.click("#rq-again"); st.wait_for_timeout(300)
-        st.check("input[value=alternate]"); st.fill("textarea[name=details]", "I also need a quiet room: I have an ADHD accommodation letter."); st.click("button[type=submit]"); st.wait_for_timeout(900)
-        # Lab 5: closed
-        st.goto(url.replace("e=mt", "e=l5")); st.wait_for_timeout(800); shot(st, "acc-07-closed")
-        print("lab 5:", st.inner_text("#rq-card").replace("\n", " | "))
-        # Phone
-        ph = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2).new_page()
-        ph.goto(url); ph.wait_for_timeout(800); ph.screenshot(path=f"{OUT}/acc-08-phone.png", full_page=True)
+        assert ask(kind="alternate", details="I also need a quiet room: I have an ADHD accommodation letter.").status == 201
         reqs = json.loads(srv.text("priv", "csc258/f26/accommodations.json"))["requests"]
         assert sorted(r["kind"] for r in reqs) == ["alternate", "standard"], reqs
+        sc.close()
 
         # 4. The instructor decides: open each request, Decide, Approve or Reject, with a note
         page.evaluate("location.hash = '#/csc258/f26'"); page.wait_for_selector("#lt-accom"); page.wait_for_timeout(800); shot(page, "acc-09-offering")

@@ -55,115 +55,95 @@ def requests_of(gh):
     return json.loads(v)["requests"] if v else []
 
 
-def test_request_page(client):
-    r = client.get("/request?r=chandra&o=csc258/f26&e=mt")
-    assert r.status_code == 200 and 'id="rq"' in r.get_data(as_text=True)
+_students = {}
 
 
-def test_evaluation_info(client, gh):
-    d = client.get("/api/accommodations/evaluation", query_string=WHERE).get_json()
+def submit(e="mt", who=None, **d):
+    """Maya (or who) asks from the course page, signed in: the only way to ask now."""
+    who = {**MAYA, **(who or {})}
+    email = who["email"].lower()
+    if email not in _students:
+        _students[email] = hub_student(email)
+    body = {"e": e, "id": who["id"], "first": who["first"], "last": who["last"], **d}
+    return _students[email].post(f"{HUB}/accommodation", json=body, headers=H)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_students():
+    _students.clear()
+    yield
+    _students.clear()
+
+
+def test_the_sign_in_free_form_is_gone(client, gh):
+    # It trusted anyone who knew a student's email, number and name: requests now need the course-page sign-in.
+    assert client.get("/request?r=chandra&o=csc258/f26&e=mt").status_code == 404
+    assert client.get("/api/accommodations/evaluation", query_string=WHERE).status_code == 404
+    for path in ("verify", "submit"):
+        r = client.post(f"/api/accommodations/{path}", json={**WHERE, **MAYA, "kind": "standard"})
+        assert r.status_code in (403, 404, 405)
+        r = client.post(f"/api/accommodations/{path}", json={**WHERE, **MAYA, "kind": "standard"}, headers=H)
+        assert r.status_code in (404, 405)
+        assert "Access-Control-Allow-Origin" not in client.options(f"/api/accommodations/{path}").headers
+    assert not requests_of(gh)
+
+
+def test_evaluation_info(gh):
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    d = st.get(f"{HUB}/accommodation?e=mt").get_json()
     assert d["course"] == {"code": "CSC258", "term": "Fall 2026"}
     assert d["evaluation"]["name"] == "Midterm" and d["idLabel"] == "Student number"
     assert d["standard"] == {"text": "Write it the next day", "approval": True} and d["alternate"] is False
-    # Nothing about students goes out here
-    assert "Maya" not in json.dumps(d)
+    assert st.get(f"{HUB}/accommodation?e=l1").status_code == 404
 
 
-def test_evaluation_without_requests(client, gh):
-    r = client.get("/api/accommodations/evaluation", query_string={**WHERE, "e": "l1"})
-    assert r.status_code == 404
-    assert client.get("/api/accommodations/evaluation", query_string={**WHERE, "o": "csc999/f26"}).status_code == 404
+@pytest.mark.parametrize("change", [{"id": "1002"}, {"first": "Mia"}, {"last": "Castile"}])
+def test_submit_refuses_any_mismatch(gh, change):
+    r = submit(who=change, kind="standard")
+    assert r.status_code == 400 and r.get_json()["code"] == "mismatch" and not requests_of(gh)
 
 
-def test_bad_links(client, gh):
-    for bad in ({"r": "../x", "o": "csc258/f26", "e": "mt"}, {"r": "chandra", "o": "csc258", "e": "mt"}, {"r": "chandra", "o": "csc258/f26", "e": "a b"}):
-        assert client.get("/api/accommodations/evaluation", query_string=bad).status_code == 400
-    assert client.get("/api/accommodations/evaluation", query_string={**WHERE, "r": "nobody"}).status_code == 404
-    # A course page saved before Lectern had its own accounts says what to do
-    old = client.get("/api/accommodations/evaluation", query_string={**WHERE, "r": "chandra/courses"})
-    assert old.status_code == 400 and "save it again" in old.get_json()["error"]
-
-
-def test_cors_for_students(client, gh):
-    r = client.get("/api/accommodations/evaluation", query_string=WHERE)
-    assert r.headers["Access-Control-Allow-Origin"] == "*"
-    pre = client.options("/api/accommodations/verify")
-    assert pre.status_code in (200, 204) and pre.headers["Access-Control-Allow-Origin"] == "*" and "POST" in pre.headers["Access-Control-Allow-Methods"]
-
-
-def test_verify_matches_all_four_ignoring_case_and_accents(client, gh):
-    r = client.post("/api/accommodations/verify", json={**WHERE, **MAYA})
-    assert r.status_code == 200 and r.get_json()["first"] == "Maya"
+def test_submit_matches_ignoring_case_and_accents(gh):
+    assert submit(kind="standard").status_code == 201
     zoe = {"email": "zoe.ng@mail.utoronto.ca", "id": "1002", "first": "Zoe", "last": "Ng"}
-    assert client.post("/api/accommodations/verify", json={**WHERE, **zoe}).status_code == 200
+    assert submit(who=zoe, kind="standard").status_code == 201
 
 
-@pytest.mark.parametrize("change", [{"email": "maya@gmail.com"}, {"id": "1002"}, {"first": "Mia"}, {"last": "Castile"}])
-def test_verify_refuses_any_mismatch(client, gh, change):
-    r = client.post("/api/accommodations/verify", json={**WHERE, **MAYA, **change})
-    assert r.status_code == 404 and "Student number" in r.get_json()["error"].replace("student number", "Student number")
-
-
-def test_verify_refuses_dropped_students(client, gh):
-    gone = {"email": "gone@mail.utoronto.ca", "id": "1003", "first": "Gone", "last": "Away"}
-    assert client.post("/api/accommodations/verify", json={**WHERE, **gone}).status_code == 404
-
-
-def test_verify_needs_an_email_field(client, gh):
-    b = json.loads(json.dumps(BOOK)); b["fields"]["custom"] = []
-    gh.put("csc258/f26/grades.json", json.dumps(b))
-    r = client.post("/api/accommodations/verify", json={**WHERE, **MAYA})
-    assert r.status_code == 409 and r.get_json()["code"] == "no-email"
-
-
-def test_verify_is_rate_limited(client, gh):
-    for _ in range(accommodations.LIMITS["verify"][0]):
-        client.post("/api/accommodations/verify", json={**WHERE, **MAYA, "first": "x"})
-    assert client.post("/api/accommodations/verify", json={**WHERE, **MAYA}).status_code == 429
-
-
-def test_submit_standard(client, gh):
-    r = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"})
+def test_submit_standard(gh):
+    r = submit(kind="standard")
     assert r.status_code == 201, r.get_json()
     d = r.get_json()
-    assert d["email"] == "maya.castillo@mail.utoronto.ca" and d["emailed"] is False   # no SMTP in tests
+    assert d["email"] == "maya.castillo@mail.utoronto.ca" and d["emailed"] is False
     [rec] = requests_of(gh)
     assert rec["kind"] == "standard" and rec["standard"] == "Write it the next day" and rec["status"] == "pending"
     assert rec["student"] == "1001" and rec["first"] == "Maya" and rec["evalName"] == "Midterm" and rec["course"] == "CSC258"
-    assert gh.repo.read_text("csc258/f26/accommodations.json")[0]   # in the instructor's private files
     # No receipt by email: students are emailed only about decisions (and marks, and announcements)
     assert not any("received" in m["subject"] for m in mailer.sent)
 
 
-def test_submit_standard_twice_is_refused(client, gh):
-    client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"})
-    r = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"})
+def test_submit_standard_twice_is_refused(gh):
+    submit(kind="standard")
+    r = submit(kind="standard")
     assert r.status_code == 409 and r.get_json()["code"] == "duplicate"
     assert len(requests_of(gh)) == 1
 
 
-def test_submit_alternate(client, gh):
-    a1 = {**WHERE, "e": "a1"}
-    assert client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "alternate"}).status_code == 400   # says what
-    assert client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "standard"}).status_code == 400    # no approval needed
-    r = client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "alternate", "details": "A week, for a surgery."})
-    assert r.status_code == 201
+def test_submit_alternate(gh):
+    assert submit("a1", kind="alternate").status_code == 400   # says what
+    assert submit("a1", kind="standard").status_code == 400    # no approval needed
+    assert submit("a1", kind="alternate", details="A week, for a surgery.").status_code == 201
     # Not another of the same kind while that one's waiting for a decision
-    assert client.post("/api/accommodations/submit", json={**a1, **MAYA, "kind": "alternate", "details": "And a quiet room."}).status_code == 409
+    assert submit("a1", kind="alternate", details="And a quiet room.").status_code == 409
     assert [x["details"] for x in requests_of(gh)] == ["A week, for a surgery."]
 
 
-def test_alternate_not_offered(client, gh):
-    r = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "alternate", "details": "x"})
+def test_alternate_not_offered(gh):
+    r = submit(kind="alternate", details="x")
     assert r.status_code == 400 and not requests_of(gh)
 
 
-def test_submit_wrong_person(client, gh):
-    r = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "id": "1002", "kind": "standard"})
-    assert r.status_code == 404 and not requests_of(gh) and not mailer.sent
-
-
-def test_submit_retries_when_the_file_changed(client, gh, monkeypatch):
+def test_submit_retries_when_the_file_changed(gh, monkeypatch):
+    st = hub_student("maya.castillo@mail.utoronto.ca"); _students["maya.castillo@mail.utoronto.ca"] = st
     calls = {"n": 0}
     real = store.Repo.write_text
 
@@ -173,7 +153,7 @@ def test_submit_retries_when_the_file_changed(client, gh, monkeypatch):
             gh.put("csc258/f26/accommodations.json", json.dumps({"format": accommodations.FORMAT, "requests": [{"id": "r-other", "student": "1002", "eval": "a1", "kind": "alternate", "status": "pending"}]}))
         return real(self, *a)
     monkeypatch.setattr(store.Repo, "write_text", flaky)
-    assert client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).status_code == 201
+    assert submit(kind="standard").status_code == 201
     assert [x["id"] for x in requests_of(gh)][0] == "r-other" and len(requests_of(gh)) == 2 and calls["n"] == 2
 
 
@@ -182,7 +162,7 @@ def decide(c, rid, decision, note="", headers=H):
 
 
 def test_decide(client, gh):
-    rid = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).get_json()["id"]
+    rid = submit(kind="standard").get_json()["id"]
     r = decide(gh.client, rid, "approved", note="See you Thursday at 6.")
     assert r.status_code == 200, r.get_json()
     rec = requests_of(gh)[0]
@@ -199,7 +179,7 @@ def test_decide(client, gh):
 
 
 def test_decide_needs_access(client, gh):
-    rid = client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).get_json()["id"]
+    rid = submit(kind="standard").get_json()["id"]
     assert decide(client, rid, "approved").status_code == 401                 # a student isn't signed in
     other = app.test_client()
     make_user(other, email="ta@x.ca", name="T A", handle="ta")
@@ -226,33 +206,34 @@ def with_deadline(gh, by, at=""):
     gh.put("csc258/f26/grades.json", json.dumps(b))
 
 
-def test_deadline_open(client, gh, monkeypatch):
+def test_deadline_open(gh, monkeypatch):
     monkeypatch.setenv("LECTERN_TIMEZONE", "America/Toronto")
     with_deadline(gh, "2026-10-19", "17:00")
     # 16:59 in Toronto on Oct 19 (UTC-4)
     monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0)
-    d = client.get("/api/accommodations/evaluation", query_string=WHERE).get_json()
+    st = hub_student("maya.castillo@mail.utoronto.ca"); _students["maya.castillo@mail.utoronto.ca"] = st
+    d = st.get(f"{HUB}/accommodation?e=mt").get_json()
     assert d["deadline"]["passed"] is False and d["deadline"]["text"] == "Monday, October 19, 2026, 17:00"
-    assert client.post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).status_code == 201
+    assert submit(kind="standard").status_code == 201
 
 
-def test_deadline_passed(client, gh, monkeypatch):
+def test_deadline_passed(gh, monkeypatch):
     monkeypatch.setenv("LECTERN_TIMEZONE", "America/Toronto")
     with_deadline(gh, "2026-10-19", "17:00")
     monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0 + 120)   # 17:01
-    d = client.get("/api/accommodations/evaluation", query_string=WHERE).get_json()
-    assert d["deadline"]["passed"] is True
-    for path in ("verify", "submit"):
-        r = client.post(f"/api/accommodations/{path}", json={**WHERE, **MAYA, "kind": "standard"})
-        assert r.status_code == 410 and r.get_json()["code"] == "closed" and "has passed" in r.get_json()["error"]
+    st = hub_student("maya.castillo@mail.utoronto.ca"); _students["maya.castillo@mail.utoronto.ca"] = st
+    assert st.get(f"{HUB}/accommodation?e=mt").get_json()["deadline"]["passed"] is True
+    r = submit(kind="standard")
+    assert r.status_code == 410 and r.get_json()["code"] == "closed" and "has passed" in r.get_json()["error"]
     assert not requests_of(gh)
 
 
-def test_deadline_without_time_is_end_of_day(client, gh, monkeypatch):
+def test_deadline_without_time_is_end_of_day(gh, monkeypatch):
     monkeypatch.setenv("LECTERN_TIMEZONE", "America/Toronto")
     with_deadline(gh, "2026-10-19")
     monkeypatch.setattr(accommodations, "clock", lambda: 1792443540.0 + 6 * 3600)   # 22:59
-    assert client.get("/api/accommodations/evaluation", query_string=WHERE).get_json()["deadline"] == {"date": "2026-10-19", "time": "23:59", "text": "Monday, October 19, 2026, 23:59", "passed": False}
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    assert st.get(f"{HUB}/accommodation?e=mt").get_json()["deadline"] == {"date": "2026-10-19", "time": "23:59", "text": "Monday, October 19, 2026, 23:59", "passed": False}
 
 
 # ── From the course page, signed in ──────────────────────────────────
@@ -383,7 +364,7 @@ def test_a_student_replies_to_their_request(gh):
 
 def test_a_ta_handles_remark_requests_but_not_accommodations(gh):
     from server import db
-    acc = app.test_client().post("/api/accommodations/submit", json={**WHERE, **MAYA, "kind": "standard"}).get_json()["id"]
+    acc = submit(kind="standard").get_json()["id"]
     rec = {"id": "m-1", "type": "remark", "eval": "mt", "evalName": "Midterm", "kind": "remark", "details": "Q2", "student": "1001",
            "first": "Maya", "last": "Castillo", "email": "maya.castillo@mail.utoronto.ca", "status": "pending", "submitted": "2026-10-26T12:00:00Z"}
     d = json.loads(gh.text("csc258/f26/accommodations.json")); d["requests"].append(rec); gh.put("csc258/f26/accommodations.json", json.dumps(d))

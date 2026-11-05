@@ -7,16 +7,13 @@ An evaluation takes requests when its gradebook entry (grades.json) says so:
              "approval": true,                   students must ask for it (an instructor approves)
              "alternate": true }                 students may ask for something else instead
 
-The course page's Request Accommodation button opens /request?r=<the instructor's handle>&o=<course/term>&e=<eval id>,
-a small form served from here. It calls, in turn:
-
-  GET  /api/accommodations/evaluation   what can be asked for (no student details needed)
-  POST /api/accommodations/verify       is this student in the course? (email, identifier, first and
-                                        last name must all match the gradebook, email included)
-  POST /api/accommodations/submit       record the request and email the student a receipt
+Students ask from the course page, signed in (students.py), through the routes under
+"From the course page, signed in" below. (The old sign-in-free form, /request with
+/api/accommodations/verify and /submit, is gone: it trusted anyone who knew a student's
+email, number and name.)
 
 Requests are kept in the instructor's private files beside the gradebook, <course>/<term>/accommodations.json
-(store.py): students never sign in, so the server reads the gradebook and records the request itself.
+(store.py): the server reads the gradebook and records the request itself.
 Lectern's Accommodations page reads that file, and the instructor's decision goes through
 
   POST /api/accommodations/decide       (signed in) approve or reject, save, email
@@ -32,7 +29,7 @@ import time
 import unicodedata
 from datetime import datetime, timezone
 
-from flask import Blueprint, g, jsonify, render_template, request
+from flask import Blueprint, g, jsonify, request
 
 from . import db, mailer
 from .auth import signed_in
@@ -220,7 +217,7 @@ def find_student(book, email, sid, first, last):
 
 # ── Too many tries from one place ────────────────────────────────────
 limiter = Limiter()
-LIMITS = {"verify": (20, 600), "submit": (10, 600)}
+LIMITS = {"submit": (10, 600)}
 
 
 def _client_ip():
@@ -231,29 +228,6 @@ def _limit(kind):
     n, w = LIMITS[kind]
     if not limiter.ok(f"{kind}:{_client_ip()}", n, w):
         raise Refusal(429, "Too many tries. Wait a few minutes, then try again.")
-
-
-# ── Students: CORS, so a course page could call these itself too ─────
-@accom_bp.after_request
-def _cors(resp):
-    if request.path.startswith("/api/accommodations/") and request.path != "/api/accommodations/decide":
-        resp.headers["Access-Control-Allow-Origin"] = "*"
-        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
-        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-    return resp
-
-
-@accom_bp.get("/request")
-def request_page():
-    """The form students fill in (the course page links here)."""
-    return render_template("request.html", institution=os.environ.get("LECTERN_INSTITUTION", "University of Toronto"))
-
-
-def _where(args):
-    uid = _owner(args.get("r"))
-    o = _offering(args.get("o"))
-    e = _eval_id(args.get("e"))
-    return uid, o, e
 
 
 def _public_info(book, ev, a):
@@ -269,36 +243,11 @@ def _public_info(book, ev, a):
     }
 
 
-@accom_bp.get("/api/accommodations/evaluation")
-def evaluation():
-    try:
-        uid, o, e = _where(request.args)
-        book = _book(uid, o)
-        ev, a = _evaluation(book, e)
-        return jsonify(_public_info(book, ev, a))
-    except Refusal as x:
-        return _err(x)
-
-
 def _body():
     d = request.get_json(silent=True)
     if not isinstance(d, dict):
         raise Refusal(400, "Something went wrong with the form. Reload the page and try again.")
     return d
-
-
-@accom_bp.post("/api/accommodations/verify")
-def verify():
-    try:
-        d = _body()
-        _limit("verify")
-        uid, o, e = _where(d)
-        book = _book(uid, o)
-        ev, a = _evaluation(book, e, open_only=True)
-        s, _ = find_student(book, d.get("email"), d.get("id"), d.get("first"), d.get("last"))
-        return jsonify(ok=True, first=s.get("first") or "", **_public_info(book, ev, a))
-    except Refusal as x:
-        return _err(x)
 
 
 # ── The requests file ────────────────────────────────────────────────
@@ -466,21 +415,6 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
     _update(uid, o, add, f"Accommodation request from {rec['student']} for {rec['evalName']}", "student")
     # No receipt by email (students are emailed only about decisions, marks and announcements): it's in My Requests.
     return rec, False
-
-
-@accom_bp.post("/api/accommodations/submit")
-def submit():
-    try:
-        d = _body()
-        _limit("submit")
-        uid, o, e = _where(d)
-        book = _book(uid, o)
-        ev, a = _evaluation(book, e, open_only=True)
-        s, email = find_student(book, d.get("email"), d.get("id"), d.get("first"), d.get("last"))
-        rec, emailed = _record(uid, o, book, e, ev, a, s, email, d.get("kind"), d.get("details"))
-        return jsonify(ok=True, id=rec["id"], email=email, emailed=emailed), 201
-    except Refusal as x:
-        return _err(x)
 
 
 # ── From the course page, signed in ──────────────────────────────────

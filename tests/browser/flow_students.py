@@ -123,8 +123,8 @@ def main():
         assert stu.url.endswith("/c/chandra/csc258/f26/sign-in"), stu.url
         stu.fill("#si-e", "maya.castillo@mail.utoronto.ca"); stu.click("#si-email button[type=submit]")
         stu.wait_for_selector("#si-c")
-        code = re.search(r"\b(\d{6})\b", [m for m in mailer.sent if m["to"] == "maya.castillo@mail.utoronto.ca" and "code" in m["subject"]][-1]["body"]).group(1)
-        stu.fill("#si-c", "000000" if code != "000000" else "111111"); stu.click("#si-code button[type=submit]")
+        code = re.search(r"\b(\d{8})\b", [m for m in mailer.sent if m["to"] == "maya.castillo@mail.utoronto.ca" and "code" in m["subject"]][-1]["body"]).group(1)
+        stu.fill("#si-c", "00000000" if code != "000000" else "11111111"); stu.click("#si-code button[type=submit]")
         expect(stu.locator("#si-err2")).to_contain_text("isn't right")
         stu.fill("#si-c", code); stu.click("#si-code button[type=submit]")
         stu.wait_for_selector(".hs-sec")

@@ -183,8 +183,8 @@ function activityCard(c) {
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 function requestHTML(e) {
-  const a = e.accom, E = data("evaluations"); if (!a || !(a.approval || a.alternate)) return "";
-  const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null, rq = E && E.request;
+  const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
   if (by && !isNaN(by) && by < new Date()) return `<p class="hs-note">The deadline for accommodation requests has passed.</p>`;
     const when = by && !isNaN(by) ? `<span class="hs-by">Request by ${esc(day(a.by))}, ${esc(a.byTime || "23:59")}</span>` : "";
   // Signed in: the request is made here, on the course page. Not signed in: sign in first.

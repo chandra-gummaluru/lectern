@@ -126,7 +126,12 @@ def _names(o, off, rows, viewer, students, team, aliases):
                 continue
             if k == "p":
                 p = by_id.get(int(v)) if v.isdigit() else None
-                if not p:
+                if viewer["kind"] != "staff":
+                    # Students: only a post in this thread that's still there (a removed or deleted post's
+                    # author, or one elsewhere, mustn't come out through a mention of it).
+                    if p and (p["removed_by"] or p["deleted"]):
+                        p = None
+                elif not p:
                     p = db.one("SELECT * FROM discussion_posts WHERE id = ? AND owner_id = ? AND offering = ?", (int(v), o["id"], off)) if v.isdigit() else None
                 if p:
                     w = _who(o, off, p, viewer, students, team, aliases)
@@ -327,6 +332,9 @@ def _post(o, off, pid):
 def vote(handle, course, term, pid):
     o, off, viewer = _writer(handle, course, term)
     p = _post(o, off, pid)
+    from .hub import closed_discussions
+    if p["target"] in closed_discussions(o["id"], *off.split("/", 1)):
+        raise Refusal(403, "Discussion is off for this.", "closed")
     if body().get("on"):
         db.run("INSERT OR IGNORE INTO discussion_votes (post_id, voter) VALUES (?, ?)", (pid, viewer["key"]))
     else:

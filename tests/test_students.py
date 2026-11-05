@@ -30,7 +30,7 @@ def enrol(user, *emails, dropped=(), more=()):
 
 def code_for(email):
     m = [x for x in mailer.sent if x["to"] == email and "code" in x["subject"]]
-    return re.search(r"\b(\d{6})\b", m[-1]["body"]).group(1)
+    return re.search(r"\b(\d{8})\b", m[-1]["body"]).group(1)
 
 
 def sign_in(c, email):
@@ -105,7 +105,7 @@ def test_codes_are_one_use_expire_and_stop_after_wrong_tries(client, course, mon
     st = app.test_client()
     st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
     good = code_for("maya@mail.utoronto.ca")
-    bad = "000000" if good != "000000" else "111111"
+    bad = "00000000" if good != "00000000" else "11111111"
     for _ in range(students.MAX_TRIES):
         assert st.post(f"{HUB}/verify", json={"email": "maya@mail.utoronto.ca", "code": bad}, headers=H).status_code == 400
     assert st.post(f"{HUB}/verify", json={"email": "maya@mail.utoronto.ca", "code": good}, headers=H).status_code == 400   # cancelled
@@ -144,6 +144,36 @@ def test_asking_for_codes_is_rate_limited(client, course):
     st = app.test_client()
     codes = [st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H).status_code for _ in range(8)]
     assert codes[:5] == [200] * 5 and 429 in codes[5:]
+
+
+def test_wrong_codes_have_a_daily_cap_that_survives_a_restart(client, course):
+    enrol(course, "maya@mail.utoronto.ca")
+    st = app.test_client()
+    st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
+    good = code_for("maya@mail.utoronto.ca")
+    bad = "00000000" if good != "00000000" else "11111111"
+    for i in range(students.DAILY_MISSES):
+        if i and i % students.MAX_TRIES == 0:   # that code's used up: a new one, as the student would ask
+            students.limiter.reset(); st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
+        assert st.post(f"{HUB}/verify", json={"email": "maya@mail.utoronto.ca", "code": bad}, headers=H).status_code == 400
+    students.limiter.reset()   # as a restart would: the in-memory limits forget, the daily cap doesn't
+    r = st.post(f"{HUB}/code", json={"email": "maya@mail.utoronto.ca"}, headers=H)
+    assert r.status_code == 429 and r.get_json()["code"] == "daily"
+    r = st.post(f"{HUB}/verify", json={"email": "maya@mail.utoronto.ca", "code": code_for("maya@mail.utoronto.ca")}, headers=H)
+    assert r.status_code == 429
+    # Someone else in the class isn't affected.
+    enrol(course, "maya@mail.utoronto.ca", "zoe@mail.utoronto.ca")
+    sign_in(app.test_client(), "zoe@mail.utoronto.ca")
+
+
+def test_codes_sent_have_a_daily_cap_whoever_asks(client, course):
+    enrol(course, "maya@mail.utoronto.ca")
+    for who in ("maya@mail.utoronto.ca", "stranger@mail.utoronto.ca"):   # the same answer either way
+        for _ in range(students.DAILY_CODES):
+            students.limiter.reset()
+            assert app.test_client().post(f"{HUB}/code", json={"email": who}, headers=H).status_code == 200
+        students.limiter.reset()
+        assert app.test_client().post(f"{HUB}/code", json={"email": who}, headers=H).status_code == 429
 
 
 def test_a_student_sees_their_own_sections(client, course):

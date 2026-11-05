@@ -202,7 +202,8 @@ TEAM_KINDS = {"lecture", "tutorial", "lab", "office", "other"}
 def team_of(owner_id, course, term):
     """The teaching team as the course page shows it: each person (owner, instructors, TAs) with what
     their page in Lectern says (team.json: email, office, sections and times). Removed members aren't
-    here; nor is anyone whose page says not to show them."""
+    here; nor is anyone whose page says not to show them. Only the owner's account email is shown when their page
+    gives none (it's their course page); everyone else's email is shown only if they enter one on their page."""
     off = f"{course}/{term}"
     raw = Repo(owner_id, "priv").read(f"{off}/team.json")
     try:
@@ -247,7 +248,7 @@ def team_of(owner_id, course, term):
             times.append({"kind": x.get("kind") if x.get("kind") in TEAM_KINDS else "other", "section": _s(x.get("section"), 60), "day": day,
                           "start": _s(x.get("start"), 5), "end": _s(x.get("end"), 5), "where": _s(x.get("where"), 200), **_map(x),
                           **({"sid": x["sid"]} if x.get("sid") else {})})
-        out.append({"name": _s(u["name"], 200), "role": role if role in ("coordinator", "ta", "staff") else "instructor", "email": _s(me.get("email"), 200) or _s(u["email"], 200),
+        out.append({"name": _s(u["name"], 200), "role": role if role in ("coordinator", "ta", "staff") else "instructor", "email": _s(me.get("email"), 200) or (_s(u["email"], 200) if role == "owner" else ""),
                     "office": _s(me.get("office"), 200), "times": times, "sections": runs, "lead": role in ("owner", "coordinator")})
     return out
 
@@ -739,8 +740,6 @@ def hub_api(handle, course, term):
         tabs.append({"id": tid, "title": title, "visibility": vis[tid], "open": open_})
         if open_:
             data[tid] = all_b[tid]
-    if "evaluations" in data:   # where an evaluation's Request Accommodation button goes (accommodations.py's form)
-        data["evaluations"]["request"] = {"url": f"{app_url()}request", "r": o["handle"], "o": offering}
     return jsonify(
         # The code, term and school are the offering's (its folder, and this Lectern's institution); the title is the one it was given.
         course={"title": _s(head.get("title"), 300) or _s(page.get("title"), 300), "code": course.upper(),

@@ -72,6 +72,33 @@ def test_offering_settings_test_first_and_are_kept_secret(client, course, smtp):
     assert classmail.settings_for(course["id"], "csc258/f26")["source"] != "offering"
 
 
+def test_the_saved_password_never_goes_to_another_server(client, course, smtp, monkeypatch):
+    U = "/api/mail/chandra/csc258/f26"
+    monkeypatch.setattr(classmail, "_public_host", lambda h: True)
+    assert client.post(f"{U}/settings", json={**CFG, "smtpPassword": "right"}, headers=H).status_code == 200
+    n = len(smtp["one"])
+    for change in ({"host": "smtp.attacker.example"}, {"port": "2525"}, {"user": "me@attacker.example"}, {"security": "starttls"}):
+        r = client.post(f"{U}/settings", json={**CFG, **change}, headers=H)   # blank password
+        assert r.status_code == 400 and r.get_json()["code"] == "smtpPassword", change
+    assert len(smtp["one"]) == n   # no test email tried: the saved password went nowhere
+    # With a user name, never in the clear.
+    r = client.post(f"{U}/settings", json={**CFG, "security": "none", "port": "25", "smtpPassword": "right"}, headers=H)
+    assert r.status_code == 400 and r.get_json()["code"] == "security"
+
+
+def test_no_smtp_servers_on_private_networks(client, course, smtp, monkeypatch):
+    U = "/api/mail/chandra/csc258/f26"
+    for host in ("127.0.0.1", "localhost", "10.0.0.5", "192.168.1.1", "169.254.169.254"):
+        r = client.post(f"{U}/settings", json={**CFG, "host": host, "smtpPassword": "right"}, headers=H)
+        assert r.status_code == 400 and r.get_json()["code"] == "host", host
+    assert not smtp["one"]
+    # The remote server's own words don't come back.
+    monkeypatch.setattr(classmail, "_public_host", lambda h: True)
+    monkeypatch.setattr(mailer, "deliver", lambda *a, **k: "(220, b'internal-db.lan ESMTP Postfix (Ubuntu) secret banner')")
+    r = client.post(f"{U}/settings", json={**CFG, "smtpPassword": "x"}, headers=H)
+    assert r.status_code == 400 and "banner" not in r.get_json()["error"]
+
+
 def test_send_to_the_class(client, course, smtp):
     U = "/api/mail/chandra/csc258/f26"
     r = client.post(f"{U}/send", json={"to": "all", "subject": "Midterm", "body": "Room BA 1130."}, headers=H)

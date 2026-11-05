@@ -1,11 +1,11 @@
 """The Gradebook's one-evaluation view: the course grade looks like any evaluation, no course column beside
 an evaluation, and filters (leave out not submitted, and so on) for the table and the statistics.
-Run with the server going (python app.py), then: python tests/browser/flow_fx.py"""
+Run: python tests/browser/flow_fx.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 from flow_links import ev
 
 def main():
@@ -15,7 +15,7 @@ def main():
     book = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"},
             "evals": [ev("a1", "Assignment", "Assignment", "A1", "assignment", 50), ev("fe", "Final Exam", "Final Exam", "FE", "test", 50)], "groups": [],
             "students": [{"num": str(k + 1), "first": f, "last": l, "f": {}} for k, (f, l) in enumerate(names)], "marks": marks, "overrides": {}, "finals": {"6": {"code": "IPR"}}}
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(book)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

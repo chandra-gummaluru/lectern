@@ -1,13 +1,13 @@
 """The top bar stays the same inside the builders, and its one Save (Ctrl+S, or the account menu's) saves every
 builder with changes; the bar's Not saved pill says what's waiting.
-Run with the server going (python app.py), then: python tests/browser/flow_bar.py"""
+Run: python tests/browser/flow_bar.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from flow_github import make_gh, OUT, BASE
+from walkthrough import make_walkthrough, OUT, BASE
 
 def main():
-    gh = make_gh()
+    gh = make_walkthrough()
     errors = []
     with sync_playwright() as p:
         b = p.chromium.launch()

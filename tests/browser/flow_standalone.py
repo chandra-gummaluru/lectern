@@ -1,11 +1,11 @@
 """The builders on their own (/tools/<name>.html): the pinned path strip, and section 10's fixes.
-Run with the server going (python app.py), then: python tests/browser/flow_standalone.py"""
+Run: python tests/browser/flow_standalone.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
 from fakegithub import FakeGitHub, Repo
-from flow_github import OUT, EXAM
-from fakegh import BASE
+from walkthrough import OUT, EXAM
+from walkthrough import BASE
 
 BOOK = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"},
         "fields": {"idLabel": "Student number", "custom": []},

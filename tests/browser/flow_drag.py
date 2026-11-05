@@ -5,8 +5,8 @@ Run:  python tests/browser/flow_drag.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 
 LECT = {"format": "lectern-lectures/1", "weeks": [
     {"id": "w1", "label": "Week 1", "start": "2026-09-07", "end": "2026-09-11", "topic": "Intro", "cards": []},
@@ -18,7 +18,7 @@ GRADES = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fal
 
 
 def main():
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/lectures.json": json.dumps(LECT), "csc258/f26/grades.json": json.dumps(GRADES)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     PRIV = gh.repos["chandra-gummaluru/courses-private"]

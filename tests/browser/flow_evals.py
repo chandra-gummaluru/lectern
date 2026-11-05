@@ -1,10 +1,10 @@
 """Grades: each evaluation's type, label and date, and names that follow the label.
-Run with the server going (python app.py), then: python tests/browser/flow_evals.py"""
+Run: python tests/browser/flow_evals.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 
 def ev(i, name, short, w):
     return {"id": f"e{i}", "name": name, "short": short, "total": 10, "weight": w, "makeupFor": None, "missed": {"mode": "zero", "to": [], "split": "custom"}}
@@ -14,7 +14,7 @@ OLD = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2
        "groups": [], "students": [], "marks": {}, "overrides": {}}
 
 def main():
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(OLD)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

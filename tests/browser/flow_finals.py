@@ -1,11 +1,11 @@
 """A student's course grade set by hand (a grade, or a special grade like IPR), course rules for work not
 written or deferred, and deleting with two clicks.
-Run with the server going (python app.py), then: python tests/browser/flow_finals.py"""
+Run: python tests/browser/flow_finals.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 from flow_links import ev
 
 def main():
@@ -13,7 +13,7 @@ def main():
             "evals": [ev("a1", "Assignment", "Assignment", "A1", "assignment", 50), ev("fe", "Final Exam", "Final Exam", "FE", "test", 50)],
             "groups": [], "students": [{"num": "1", "first": "Maya", "last": "Castillo", "f": {}}, {"num": "2", "first": "Ken", "last": "Ito", "f": {}}, {"num": "3", "first": "Ada", "last": "Love", "f": {}, "notes": "An old note from before"}],
             "marks": {"1": {"a1": {"pts": 8}, "fe": {"pts": 7}}, "2": {"a1": {"pts": 9}, "fe": {"status": "deferred"}}, "3": {"a1": {"pts": 6}, "fe": {"missed": True}}}, "overrides": {}}
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(book)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

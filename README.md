@@ -129,49 +129,48 @@ A course offering is the same folder in both. Only the course page and its files
 ```
 app.py                  python app.py: the runner (and its commands: setup, admin)
 new-lectern.sh          a new Lectern: code, Python environment, requirements, then setup
-server/
+requirements.txt        the server's Python packages (requirements-dev.txt: pytest, Playwright)
+server/                 the Flask server (one module per area; each starts with what it does)
   core.py               the Flask app: HTTPS, cross-site request checks, security headers (no caching)
   paths.py              where things are
-  db.py                 the database (SQLite, in the data folder): accounts, sessions, versions
+  db.py                 the database (SQLite, in the data folder): accounts, sessions, versions, students
   security.py           argon2id, two-factor codes (TOTP), tokens, encryption, rate limits
-  auth.py               accounts: sign-in, two-factor, invitations, resets, /api/auth/…
-  admin.py              the admin panel (/admin): admins' own sign-in; invitations, accounts, email settings, /api/admin/…
+  auth.py               Lectern accounts: sign-in, two-factor, invitations, resets, /api/auth/…
+  admin.py              the admin panel (/admin): its own sign-in; invitations, accounts, email settings
+  cli.py, wizard.py     python app.py admin | setup (the questions, .env, the first admin, the checks)
   store.py              each account's files (/api/store/…, the builders' GitHub-style calls) and /p/…
   pages.py              /: the splash and the app (one page); /api/config
+  tools.py, scope_css.py  the builders, split to share one page: /tools/<name>.css|.json|.js|.html
+  teams.py              teaching teams: members, roles, invitations
+  hub.py                the course page (/c/<handle>/<course>/<term>/) and its API (/api/hub/…)
+  students.py           each offering's class list, and students signing in to its course page
+  accommodations.py     accommodation and remark requests (from the signed-in course page) and decisions
+  discuss.py            discussions on the course page
+  attendance.py         attendance at a test (ID cards read by a phone's camera)
+  places.py             finding a building or address for a Where
   classmail.py          emailing a class, and each offering's own email settings (/api/mail/…)
-  accommodations.py     accommodation requests: /request (the students' form), /api/accommodations/…
-  mailer.py             email (SMTP): invitations, resets, security notices, students
-  cli.py                python app.py admin (adding admins: the one thing done on the server) | setup
-  wizard.py             python app.py setup: the questions, .env, the first admin, the checks
-  tools.py              the builders, split for sharing one page: /tools/<name>.css|.json|.js|.html
-  scope_css.py          scopes a builder's CSS to its own element
-templates/index.html    the splash (modelled on beamer.changapp.net) and the app's frame
-templates/admin.html    the admin panel (static/js/admin.js, static/css/admin.css)
-static/css/             splash.css (Beamer+'s tokens and layout), shell.css (top bar, path, Home)
-static/js/
-  scope.js              runs each builder in its own scope (see below)
-  boot.js               before the first paint: splash or app
+  mailer.py             email (SMTP)
+templates/              index.html (the splash and the app), admin.html, hub.html and hub-signin.html (the course page)
+static/css/             splash.css, shell.css (Lectern), hub.css (the course page), admin.css
+static/js/              one file per page or part, each starting with what it is. The main ones:
   lectern.js            the shell: Home, a course offering, the pinned path, opening builders
-  auth.js               signing in (and again, mid-work), two-factor, invitations, resets
-  account.js            Your account
-  admin.js              the admin panel
-  store.js              the calls the shell makes to your files
+  scope.js              runs each builder in its own scope (see below)
+  hub.js, hub-view.js   the course page (hub-view.js is its look, shared with the Course Page Builder)
+static/vendor/          Tesseract (reading ID cards in the browser), with its licences
 tools/                  the three builders, each still a single HTML file that works on its own;
                         suite.css (their shared look, kept identical in all three) and course.cls (the exam class) for reference
-docs/                   the plans
-tests/                  python -m pytest (server); tests/browser/ (Playwright walkthroughs against the real
-                        server in its own data folder: flow_auth.py and flow_accommodations.py assert as they go)
+docs/                   ui-patterns.md (named UI patterns to follow); archive/ (the early build plans)
+sample-data/            made-up courses and a class list, for trying Lectern and for the tests
+tests/                  python -m pytest (the server); tests/browser/ (Playwright walkthroughs: see its README)
 ```
 
 **One page, each builder in its own scope.** The builders stay single files in `tools/`. The server splits each into its markup, its CSS (every rule prefixed with `[data-lt-tool="<name>"]`) and its script, wrapped so that inside it `document` and `window` are stand-ins: `getElementById` and `querySelector` look only in the builder's element, `document.body` is that element, and its key and click listeners only hear events while it's the one showing. So all three can keep their own `#stage`, `#home`, `#save`, menus and windows on one page, and a builder's unsaved work stays open while you look at another. Each builder's file ends with a short **Lectern** section: when Lectern hosts it, Lectern hands it the connection and opens files; opened on its own, it starts exactly as before (and still talks to GitHub or a folder itself). Hosted, a builder's GitHub-style calls for `lectern/pub` and `lectern/priv` go to your files on the server instead (`scope.js`), with your session.
 
 **The top bar and path.** On Lectern's pages the bar is Home · Back/Forward · path · status · account (Save, Your account, Accounts, Sign out). Inside a builder, the builder's own bar is the top bar (its Home button goes to Lectern's Home), and the path strip sits directly under it, pinned, e.g. `Home › csc258 / f26 › Grades › Students › Castillo, Maya`. The builders' in-page paths are folded into the strip.
 
-## Build plan
-
-See `docs/lectern-plan.md` (and the builders' own plans beside it). Done: Lectern's own accounts (email, password, two-factor; invite-only) with everything kept on the server, replacing GitHub sign-in and folder mode; stage 1 of section 3 (shell, splash, Home, the pinned path, the builders in isolated scopes), the small fixes (section 10), the pinned path in each builder on its own, each evaluation's type, label and date in Grades (names now come from the label: Lab 1, Lab 2…), the course page's weekly layout (lectures in hour slots, a third of the row each; No class; extra hours scroll sideways; an evaluations row; older pages' lecture cards become one hour each), and the cross-links:
+## How the builders connect
 
 - **Course page ← Grades.** Opening a course page in Lectern hands it the gradebook's marking scheme (names, weights, dates, "best N of M", not-submitted rules; never students or marks). The page gets a read-only Marking scheme section (in place of a hand-made Grading table) with Edit in Grades, and each evaluation appears in the week of its date: a pill beside the week (dark for tests) and a card under the lectures. The course page owns the files and links attached to each evaluation.
 - **Grades → exams and handouts.** Each evaluation has Build: it opens the evaluation's exam (a test: cover page, answer spaces) or handout (an assignment: instructions, no answer spaces), starting one named and dated the first time. The document names the evaluation it's for, and its total marks become the evaluation's out of (read-only in Grades).
 
-Build order done through section 11. Still open: section 12.
+The plans Lectern was built from (GitHub-era: before Lectern kept everything on its own server) are in `docs/archive/`.

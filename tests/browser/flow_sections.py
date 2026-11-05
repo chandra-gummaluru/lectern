@@ -9,12 +9,12 @@ Run:  python tests/browser/flow_sections.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright, expect
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE, GRADES
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE, GRADES
 
 
 def main():
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(GRADES)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     priv = gh.repos["chandra-gummaluru/courses-private"]

@@ -1,5 +1,5 @@
 """Gradebook: no edit bar; a mark's status comes from the little menu in its cell.
-Run with the server going (python app.py), then: python tests/browser/flow_cellst.py"""
+Run: python tests/browser/flow_cellst.py"""
 import os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 src = open(os.path.join(os.path.dirname(__file__), "flow_fx.py")).read().split("def main")[0]
@@ -13,7 +13,7 @@ def main():
             "evals": [ev("a1", "Assignment", "Assignment", "A1", "assignment", 50), ev("fe", "Final Exam", "Final Exam", "FE", "test", 50)], "groups": [],
             "students": [{"num": "1", "first": "Maya", "last": "Castillo", "f": {}}, {"num": "2", "first": "Ken", "last": "Ito", "f": {}}],
             "marks": {"1": {"a1": {"pts": 8}}, "2": {"a1": {"missed": True}}}, "overrides": {}}
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(book)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

@@ -1,11 +1,11 @@
 """Makeups: an evaluation of its own, chosen in the original's policy with a part of its weight;
 makeups and shifted weight together make up the original's weight.
-Run with the server going (python app.py), then: python tests/browser/flow_makeups.py"""
+Run: python tests/browser/flow_makeups.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 from flow_links import ev
 
 def main():
@@ -16,7 +16,7 @@ def main():
             "groups": [], "students": [{"num": "1", "first": "Maya", "last": "Castillo", "f": {}}, {"num": "2", "first": "Ken", "last": "Ito", "f": {}}],
             "marks": {"1": {"a1": {"pts": 10}, "mt": {"missed": True}, "mm": {"pts": 15}, "fe": {"pts": 10}}, "2": {"a1": {"pts": 10}, "mt": {"pts": 10}, "fe": {"pts": 10}}}, "overrides": {}}
     for e in book["evals"]: e["total"] = e.get("total") or 10
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(book)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

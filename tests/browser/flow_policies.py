@@ -9,8 +9,8 @@ Run:  python tests/browser/flow_policies.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 from flow_links import BOOK
 
 G = "[data-lt-tool='grades'] "
@@ -21,7 +21,7 @@ def main():
     book["policies"] = {"round": {"step": 1, "dir": "nearest"},
                         "buckets": [{"id": "b1", "from": 48, "to": 49.99, "value": 50}],
                         "autofail": [{"id": "a1", "target": "fe", "below": 40, "effect": "cap", "value": 47}, {"id": "a2", "target": "g:g1", "below": 50, "effect": "set", "value": 45}]}
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(book)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

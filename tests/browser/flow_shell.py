@@ -1,29 +1,12 @@
 """The shell, signed in: Home, a course offering, its gradebook, course page and an exam, on a phone too.
-(Named for when sign-in was GitHub's; the other walkthroughs import make_gh, OUT, BASE from here.)
-Run:  python tests/browser/flow_github.py"""
+Run:  python tests/browser/flow_shell.py"""
 import json, os, sys, time
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo, BASE
-from harness import OUT
-
-GRADES = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"},
-          "evals": [], "groups": [], "students": [], "marks": {}, "overrides": {}}
-EXAM = {"format": "exam-builder/2", "settings": {"title": "Midterm", "courseCode": "CSC258"}, "items": []}
-
-def make_gh():
-    gh = FakeGitHub()
-    gh.add(Repo("chandra-gummaluru/courses-private", True, {
-        "csc258/f26/grades.json": json.dumps(GRADES),
-        "csc258/f26/midterm/exam.json": json.dumps(EXAM),
-        "csc108/w26/grades.json": json.dumps({**GRADES, "course": {"code": "CSC108", "term": "Winter 2026"}}),
-    }))
-    gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x", "csc108/f26/notes.pdf": "x"}))
-    gh.add(Repo("chandra-gummaluru/courses-utor", False, {"README.md": "x"}))
-    return gh
+from walkthrough import make_walkthrough, BASE, OUT
 
 def run(steps_filter=None):
-    gh = make_gh()
+    gh = make_walkthrough()
     errors = []
     with sync_playwright() as p:
         b = p.chromium.launch()

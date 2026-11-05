@@ -1,15 +1,15 @@
 """The exam builder in Lectern: no top-bar row; zoom with Ctrl/⌘ and the wheel or keys, Fit to Window appears once
 zoomed; the exam's settings sit in the edit bar and above the first page; solutions and rubric always shown; the eye shows the student preview.
-Run with the server going (python app.py), then: python tests/browser/flow_examui.py"""
+Run: python tests/browser/flow_examui.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from fakegh import FakeGitHub, Repo
-from flow_github import OUT, BASE
+from walkthrough import Walkthrough, Repo
+from walkthrough import OUT, BASE
 from flow_links import BOOK, open_eval
 
 def main():
-    gh = FakeGitHub()
+    gh = Walkthrough()
     gh.add(Repo("chandra-gummaluru/courses-private", True, {"csc258/f26/grades.json": json.dumps(BOOK)}))
     gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x"}))
     errors = []

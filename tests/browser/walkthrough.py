@@ -1,7 +1,8 @@
-"""The browser walkthroughs were written against a fake GitHub. Lectern now keeps everything on its own
-server, so this keeps their shape and runs them against the real thing (harness.Server, one per process):
+"""Shared setup for the browser walkthroughs (flow_*.py) that run against one real server per process
+(harness.Server). They were first written against a fake GitHub, so they still describe files as two
+repositories; this turns that into an account's private and public files:
 
-    gh = FakeGitHub()                                       # a fresh account (chandra@utoronto.ca, an admin)
+    gh = Walkthrough()                                       # a fresh account (chandra@utoronto.ca, an admin)
     gh.add(Repo("chandra-gummaluru/courses-private", True, {...}))   # → its private files ("priv")
     gh.add(Repo("chandra-gummaluru/courses", False, {...}))          # → its public files ("pub")
     gh.attach(ctx)                                          # the browser context is signed in
@@ -11,11 +12,12 @@ server, so this keeps their shape and runs them against the real thing (harness.
 A repository whose name ends in -private is the private files; the first other one is the public files
 (any more are ignored).
 """
+import json
 import os
 import shutil
 import time
 
-from harness import Server
+from harness import Server, OUT  # noqa: F401  (OUT: where screenshots go)
 
 _srv = None
 
@@ -51,7 +53,7 @@ class _View:
         return [r["message"] for r in db.all_("SELECT message FROM commits WHERE user_id = ? AND repo = ? ORDER BY at", (server().user["id"], self.area))]
 
 
-class FakeGitHub:
+class Walkthrough:
     def __init__(self):
         from server import db
         srv = server()
@@ -84,3 +86,22 @@ class FakeGitHub:
 
     def handle(self, route):
         raise RuntimeError("Lectern no longer calls GitHub: use gh.attach(ctx) instead of ctx.route(..., gh.handle)")
+
+
+# The walkthroughs' usual files.
+GRADES = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"},
+          "evals": [], "groups": [], "students": [], "marks": {}, "overrides": {}}
+EXAM = {"format": "exam-builder/2", "settings": {"title": "Midterm", "courseCode": "CSC258"}, "items": []}
+
+
+def make_walkthrough():
+    """A fresh account with a few offerings (CSC258 F26 with a gradebook and an exam, CSC108 W26)."""
+    gh = Walkthrough()
+    gh.add(Repo("chandra-gummaluru/courses-private", True, {
+        "csc258/f26/grades.json": json.dumps(GRADES),
+        "csc258/f26/midterm/exam.json": json.dumps(EXAM),
+        "csc108/w26/grades.json": json.dumps({**GRADES, "course": {"code": "CSC108", "term": "Winter 2026"}}),
+    }))
+    gh.add(Repo("chandra-gummaluru/courses", False, {"README.md": "x", "csc108/f26/notes.pdf": "x"}))
+    gh.add(Repo("chandra-gummaluru/courses-utor", False, {"README.md": "x"}))
+    return gh

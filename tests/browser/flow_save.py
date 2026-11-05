@@ -1,10 +1,13 @@
+"""Saving: the path while a gradebook is open, what a save writes, and leaving with unsaved changes
+(Home asks: keep editing, or leave without saving), then opening an exam.
+Run:  python tests/browser/flow_save.py"""
 import json, os, sys
 sys.path.insert(0, os.path.dirname(__file__))
 from playwright.sync_api import sync_playwright
-from flow_github import make_gh, OUT, BASE
+from walkthrough import make_walkthrough, OUT, BASE
 
 def main():
-    gh = make_gh()
+    gh = make_walkthrough()
     errors = []
     with sync_playwright() as p:
         b = p.chromium.launch()

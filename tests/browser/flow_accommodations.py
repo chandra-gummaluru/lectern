@@ -10,6 +10,12 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE); sys.path.insert(0, ROOT)
 from playwright.sync_api import sync_playwright, expect
 from harness import Server, OUT, block_cdns
+import calendar, datetime
+
+# The request deadline the instructor picks: the last day of this month (the calendar opens on this month),
+# at 23:00, so it's still ahead whenever the flow runs (but the last hour of a month).
+_today = datetime.date.today()
+DEADLINE = _today.replace(day=calendar.monthrange(_today.year, _today.month)[1]).isoformat()
 
 
 def sample(path):
@@ -58,8 +64,8 @@ def main():
         page.check(G + "input[data-acm='alternate']"); page.wait_for_timeout(300)
         # The deadline, with the same calendar as the evaluation's date
         page.click(G + "[data-ed='acm-when']"); page.wait_for_timeout(300)
-        page.click("[data-day='2026-10-31']"); page.wait_for_timeout(200)
-        page.fill("#wp-t", "5pm"); page.wait_for_timeout(200); page.screenshot(path=f"{OUT}/acc-01b-calendar.png"); page.press("#wp-t", "Enter"); page.wait_for_timeout(400)
+        page.click(f"[data-day='{DEADLINE}']"); page.wait_for_timeout(200)
+        page.fill("#wp-t", "11pm"); page.wait_for_timeout(200); page.screenshot(path=f"{OUT}/acc-01b-calendar.png"); page.press("#wp-t", "Enter"); page.wait_for_timeout(400)
         print("deadline button:", page.inner_text(G + "[data-ed='acm-when']"))
         # Lab 1 (in a group): nothing to request as standard
         page.evaluate("location.hash = '#/csc258/f26/evaluations'"); page.wait_for_timeout(500)
@@ -71,7 +77,7 @@ def main():
         saved = json.loads(srv.text("priv", "csc258/f26/grades.json"))
         mt = next(e for e in saved["evals"] if e["id"] == "mt")
         print("saved accom:", mt.get("accom"))
-        assert {k: mt["accom"].get(k) for k in ("approval", "alternate", "by", "byTime")} == {"approval": True, "alternate": True, "by": "2026-10-31", "byTime": "17:00"}
+        assert {k: mt["accom"].get(k) for k in ("approval", "alternate", "by", "byTime")} == {"approval": True, "alternate": True, "by": DEADLINE, "byTime": "23:00"}
         assert "Midterm makeup" in mt["accom"]["standard"] and "Final Exam" in mt["accom"]["standard"], mt["accom"]["standard"]
 
         # 2. A student signs in to the course page (the code it emails them), then asks what they can request.

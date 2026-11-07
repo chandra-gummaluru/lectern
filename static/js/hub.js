@@ -411,7 +411,8 @@ function evalCard(u, group, E) {
   // Accommodations: one row, as the dates are: what can be asked for and until when, and the button to ask.
   const HAND = HEART;
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
-  const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks)}</span>${by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
+  const accShut = accomShut(u);   // closed: why (the button says only that they are)
+  const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks)}</span>${accShut ? `<small>${esc(accShut)}</small>` : by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
   const req = requestBtn(u);
   // Remarks: once their mark is out, a student can ask for it to be looked at again (while requests are open).
   const rk = u.remark, rkBy = rk && rk.by ? new Date(`${rk.by}T${rk.byTime || "23:59"}`) : null, rkFrom = rk && rk.from ? new Date(`${rk.from}T${rk.fromTime || "00:00"}`) : null;
@@ -419,7 +420,7 @@ function evalCard(u, group, E) {
     : rkBy && !isNaN(rkBy) && rkBy < new Date() ? `<button type="button" class="hb-btn" disabled>Requests Closed</button>`
     : me && m && !(rkFrom && rkFrom > new Date()) ? `<a class="hb-btn" href="#remark/${encodeURIComponent(u.id)}">Request Remark</a>` : "";
   const rkText = !rk ? "" : me && !m ? "Once your mark is out, you can ask for it to be looked at again." : rkFrom && rkFrom > new Date() ? `You can ask for your mark to be looked at again from ${rk.from ? `${day(rk.from, true)}${rk.fromTime ? `, ${rk.fromTime}` : ""}` : ""}.` : "You can ask for your mark to be looked at again.";
-  const rmk = rk ? `<div class="ec-accrow"><span class="hs-ic sm">${REDO}</span><div class="ec-acct"><b>Remarks</b><span>${esc(rkText)}</span>${rk.by ? `<small>Requests close ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}.</small>` : ""}</div>${rkBtn ? `<span class="ec-accbtn">${rkBtn}</span>` : ""}</div>` : "";
+  const rmk = rk ? `<div class="ec-accrow"><span class="hs-ic sm">${REDO}</span><div class="ec-acct"><b>Remarks</b><span>${esc(rkText)}</span>${rk.by ? `<small>${rkBy && !isNaN(rkBy) && rkBy < new Date() ? `Requests closed ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}: the deadline has passed.` : `Requests close ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}.`}</small>` : ""}</div>${rkBtn ? `<span class="ec-accbtn">${rkBtn}</span>` : ""}</div>` : "";
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
@@ -433,11 +434,17 @@ function evalCard(u, group, E) {
     </article>`;
 }
 // Request Accommodation, at the top of an evaluation's card: when students can ask (until its deadline).
+// Why accommodation requests for an evaluation are closed ("" while they're open): its marks are out, or its deadline has passed.
+function accomShut(e) {
+  const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  if (e.released || (D.viewer.marks || {})[e.id]) return "Requests closed: the marks have been released.";
+  const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
+  if (by && !isNaN(by) && by < new Date()) return `Requests closed ${day(a.by, true)}, ${a.byTime || "23:59"}: the deadline has passed.`;
+  return "";
+}
 function requestBtn(e) {
   const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
-  if (e.released || (D.viewer.marks || {})[e.id]) return `<button type="button" class="hb-btn" disabled>Requests Closed</button>`;   // its marks are out
-  const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
-  if (by && !isNaN(by) && by < new Date()) return `<button type="button" class="hb-btn" disabled>Requests Closed</button>`;
+  if (accomShut(e)) return `<button type="button" class="hb-btn" disabled>Requests Closed</button>`;
   return D.viewer.signedIn ? `<a class="hb-btn" href="#request/${encodeURIComponent(e.id)}">Request Accommodation</a>` : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request an Accommodation</a>`;
 }
 

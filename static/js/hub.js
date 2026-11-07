@@ -420,7 +420,7 @@ function evalCard(u, group, E) {
     : rkBy && !isNaN(rkBy) && rkBy < new Date() ? `<button type="button" class="hb-btn" disabled>Requests Closed</button>`
     : me && m && !(rkFrom && rkFrom > new Date()) ? `<a class="hb-btn" href="#remark/${encodeURIComponent(u.id)}">Request Remark</a>` : "";
   const rkText = !rk ? "" : me && !m ? "Once your mark is out, you can ask for it to be looked at again." : rkFrom && rkFrom > new Date() ? `You can ask for your mark to be looked at again from ${rk.from ? `${day(rk.from, true)}${rk.fromTime ? `, ${rk.fromTime}` : ""}` : ""}.` : "You can ask for your mark to be looked at again.";
-  const rmk = rk ? `<div class="ec-accrow"><span class="hs-ic sm">${REDO}</span><div class="ec-acct"><b>Remarks</b><span>${esc(rkText)}</span>${rk.by ? `<small>${rkBy && !isNaN(rkBy) && rkBy < new Date() ? `Requests closed ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}: the deadline has passed.` : `Requests close ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}.`}</small>` : ""}</div>${rkBtn ? `<span class="ec-accbtn">${rkBtn}</span>` : ""}</div>` : "";
+  const rmk = rk ? `<div class="ec-accrow"><span class="hs-ic sm">${REDO}</span><div class="ec-acct"><b>Remarks</b><span>${esc(rkText)}</span>${rk.by ? `<small>${rkBy && !isNaN(rkBy) && rkBy < new Date() ? `Requests are closed because the deadline (${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}) has passed.` : `Requests close ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}.`}</small>` : ""}</div>${rkBtn ? `<span class="ec-accbtn">${rkBtn}</span>` : ""}</div>` : "";
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
@@ -437,9 +437,9 @@ function evalCard(u, group, E) {
 // Why accommodation requests for an evaluation are closed ("" while they're open): its marks are out, or its deadline has passed.
 function accomShut(e) {
   const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
-  if (e.released || (D.viewer.marks || {})[e.id]) return "Requests closed: the marks have been released.";
+  if (e.released || (D.viewer.marks || {})[e.id]) return "Requests are closed because the marks have been released.";
   const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
-  if (by && !isNaN(by) && by < new Date()) return `Requests closed ${day(a.by, true)}, ${a.byTime || "23:59"}: the deadline has passed.`;
+  if (by && !isNaN(by) && by < new Date()) return `Requests are closed because the deadline (${day(a.by, true)}, ${a.byTime || "23:59"}) has passed.`;
   return "";
 }
 function requestBtn(e) {

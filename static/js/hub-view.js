@@ -316,7 +316,7 @@ const DRAW = {
     // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
     const request = e => {
       const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
-      if (e.released) return `<div class="hb-req-off">Accommodation requests are closed: the marks have been released.</div>`;
+      if (e.released) return `<div class="hb-req-off">Accommodation requests are closed because the marks have been released.</div>`;
       const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
       if (by && !isNaN(by) && by < new Date()) return `<div class="hb-req-off">The deadline for accommodation requests has passed.</div>`;
       const when = by && !isNaN(by) ? `<span class="hb-req-by">Request by ${esc(by.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" }))}, ${esc(a.byTime || "23:59")}</span>` : "";

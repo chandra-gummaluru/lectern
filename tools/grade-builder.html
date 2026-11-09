@@ -1365,6 +1365,14 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 @media (max-width: 760px) { .erow { flex-direction: column; align-items: stretch; } .er-side { align-items: flex-start; } }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .erow { background: var(--bar); border-color: var(--line); color: var(--ink); } :root:not([data-theme="light"]) .er-top h3 { color: var(--ink); } :root:not([data-theme="light"]) .erow p { color: var(--ink-2); } :root:not([data-theme="light"]) .egroup { background: var(--bg); border-color: var(--line); } :root:not([data-theme="light"]) .egroup > .erow.grp { background: var(--bar); } }
 .acc-w { max-width: 260px; margin: 6px 0 0; }
+/* Their mark, on a student's accommodation page: the box (as the gradebook's cell) and the percentage beside it. */
+.acc-mk { display: flex; align-items: flex-end; gap: 18px; max-width: 420px; margin: 6px 0 0; }
+.acc-mk .pf { flex: 0 1 300px; }
+.acc-mk-in { display: flex; align-items: center; gap: 8px; font: 14px var(--font-ui); color: var(--ink-2); }
+.acc-mk-in input { flex: 1; min-width: 0; }
+.acc-mk-in input.bad-input { border-color: var(--warn-line) !important; background: var(--warn-bg) !important; }
+.acc-mk .acc-score { margin: 0 0 2px; }
+.acc-mk + .ed-help { margin-top: 6px; }
 .acc-w .ed-help { margin: 6px 0 0; max-width: 520px; width: max-content; }
 /* the large, faint icon on each start-screen card (as in the Course Page Builder) */
 .pcard-body { position: relative; min-height: 112px; padding-right: 130px; }
@@ -3439,6 +3447,13 @@ document.addEventListener("input", ev => {
     else { lab.classList.add("bad"); return; }
     fgSync(m, n); unsaved = true; refreshSoon(); return;
   }
+  if (t.dataset.ed === "acc-mark") {   // the student's mark, typed on their accommodation page (as in its gradebook cell)
+    const s = m.dataset.student, e = evalById(m.dataset.acc), p = parseCell(t.value); if (!e) return;
+    const bad = !p || (e.makeupFor && p.status === "excused"); t.classList.toggle("bad-input", !!bad); if (bad) return;
+    noteTyping(); setMark(s, e.id, p);
+    const sc = $(".acc-mk .acc-score", m); if (sc) sc.outerHTML = scoreHTML({ num: s }, e);
+    refreshRow(s); refreshSoon(); return;
+  }
   if (t.dataset.ed === "acc-weight") {   // a student's accommodation, typed
     const s = m.dataset.student, e = evalById(m.dataset.acc); noteTyping();
     setOverride(s, e.id, { weight: t.value === "" ? null : num(t.value) }); const rows = $("#rw-rows", m); const { p, w } = accPolicy({ num: s }, e); if (rows) rows.innerHTML = rwRowsHTML(e, p, w, "acc-");
@@ -3968,6 +3983,14 @@ function notesHTML(s) {
     <div class="nt-new">${RICH() ? `<div class="nt-rt" data-nt-rt></div>` : `<textarea class="st-notes" data-ed="nt-text" rows="2" placeholder="${esc(NOTE_PH)}"></textarea>`}
       <button type="button" class="add-mk" data-ed="nt-add">${svg("plus")}Add Note</button></div>`;
 }
+// Their mark for it, at the top of their accommodation page: typed as in the gradebook's cell
+// (points, or m / ex / aiv / def), with the percentage beside it.
+function accMarkHTML(s, e) {
+  const mk = markOf(s.num, e.id), st = statusOf(mk), v = mk.pts != null ? fmtNum(mk.pts) : st ? STATUSES[st].toLowerCase() : "";
+  return `<h3 class="ed-sec ed-first">Their Mark</h3>
+      <div class="acc-mk"><label class="pf"><span>Mark</span><span class="acc-mk-in"><input type="text" data-ed="acc-mark" value="${esc(v)}" placeholder="Not marked" spellcheck="false" autocomplete="off"><span>/ ${outOf(e)}</span></span></label>${scoreHTML(s, e)}</div>
+      <p class="ed-help">Points, or a status: m (not submitted), ${e.makeupFor ? "" : "ex (excused), "}aiv (academic integrity violation) or def (deferred). The same mark as in the gradebook.</p>`;
+}
 function accPolicy(s, e) { const o = overrideOf(s.num, e.id) || {}; return { o, p: o.missed || e.missed, w: o.weight != null ? num(o.weight) : num(e.weight) }; }
 // The student's accommodation requests for an evaluation (from the course page's Request Accommodation button),
 // in Lectern, for those who may see them: each as on the Accommodations page, decided there.
@@ -4033,6 +4056,8 @@ function drawStudentEditor() {
   if (e) {   // one evaluation's accommodation for this student
     const { o, p, w } = accPolicy(s, e);
     $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}</div>
+      ${accMarkHTML(s, e)}
+      <h3 class="ed-sec">Their Policy</h3>
       <p class="ed-help">Only for ${esc(s.name || s.num)}. Everyone else keeps the course's policy.</p>
       <div class="acc-w"><label class="pf"><span>New Weight (%)</span><input type="number" min="0" step="any" data-ed="acc-weight" value="${o.weight != null ? esc(o.weight) : ""}" placeholder="${fmtNum(e.weight)}"></label>
         <p class="ed-help">All other evaluations scale so the total stays ${fmtNum(weightSum())}%. Use 0% to excuse the assignment.</p></div>

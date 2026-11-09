@@ -5,14 +5,15 @@
    lines that run down the page through the weeks and the days.
    ============================================================ */
 .hb {
-  --paper: #fbfaf7; --card: #ffffff; --strip: #f6f5f2; --line: #e6e5e1; --line-2: #cfd0d3;
-  --ink: #1f2329; --ink-2: #4a4f57; --ink-3: #7a7f87;
-  --accent: #a67c00; --accent-bg: #fbf1d4; --accent-line: #ecd48f;
-  --dark: #1f2329; --dark-ink: #ffffff;
+  /* The splash's palette (splash.css): sage paper, green-black ink, the builders' gold. */
+  --paper: #f3f4ef; --card: #ffffff; --strip: #eceee8; --line: #dcdfd6; --line-2: #c9cdc3;
+  --ink: #1c211d; --ink-2: #4d564f; --ink-3: #7d857e;
+  --accent: #a67c00; --accent-bg: #fbf3d9; --accent-line: #ecd58f;
+  --dark: #1f2a23; --dark-ink: #ffffff;
   --ok: #2f8f5b; --warn-bg: #fdf6e6; --warn-line: #efd9a7;
   --shadow: 0 0 0 1px var(--line-2);   /* an outline (cards are drawn with it) */
   --shadow-up: 0 0 0 1px var(--ink-3);
-  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-serif: "EB Garamond", Garamond, Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --r: 12px; --ease: cubic-bezier(.2, .7, .2, 1);
@@ -29,7 +30,7 @@
 }
 
 /* Everything is inside .hb (its colours too), so the builder can show the same thing inside Lectern. */
-body.hb-page { margin: 0; background: #fbfaf7; -webkit-text-size-adjust: 100%; }
+body.hb-page { margin: 0; background: #f3f4ef; -webkit-text-size-adjust: 100%; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.hb-page { background: #17191d; } }
 .hb, .hb * { box-sizing: border-box; }
 .hb { background: var(--paper); color: var(--ink); font: 15px/1.6 var(--font-ui); }

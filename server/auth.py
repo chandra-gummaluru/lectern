@@ -183,8 +183,8 @@ def user_json(u):
 def notify(u, subject, lines):
     """A security notice to the account's own email (password changed, two-factor off…)."""
     where = link_base()
-    body_ = f"Hi {u['name'] or u['email']},\n\n" + "\n".join(lines) + \
-        f"\n\nIf this wasn't you, reset your password now{f' ({where})' if where else ''} and tell your Lectern admin.\n"
+    body_ = f"{mailer.hi(u['name'])}\n\n" + "\n".join(lines) + \
+        f"\n\nIf this wasn't you, reset your password now and tell your Lectern admin{':' if where else '.'}\n" + (f"\n{where}\n" if where else "")
     mailer.send_later(u["email"], f"Lectern: {subject}", body_)
 
 
@@ -460,13 +460,13 @@ def forgot():
                       (sec.token_hash(tok), u["id"], now(), now() + RESET_MINUTES * 60))
         log(u["id"], "reset-requested")
         # In the background: the reply takes the same time whether or not there's an account.
-        mailer.send_later(u["email"], "Lectern: choose a new password", f"""Hi {u['name'] or u['email']},
+        mailer.send_later(u["email"], "Lectern: choose a new password", f"""{mailer.hi(u['name'])}
 
 Someone (hopefully you) asked to reset your Lectern password. To choose a new one, open this link within an hour:
 
 {base}#reset={tok}
 
-If you didn't ask, ignore this email: your password stays the same.
+If you didn't ask for this, you can ignore this email: your password stays the same.
 """)
     return jsonify(ok=True, message=FORGOT_SAID)
 
@@ -547,13 +547,13 @@ def invite_link(tok, base=None):
 
 
 def send_invite(email, link, by_name=""):
-    return mailer.send_later(email, "You're invited to Lectern", f"""Hello,
+    return mailer.send_later(email, "Lectern: you're invited", f"""{mailer.hi()}
 
-{by_name or 'Your Lectern admin'} has invited you to Lectern, for your course pages, grades and exams.
-
-To create your account, open this link within {INVITE_DAYS} days:
+{by_name or 'Your Lectern admin'} has invited you to Lectern, for your course pages, grades and exams. To create your account, open this link within {INVITE_DAYS} days:
 
 {link}
+
+If you weren't expecting this, you can ignore this email.
 """)
 
 

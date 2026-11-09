@@ -106,18 +106,31 @@ def student_mail(owner_id, off, to, subject, text_, kind, reply_to=None):
     p = prefs_for(owner_id, off)
     if kind and not p["send"].get(kind, True):
         return False
-    return mailer.send(to, subject, signed(p, text_), reply_to=p["replyTo"] or reply_to, cfg=settings_for(owner_id, off))
+    return mailer.send(to, subject, signed(p, text_, head_for(owner_id, off)), reply_to=p["replyTo"] or reply_to, cfg=settings_for(owner_id, off))
 
 
-def signed(p, text_):
+def head_for(owner_id, off):
+    """What heads an offering's emails: its name (CSC258: Computer Organization), then its term and school."""
+    from .hub import institution, term_name
+    course, _, term = off.partition("/")
+    try:
+        from .students import course_name
+        name = course_name(owner_id, course, term)
+    except Exception:
+        name = course.upper()
+    return {"title": name, "sub": " · ".join(x for x in (term_name(term), institution()) if x),
+            "code": course.upper(), "term": term_name(term), "school": institution()}
+
+
+def signed(p, text_, head=None):
     """The email with the offering's signature at the end. The signature is rich text (the Markdown of
     richtext.js: **bold**, *italic*, [text](url), "- " and "1. " lists): the plain-text email gets it as
     readable text, and an HTML part (mailer.Mail.html) gets it drawn."""
     sig = (p.get("signature") or "").strip()
     if not sig:
-        return text_
+        return mailer.Mail(text_, getattr(text_, "html", ""), head)
     return mailer.Mail(f"{text_.rstrip()}\n\n{md_plain(sig)}\n",
-                       html=f"{text_html(text_)}<br>{md_html(sig)}")
+                       html=f'{getattr(text_, "html", "") or mailer.to_html(text_)}<div style="margin:22px 0 16px">{md_html(sig)}</div>', head=head)
 
 
 _LINK = re.compile(r"\[([^\]]*)\]\(((?:https?://|mailto:)[^)\s]+)\)")
@@ -155,10 +168,6 @@ def md_html(md):
         else:
             parts.append(f"<p style=\"margin:0 0 10px\">{_inline(blk)}</p>")
     return "".join(parts)
-
-
-def text_html(t):
-    return "".join('<p style="margin:0 0 10px">' + _esc(b).replace("\n", "<br>") + "</p>" for b in re.split(r"\n\s*\n", t.strip()))
 
 
 def _settings_json(owner_id, off):
@@ -313,9 +322,9 @@ def set_settings(owner, course, term):
         else:
             pw = ""
     cfg = {"host": host, "port": port, "security": security, "user": user, "from": frm, "password": pw}
-    err = mailer.deliver(g.user["email"], f"Lectern: email for {off} works",
-                         f"Hi {g.user['name'] or g.user['email']},\n\nThis is the test email for {off}'s email settings in Lectern: "
-                         f"it can send through {host}.\n", cfg=cfg)
+    err = mailer.deliver(g.user["email"], f"{off.split('/')[0].upper()}: email works",
+                         mailer.Mail(f"{mailer.hi(g.user['name'])}\n\nThis is the test email for this course's email settings in Lectern: "
+                                     f"it can send through {host}.\n", head=head_for(o["id"], off)), cfg=cfg)
     if err:
         raise Refusal(400, f"The test email didn't go through, so nothing was saved: {_why(err)}", "smtp")
     stored = {k: cfg[k] for k in ("host", "port", "security", "user", "from")}
@@ -362,7 +371,7 @@ def send(owner, course, term):
     log(g.user["id"], "class-mail", f"{off} {label} {len(people)}")
     addrs = [p["email"] for p in people]
     pf = prefs_for(o["id"], off)
-    reply, msg = pf["replyTo"] or g.user["email"], signed(pf, msg)
+    reply, msg = pf["replyTo"] or g.user["email"], signed(pf, msg, head_for(o["id"], off))
 
     def run():
         counts = {"sent": 0, "failed": 0}
@@ -416,7 +425,7 @@ def announce(owner, course, term):
     if not limiter.ok(f"class-mail:{o['id']}:{off}", SENDS_PER_HOUR, 3600):
         raise Refusal(429, f"That's {SENDS_PER_HOUR} emails to the class this hour. It's saved; email it later.", "rate")
     subject = f"{course.upper()}: {title}"[:MAX_SUBJECT + 20]
-    text_ = f"{msg}\n\n—\nOn the course page: {hub_url(o, off)}#announcements\n"
+    text_ = f"{msg}\n\n—\nSee it on the course page: {hub_url(o, off)}#announcements\n"
     label = "Everyone" if not groups else f"{len(groups)} section{'s' if len(groups) > 1 else ''}"
     with db.transaction() as c:
         sid = c.execute("""INSERT INTO mail_sends (owner_id, offering, by_user, by_name, at, subject, to_label, total)
@@ -424,7 +433,7 @@ def announce(owner, course, term):
                         (o["id"], off, g.user["id"], g.user["name"] or g.user["email"], time.time(), subject, label, len(people))).lastrowid
     log(g.user["id"], "announcement-mail", f"{off} {label} {len(people)}")
     pf = prefs_for(o["id"], off)
-    reply, text_ = pf["replyTo"] or g.user["email"], signed(pf, text_)
+    reply, text_ = pf["replyTo"] or g.user["email"], signed(pf, text_, head_for(o["id"], off))
 
     def run():
         counts = {"sent": 0, "failed": 0}
@@ -517,9 +526,9 @@ def notify_grades(owner, course, term):
             if not who:
                 continue
             subject = f"{code}: your mark for {name} is out" if kind == "released" else f"{code}: your mark for {name} has changed"
-            msg = (f"Your mark for {name} is now on the course page." if kind == "released"
-                   else f"Your mark for {name} has been updated.") + f"\n\nSee it here: {link}\n"
-            jobs.append(([p["email"] for p, _ in who], subject, signed(pf, msg)))
+            msg = f"{mailer.hi()}\n\n" + (f"Your mark for {name} is out." if kind == "released"
+                   else f"Your mark for {name} has been updated.") + f" See it on the course page:\n\n{link}\n"
+            jobs.append(([p["email"] for p, _ in who], subject, signed(pf, msg, head_for(o["id"], off))))
             with db.transaction() as c:
                 for p, m in who:
                     c.execute("""INSERT INTO grade_notices (owner_id, offering, eval_id, num, mark, at) VALUES (?, ?, ?, ?, ?, ?)

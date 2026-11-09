@@ -163,8 +163,9 @@ def hub_url(o, off, base=None):
 
 
 def _mail(owner_id, off, to, subject, text_):
-    from .classmail import settings_for
+    from .classmail import head_for, settings_for
     cfg = settings_for(owner_id, off)
+    text_ = mailer.Mail(text_, head=head_for(owner_id, off))
     if mailer.keep:
         return mailer.send(to, subject, text_, cfg=cfg)
     threading.Thread(target=mailer.send, args=(to, subject, text_), kwargs={"cfg": cfg}, daemon=True).start()
@@ -173,9 +174,9 @@ def _mail(owner_id, off, to, subject, text_):
 
 def _invite(o, off, email, name):
     base = link_base() or app_url()
-    return _mail(o["id"], off, email, f"{name}: the course page",
-                 f"You're in {name}. Its course page is here:\n\n  {hub_url(o, off, base)}\n\n"
-                 f"To see everything on it, sign in there with this email ({email}): Lectern emails you a code.\n")
+    return _mail(o["id"], off, email, f"{off.split('/')[0].upper()}: your course page",
+                 f"{mailer.hi()}\n\nYou're in {off.split('/')[0].upper()}. Everything for the course is on its course page:\n\n{hub_url(o, off, base)}\n\n"
+                 f"To see all of it, sign in there with this email ({email}): Lectern emails you a code.\n")
 
 
 # ── The class list (the team) ────────────────────────────────────────
@@ -242,10 +243,10 @@ def send_code(handle, course, term):
             c.execute("DELETE FROM student_codes WHERE expires < ?", (t,))
             c.execute("INSERT INTO student_codes (owner_id, offering, email, code_mac, expires, tries, created) VALUES (?, ?, ?, ?, ?, 0, ?)",
                       (o["id"], off, e, sec.mac(f"{o['id']}/{off}/{e}/{code}", "student-code"), t + CODE_MINUTES * 60, t))
-        name = course_name(o["id"], course, term)
+        name = course.upper()   # the email's header has its full name and term
         _mail(o["id"], off, e, f"{code} is your code for {name}",
-              f"Your code to sign in to {name}'s course page:\n\n  {code}\n\nIt works once, for {CODE_MINUTES} minutes.\n"
-              f"If you didn't ask for it, you can ignore this email.\n")
+              f"{mailer.hi()}\n\nHere's your code to sign in to the {name} course page:\n\n  {code}\n\nIt works once, for {CODE_MINUTES} minutes. "
+              f"If you didn't ask for this, you can ignore this email.\n")
     # The same answer either way: the page never says who's in the course.
     return jsonify(sent=True, minutes=CODE_MINUTES)
 
@@ -264,10 +265,10 @@ def send_confirm_code(owner_id, off, email, course, term, what):
         c.execute("DELETE FROM student_codes WHERE expires < ?", (t,))
         c.execute("INSERT INTO student_codes (owner_id, offering, email, code_mac, expires, tries, created) VALUES (?, ?, ?, ?, ?, 0, ?)",
                   (owner_id, off, email, sec.mac(f"{owner_id}/{off}/{email}/{code}", "student-confirm"), t + CODE_MINUTES * 60, t))
-    name = course_name(owner_id, course, term)
+    name = course.upper()   # the email's header has its full name and term
     _mail(owner_id, off, email, f"{code} is your code to send your request for {name}",
-          f"Your code to send {what}:\n\n  {code}\n\nIt works once, for {CODE_MINUTES} minutes.\n"
-          f"If you didn't ask for it, you can ignore this email.\n")
+          f"{mailer.hi()}\n\nHere's your code to send {what}:\n\n  {code}\n\nIt works once, for {CODE_MINUTES} minutes. "
+          f"If you didn't ask for this, you can ignore this email.\n")
     return CODE_MINUTES
 
 

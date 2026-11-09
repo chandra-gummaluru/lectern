@@ -329,22 +329,25 @@ Reference: {r['id']}
     return f"{code}: accommodation request received ({r['evalName']})", body
 
 
-def decision_email(r):
+def decision_email(r, link=""):
+    """The email telling a student their request was decided. link: the request on the course page
+    (#myrequest/<id>), where they can read it all and reply; it becomes the email's button."""
     code = r.get("course") or "Your course"
     ok = r["status"] == "approved"
+    see = f"\nSee your request, and reply to it, on the course page:\n\n{link}\n" if link else ""
     if r.get("type") == "remark":
-        body = f"""Hi {r['first']},
+        body = f"""{mailer.hi(r.get('first'))}
 
-Your request for a remark of {r['evalName']} in {_course_line(r)} has been {"approved" if ok else "rejected"}.{" Your mark on the course page shows the result." if ok else ""}
+Your request for a remark of {r['evalName']} in {r.get('course') or 'your course'} has been {"approved" if ok else "rejected"}.{" Your mark on the course page shows the result." if ok else ""}
 
 You asked for {_what(r)}
 """
         if r.get("note"):
             body += f"\nA note from your instructor:\n\n{_quote(r['note'])}\n"
-        return f"{code}: remark request for {r['evalName']} {'approved' if ok else 'rejected'}", body + f"\nReference: {r['id']}\n"
-    body = f"""Hi {r['first']},
+        return f"{code}: remark request for {r['evalName']} {'approved' if ok else 'rejected'}", body + see + f"\n—\nReference: {r['id']}\n"
+    body = f"""{mailer.hi(r.get('first'))}
 
-Your request for an accommodation for {r['evalName']} in {_course_line(r)} has been {"approved" if ok else "rejected"}.
+Your request for an accommodation for {r['evalName']} in {r.get('course') or 'your course'} has been {"approved" if ok else "rejected"}.
 
 You asked for {_what(r)}
 """
@@ -352,7 +355,7 @@ You asked for {_what(r)}
         body += f"\nA note from your instructor:\n\n{_quote(r['note'])}\n"
     if not ok:
         body += "\nIf you need a different accommodation, you can make a new request from the course page.\n"
-    body += f"\nReference: {r['id']}\n"
+    body += see + f"\n—\nReference: {r['id']}\n"
     return f"{code}: accommodation for {r['evalName']} {'approved' if ok else 'rejected'}", body
 
 
@@ -740,7 +743,15 @@ def decide():
         r = _update(owner, o, apply,
                     lambda r: f"{'Approve' if decision == 'approved' else 'Reject'} {'remark' if r.get('type') == 'remark' else 'accommodation'} request from {r['student']} for {r['evalName']}",
                     g.user["email"])
-        subject, body = decision_email(r)
+        try:   # the request on the course page, for the email's button
+            from .students import hub_url
+            h = db.one("SELECT handle FROM users WHERE id = ?", (owner,))
+            from .core import link_base
+            base = link_base()   # never the request's own address
+            link = f"{hub_url(h, o, base)}#myrequest/{r['id']}" if base and h and h["handle"] else ""
+        except Exception:
+            link = ""
+        subject, body = decision_email(r, link)
         from .classmail import student_mail
         emailed = bool(r.get("email")) and student_mail(owner, o, r["email"], subject, body, "remarkDecisions" if r.get("type") == "remark" else "accomDecisions", reply_to=g.user["email"])
         return jsonify(ok=True, request=r, emailed=emailed)

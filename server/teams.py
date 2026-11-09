@@ -391,11 +391,11 @@ def add(owner, course, term):
                   (sec.token_hash(tok), o["id"], off, email, new_role, g.user["id"], time.time(), time.time() + JOIN_DAYS * 86400))
     link = f"{base}#join={tok}"
     who = g.user["name"] or g.user["email"]
-    course_name = off.replace("/", " ").upper()
-    emailed = mailer.send_later(email, f"Join the teaching team for {course_name} on Lectern",
-                                f"Hello,\n\n{who} ({g.user['email']}) has asked you to join the teaching team for {course_name} on Lectern, "
-                                f"as {A_ROLE[new_role]}.\n\nTo accept, open this link within {JOIN_DAYS} days:\n\n{link}\n\n"
-                                "If you weren't expecting this, ignore it: nothing happens unless you accept.\n")
+    from .classmail import head_for
+    emailed = mailer.send_later(email, f"{off.split('/')[0].upper()}: join the teaching team", mailer.Mail(
+                                f"{mailer.hi()}\n\n{who} ({g.user['email']}) has asked you to join the teaching team for {off.split('/')[0].upper()} on Lectern, "
+                                f"as {A_ROLE[new_role]}. To accept, open this link within {JOIN_DAYS} days:\n\n{link}\n\n"
+                                "If you weren't expecting this, you can ignore this email: nothing happens unless you accept.\n", head=head_for(o["id"], off)))
     log(g.user["id"], "team-invite", f"{o['handle']}/{off} {email} {new_role}")
     # The link is shown only when it couldn't be emailed (so it can be sent another way).
     return jsonify(ok=True, emailed=emailed, **({} if emailed else {"link": link}))

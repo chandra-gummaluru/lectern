@@ -202,7 +202,7 @@ def test_email(env):
     if not to:
         return
     from . import mailer
-    ok = mailer.send(to, "Lectern: test email", f"This is a test from Lectern at {env['LECTERN_APP_URL']}.\n\nEmail is set up.\n")
+    ok = mailer.send(to, "Lectern: test email", f"{mailer.hi()}\n\nThis is the test email from Lectern's setup, at {env['LECTERN_APP_URL']}: email is set up.\n")
     say("  Sent. Check that it arrived (and isn't in spam)." if ok else "  It didn't send: see the error above. Run setup again to fix the settings.")
 
 

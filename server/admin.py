@@ -365,7 +365,7 @@ def delete_user(u):
         raise
     _sha_cache.clear()
     mailer.send_later(u["email"], "Lectern: your account was deleted",
-                      f"Hi {u['name'] or u['email']},\n\nYour Lectern admin deleted your Lectern account. You can't sign in any more, and your "
+                      f"{mailer.hi(u['name'])}\n\nYour Lectern admin deleted your Lectern account. You can't sign in any more, and your "
                       f"course pages are no longer published. If this is a mistake, ask your Lectern admin.\n")
     return rel
 
@@ -413,7 +413,7 @@ def email_set():
         pw = mailer.settings().get("password") or ""
     cfg = {"host": host, "port": port, "security": security, "user": user, "from": frm, "password": pw}
     err = mailer.deliver(g.admin["email"], "Lectern: email works",
-                         f"Hi {g.admin['name'] or g.admin['email']},\n\nThis is the test email from Lectern's admin panel: "
+                         f"{mailer.hi(g.admin['name'])}\n\nThis is the test email from Lectern's admin panel: "
                          f"Lectern can send email through {host}.\n", cfg=cfg)
     if err:
         raise Refusal(400, f"The test email didn't go through, so nothing was saved: {err}", "smtp")

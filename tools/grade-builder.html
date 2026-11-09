@@ -1366,13 +1366,10 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .erow { background: var(--bar); border-color: var(--line); color: var(--ink); } :root:not([data-theme="light"]) .er-top h3 { color: var(--ink); } :root:not([data-theme="light"]) .erow p { color: var(--ink-2); } :root:not([data-theme="light"]) .egroup { background: var(--bg); border-color: var(--line); } :root:not([data-theme="light"]) .egroup > .erow.grp { background: var(--bar); } }
 .acc-w { max-width: 260px; margin: 6px 0 0; }
 /* Their mark, on a student's accommodation page: the box (as the gradebook's cell) and the percentage beside it. */
-.acc-mk { display: flex; align-items: flex-end; gap: 18px; max-width: 420px; margin: 6px 0 0; }
-.acc-mk .pf { flex: 0 1 300px; }
-.acc-mk-in { display: flex; align-items: center; gap: 8px; font: 14px var(--font-ui); color: var(--ink-2); }
-.acc-mk-in input { flex: 1; min-width: 0; }
-.acc-mk-in input.bad-input { border-color: var(--warn-line) !important; background: var(--warn-bg) !important; }
-.acc-mk .acc-score { margin: 0 0 2px; }
-.acc-mk + .ed-help { margin-top: 6px; }
+.mk-box { margin: 6px 0 0; }
+.fg-val .mk-of { font-size: 22px; color: var(--ink-3); margin-left: 4px; }
+.fg-val.code .mk-of { display: none; }
+.fg-val.st-missed input.fg-in, .fg-val.st-aiv input.fg-in { color: var(--danger); }
 .acc-w .ed-help { margin: 6px 0 0; max-width: 520px; width: max-content; }
 /* the large, faint icon on each start-screen card (as in the Course Page Builder) */
 .pcard-body { position: relative; min-height: 112px; padding-right: 130px; }
@@ -2512,6 +2509,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && $(".fpop")
 document.addEventListener("keydown", e => {   // the student's page: Enter finishes the grade; Ctrl+Enter adds the note
   const t = e.target; if (!t.dataset) return;
   if (t.dataset.ed === "fg-grade" && e.key === "Enter") { e.preventDefault(); t.blur(); }
+  if (t.dataset.ed === "acc-mark" && (e.key === "Enter" || e.key === "Escape")) { e.preventDefault(); t.blur(); }
   if (t.dataset.ed === "fg-grade" && e.key === "Escape") { t.value = ""; t.dispatchEvent(new Event("input", { bubbles: true })); t.blur(); }
   if (t.dataset.ed === "nt-text" && e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); const b = t.closest(".nt-new").querySelector('[data-ed="nt-add"]'); if (b) b.click(); }
 });
@@ -3010,13 +3008,13 @@ function refreshRow(s) {
   clearTimeout(fxTimer); fxTimer = setTimeout(drawFxStats, 250);
 }
 let fxTimer = 0;
-function parseCell(v) {   // a number, or m / aiv / excused / deferred
-  v = String(v).trim().toLowerCase();
+function parseCell(v) {   // a number, or a status in words: missing / unsubmitted / m, aiv, excused, deferred
+  v = String(v).trim().toLowerCase().replace(/\s+/g, " ");
   if (!v) return { pts: null, missed: false, status: null };
-  if (/^(m|missed|not submitted|ns)$/.test(v)) return { pts: null, missed: true, status: null };
-  if (/^(aiv|academic integrity( violation)?)$/.test(v)) return { pts: null, missed: false, status: "aiv" };
-  if (/^(ex|excused)$/.test(v)) return { pts: null, missed: false, status: "excused" };
-  if (/^(def|deferred)$/.test(v)) return { pts: null, missed: false, status: "deferred" };
+  if (/^(m|miss|missed|missing|ns|dns|nsub|unsubmitted|un-submitted|not submitted|not handed in|nhi|no submission|did not submit|didn't submit|absent|abs)$/.test(v)) return { pts: null, missed: true, status: null };
+  if (/^(aiv|ai|integrity|academic integrity( violation)?|academic offen[cs]e|cheating|plagiarism)$/.test(v)) return { pts: null, missed: false, status: "aiv" };
+  if (/^(ex|exc|excuse|excused|exempt|exempted|waived)$/.test(v)) return { pts: null, missed: false, status: "excused" };
+  if (/^(def|defer|deferred|deferral|postponed)$/.test(v)) return { pts: null, missed: false, status: "deferred" };
   const n = parseFloat(v);
   return Number.isFinite(n) ? { pts: n, missed: false, status: null } : null;
 }
@@ -3448,10 +3446,12 @@ document.addEventListener("input", ev => {
     fgSync(m, n); unsaved = true; refreshSoon(); return;
   }
   if (t.dataset.ed === "acc-mark") {   // the student's mark, typed on their accommodation page (as in its gradebook cell)
-    const s = m.dataset.student, e = evalById(m.dataset.acc), p = parseCell(t.value); if (!e) return;
-    const bad = !p || (e.makeupFor && p.status === "excused"); t.classList.toggle("bad-input", !!bad); if (bad) return;
+    const s = m.dataset.student, e = evalById(m.dataset.acc), lab = t.closest(".fg-val"); if (!e || !lab) return;
+    const p = parseCell(t.value), bad = !p || (e.makeupFor && p.status === "excused");
+    if (bad) { lab.classList.add("bad"); return; }
     noteTyping(); setMark(s, e.id, p);
-    const sc = $(".acc-mk .acc-score", m); if (sc) sc.outerHTML = scoreHTML({ num: s }, e);
+    lab.className = mkClass(s, e); $("#mk-note", m).innerHTML = mkNote(s, e);
+    const sel = $('[data-ed="acc-st"]', m); if (sel) { sel.value = statusOf(markOf(s, e.id)); sel.options[0].textContent = markOf(s, e.id).pts != null ? "Marked" : "None"; }
     refreshRow(s); refreshSoon(); return;
   }
   if (t.dataset.ed === "acc-weight") {   // a student's accommodation, typed
@@ -3569,6 +3569,8 @@ document.addEventListener("click", ev => {
 document.addEventListener("change", ev => {
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.dataset.ed === "fg-grade") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box
+  if (t.dataset.ed === "acc-mark") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box (a status shows by its name)
+  if (t.dataset.ed === "acc-st") { const n = m.dataset.student, e = evalById(m.dataset.acc); if (e) change(() => setStatus(n, e.id, t.value)); return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (t.dataset.ed === "email") { const s = model.students.find(x => x.num === m.dataset.student); if (s) change(() => { s.f = s.f || {}; const v = t.value.trim(); if (v) s.f.email = v; else delete s.f.email; }); return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (t.dataset.ed === "fg-code") { const n = m.dataset.student; change(() => { if (t.value) model.finals[n] = { code: t.value }; else delete model.finals[n]; }); return m.classList.contains("on-page") ? render() : drawStudentEditor(); }
   if (t.dataset.ed === "gacc-ex") {   // excuse a member of a group, for this student
@@ -3983,13 +3985,30 @@ function notesHTML(s) {
     <div class="nt-new">${RICH() ? `<div class="nt-rt" data-nt-rt></div>` : `<textarea class="st-notes" data-ed="nt-text" rows="2" placeholder="${esc(NOTE_PH)}"></textarea>`}
       <button type="button" class="add-mk" data-ed="nt-add">${svg("plus")}Add Note</button></div>`;
 }
-// Their mark for it, at the top of their accommodation page: typed as in the gradebook's cell
-// (points, or m / ex / aiv / def), with the percentage beside it.
+// Their mark for it, at the top of their accommodation page, as the course grade is on their page:
+// a big number you click to change (points, or a status typed as in the gradebook's cell), what it
+// comes to under it, and the status in a list beside it.
+const MK_ST_NOTE = { missed: "The policy below decides what it counts as · click to change it", aiv: "Counts as zero · click to change it", excused: "Doesn't count; their others scale · click to change it", deferred: "Still to come · click to change it" };
+function mkNote(n, e) {
+  const mk = markOf(n, e.id), st = statusOf(mk);
+  if (st === "missed") { const mu = makeupsOf(e).find(x => markOf(n, x.id).pts != null); if (mu) return `Made up with ${esc(mu.name)}: ${fmtNum(markOf(n, mu.id).pts)} / ${outOf(mu)}${totalSet(mu) ? ` (${r1(ratio(markOf(n, mu.id).pts, mu) * 100)}%)` : ""}`; }
+  if (st) return MK_ST_NOTE[st];
+  if (mk.pts == null) return "Not marked · click to enter a mark";
+  return totalSet(e) ? `${r1(ratio(mk.pts, e) * 100)}% · click to change it` : "No total set for it yet · click to change it";
+}
+function mkClass(n, e) {
+  const mk = markOf(n, e.id), st = statusOf(mk);
+  return `fg-val${st ? ` code st-${st}` : ""}${mk.pts != null && totalSet(e) ? " " + band(ratio(mk.pts, e) * 100) : ""}`;
+}
 function accMarkHTML(s, e) {
-  const mk = markOf(s.num, e.id), st = statusOf(mk), v = mk.pts != null ? fmtNum(mk.pts) : st ? STATUSES[st].toLowerCase() : "";
+  const mk = markOf(s.num, e.id), st = statusOf(mk), v = mk.pts != null ? fmtNum(mk.pts) : st ? STATUSES[st] : "";
+  const sts = Object.entries(STATUSES).filter(([k]) => !(e.makeupFor && k === "excused"));
   return `<h3 class="ed-sec ed-first">Their Mark</h3>
-      <div class="acc-mk"><label class="pf"><span>Mark</span><span class="acc-mk-in"><input type="text" data-ed="acc-mark" value="${esc(v)}" placeholder="Not marked" spellcheck="false" autocomplete="off"><span>/ ${outOf(e)}</span></span></label>${scoreHTML(s, e)}</div>
-      <p class="ed-help">Points, or a status: m (not submitted), ${e.makeupFor ? "" : "ex (excused), "}aiv (academic integrity violation) or def (deferred). The same mark as in the gradebook.</p>`;
+      <div class="fg-box mk-box">
+        <div class="fg-now"><label class="${mkClass(s.num, e)}" title="Click to enter a mark: points, or m (not submitted), ${e.makeupFor ? "" : "ex (excused), "}aiv or def (deferred)"><input class="fg-in" data-ed="acc-mark" autocomplete="off" spellcheck="false" aria-label="Their mark" value="${esc(v)}" placeholder="—"><span class="mk-of">/ ${outOf(e)}</span></label>
+          <small id="mk-note">${mkNote(s.num, e)}</small></div>
+        <label class="fg-sp">Status<select class="sel fg-code" data-ed="acc-st"><option value="">${mk.pts != null ? "Marked" : "None"}</option>${sts.map(([k, l]) => `<option value="${k}"${st === k ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
+      </div>`;
 }
 function accPolicy(s, e) { const o = overrideOf(s.num, e.id) || {}; return { o, p: o.missed || e.missed, w: o.weight != null ? num(o.weight) : num(e.weight) }; }
 // The student's accommodation requests for an evaluation (from the course page's Request Accommodation button),

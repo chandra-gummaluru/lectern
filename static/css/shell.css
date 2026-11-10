@@ -193,17 +193,17 @@ html.lt-has-session #splash { display: none; }
 .lt-ochip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lt-ochip.ghost { cursor: default; }
 /* A course's icon: on its card, and the New Course Offering dialog's. Editable ones open the icon picker. */
-.lt-oicon { flex: none; display: grid; place-items: center; width: 64px; height: 64px; padding: 0; box-sizing: border-box; border: 0; border-radius: 16px; background: var(--accent-bg); color: var(--accent); font: inherit; position: relative; }
-.lt-oicon svg { width: 34px; height: 34px; }
+.lt-oicon { flex: none; display: grid; place-items: center; width: 60px; height: 60px; padding: 0; box-sizing: border-box; border: 0; border-radius: 14px; background: none; color: var(--home-ink); font: inherit; position: relative; }
+.lt-oicon svg { width: 54px; height: 54px; stroke-width: 1.4; }
 .lt-oicon.edit { cursor: pointer; transition: box-shadow .15s, transform .15s; }
 .lt-oicon.edit::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--home-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2380848b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E") center / 11px no-repeat; box-shadow: 0 0 0 1px var(--home-line-2); opacity: 0; transition: opacity .15s; }
-.lt-oicon.edit:hover, .lt-oicon.edit:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.lt-oicon.edit:hover, .lt-oicon.edit:focus-visible { background: var(--home-strip); }
 .lt-oicon.edit:hover::after, .lt-oicon.edit:focus-visible::after { opacity: 1; }
 .lt-oicon.edit:focus-visible { outline: none; }
 .lt-modal .lt-no-c { display: flex; align-items: flex-start; gap: 14px; }
 .lt-modal .lt-no-c > label { flex: 1; }
-.lt-modal .lt-no-c .lt-oicon { width: 52px; height: 52px; border-radius: 13px; margin-top: 18px; }
-.lt-modal .lt-no-c .lt-oicon svg { width: 28px; height: 28px; }
+.lt-modal .lt-no-c .lt-oicon { width: 48px; height: 48px; border-radius: 12px; margin-top: 18px; color: var(--ink); }
+.lt-modal .lt-no-c .lt-oicon svg { width: 40px; height: 40px; }
 /* The icon picker */
 .lt-modal.lt-modal-wide { width: min(720px, 100%); }
 .lt-ip-q { width: 100%; box-sizing: border-box; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); color: var(--ink); font: inherit; font-size: 14px; }

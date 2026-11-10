@@ -187,19 +187,48 @@ html.lt-has-session #splash { display: none; }
 .lt-orow-r a { color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .lt-orow-r a:hover { color: var(--home-ink); text-decoration: underline; }
 .lt-orow-r a svg { width: 13px; height: 13px; }
-.lt-older { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
-.lt-ochip { display: flex; align-items: center; gap: 14px; min-width: 0; height: 84px; padding: 0 20px 0 22px; box-sizing: border-box; border: 1px solid var(--home-line-2); border-radius: 12px; background: color-mix(in srgb, var(--home-card) 94%, transparent); backdrop-filter: blur(2px); color: var(--home-ink); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.lt-older { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 18px; }
+.lt-ochip { display: flex; align-items: center; gap: 18px; min-width: 0; min-height: 116px; padding: 18px 22px 18px 18px; box-sizing: border-box; border: 1px solid var(--home-line-2); border-radius: 16px; background: color-mix(in srgb, var(--home-card) 92%, transparent); backdrop-filter: blur(3px); box-shadow: 0 1px 2px rgb(0 0 0 / .04); color: var(--home-ink); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
 .lt-ochip.go:hover { border-color: var(--home-ink-3); transform: translateY(-2px); box-shadow: 0 14px 30px -16px rgb(0 0 0 / .28); }
 .lt-ochip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lt-ochip.ghost { cursor: default; }
-.lt-ochip-m { display: flex; flex-direction: column; gap: 5px; min-width: 0; margin-right: auto; }
-.lt-ochip-m b { font: 500 26px/1 var(--font-serif); letter-spacing: -0.01em; }
+/* A course's icon: on its card, and the New Course Offering dialog's. Editable ones open the icon picker. */
+.lt-oicon { flex: none; display: grid; place-items: center; width: 64px; height: 64px; padding: 0; box-sizing: border-box; border: 0; border-radius: 16px; background: var(--accent-bg); color: var(--accent); font: inherit; position: relative; }
+.lt-oicon svg { width: 34px; height: 34px; }
+.lt-oicon.edit { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.lt-oicon.edit::after { content: ""; position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--home-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2380848b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 20h4L19 9l-4-4L4 16z'/%3E%3C/svg%3E") center / 11px no-repeat; box-shadow: 0 0 0 1px var(--home-line-2); opacity: 0; transition: opacity .15s; }
+.lt-oicon.edit:hover, .lt-oicon.edit:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.lt-oicon.edit:hover::after, .lt-oicon.edit:focus-visible::after { opacity: 1; }
+.lt-oicon.edit:focus-visible { outline: none; }
+.lt-modal .lt-no-c { display: flex; align-items: flex-start; gap: 14px; }
+.lt-modal .lt-no-c > label { flex: 1; }
+.lt-modal .lt-no-c .lt-oicon { width: 52px; height: 52px; border-radius: 13px; margin-top: 18px; }
+.lt-modal .lt-no-c .lt-oicon svg { width: 28px; height: 28px; }
+/* The icon picker */
+.lt-modal.lt-modal-wide { width: min(720px, 100%); }
+.lt-ip-q { width: 100%; box-sizing: border-box; height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); color: var(--ink); font: inherit; font-size: 14px; }
+.lt-ip-q:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+.lt-ip { max-height: min(56vh, 520px); overflow: auto; margin: 12px -6px 0; padding: 0 6px; }
+.lt-ip h3 { margin: 14px 0 8px; font: 600 11px/1 var(--font-ui); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+.lt-ip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.lt-ip-i { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 6px 10px; border: 1px solid transparent; border-radius: 12px; background: none; color: var(--ink-2); font: inherit; cursor: pointer; }
+.lt-ip-i svg { width: 30px; height: 30px; }
+.lt-ip-i span { font-size: 11.5px; line-height: 1.25; text-align: center; color: var(--ink-3); }
+.lt-ip-i:hover, .lt-ip-i:focus-visible { background: var(--accent-bg); color: var(--accent); outline: none; }
+.lt-ip-i.on { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); }
+.lt-ip-i[hidden], .lt-ip [hidden] { display: none; }
+.lt-ip-none { margin: 16px 0 !important; text-align: center; }
+.lt-ochip-m { display: flex; flex-direction: column; gap: 4px; min-width: 0; margin-right: auto; }
+.lt-ochip-m b { font: 500 28px/1 var(--font-serif); letter-spacing: -0.01em; }
+.lt-ochip-t { font-size: 14px; line-height: 1.35; color: var(--home-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lt-ochip-t:empty { display: none; }
 .lt-ochip-m small { font-size: 12.5px; color: var(--home-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lt-ochip a { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; }
+.lt-ochip a { flex: none; align-self: flex-start; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; }
 .lt-ochip a:hover { color: var(--home-ink); text-decoration: underline; }
 .lt-ochip a svg { width: 13px; height: 13px; }
 .lt-tbox { position: relative; min-height: 250px; }
-.lt-tbox-bg { position: absolute; right: 0; bottom: -10px; font: 400 300px/.8 var(--font-serif); letter-spacing: -0.05em; color: var(--home-line); pointer-events: none; user-select: none; }
+.lt-page:has(.lt-tbox-bg) { isolation: isolate; }   /* so the term mark sits on the page's paper, under everything */
+.lt-tbox-bg { position: fixed; z-index: -1; right: max(16px, 3vw); bottom: 0; transform: translateY(16%); font: 400 clamp(240px, 36vw, 600px)/.8 var(--font-serif); letter-spacing: -0.05em; color: var(--home-line); pointer-events: none; user-select: none; white-space: nowrap; }
 
 .lt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
 .lt-card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); color: inherit; font: inherit; overflow: hidden; transition: transform .15s, box-shadow .15s, border-color .15s; }

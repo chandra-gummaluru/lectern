@@ -32,6 +32,7 @@ import { emailCard } from "./mailsettings.js";
 import { groupsCard, groupPage, readGroups, groupIdsFor, GROUP_ICON, runsSection, sectionKind, SECTION_ICON, sortSections } from "./groups.js";
 import { pickMany } from "./pick.js";
 import { richText } from "./richtext.js";
+import { COURSE_ICONS, courseIcon, guessIcon, iconName, isIcon } from "./courseicons.js";
 
 const Lectern = window.Lectern;
 const $ = (s, r = document) => r.querySelector(s);
@@ -659,13 +660,20 @@ function homePage() {
   if (S.listError) { list.innerHTML = `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)} <button type="button" class="lt-link" id="lt-retry">Try again</button></p>`; $("#lt-retry").onclick = () => { listAll(); }; return; }
   if (!all) { list.innerHTML = `<div class="lt-tbox"><div class="lt-older">${'<div class="lt-ochip ghost"><div class="lt-ghost-bar" style="width:45%;height:18px;margin:0"></div></div>'.repeat(3)}</div></div>`; return; }
   if (!all.length) { list.innerHTML = `<button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>`; $("#lt-new2").onclick = newOfferingDialog; return; }
-  // The term's courses on a panel with the term drawn large behind them.
+  // The term's courses, each with its icon and title (from about.json), over the term drawn large in the
+  // window's corner (fixed: it stays put as the page scrolls).
   const offs = all.filter(o => o.t === homeTerm);
   const live = o => (o.page ? liveURL(o.c, o.t, o.o) : "");
   const team = o => (o.o ? `${esc(ownerName(o.o))}'s · ${ROLE_NAME[roleIn(o.c, o.t, o.o)] || ""}` : "");
+  const known = o => (aboutCache.get(`${o.o || ""}/${o.c}/${o.t}`) || {}).data || null;
+  const iconOf = o => { const a = known(o); return a && isIcon(a.icon) ? a.icon : guessIcon(o.c); };
+  const iconEl = (o, k) => canEdit(o.c, o.t, o.o)
+    ? `<button type="button" class="lt-oicon edit" data-chip data-pick="${k}" title="Change icon" aria-label="Change the icon for ${esc(o.c.toUpperCase())}">${courseIcon(iconOf(o))}</button>`
+    : `<span class="lt-oicon">${courseIcon(iconOf(o))}</span>`;
   list.innerHTML = `<div class="lt-tbox"><span class="lt-tbox-bg" aria-hidden="true">${esc(homeTerm)}</span>
     <div class="lt-older">${offs.map((o, k) => `<div class="lt-ochip go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
-      <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><small>${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small></span>
+      ${iconEl(o, k)}
+      <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><span class="lt-ochip-t" data-title>${esc((known(o) || {}).title || "")}</span><small>${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small></span>
       ${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}
     </div>`).join("")}</div>
   </div>`;
@@ -673,7 +681,46 @@ function homePage() {
     const o = offs[Number(el.dataset.k)];
     const open = e => { if (e.target.closest("[data-chip]")) return; go({ page: "offering", c: o.c, t: o.t, o: o.o }); };
     el.addEventListener("click", open);
-    el.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
+    el.addEventListener("keydown", e => { if (e.target !== el) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
+    const pick = el.querySelector("[data-pick]");
+    if (pick) pick.onclick = () => iconPicker(iconOf(o), o.c, async id => {
+      pick.innerHTML = courseIcon(id);
+      try {
+        const v = await readAbout(o.c, o.t, o.o || "");
+        v.data.icon = id;
+        v.sha = await Store.writeText(area(Store.PRIV, o.o || ""), `${o.c}/${o.t}/about.json`, JSON.stringify(v.data, null, 1) + "\n", "Icon", v.sha);
+      } catch (e) { toast(`Couldn't save the icon. ${e.message}`); pick.innerHTML = courseIcon(iconOf(o)); }
+    });
+    // Its title and chosen icon, once its about.json is read.
+    readAbout(o.c, o.t, o.o || "").then(v => {
+      if (!el.isConnected) return;
+      el.querySelector("[data-title]").textContent = v.data.title || "";
+      const ic = el.querySelector(".lt-oicon"); if (ic) ic.innerHTML = courseIcon(iconOf(o));
+    }).catch(() => {});
+  });
+}
+// Choosing a course's icon: every icon, by subject, with a search. onPick(id) gets the one clicked.
+function iconPicker(current, code, onPick) {
+  const groups = [...new Set(COURSE_ICONS.map(i => i.group))];
+  modal(`<h2>Course Icon</h2><p>Shown on ${esc(String(code || "the course").toUpperCase())}'s card.</p>
+    <input type="search" class="lt-ip-q" placeholder="Search, e.g. chemistry" autocomplete="off" spellcheck="false" aria-label="Search icons">
+    <div class="lt-ip">${groups.map(g => `<section data-g><h3>${esc(g)}</h3><div class="lt-ip-grid">${COURSE_ICONS.filter(i => i.group === g).map(i =>
+      `<button type="button" class="lt-ip-i${i.id === current ? " on" : ""}" data-id="${i.id}" data-q="${esc((i.name + " " + i.group + " " + i.id).toLowerCase())}" title="${esc(i.name)}" aria-label="${esc(i.name)}">${courseIcon(i.id)}<span>${esc(i.name)}</span></button>`).join("")}</div></section>`).join("")}
+      <p class="lt-ip-none" hidden>No icon matches that.</p></div>
+    <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button></div>`, (m, close) => {
+    m.classList.add("lt-modal-wide");
+    m.querySelector("[data-no]").onclick = close;
+    m.querySelectorAll("[data-id]").forEach(b => { b.onclick = () => { close(); onPick(b.dataset.id); }; });
+    const q = m.querySelector(".lt-ip-q");
+    q.oninput = () => {
+      const w = q.value.trim().toLowerCase(); let any = false;
+      m.querySelectorAll("[data-g]").forEach(sec => {
+        let n = 0; sec.querySelectorAll("[data-id]").forEach(b => { const ok = !w || b.dataset.q.includes(w); b.hidden = !ok; n += ok; });
+        sec.hidden = !n; any = any || n > 0;
+      });
+      m.querySelector(".lt-ip-none").hidden = any;
+    };
+    const on = m.querySelector(".lt-ip-i.on"); if (on) on.scrollIntoView({ block: "center" });
   });
 }
 function newOfferingDialog() {
@@ -681,7 +728,8 @@ function newOfferingDialog() {
   const season = mo >= 8 ? "f" : mo >= 4 ? "s" : "w";
   modal(`<h2>New Course Offering</h2><p>A course in one term, in its own folder, e.g. <code>csc258/f26</code>.</p>
     <div class="lt-form">
-      <label>Course<input type="text" id="no-c" placeholder="csc258" spellcheck="false" autocomplete="off"><small>Lower case, as in the folder name.</small></label>
+      <div class="lt-no-c"><label>Course<input type="text" id="no-c" placeholder="csc258" spellcheck="false" autocomplete="off"><small>Lower case, as in the folder name.</small></label>
+        <button type="button" class="lt-oicon edit" id="no-icon" title="Choose its icon" aria-label="Icon">${courseIcon("book")}</button></div>
       <label>Title<input type="text" id="no-title" placeholder="e.g. Computer Organization" autocomplete="off"><small>On the course page, with the course code, term and ${esc(INSTITUTION())}.</small></label>
       <div class="two">
         <label>Term<select id="no-s"><option value="f">Fall</option><option value="w">Winter</option><option value="s">Summer</option></select></label>
@@ -698,6 +746,10 @@ function newOfferingDialog() {
     <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok>Continue</button></div>`, (m, close) => {
     m.querySelector("#no-s").value = season;
     m.querySelector("[data-no]").onclick = close;
+    let icon = "", picked = false;   // guessed from the course's letters until one is picked
+    const iconBtn = m.querySelector("#no-icon"), drawIcon = () => { icon = picked ? icon : guessIcon(m.querySelector("#no-c").value); iconBtn.innerHTML = courseIcon(icon); iconBtn.title = `${iconName(icon)}: choose another`; };
+    m.querySelector("#no-c").addEventListener("input", drawIcon); drawIcon();
+    iconBtn.onclick = () => iconPicker(icon, m.querySelector("#no-c").value, id => { icon = id; picked = true; drawIcon(); });
     const ok = async () => {
       const c = m.querySelector("#no-c").value.trim().toLowerCase().replace(/\s+/g, "");
       const yy = /^(?:20)?(\d{2})$/.exec(m.querySelector("#no-y").value.trim());
@@ -710,7 +762,7 @@ function newOfferingDialog() {
       const path = `${c}/${t}/about.json`, repo = area(Store.PRIV, "");
       m.querySelector("[data-ok]").disabled = true;
       try {   // its folder starts with its title (about.json): an offering that's there already keeps its own
-        if (!await Store.readFile(repo, path)) await Store.writeText(repo, path, JSON.stringify({ format: "lectern-about/2", title, description: "" }, null, 1) + "\n", `New course offering ${c} ${t}`, null);
+        if (!await Store.readFile(repo, path)) await Store.writeText(repo, path, JSON.stringify({ format: "lectern-about/2", title, description: "", icon }, null, 1) + "\n", `New course offering ${c} ${t}`, null);
         // Its class list's fields (the gradebook's): what each student has, set here once.
         const gpath = `${c}/${t}/grades.json`;
         if (!await Store.readFile(repo, gpath)) {
@@ -745,7 +797,7 @@ async function readAbout(c, t, o = curOwner()) {
     let page = null; try { page = JSON.parse(await Store.readText(area(Store.PUB, o), `${c}/${t}/course.json`) || "null"); page = page && page.page; } catch (_) {}
     data = { format: "lectern-about/2", title: (page && page.title) || "", description: (page && page.description) || "" };
   }
-  const v = { data: { format: "lectern-about/2", title: String(data.title || ""), description: String(data.description || "") }, sha: f ? f.sha : null };
+  const v = { data: { ...data, format: data.format || "lectern-about/2", title: String(data.title || ""), description: String(data.description || "") }, sha: f ? f.sha : null };
   aboutCache.set(k, v);
   return v;
 }

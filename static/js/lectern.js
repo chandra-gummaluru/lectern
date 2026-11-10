@@ -672,9 +672,9 @@ function homePage() {
     : `<span class="lt-oicon">${courseIcon(iconOf(o))}</span>`;
   list.innerHTML = `<div class="lt-tbox"><span class="lt-tbox-bg" aria-hidden="true">${esc(homeTerm)}</span>
     <div class="lt-older">${offs.map((o, k) => `<div class="lt-ochip go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
-      ${iconEl(o, k)}
-      <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><span class="lt-ochip-t" data-title>${esc((known(o) || {}).title || "")}</span><small>${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small></span>
-      ${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}
+      <span class="lt-ochip-top">${iconEl(o, k)}${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}</span>
+      <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><span class="lt-ochip-t" data-title>${esc((known(o) || {}).title || "")}</span></span>
+      <small class="lt-ochip-st${!o.o && live(o) ? " on" : ""}">${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small>
     </div>`).join("")}</div>
   </div>`;
   list.querySelectorAll("[data-k]").forEach(el => {

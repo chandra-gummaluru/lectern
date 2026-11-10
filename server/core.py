@@ -120,6 +120,9 @@ def _headers(resp):
         h['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         h['Pragma'] = 'no-cache'
         h['Expires'] = '0'
+    if request.path == '/static/js/sw.js':
+        # The service worker (installing Lectern as an app) lives with the other scripts but covers the whole site.
+        h['Service-Worker-Allowed'] = '/'
     h.setdefault('X-Content-Type-Options', 'nosniff')
     h.setdefault('Referrer-Policy', 'same-origin')
     h.setdefault('Cross-Origin-Opener-Policy', 'same-origin')

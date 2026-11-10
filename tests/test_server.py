@@ -22,6 +22,20 @@ def test_index_has_splash_and_app(client):
     assert r.headers["Cache-Control"].startswith("no-store")
 
 
+
+def test_installable_as_an_app(client):
+    """Install Lectern: a manifest with PNG icons, and a service worker that covers the whole site but caches nothing."""
+    m = client.get("/manifest.json").get_json()
+    sizes = {i["sizes"] for i in m["icons"] if i["type"] == "image/png"}
+    assert {"192x192", "512x512"} <= sizes and any(i["purpose"] == "maskable" for i in m["icons"])
+    for i in m["icons"]:
+        assert client.get(i["src"]).status_code == 200
+    r = client.get("/static/js/sw.js")
+    assert r.status_code == 200 and r.headers["Service-Worker-Allowed"] == "/"
+    assert "caches." not in r.get_data(as_text=True)
+    html = client.get("/").get_data(as_text=True)
+    assert 'rel="manifest"' in html and 'rel="apple-touch-icon"' in html
+
 # ── Scoping ──────────────────────────────────────────────────────────
 
 S = '[data-lt-tool="t"]'

@@ -521,7 +521,8 @@ $("#lt-acct").onclick = e => {
   menuEl.className = "lt-menu"; menuEl.setAttribute("role", "menu");
   menuEl.innerHTML = `<p>Signed in as <b>${esc(S.user && (S.user.name || S.user.email))}</b><br><span class="lt-menu-sub">${esc(S.user && S.user.email)}</span></p><hr>
        <button type="button" role="menuitem" data-m="save" class="lt-menu-save"></button><hr>
-       <button type="button" role="menuitem" data-m="account">Your account</button>
+       <button type="button" role="menuitem" data-m="account">Your account</button>${installable() ? `
+       <button type="button" role="menuitem" data-m="install">Install Lectern</button>` : ""}
        <button type="button" role="menuitem" data-m="out">Sign out</button>`;
   $("#lt-acct").after(menuEl);
   drawMenuSave();
@@ -531,6 +532,7 @@ $("#lt-acct").onclick = e => {
     closeMenu();
     if (m.dataset.m === "save") saveAll();
     if (m.dataset.m === "account") go({ page: "account" });
+    if (m.dataset.m === "install") installApp();
     if (m.dataset.m === "out") {
       const un = unsavedTools();
       if (un.length && !await confirmBox("Not saved", `${esc(un.map(saveLabel).join(", "))} ${un.length === 1 ? "has" : "have"} changes that aren't saved. Sign out and lose them?`, "Sign out", "Cancel")) return;
@@ -539,6 +541,24 @@ $("#lt-acct").onclick = e => {
     }
   };
 };
+// Install Lectern: as an app of its own (its own window and icon, in the dock or on the home screen).
+// The browser's install offer is kept by boot.js; iPhones and iPads have none, so there it says how.
+// Not shown once Lectern is running as the app, or in a browser that can't install it.
+const runningAsApp = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+function installable() { return !runningAsApp() && !!(window.LecternInstall && window.LecternInstall.prompt || isIOS()); }
+async function installApp() {
+  const p = window.LecternInstall && window.LecternInstall.prompt;
+  if (p) {
+    window.LecternInstall.prompt = null;   // the browser offers it once
+    p.prompt();
+    const { outcome } = await p.userChoice;
+    if (outcome === "accepted") toast("Lectern is installed. Open it from your apps, or from its icon.");
+    return;
+  }
+  modal(`<h2>Install Lectern</h2><p>In Safari, tap <b>Share</b> (the square with an arrow), then <b>Add to Home Screen</b>. Lectern then opens from its own icon, in a window of its own.</p>
+    <div class="lt-modal-acts"><button type="button" class="lt-btn primary" data-ok>OK</button></div>`, (m, close) => { m.querySelector("[data-ok]").onclick = close; });
+}
 // The menu's Save: what it would save, or that everything is saved.
 function drawMenuSave() {
   const b = menuEl && menuEl.querySelector('[data-m="save"]'); if (!b) return;

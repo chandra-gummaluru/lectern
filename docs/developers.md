@@ -154,6 +154,8 @@ static/js/              one file per page or part, each starting with what it is
   lectern.js            the shell: Home, a course offering, the pinned path, opening builders
   scope.js              runs each builder in its own scope (see below)
   hub.js, hub-view.js   the course page (hub-view.js is its look, shared with the Course Page Builder)
+  sw.js                 the service worker that makes Lectern installable as an app (Install Lectern, in the
+                        account menu); it caches nothing, and only shows "You're offline" when the server can't be reached
 static/vendor/          Tesseract (reading ID cards in the browser), with its licences
 tools/                  the three builders, each still a single HTML file that works on its own;
                         suite.css (their shared look, kept identical in all three) and course.cls (the exam class) for reference

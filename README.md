@@ -25,6 +25,8 @@ Lectern is one place to run a course. For each course offering (a course in one 
 
 Your work is saved on Lectern's server, and earlier versions are kept, so a mistake can be undone.
 
+To use Lectern as an app, in its own window with its own icon, choose **Install Lectern** from the account menu (top right). On an iPhone or iPad, it shows how to add Lectern to your Home Screen.
+
 ## For administrators
 
 This section is for whoever sets up Lectern for an institution or department. You'll need a server (or any computer) with Python 3 and git, and an HTTPS address for it (for example through a Cloudflare Tunnel or nginx).

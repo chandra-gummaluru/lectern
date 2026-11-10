@@ -23,7 +23,7 @@ a flow is fine when it ends without an error (several print `<name>: OK`).
 
 | Area | Flows |
 |---|---|
-| Accounts and the shell | `flow_auth`, `flow_shell`, `flow_bar`, `flow_nav`, `flow_save` |
+| Accounts and the shell | `flow_auth`, `flow_shell`, `flow_bar`, `flow_nav`, `flow_save`, `flow_install` |
 | Teaching teams and roles | `flow_teams`, `flow_team`, `flow_roles` |
 | Gradebook | `flow_evals`, `flow_fx`, `flow_cellst`, `flow_finals`, `flow_makeups`, `flow_policies` |
 | Exams | `flow_examui`, `flow_standalone` |

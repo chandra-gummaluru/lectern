@@ -46,6 +46,7 @@ const encPath = p => p.split("/").map(encodeURIComponent).join("/");
 const svgI = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICON = {
   plus: svgI('<path d="M12 5v14M5 12h14"/>'),
+  term: svgI('<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', 1.8),
   up: svgI('<path d="m18 15-6-6-6 6"/>'),
   down: svgI('<path d="m6 9 6 6 6-6"/>'),
   lectures: svgI('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>'),
@@ -634,49 +635,40 @@ function sourceBar() {
       <span>Grades, exams and accommodation requests are private: only you see them.</span></div></div>`;
 }
 
-let homeFilter = (() => { try { return JSON.parse(localStorage.getItem("lectern.home.filter")) || {}; } catch (_) { return {}; } })();
+let homeTerm = "";   // the term picked on the home page; this term until someone picks another
 function homePage() {
   const all = S.offerings ? [...S.offerings.values()].sort((a, b) => termOrder(a.t, b.t) || a.c.localeCompare(b.c)) : null;
-  const terms = all ? [...new Set(all.map(o => o.t))].sort(termOrder) : [], courses = all ? [...new Set(all.map(o => o.c))].sort() : [];
-  if (homeFilter.t && !terms.includes(homeFilter.t)) homeFilter.t = "";
-  if (homeFilter.c && !courses.includes(homeFilter.c)) homeFilter.c = "";
-  const offs = all ? all.filter(o => (!homeFilter.t || o.t === homeFilter.t) && (!homeFilter.c || o.c === homeFilter.c)) : null;
-  const n = all ? all.length : 0;
-  const sel = (k, label, opts, name) => `<select class="lt-filter" data-f="${k}" aria-label="${label}"><option value="">${label}</option>${opts.map(v => `<option value="${esc(v)}"${homeFilter[k] === v ? " selected" : ""}>${esc(name(v))}</option>`).join("")}</select>`;
+  const terms = all ? [...new Set(all.map(o => o.t))].sort(termOrder) : [];
+  // This term, or failing that the next one coming, or failing that the latest past one.
+  const now = new Date(), mo = now.getMonth();
+  const nowKey = (now.getFullYear() % 100) * 10 + (mo >= 8 ? 3 : mo >= 4 ? 2 : 1);
+  if (!terms.includes(homeTerm)) homeTerm = terms.filter(t => termKey(t) >= nowKey).pop() || terms[0] || "";
+  const termGroups = [["This term", terms.filter(t => termKey(t) === nowKey)], ["Upcoming", terms.filter(t => termKey(t) > nowKey).reverse()], ["Past terms", terms.filter(t => termKey(t) < nowKey)]].filter(g => g[1].length);
+  const termOpt = t => `<option value="${esc(t)}" data-icon="${esc(ICON.term)}"${t === homeTerm ? " selected" : ""}>${esc(termName(t))}</option>`;
   pageHTML(`<div class="lt-in">
     <h1>Your Courses</h1>
     <p class="lt-lede">Each course offering is a course in one term, like <code>csc258/f26</code>. It has a course page for students, its evaluations and a gradebook, and a teaching team. Offerings you're on someone else's team for are here too.</p>
     ${sourceBar()}
-    <div class="lt-sec"><h2>Course Offerings</h2>${all && n ? `<div class="lt-filters">${sel("t", "All Terms", terms, t => `${termName(t)} (${t})`)}${sel("c", "All Courses", courses, c => c.toUpperCase())}</div>` : ""}
+    <div class="lt-sec"><h2>Course Offerings</h2>${terms.length ? `<select class="lt-filter lt-term-pick" id="lt-term" aria-label="Term">${termGroups.map(([h, ts]) => `<optgroup label="${h}">${ts.map(termOpt).join("")}</optgroup>`).join("")}</select>` : ""}
       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
     <div id="lt-list"></div>
   </div>`);
   $("#lt-new").onclick = newOfferingDialog;
-  $("#lt-page").querySelectorAll(".lt-filter").forEach(x => { x.onchange = () => { homeFilter[x.dataset.f] = x.value; try { localStorage.setItem("lectern.home.filter", JSON.stringify(homeFilter)); } catch (_) {} homePage(); }; });
+  const ts = $("#lt-term"); if (ts) ts.onchange = () => { homeTerm = ts.value; homePage(); };
   const list = $("#lt-list");
   if (S.listError) { list.innerHTML = `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)} <button type="button" class="lt-link" id="lt-retry">Try again</button></p>`; $("#lt-retry").onclick = () => { listAll(); }; return; }
-  if (!offs) { list.innerHTML = `<div class="lt-grid">${'<div class="lt-card ghost"><div class="lt-strip">&nbsp;</div><div style="padding-top:22px"><div class="lt-ghost-bar" style="width:45%;height:22px"></div><div class="lt-ghost-bar" style="width:70%"></div><div class="lt-ghost-bar" style="width:55%"></div></div></div>'.repeat(3)}</div>`; return; }
-  if (!offs.length) { list.innerHTML = n ? `<p class="lt-note">No course offerings match. <button type="button" class="lt-link" id="lt-unfilter">Show them all</button></p>` : `<button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>`;
-    const u = $("#lt-unfilter"); if (u) u.onclick = () => { homeFilter = {}; try { localStorage.removeItem("lectern.home.filter"); } catch (_) {} homePage(); };
-    const n2 = $("#lt-new2"); if (n2) n2.onclick = newOfferingDialog;
-    return; }
-  // The three most recent as cards; the rest as a list.
+  if (!all) { list.innerHTML = `<div class="lt-tbox"><div class="lt-older">${'<div class="lt-ochip ghost"><div class="lt-ghost-bar" style="width:45%;height:18px;margin:0"></div></div>'.repeat(3)}</div></div>`; return; }
+  if (!all.length) { list.innerHTML = `<button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>`; $("#lt-new2").onclick = newOfferingDialog; return; }
+  // The term's courses on a panel with the term drawn large behind them.
+  const offs = all.filter(o => o.t === homeTerm);
   const live = o => (o.page ? liveURL(o.c, o.t, o.o) : "");
   const team = o => (o.o ? `${esc(ownerName(o.o))}'s · ${ROLE_NAME[roleIn(o.c, o.t, o.o)] || ""}` : "");
-  const cards = offs.slice(0, 3), rest = offs.slice(3);
-  list.innerHTML = `<div class="lt-grid">${cards.map((o, k) => `<div class="lt-card go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
-      <div class="lt-strip"><span>${esc(o.c)}/${esc(o.t)}</span>${o.o ? `<span class="r" title="On ${esc(ownerName(o.o))}'s teaching team">${team(o)}</span>` : ""}</div>
-      <div class="lt-body">
-        <div><h3 class="lt-title">${esc(o.c.toUpperCase())}</h3>
-        <p class="lt-sub">${esc(termName(o.t))}</p></div>
-        <span class="lt-term" aria-hidden="true">${esc(o.t)}</span>
-      </div>
-      <div class="lt-foot">${live(o) ? `<span>Published</span><a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : `<span>No course page yet</span>`}</div>
-    </div>`).join("")}</div>${rest.length ? `
-    <div class="lt-olist">${rest.map((o, j) => `<div class="lt-orow go" role="link" tabindex="0" data-k="${j + 3}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
-      <span class="lt-orow-t">${esc(o.t)}</span><b>${esc(o.c.toUpperCase())}</b><span class="lt-orow-n">${esc(termName(o.t))}${o.o ? ` · ${team(o)}` : ""}</span>
-      <span class="lt-orow-r">${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}</span>
-    </div>`).join("")}</div>` : ""}`;
+  list.innerHTML = `<div class="lt-tbox"><span class="lt-tbox-bg" aria-hidden="true">${esc(homeTerm)}</span>
+    <div class="lt-older">${offs.map((o, k) => `<div class="lt-ochip go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
+      <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><small>${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small></span>
+      ${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}
+    </div>`).join("")}</div>
+  </div>`;
   list.querySelectorAll("[data-k]").forEach(el => {
     const o = offs[Number(el.dataset.k)];
     const open = e => { if (e.target.closest("[data-chip]")) return; go({ page: "offering", c: o.c, t: o.t, o: o.o }); };

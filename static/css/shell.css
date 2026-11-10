@@ -187,6 +187,19 @@ html.lt-has-session #splash { display: none; }
 .lt-orow-r a { color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
 .lt-orow-r a:hover { color: var(--home-ink); text-decoration: underline; }
 .lt-orow-r a svg { width: 13px; height: 13px; }
+.lt-older { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+.lt-ochip { display: flex; align-items: center; gap: 14px; min-width: 0; height: 84px; padding: 0 20px 0 22px; box-sizing: border-box; border: 1px solid var(--home-line-2); border-radius: 12px; background: color-mix(in srgb, var(--home-card) 94%, transparent); backdrop-filter: blur(2px); color: var(--home-ink); cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.lt-ochip.go:hover { border-color: var(--home-ink-3); transform: translateY(-2px); box-shadow: 0 14px 30px -16px rgb(0 0 0 / .28); }
+.lt-ochip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lt-ochip.ghost { cursor: default; }
+.lt-ochip-m { display: flex; flex-direction: column; gap: 5px; min-width: 0; margin-right: auto; }
+.lt-ochip-m b { font: 500 26px/1 var(--font-serif); letter-spacing: -0.01em; }
+.lt-ochip-m small { font-size: 12.5px; color: var(--home-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-ochip a { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; }
+.lt-ochip a:hover { color: var(--home-ink); text-decoration: underline; }
+.lt-ochip a svg { width: 13px; height: 13px; }
+.lt-tbox { position: relative; min-height: 250px; }
+.lt-tbox-bg { position: absolute; right: 0; bottom: -10px; font: 400 300px/.8 var(--font-serif); letter-spacing: -0.05em; color: var(--home-line); pointer-events: none; user-select: none; }
 
 .lt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
 .lt-card { position: relative; display: flex; flex-direction: column; text-align: left; padding: 0; border: 1px solid var(--home-line-2); border-radius: 12px; background: var(--home-card); color: inherit; font: inherit; overflow: hidden; transition: transform .15s, box-shadow .15s, border-color .15s; }
@@ -902,6 +915,11 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .pks-pop { position: fixed; right: auto; top: 0; left: 0; z-index: 1000; width: max-content; max-width: min(420px, calc(100vw - 16px)); }
 .pks-pop .pk1-opt:disabled { opacity: .45; cursor: default; }
 .pks-pop .pk1-opt:focus { outline: none; background: var(--home-strip); }
+/* The home page's term picker: as tall as the New Course Offering button beside it. */
+.lt-sec .pks-btn[data-for="lt-term"] { height: 38px; min-height: 38px; min-width: 190px; padding: 0 11px 0 10px; border-radius: 9px; border-color: var(--home-line-2); }
+.lt-sec .pks-btn[data-for="lt-term"] .pk1-ic { color: var(--home-ink-3); }
+.lt-sec .pks-btn[data-for="lt-term"] .pk1-ic svg { width: 18px; height: 18px; }
+.lt-sec .pks-btn[data-for="lt-term"] .pk1-t b { font: 500 14px var(--font-ui); }
 
 /* A week's number, in its circle, as the Activities list has it (the Week dropdown). */
 .pk1-wk { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.3px color-mix(in srgb, #c99a06 55%, var(--lx-line)); font: 500 12px/1 var(--font-serif); color: var(--home-ink); }

@@ -673,9 +673,10 @@ function homePage() {
   list.innerHTML = `<div class="lt-tbox"><span class="lt-tbox-bg" aria-hidden="true">${esc(homeTerm)}</span>
     <div class="lt-older">${offs.map((o, k) => `<div class="lt-ochip go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
       <span class="lt-ochip-bg" aria-hidden="true">${courseIcon(iconOf(o))}</span>
-      <span class="lt-ochip-top">${iconEl(o, k)}${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}</span>
+      <span class="lt-ochip-top">${iconEl(o, k)}${o.o ? `<small class="lt-ochip-team">${team(o)}</small>` : ""}</span>
       <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><span class="lt-ochip-t" data-title>${esc((known(o) || {}).title || "")}</span></span>
-      <small class="lt-ochip-st${!o.o && live(o) ? " on" : ""}">${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small>
+      ${live(o) ? `<a class="lt-ochip-st on" href="${esc(live(o))}" target="_blank" rel="noopener" data-chip title="${esc(live(o))}"><span>${esc(new URL(live(o), location.href).pathname.replace(/\/((index|info)\.html)?$/, ""))}</span>${ICON.out}</a>`
+        : `<small class="lt-ochip-st">No course page yet</small>`}
     </div>`).join("")}</div>
   </div>`;
   list.querySelectorAll("[data-k]").forEach(el => {

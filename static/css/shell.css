@@ -229,12 +229,14 @@ html.lt-has-session #splash { display: none; }
 .lt-ochip-m b { font: 500 30px/1 var(--font-serif); letter-spacing: -0.01em; }
 .lt-ochip-t { font-size: 14.5px; line-height: 1.4; color: var(--home-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .lt-ochip-t:empty { display: none; }
-.lt-ochip-st { margin-top: auto; display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--home-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lt-ochip-st { margin-top: auto; align-self: flex-start; max-width: 100%; display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--home-ink-3); white-space: nowrap; }
+.lt-ochip-st > span { overflow: hidden; text-overflow: ellipsis; }
+.lt-ochip-team { font-size: 12px; color: var(--home-ink-3); text-align: right; margin-top: 2px; }
 .lt-ochip-st::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--home-line-2); }
 .lt-ochip-st.on::before { background: var(--home-ok); }
-.lt-ochip a { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 11px; border: 1px solid var(--home-line-2); border-radius: 999px; color: var(--home-ink-2); font-weight: 600; font-size: 12.5px; text-decoration: none; }
-.lt-ochip a:hover { color: var(--home-ink); border-color: var(--home-ink-3); background: var(--home-strip); }
-.lt-ochip a svg { width: 12px; height: 12px; }
+a.lt-ochip-st { font: 12.5px var(--font-mono); color: var(--home-ink-2); text-decoration: none; }
+a.lt-ochip-st:hover > span { color: var(--home-ink); text-decoration: underline; text-underline-offset: 2px; }
+a.lt-ochip-st svg { flex: none; width: 12px; height: 12px; opacity: .7; }
 .lt-tbox { position: relative; min-height: 250px; }
 .lt-page:has(.lt-tbox-bg) { isolation: isolate; }   /* so the term mark sits on the page's paper, under everything */
 .lt-tbox-bg { position: fixed; z-index: -1; right: max(16px, 3vw); bottom: 0; transform: translateY(16%); font: 400 clamp(240px, 36vw, 600px)/.8 var(--font-serif); letter-spacing: -0.05em; color: var(--home-line); pointer-events: none; user-select: none; white-space: nowrap; }

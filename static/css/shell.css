@@ -1293,11 +1293,11 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .at-card.at-scan { max-width: none; margin: 6px 0 0; }
 .at-card.at-scan .at-cam { aspect-ratio: auto; height: min(58vh, 56vw); }
 @media (max-width: 640px) { .at-card.at-scan .at-cam { height: min(62vh, 110vw); } }
-/* An Item Head's title on a phone: one line, cut short with … rather than running under what's on its right. */
+/* An Item Head's title on a phone: it wraps in its own column (never under what's on its right), rather than being cut short with …. */
 @media (max-width: 640px) {
   .lx-ed-head:has(> .gr-tt > .gr-kind) { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .lx-ed-head:has(> .gr-tt > .gr-kind) h2 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .lx-ed-head:has(> .gr-tt > .gr-kind) h2 .lt-link { white-space: nowrap; }
+  .lx-ed-head:has(> .gr-tt > .gr-kind) { align-items: start; }
+  .lx-ed-head:has(> .gr-tt > .gr-kind) h2 { min-width: 0; font-size: 26px; }
 }
 
 /* Who a card is, over the camera (as a meeting's details cover the calendar). */
@@ -1329,3 +1329,22 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .at-best .at-why { margin-top: 4px; }
 .at-bad-t { color: var(--danger, #c0392b) !important; }
 .at-sec .at-sum + .ed-sub { margin-top: 2px; }
+
+/* ── Phones (from the mobile audit) ──
+   The bar: Home, Back/Forward and the account button on one row (the account button at the right, with the
+   Not saved pill before it), the path on its own row underneath. The account menu stays on the screen.
+   Titles wrap instead of ending in "…". Dialogs fit the visible screen (dvh: not under the browser's own bars).
+   Fields are 16px, so phones don't zoom in on them. */
+@media (max-width: 640px) {
+  .lt-status { margin-left: auto; }
+  .lt-nav button { width: 38px !important; }
+  .lt-menu { max-width: calc(100vw - 32px); }
+  .lt-menu button { height: 42px; }
+  #lt-path .lt-step { padding: 8px 5px; }
+  .lt-off-h1 { white-space: normal; overflow: visible; }
+  .pp-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .pp-row .lx-seg { flex-wrap: nowrap; }
+  .lt-modal-bg { padding: 12px; }
+  .lt-modal { max-height: calc(100dvh - 24px); padding: 20px 18px 16px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
+}

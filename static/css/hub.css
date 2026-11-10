@@ -1155,3 +1155,26 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .hb .hb-view-menu a b { font-weight: 600; } .hb .hb-view-menu a span { font-size: 12.5px; color: var(--ink-3); }
 .hb .hb-view-menu a[aria-checked="true"] b::after { content: " ✓"; color: var(--accent); }
 .hb .dc-ro { cursor: default; }
+
+/* ── Phones (from the mobile audit) ──
+   Who's signed in (or Sign in) goes on its own row above the course name, so the name has the whole width
+   and wraps instead of ending in "…"; the term and school stay on one line under it. Menus stay on the screen,
+   with taller rows to tap. Fields are 16px, so phones don't zoom in on them. */
+@media (max-width: 640px) {
+  .hb-head-in.hb-head-in { flex-wrap: wrap; row-gap: 10px; padding-top: 14px; }
+  .hb-head .hb-who { order: -1; flex: 1 1 100%; padding-top: 0; justify-content: flex-end; }
+  .hb-head .hb-titles { flex: 1 1 100%; }
+  .hb-head .hb-title { white-space: normal; overflow: visible; font-size: 30px; display: block; }
+  .hb .hb-acct { max-width: 100%; }
+  .hb-menu { max-width: calc(100vw - 32px); }
+  .hb-menu a, .hb-menu button { height: 42px; }
+  .hb-si { width: 100%; padding-top: 40px; }
+  .hb-si-card { padding: 20px 18px; }
+  .hb-si-card input { min-width: 0; width: 100%; }
+  .dc-tools .dc-search { flex: 1 1 100%; }
+  .dc-tools .dc-search input { width: 100%; min-width: 0; }
+  .wk-top { flex-wrap: wrap; }
+  .wk-top .hs-path { flex: 1 1 100%; }
+  .hb .wk-top .wk-pn { width: 100%; justify-content: space-between; }
+  .hb input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .hb select, .hb textarea { font-size: 16px !important; }
+}

@@ -672,6 +672,7 @@ function homePage() {
     : `<span class="lt-oicon">${courseIcon(iconOf(o))}</span>`;
   list.innerHTML = `<div class="lt-tbox"><span class="lt-tbox-bg" aria-hidden="true">${esc(homeTerm)}</span>
     <div class="lt-older">${offs.map((o, k) => `<div class="lt-ochip go" role="link" tabindex="0" data-k="${k}" aria-label="Open ${esc(o.c)} ${esc(o.t)}">
+      <span class="lt-ochip-bg" aria-hidden="true">${courseIcon(iconOf(o))}</span>
       <span class="lt-ochip-top">${iconEl(o, k)}${live(o) ? `<a href="${esc(live(o))}" target="_blank" rel="noopener" data-chip>Live page ${ICON.out}</a>` : ""}</span>
       <span class="lt-ochip-m"><b>${esc(o.c.toUpperCase())}</b><span class="lt-ochip-t" data-title>${esc((known(o) || {}).title || "")}</span></span>
       <small class="lt-ochip-st${!o.o && live(o) ? " on" : ""}">${o.o ? team(o) : live(o) ? "Published" : "No course page yet"}</small>
@@ -683,19 +684,20 @@ function homePage() {
     el.addEventListener("click", open);
     el.addEventListener("keydown", e => { if (e.target !== el) return; if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
     const pick = el.querySelector("[data-pick]");
+    const draw = id => { el.querySelector(".lt-oicon").innerHTML = el.querySelector(".lt-ochip-bg").innerHTML = courseIcon(id); };   // the icon, and its large copy behind the card
     if (pick) pick.onclick = () => iconPicker(iconOf(o), o.c, async id => {
-      pick.innerHTML = courseIcon(id);
+      draw(id);
       try {
         const v = await readAbout(o.c, o.t, o.o || "");
         v.data.icon = id;
         v.sha = await Store.writeText(area(Store.PRIV, o.o || ""), `${o.c}/${o.t}/about.json`, JSON.stringify(v.data, null, 1) + "\n", "Icon", v.sha);
-      } catch (e) { toast(`Couldn't save the icon. ${e.message}`); pick.innerHTML = courseIcon(iconOf(o)); }
+      } catch (e) { toast(`Couldn't save the icon. ${e.message}`); draw(iconOf(o)); }
     });
     // Its title and chosen icon, once its about.json is read.
     readAbout(o.c, o.t, o.o || "").then(v => {
       if (!el.isConnected) return;
       el.querySelector("[data-title]").textContent = v.data.title || "";
-      const ic = el.querySelector(".lt-oicon"); if (ic) ic.innerHTML = courseIcon(iconOf(o));
+      draw(iconOf(o));
     }).catch(() => {});
   });
 }

@@ -9,7 +9,10 @@
 .sp-title .lxa-kick { display: block; margin-bottom: 10px; padding-left: .3em; font: 600 12px var(--font-ui); letter-spacing: .3em; text-transform: uppercase; color: var(--accent); }
 .lxa-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
 .lxa-acts .lt-link { font-size: 13px; }
-.lxa-mail-rows { background: var(--home-card); }   /* Email: the Sender row, as on an offering's Email card */
+/* The cards, as on an offering's page: the Email card's text sits above its rows; the admins' list under its text. */
+#lxa-email > .lt-part-text { flex: none; padding-bottom: 14px; }
+.lxa-admin-list { margin-top: 12px; }
+#lxa-admins .lt-part-text code { white-space: nowrap; }
 .lt-lede a { color: inherit; text-underline-offset: 3px; }
 .lxa-more-wrap { position: relative; }
 .lxa-more { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--home-ink-2); cursor: pointer; }

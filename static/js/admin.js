@@ -135,7 +135,10 @@ async function draw() {
     <h1>Admin</h1>
     ${d.email ? "" : `<p class="lt-lede"><b>Email isn't set up</b>, so you'll get invitation links to send yourself: set it up under <a href="#lxa-mail">Email</a>.</p>`}
 
-    <div class="lt-sec"><h2>Accounts</h2></div>
+    <div class="lt-three lt-off-parts">
+    <section class="lt-part lt-wide lt-team" id="lxa-accounts">
+      <div class="lt-part-head">${I.team}<h2>Accounts</h2></div>
+      <div class="lt-team-body">
     <div class="lt-st-head"><p class="lt-part-text">Each person with an account can make course offerings and invite their teaching team. Invite them by email: the link works once, for 7 days.</p>
       <div class="lt-st-acts"><button type="button" class="lt-btn add" id="lxa-invite">${PLUS}Invite Someone</button></div></div>
     <div class="lt-st-bar"><p class="lt-part-text lt-st-count">${d.users.length ? `${d.users.length} account${d.users.length === 1 ? "" : "s"}` : "No accounts yet."}${d.invites.length ? ` · ${d.invites.length} invited` : ""}</p></div>
@@ -146,16 +149,27 @@ async function draw() {
       <div class="lt-user-who"><b>${esc(u.name || u.email)}</b><span>${esc(u.email)} · <a href="${esc(u.site)}" target="_blank" rel="noopener">${esc(u.handle)}</a> · last sign-in ${esc(when(u.lastLogin))}</span></div>
       <span class="lt-tags">${u.twoFactor ? `<span class="lt-tag ok">2FA</span>` : `<span class="lt-tag dim">No 2FA</span>`}${u.teams ? `<span class="lt-tag dim">On ${u.teams} team${u.teams === 1 ? "" : "s"}</span>` : ""}${u.disabled ? `<span class="lt-tag bad">Off</span>` : ""}${u.locked ? `<span class="lt-tag bad">Waiting (wrong passwords)</span>` : ""}</span>
       <span class="lt-orow-r lxa-more-wrap"><button type="button" class="lxa-more" data-more="${u.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Manage ${esc(u.email)}" title="Manage">${DOTS}</button></span></div>`).join("")}</div>` : ""}
+      </div>
+    </section>
 
-    <div class="lt-sec"><h2>Email</h2></div>
-    <section class="em-body" id="lxa-mail"><p class="lt-part-text">Loading…</p></section>
+    <section class="lt-part lt-wide lt-team" id="lxa-email">
+      <div class="lt-part-head">${I.mail}<h2>Email</h2></div>
+      <p class="lt-part-text">How Lectern's own emails go out: invitations, password resets, security notices and students' sign-in codes.</p>
+      <div class="lt-team-body em-body" id="lxa-mail"><p class="lt-part-text">Loading…</p></div>
+    </section>
 
-    <div class="lt-sec"><h2>Admins</h2><span>Added on the server: <code>python app.py admin them@example.com</code></span></div>
-    <div class="lt-olist">${d.admins.map(a => `<div class="lt-orow lt-user">
+    <section class="lt-part lt-wide lt-team" id="lxa-admins">
+      <div class="lt-part-head">${I.lock}<h2>Admins</h2></div>
+      <div class="lt-team-body">
+    <div class="lt-st-head"><p class="lt-part-text">Who can sign in to this panel. It has its own sign-in, separate from Lectern accounts. Admins are added on the server: <code>python app.py admin them@example.com</code></p></div>
+    <div class="lt-olist lxa-admin-list">${d.admins.map(a => `<div class="lt-orow lt-user">
       <div class="lt-user-who"><b>${esc(a.name || a.email)}${a.id === d.me ? " (you)" : ""}</b><span>${esc(a.email)} · last sign-in ${esc(when(a.lastLogin))}</span></div>
       <span class="lt-tags">${a.disabled ? `<span class="lt-tag bad">Off</span>` : ""}</span>
       <span class="lt-orow-r lxa-acts">${a.id === d.me ? "" : a.disabled ? `<button type="button" class="lt-link" data-a="${a.id}" data-act="enable">Turn on</button>` : `<button type="button" class="lt-link lt-del" data-a="${a.id}" data-act="disable">Turn off</button>`}</span>
     </div>`).join("")}</div>
+      </div>
+    </section>
+    </div>
   </div>`;
 
   $("#lxa-invite").onclick = () => inviteDialog(d.email);
@@ -171,6 +185,12 @@ async function draw() {
 }
 
 // Inviting someone: a dialog, as Add a Student is in Lectern. Without email, it shows the link to send them.
+const svgI = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const I = {   // the cards' icons, as in Lectern
+  team: svgI('<circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.1c2.6.2 4.5 2.1 4.5 4.9"/>'),
+  mail: svgI('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/>'),
+  lock: svgI('<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
+};
 const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 function inviteDialog(emailOn) {
   modal(`<h2>Invite Someone</h2><form novalidate>
@@ -277,11 +297,11 @@ async function drawEmail() {
     </div>
     <p class="lx-help">Lectern sends a test email to <b>${esc(me.email)}</b> first; the settings are kept only if it goes through. The password is kept encrypted and never shown again.${e.source === "env" ? " Saving here takes over from the server's <code>.env</code>." : ""} Leave From blank to send from the username.</p>
     <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="ml-cancel">Cancel</button><button type="submit" class="lt-btn primary">Send Test and Save</button></div></form>`;
-  box.innerHTML = `<div class="pp-rows em-rows lxa-mail-rows"><div class="em-row${mailEditing ? " open" : ""}"><div class="em-line">
+  box.innerHTML = `<div class="pp-rows em-rows"><div class="em-row${mailEditing ? " open" : ""}"><div class="em-line">
       <div class="em-txt"><b>Sender</b><span class="em-val${set ? "" : " em-none"}">${who}</span>${via ? `<span class="em-via">${via}</span>` : ""}</div>
       ${mailEditing ? "" : `<div class="em-btns">${e.source === "panel" ? `<button type="button" class="lt-btn" id="ml-rm">Remove</button>` : ""}<button type="button" class="lt-btn" id="ml-edit">${set ? "Change" : "Set Up"}</button></div>`}
     </div>${mailEditing ? form : ""}</div></div>
-    <p class="lx-help em-foot">Used for invitations, password resets, security notices and students' sign-in codes, and for each course's emails unless it has its own sender. Any SMTP login works: for Gmail, <code>smtp.gmail.com</code> and an app password.</p>`;
+    <p class="lx-help em-foot">Courses use this sender too, unless they set their own. Any SMTP login works: for Gmail, <code>smtp.gmail.com</code> and an app password.</p>`;
   if (!mailEditing) {
     $("#ml-edit").onclick = () => { mailEditing = true; drawEmail().then(() => $("#ml-from") && $("#ml-from").focus()); };
     const rm = $("#ml-rm");

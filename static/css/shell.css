@@ -419,7 +419,7 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .lt-team .lt-part-head { padding-bottom: 6px; }
 .lt-team-body { padding: 0 18px 18px; }
 .lt-part.lt-team .lt-team-body > .lt-part-text { padding: 0; flex: none; }
-.lt-team-list { margin-top: 12px; }
+.lt-team-list, .lt-groups, .lt-st-head + .lt-hint { margin-top: 12px; }   /* the list (or its empty box) under a card's text, the same gap in each card */
 .lt-team-list .lt-orow-r { display: inline-flex; align-items: center; gap: 12px; }
 .lt-team-list .lt-filter { height: 32px; }
 .lt-team-add { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }

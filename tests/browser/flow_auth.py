@@ -147,14 +147,15 @@ def main():
         ap.wait_for_selector("#lxa-pw", state="visible")                                # back to the password
         ap.fill("#lxa-email", "root@utoronto.ca"); ap.fill("#lxa-pw", PASSWORD); ap.click("#lxa-go")
         ap.fill("#lxa-code", security.totp_now(ASECRET)); ap.click("#lxa-go2")
-        ap.wait_for_selector("#lxa-inv-email")
-        ap.fill("#lxa-inv-email", "ta@utoronto.ca"); ap.click("#lxa-inv [type=submit]")
-        ap.wait_for_selector("#lxa-inv-msg .lt-linkbox input"); ap.screenshot(path=f"{OUT}/a11-admin.png", full_page=True)
-        link = ap.input_value("#lxa-inv-msg .lt-linkbox input")
+        ap.click("#lxa-invite"); ap.wait_for_selector("#iv-email")
+        ap.fill("#iv-email", "ta@utoronto.ca"); ap.click(".lt-modal [type=submit]")
+        ap.wait_for_selector("#iv-link .lt-linkbox input"); ap.screenshot(path=f"{OUT}/a11-admin.png", full_page=True)
+        link = ap.input_value("#iv-link .lt-linkbox input")
         assert re.search(r"#invite=[\w-]{40,}", link), link
+        ap.click(".lt-modal [type=submit]"); ap.wait_for_selector(".lt-modal", state="detached")   # Done
         expect(ap.locator("#lxa-page")).to_contain_text("ta@utoronto.ca")
         # Email settings: the form is there; a test that can't go through saves nothing.
-        ap.wait_for_selector("#ml-host"); ap.locator("#lxa-mail").screenshot(path=f"{OUT}/a11c-admin-email.png")
+        ap.click("#ml-edit"); ap.wait_for_selector("#ml-host"); ap.locator("#lxa-mail").screenshot(path=f"{OUT}/a11c-admin-email.png")
         ap.fill("#ml-host", "localhost"); ap.fill("#ml-port", "1"); ap.select_option("#ml-sec", "none"); ap.click("#lxa-mail-f [type=submit]")
         ap.fill("#ap-pw", PASSWORD); ap.click(".lt-modal [type=submit]")
         expect(ap.locator(".lt-modal .lt-err")).to_contain_text("nothing was saved", timeout=30000)

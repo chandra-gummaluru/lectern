@@ -133,29 +133,22 @@ async function draw() {
   try { d = await api("/api/admin/overview"); } catch (x) { if (x.code !== "signed-out") page.innerHTML = `<div class="lt-in"><p class="lt-note err">${esc(x.message)}</p></div>`; return; }
   page.innerHTML = `<div class="lt-in lt-account">
     <h1>Admin</h1>
-    <p class="lt-lede">Lectern is invite-only: invite each person by email; the link works once, for 7 days. ${d.email ? "" : "<b>Email isn't set up</b>, so you'll get links to send yourself: set it up under <a href=\"#lxa-mail\">Email</a>."}</p>
+    ${d.email ? "" : `<p class="lt-lede"><b>Email isn't set up</b>, so you'll get invitation links to send yourself: set it up under <a href="#lxa-mail">Email</a>.</p>`}
 
-    <div class="lt-sec"><h2>Invite Someone</h2></div>
-    <section class="lt-panel">
-      <form id="lxa-inv" class="lt-team-add" novalidate>
-        <input type="email" id="lxa-inv-email" placeholder="name@utoronto.ca" aria-label="Email" autocomplete="off">
-        <button type="submit" class="lt-btn primary">Invite</button>
-      </form>
-      <div id="lxa-inv-msg"></div>
-    </section>
-
-    ${d.invites.length ? `<div class="lt-sec"><h2>Waiting Invitations</h2><span>${d.invites.length}</span></div>
-    <div class="lt-olist">${d.invites.map(i => `<div class="lt-orow lt-user"><div class="lt-user-who"><b>${esc(i.email)}</b><span>sent ${esc(day(i.created))}, works until ${esc(day(i.expires))}</span></div>
-      <span class="lt-orow-r"><button type="button" class="lt-link" data-revoke="${esc(i.id)}">Cancel</button></span></div>`).join("")}</div>` : ""}
-
-    <div class="lt-sec"><h2>Accounts</h2><span>${d.users.length}</span></div>
-    ${d.users.length ? `<div class="lt-olist lxa-users">${d.users.map(u => `<div class="lt-orow lt-user">
+    <div class="lt-sec"><h2>Accounts</h2></div>
+    <div class="lt-st-head"><p class="lt-part-text">Each person with an account can make course offerings and invite their teaching team. Invite them by email: the link works once, for 7 days.</p>
+      <div class="lt-st-acts"><button type="button" class="lt-btn add" id="lxa-invite">${PLUS}Invite Someone</button></div></div>
+    <div class="lt-st-bar"><p class="lt-part-text lt-st-count">${d.users.length ? `${d.users.length} account${d.users.length === 1 ? "" : "s"}` : "No accounts yet."}${d.invites.length ? ` · ${d.invites.length} invited` : ""}</p></div>
+    ${d.users.length || d.invites.length ? `<div class="lt-olist lxa-users">${d.invites.map(i => `<div class="lt-orow lt-user">
+      <div class="lt-user-who"><b>${esc(i.email)}</b><span>Invited ${esc(day(i.created))} · <em>the link works until ${esc(day(i.expires))}</em></span></div>
+      <span class="lt-tags"><span class="lt-tag dim">Invited</span></span>
+      <span class="lt-orow-r"><button type="button" class="lt-link" data-revoke="${esc(i.id)}">Cancel</button></span></div>`).join("")}${d.users.map(u => `<div class="lt-orow lt-user">
       <div class="lt-user-who"><b>${esc(u.name || u.email)}</b><span>${esc(u.email)} · <a href="${esc(u.site)}" target="_blank" rel="noopener">${esc(u.handle)}</a> · last sign-in ${esc(when(u.lastLogin))}</span></div>
       <span class="lt-tags">${u.twoFactor ? `<span class="lt-tag ok">2FA</span>` : `<span class="lt-tag dim">No 2FA</span>`}${u.teams ? `<span class="lt-tag dim">On ${u.teams} team${u.teams === 1 ? "" : "s"}</span>` : ""}${u.disabled ? `<span class="lt-tag bad">Off</span>` : ""}${u.locked ? `<span class="lt-tag bad">Waiting (wrong passwords)</span>` : ""}</span>
-      <span class="lt-orow-r lxa-more-wrap"><button type="button" class="lxa-more" data-more="${u.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Manage ${esc(u.email)}" title="Manage">${DOTS}</button></span></div>`).join("")}</div>` : `<p class="lt-hint">No accounts yet: invite someone above.</p>`}
+      <span class="lt-orow-r lxa-more-wrap"><button type="button" class="lxa-more" data-more="${u.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Manage ${esc(u.email)}" title="Manage">${DOTS}</button></span></div>`).join("")}</div>` : ""}
 
-    <div class="lt-sec"><h2>Email</h2><span>${d.email ? "Set up" : "Off"}</span></div>
-    <section class="lt-panel" id="lxa-mail"><div class="lt-loading" style="min-height:60px">Loading…</div></section>
+    <div class="lt-sec"><h2>Email</h2></div>
+    <section class="em-body" id="lxa-mail"><p class="lt-part-text">Loading…</p></section>
 
     <div class="lt-sec"><h2>Admins</h2><span>Added on the server: <code>python app.py admin them@example.com</code></span></div>
     <div class="lt-olist">${d.admins.map(a => `<div class="lt-orow lt-user">
@@ -165,18 +158,7 @@ async function draw() {
     </div>`).join("")}</div>
   </div>`;
 
-  $("#lxa-inv").onsubmit = async e => {
-    e.preventDefault();
-    const btn = e.target.querySelector("[type=submit]"); btn.disabled = true;
-    try {
-      const r = await api("/api/admin/invites", { email: $("#lxa-inv-email").value.trim() });
-      if (r.emailed) { toast(`Invitation emailed to ${r.email}.`); return draw(); }
-      await draw();
-      $("#lxa-inv-msg").innerHTML = `<p class="lt-note">Send <b>${esc(r.email)}</b> this link (only to them: it works for whoever has it):
-        <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
-      $("#lxa-inv-msg [data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { $("#lxa-inv-msg input").select(); } };
-    } catch (x) { toast(x.message); } finally { btn.disabled = false; }
-  };
+  $("#lxa-invite").onclick = () => inviteDialog(d.email);
   page.querySelectorAll("[data-revoke]").forEach(b => { b.onclick = async () => { await api("/api/admin/invites/revoke", { id: b.dataset.revoke }); draw(); }; });
   page.querySelectorAll("[data-more]").forEach(b => { b.onclick = e => { e.stopPropagation(); userMenu(b, d.users.find(x => x.id === Number(b.dataset.more))); }; });
   page.querySelectorAll("[data-a]").forEach(b => {
@@ -186,6 +168,36 @@ async function draw() {
     };
   });
   drawEmail();
+}
+
+// Inviting someone: a dialog, as Add a Student is in Lectern. Without email, it shows the link to send them.
+const PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+function inviteDialog(emailOn) {
+  modal(`<h2>Invite Someone</h2><form novalidate>
+      <div class="lt-form"><label>Email<input type="email" id="iv-email" placeholder="name@utoronto.ca" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <small>${emailOn ? "They're emailed a link to make their account. It works once, for 7 days." : "Email isn't set up, so you'll get the link to send them yourself. It works once, for 7 days."}</small></label></div>
+      <div id="iv-link"></div>
+      <p class="lt-err"></p><div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="submit" class="lt-btn primary">Invite</button></div></form>`, (m, close) => {
+    const go = m.querySelector("[type=submit]"), err = m.querySelector(".lt-err"), inp = m.querySelector("#iv-email");
+    m.querySelector("[data-no]").onclick = close;
+    setTimeout(() => inp.focus(), 0);
+    m.querySelector("form").onsubmit = async e => {
+      e.preventDefault();
+      if (go.dataset.done) return close();
+      go.disabled = true; err.textContent = "";
+      try {
+        const r = await api("/api/admin/invites", { email: inp.value.trim() });
+        draw();
+        if (r.emailed) { close(); toast(`Invitation emailed to ${r.email}.`); return; }
+        inp.readOnly = true;
+        m.querySelector("#iv-link").innerHTML = `<p class="lt-note">Send <b>${esc(r.email)}</b> this link (only to them: it works for whoever has it):
+          <span class="lt-linkbox"><input type="text" readonly value="${esc(r.link)}"><button type="button" class="lt-btn" data-copy>Copy</button></span></p>`;
+        m.querySelector("[data-copy]").onclick = async () => { try { await navigator.clipboard.writeText(r.link); toast("Copied."); } catch (_) { m.querySelector("#iv-link input").select(); } };
+        m.querySelector("[data-no]").hidden = true; go.textContent = "Done"; go.dataset.done = "1";
+      } catch (x) { err.textContent = x.message; }
+      finally { go.disabled = false; }
+    };
+  });
 }
 
 // Each account's actions, in a menu (⋯).
@@ -245,35 +257,47 @@ function deleteUser(u) {
 }
 
 // Email: the SMTP settings. Saving sends a test email to you first; nothing is saved unless it goes through.
+// Email: the server's own sender, as a row like the Sender row on an offering's Email card. It opens in place.
+let mailEditing = false;
 async function drawEmail() {
   const box = $("#lxa-mail");
   if (!box) return;
   let e;
   try { e = await api("/api/admin/email"); } catch (x) { box.innerHTML = `<p class="lt-note err">${esc(x.message)}</p>`; return; }
-  const sec = e.security || "starttls";
-  box.innerHTML = `<p class="lt-row-text">${e.source === "panel" ? `Lectern sends email through <b>${esc(e.host)}</b>.`
-      : e.source === "env" ? `Lectern sends email through <b>${esc(e.host)}</b>, from the server's <code>.env</code>. Saving here takes over from it.`
-      : "Lectern emails invitations, password-reset links, security notices and students' receipts. Any SMTP login works: for Gmail, <code>smtp.gmail.com</code> and an app password."}</p>
-    <form id="lxa-mail-f" class="lt-form lxa-mail" novalidate>
-      <label class="lxa-wide">SMTP server<input type="text" id="ml-host" value="${esc(e.host)}" placeholder="smtp.gmail.com" autocomplete="off" spellcheck="false"></label>
-      <label>Security<select id="ml-sec" class="lt-filter">${[["starttls", "STARTTLS"], ["ssl", "SSL"], ["none", "None"]].map(([v, t]) => `<option value="${v}"${v === sec ? " selected" : ""}>${t}</option>`).join("")}</select></label>
-      <label>Port<input type="text" id="ml-port" inputmode="numeric" value="${esc(e.port)}" placeholder="${sec === "ssl" ? "465" : "587"}"></label>
-      <label class="lxa-wide">Login<input type="text" id="ml-user" value="${esc(e.user)}" placeholder="lectern@example.com" autocomplete="off" spellcheck="false"></label>
-      <label class="lxa-wide">Password<input type="password" id="ml-pw" autocomplete="new-password" placeholder="${e.hasPassword ? "Saved: leave blank to keep it" : "For Gmail, an app password"}"></label>
-      <label class="lxa-wide">From<input type="text" id="ml-from" value="${esc(e.from)}" placeholder="Lectern <lectern@example.com>" spellcheck="false"><small>Leave blank to send from the login.</small></label>
-      <div class="lxa-wide lxa-mail-acts"><button type="submit" class="lt-btn primary">Save and send me a test</button>${e.source === "panel" ? `<button type="button" class="lt-link lt-del" id="ml-rm">Remove these settings</button>` : ""}</div>
-    </form>`;
+  const set = !!e.host, sec = e.security || "starttls";
+  const who = set ? esc(e.from || e.user || "No From address") : "Not set up: invitations, password resets and students' sign-in codes can't be emailed.";
+  const via = set ? `Through ${esc(e.host)} · ${{ starttls: "STARTTLS", ssl: "SSL", none: "no encryption" }[sec] || esc(sec)}${e.port ? ` · port ${esc(e.port)}` : ""}${e.source === "env" ? " · from the server's <code>.env</code>" : ""}` : "";
+  const form = `<form id="lxa-mail-f" class="em-form" novalidate><div class="lx-grid two">
+      <label class="lx-f lx-span2">From<input type="text" id="ml-from" value="${esc(e.from)}" placeholder="Lectern &lt;lectern@example.com&gt;" autocomplete="off" spellcheck="false"></label>
+      <label class="lx-f">SMTP Server<input type="text" id="ml-host" value="${esc(e.host)}" placeholder="smtp.gmail.com" autocomplete="off" spellcheck="false"></label>
+      <label class="lx-f">Security<select id="ml-sec">${[["starttls", "STARTTLS"], ["ssl", "SSL"], ["none", "None"]].map(([v, t]) => `<option value="${v}"${v === sec ? " selected" : ""}>${t}</option>`).join("")}</select></label>
+      <label class="lx-f">Port<input type="text" id="ml-port" inputmode="numeric" value="${esc(e.port)}" placeholder="${sec === "ssl" ? "465" : "587"}"></label>
+      <label class="lx-f">Username<input type="text" id="ml-user" value="${esc(e.user)}" autocomplete="off" spellcheck="false"></label>
+      <label class="lx-f lx-span2">Password<input type="password" id="ml-pw" autocomplete="new-password" placeholder="${e.hasPassword ? "Unchanged" : "For Gmail, an app password"}"></label>
+    </div>
+    <p class="lx-help">Lectern sends a test email to <b>${esc(me.email)}</b> first; the settings are kept only if it goes through. The password is kept encrypted and never shown again.${e.source === "env" ? " Saving here takes over from the server's <code>.env</code>." : ""} Leave From blank to send from the username.</p>
+    <div class="lt-part-acts em-acts"><button type="button" class="lt-btn" id="ml-cancel">Cancel</button><button type="submit" class="lt-btn primary">Send Test and Save</button></div></form>`;
+  box.innerHTML = `<div class="pp-rows em-rows lxa-mail-rows"><div class="em-row${mailEditing ? " open" : ""}"><div class="em-line">
+      <div class="em-txt"><b>Sender</b><span class="em-val${set ? "" : " em-none"}">${who}</span>${via ? `<span class="em-via">${via}</span>` : ""}</div>
+      ${mailEditing ? "" : `<div class="em-btns">${e.source === "panel" ? `<button type="button" class="lt-btn" id="ml-rm">Remove</button>` : ""}<button type="button" class="lt-btn" id="ml-edit">${set ? "Change" : "Set Up"}</button></div>`}
+    </div>${mailEditing ? form : ""}</div></div>
+    <p class="lx-help em-foot">Used for invitations, password resets, security notices and students' sign-in codes, and for each course's emails unless it has its own sender. Any SMTP login works: for Gmail, <code>smtp.gmail.com</code> and an app password.</p>`;
+  if (!mailEditing) {
+    $("#ml-edit").onclick = () => { mailEditing = true; drawEmail().then(() => $("#ml-from") && $("#ml-from").focus()); };
+    const rm = $("#ml-rm");
+    if (rm) rm.onclick = () => withPassword("Remove the email settings?", "Lectern goes back to the server's <code>.env</code> settings, or to no email (links to send yourself).", "Remove",
+      async password => { await api("/api/admin/email", { action: "remove", password }); toast("Email settings removed."); });
+    return;
+  }
   $("#ml-sec").onchange = () => { $("#ml-port").placeholder = $("#ml-sec").value === "ssl" ? "465" : "587"; };
+  $("#ml-cancel").onclick = () => { mailEditing = false; drawEmail(); };
   $("#lxa-mail-f").onsubmit = ev => {
     ev.preventDefault();
     const s = { host: $("#ml-host").value.trim(), security: $("#ml-sec").value, port: $("#ml-port").value.trim(), user: $("#ml-user").value.trim(), smtpPassword: $("#ml-pw").value, from: $("#ml-from").value.trim() };
     if (!s.host) return toast("Enter the SMTP server first.");
-    withPassword("Save the email settings?", `Lectern sends a test email to <b>${esc(me.email)}</b> first; they're saved only if it goes through.`, "Send test and save",
-      async password => { await api("/api/admin/email", { ...s, password }); toast(`Test email sent to ${me.email}. Settings saved.`); }, "primary");
+    withPassword("Save the email settings?", `Lectern sends a test email to <b>${esc(me.email)}</b> first; they're saved only if it goes through.`, "Send Test and Save",
+      async password => { await api("/api/admin/email", { ...s, password }); mailEditing = false; toast(`It works: the test went to ${me.email}. Saved.`); }, "primary");
   };
-  const rm = $("#ml-rm");
-  if (rm) rm.onclick = () => withPassword("Remove the email settings?", "Lectern goes back to the server's <code>.env</code> settings, or to no email (links to send yourself).", "Remove",
-    async password => { await api("/api/admin/email", { action: "remove", password }); toast("Email settings removed."); });
 }
 
 // ── Start ────────────────────────────────────────────────────────────

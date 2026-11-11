@@ -93,14 +93,36 @@ $("#lxa-form").onsubmit = async e => {
   }
   finally { go.disabled = false; go.textContent = "Continue"; }
 };
-$("#lxa-out").onclick = async () => { try { await api("/api/admin/logout", {}); } catch (_) {} location.replace("/admin"); };
+// The account menu, as in Lectern: who's signed in, and Sign out.
+const USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>';
+const CHEV = '<svg class="lt-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+let acctMenu = null;
+function closeAcct() { if (acctMenu) { acctMenu.remove(); acctMenu = null; $("#lxa-acct").setAttribute("aria-expanded", "false"); } }
+$("#lxa-acct").onclick = e => {
+  e.stopPropagation();
+  if (acctMenu) return closeAcct();
+  acctMenu = document.createElement("div");
+  acctMenu.className = "lt-menu"; acctMenu.setAttribute("role", "menu");
+  acctMenu.innerHTML = `<p>Signed in as <b>${esc(me && (me.name || me.email))}</b><br><span class="lt-menu-sub">${esc(me && me.email)}</span></p><hr>
+       <button type="button" role="menuitem" data-m="out">Sign out</button>`;
+  $("#lxa-acct").after(acctMenu);
+  $("#lxa-acct").setAttribute("aria-expanded", "true");
+  acctMenu.onclick = async ev => {
+    if (!ev.target.closest("[data-m=out]")) return;
+    closeAcct();
+    try { await api("/api/admin/logout", {}); } catch (_) {}
+    location.replace("/admin");
+  };
+};
+document.addEventListener("click", e => { if (acctMenu && !acctMenu.contains(e.target)) closeAcct(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeAcct(); });
 
 let me = null;
 function start(admin) {
   me = admin;
   $("#lxa-signin").hidden = true; $("#lxa-app").hidden = false;
   document.body.className = "lt-on-app lt-on-page";
-  $("#lxa-who").textContent = admin.name ? `${admin.name} · ${admin.email}` : admin.email;
+  $("#lxa-acct").innerHTML = `${USER_SVG}<span>${esc(admin.name || admin.email)}</span>${CHEV}`;
   draw();
 }
 

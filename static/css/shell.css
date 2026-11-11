@@ -49,8 +49,10 @@ html.lt-has-session #splash { display: none; }
 .lt-bar button:hover:not(:disabled) { border-color: var(--ink-3); }
 .lt-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .lt-bar button:disabled { opacity: .4; cursor: default; }
-.lt-home { width: 36px; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; }
-.lt-home svg { width: 17px; height: 17px; }
+/* Home: the Lectern wordmark (as on the admin panel), not a button with a border. */
+.lt-bar > button#lt-home { width: auto; padding: 0 6px 0 2px !important; display: inline-flex; align-items: center; border-color: transparent !important; background: none !important;
+  font: 500 22px/1 var(--font-serif) !important; letter-spacing: -.01em; color: var(--ink) !important; }
+.lt-bar > button#lt-home:hover:not(:disabled) { background: none !important; border-color: transparent !important; color: var(--accent) !important; }
 /* Back and Forward, beside Home (in Lectern's bar and in each builder's) */
 .lt-nav { display: inline-flex; gap: 2px; }
 .lt-nav button { all: unset !important; box-sizing: border-box; display: inline-grid; place-items: center; width: 30px; height: 36px; border-radius: 7px; color: var(--ink-2); cursor: pointer; }

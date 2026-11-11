@@ -4,7 +4,9 @@
 .lxa-bar { gap: 14px; }
 .lxa-mark { font: 500 22px/1 var(--font-serif); color: var(--ink); }
 .lxa-mark b { font: 600 11px var(--font-ui); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); vertical-align: 3px; margin-left: 4px; }
-.lxa-who { margin-left: auto; font-size: 13.5px; color: var(--ink-2); }
+.lxa-bar .lt-acct-wrap { margin-left: auto; }
+/* The splash title: a small gold ADMIN kicker above "Lectern". */
+.sp-title .lxa-kick { display: block; margin-bottom: 10px; padding-left: .3em; font: 600 12px var(--font-ui); letter-spacing: .3em; text-transform: uppercase; color: var(--accent); }
 .lxa-acts { display: inline-flex; flex-wrap: wrap; gap: 4px 14px; justify-content: flex-end; }
 .lxa-acts .lt-link { font-size: 13px; }
 .lxa-mail { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; max-width: 560px; margin-top: 14px; }

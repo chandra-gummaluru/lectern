@@ -18,8 +18,8 @@
     <div class="splash" id="lxa-signin" hidden>
         <main class="sp-screen">
             <header class="sp-copy">
-                <h1 class="sp-title">Lectern</h1>
-                <p class="sp-inst">Admin · {{ institution }}</p>
+                <h1 class="sp-title"><span class="lxa-kick">Admin</span>Lectern</h1>
+                <p class="sp-inst">{{ institution }}</p>
                 <form class="sp-form" id="lxa-form" action="#" method="post" novalidate>
                     <div id="lxa-step1">
                         <label class="sp-field"><span>Email</span>
@@ -47,8 +47,7 @@
         <header class="lt-bar lxa-bar">
             <span class="lxa-mark">Lectern <b>Admin</b></span>
             <span class="lt-status"></span>
-            <span class="lxa-who" id="lxa-who"></span>
-            <button type="button" id="lxa-out">Sign out</button>
+            <span class="lt-acct-wrap"><button type="button" class="lt-acct" id="lxa-acct" aria-haspopup="menu" aria-expanded="false"></button></span>
         </header>
         <main class="lt-page" id="lxa-page"></main>
     </div>

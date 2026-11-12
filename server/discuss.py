@@ -28,6 +28,9 @@ from flask import Blueprint, jsonify, request
 from . import db
 from .auth import Refusal, body, current, handles, limiter, text
 
+VOTES_PER_MINUTE = 60    # per person: far more than anyone clicks
+SEEN_PER_MINUTE = 120    # "I've seen this" marks, sent as the page shows things
+
 discuss_bp = Blueprint("discuss", __name__)
 
 STAFF = {"owner", "coordinator", "instructor", "ta", "staff"}
@@ -335,6 +338,8 @@ def vote(handle, course, term, pid):
     from .hub import closed_discussions
     if p["target"] in closed_discussions(o["id"], *off.split("/", 1)):
         raise Refusal(403, "Discussion is off for this.", "closed")
+    if not limiter.ok(f"vote:{viewer['key']}", VOTES_PER_MINUTE, 60):   # each vote rebuilds the thread: no scripted floods
+        raise Refusal(429, "That's a lot of votes. Wait a minute, then try again.", "rate")
     if body().get("on"):
         db.run("INSERT OR IGNORE INTO discussion_votes (post_id, voter) VALUES (?, ?)", (pid, viewer["key"]))
     else:
@@ -456,6 +461,8 @@ def updates(handle, course, term):
 @handles
 def seen(handle, course, term):
     o, off, viewer = _viewer(handle, course, term)
+    if not limiter.ok(f"seen:{viewer['key']}", SEEN_PER_MINUTE, 60):
+        raise Refusal(429, "Too many at once. Wait a minute, then try again.", "rate")
     what = text(body(), "what", 40).strip()
     if not (what == "requests" or re.match(r"^post:\d{1,12}$", what) or re.match(r"^eval:[\w.-]{1,64}$", what)):
         raise Refusal(400, "Seen what?")

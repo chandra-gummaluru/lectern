@@ -379,3 +379,11 @@ def test_a_ta_handles_remark_requests_but_not_accommodations(gh):
     assert [x["status"] for x in requests_of(gh)] == ["pending", "approved"]
     other = app.test_client(); make_user(other, email="x@utoronto.ca", name="X", handle="xx")
     assert other.get("/api/accommodations/remarks?owner=chandra&offering=csc258/f26").status_code == 404
+
+
+def test_request_limits_are_per_student_not_per_address(gh, monkeypatch):
+    """Two students on the same (campus) address: one hitting the limit doesn't stop the other."""
+    monkeypatch.setitem(accommodations.LIMITS, "submit", (2, 600))
+    assert [submit(kind="standard").status_code for _ in range(3)][-1] == 429
+    zoe = {"email": "zoe.ng@mail.utoronto.ca", "id": "1002", "first": "Zoë", "last": "Ng"}
+    assert submit(who=zoe, kind="standard").status_code == 201

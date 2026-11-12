@@ -224,9 +224,11 @@ def _client_ip():
     return request.remote_addr or "?"   # behind a proxy, core.py's ProxyFix makes this the student's address
 
 
-def _limit(kind):
+def _limit(kind, who=None):
+    """Limit by the signed-in student (who), or else by address. (Not by address when we know who it is:
+    a lecture hall on campus Wi-Fi can share one.)"""
     n, w = LIMITS[kind]
-    if not limiter.ok(f"{kind}:{_client_ip()}", n, w):
+    if not limiter.ok(f"{kind}:{who or _client_ip()}", n, w):
         raise Refusal(429, "Too many tries. Wait a few minutes, then try again.")
 
 
@@ -463,8 +465,8 @@ def hub_evaluation(handle, course, term):
 def hub_submit(handle, course, term):
     try:
         d = _body()
-        _limit("submit")
         uid, o, email = _hub_student(handle, course, term)
+        _limit("submit", f"{uid}/{o}/{email}")
         book = _book(uid, o)
         e = _eval_id(d.get("e"))
         ev, a = _evaluation(book, e, open_only=True)
@@ -524,8 +526,8 @@ def _for_student(r):
 def hub_reply(handle, course, term, rid):
     try:
         d = _body()
-        _limit("submit")
         uid, o, email = _hub_student(handle, course, term)
+        _limit("submit", f"{uid}/{o}/{email}")
         text_ = clean_details(d.get("text"))
         if not text_:
             raise Refusal(400, "Write a reply first.")
@@ -630,8 +632,8 @@ def hub_remark_info(handle, course, term):
 def hub_remark(handle, course, term):
     try:
         d = _body()
-        _limit("submit")
         uid, o, email = _hub_student(handle, course, term)
+        _limit("submit", f"{uid}/{o}/{email}")
         book = _book(uid, o)
         e = _eval_id(d.get("e"))
         ev, m = _remark_eval(book, e)

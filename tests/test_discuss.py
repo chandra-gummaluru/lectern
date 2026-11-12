@@ -176,3 +176,20 @@ def test_the_teaching_team_only_looks_on_the_course_page(client, course):
     a = client.get(f"{D}/all").get_json()
     assert a["posts"][0]["answered"] and a["posts"][0]["comments"] == 1 and a["posts"][0]["who"]["real"]
     assert maya.get(f"{D}/all").status_code == 403
+
+
+def test_votes_are_rate_limited_per_person(client, course):
+    """Each vote rebuilds the thread, so a script can't flood them; one person's limit isn't anyone else's."""
+    from server import discuss
+    maya, ben = people(course)
+    pid = maya.post(D, json={"t": "act:l1", "title": "Slides?", "body": "Where are the slides?"}, headers=H).get_json()["id"]
+    codes = [ben.post(f"{D}/{pid}/vote", json={"on": i % 2 == 0}, headers=H).status_code for i in range(discuss.VOTES_PER_MINUTE + 1)]
+    assert codes[:-1] == [200] * discuss.VOTES_PER_MINUTE and codes[-1] == 429
+    assert maya.post(f"{D}/{pid}/vote", json={"on": True}, headers=H).status_code == 200
+
+
+def test_marking_updates_seen_is_rate_limited(client, course):
+    from server import discuss
+    maya, _ = people(course)
+    codes = [maya.post(f"{HUB}/updates/seen", json={"what": "eval:mt"}, headers=H).status_code for _ in range(discuss.SEEN_PER_MINUTE + 1)]
+    assert codes[:-1] == [200] * discuss.SEEN_PER_MINUTE and codes[-1] == 429

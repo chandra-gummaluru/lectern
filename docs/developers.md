@@ -61,7 +61,7 @@ At `/admin` on the same address (e.g. `https://lectern.changapp.net/admin`), wit
 
 Lectern must be served over **HTTPS**. Behind nginx (or another proxy) that handles HTTPS:
 
-1. Run it on the same machine, listening only on `127.0.0.1` (the default), e.g. `gunicorn -w 2 -b 127.0.0.1:5003 app:app` or `python app.py`. Nothing should reach it except through the proxy.
+1. Run it on the same machine, listening only on `127.0.0.1` (the default), e.g. `gunicorn -w 2 -b 127.0.0.1:5003 app:app` or `python app.py`. Nothing should reach it except through the proxy. (`python app.py` is Flask's own server, fine for a small class; gunicorn copes better with a crowd.)
 2. In nginx, pass `X-Forwarded-For $remote_addr` and `X-Forwarded-Proto $scheme`, and redirect HTTP to HTTPS.
 3. In `.env` beside `app.py` (copy `.env.example`): **`LECTERN_APP_URL=https://lectern.changapp.net/`** (required: links in emails use only this address, and requests for any other host name are refused) and `LECTERN_BEHIND_PROXY=1`.
 4. Fill in the `LECTERN_SMTP_…` settings (any SMTP login; for Gmail, an app password), so invitations, password resets and students' receipts are emailed.
@@ -70,6 +70,8 @@ Lectern must be served over **HTTPS**. Behind nginx (or another proxy) that hand
 **Back up** the data folder (`LECTERN_DATA_DIR`, default `data/` beside `app.py`): `lectern.db` (accounts), `files/` (everyone's courses), `history/` (old versions) and `secret.key`. Without `secret.key` (or `LECTERN_SECRET_KEY`, if you set one), two-factor secrets and recovery codes can't be checked. The folder is in `.gitignore`: never commit it.
 
 **Embedding a course page in Quercus:** in a Quercus page's HTML editor, `<iframe src="https://lectern.changapp.net/c/<handle>/<course>/<term>/" width="100%" height="900" style="border:0"></iframe>`. Course pages (`/c/…`) may be framed by `https://q.utoronto.ca` and `https://utoronto.instructure.com` (`LECTERN_EMBED_FROM` replaces that list); Lectern's own pages can't be framed anywhere. Inside the frame, the public parts work; signing in (for the Enrolled parts) needs the page opened on its own, since browsers don't send Lectern's cookie inside another site's frame.
+
+**Heavy traffic.** Lectern limits how often each person (and each address) can sign in, ask for codes, post, vote and send requests, and it runs at most `LECTERN_PASSWORD_SLOTS` (default 4) password checks at once: each takes 64 MiB, so a flood of sign-in tries can't use up the server's memory (beyond that, people are asked to try again in a moment). These limits are kept in memory, so a restart resets them (students' daily code caps are in the database and survive it). Behind a Cloudflare Tunnel, the server's own address stays hidden and Cloudflare absorbs floods; for a further layer, add a Cloudflare rate-limiting rule for `/api/auth/` and `/api/admin/login` (e.g. 20 requests a minute per address).
 
 Other settings: `LECTERN_INSTITUTION` (under the wordmark; default "University of Toronto"), `LECTERN_LEARN_MORE` (the splash's "Learn more" link; hidden when unset), `LECTERN_MAX_UPLOAD_MB` (one save, default 64).
 

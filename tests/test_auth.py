@@ -390,3 +390,14 @@ def test_security_headers(client):
     assert client.get("/api/auth/me").headers["Cache-Control"] == "no-store"
 
 
+def test_too_many_password_checks_at_once_are_refused_as_busy(client, user, monkeypatch):
+    """Each check takes 64 MiB: when every slot is taken, a sign-in waits a little, then is told to try again."""
+    import threading
+    from server import security
+    monkeypatch.setattr(security, "_slots", threading.BoundedSemaphore(1))
+    monkeypatch.setattr(security, "PASSWORD_WAIT", 0.05)
+    security._slots.acquire()            # someone else's check is running
+    r = login(client)
+    assert r.status_code == 503 and r.get_json()["code"] == "busy" and r.headers["Retry-After"]
+    security._slots.release()
+    assert login(client).status_code == 200

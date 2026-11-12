@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from flask import Flask, jsonify, redirect, request
 
 from .paths import STATIC_DIR, TEMPLATES_DIR
+from .security import Busy
 
 app = Flask(
     "Lectern",
@@ -163,6 +164,14 @@ def csp(extra_scripts="", frame_ancestors=""):
         "connect-src 'self' https://api.github.com",
         "frame-src 'none'", f"frame-ancestors 'self' {frame_ancestors}" if frame_ancestors else "frame-ancestors 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'",
     ])
+
+
+@app.errorhandler(Busy)
+def _busy(e):
+    # Too many password checks at once (security.py): the client tries again shortly.
+    resp = jsonify(error="Lectern is busy right now. Wait a moment, then try again.", code="busy")
+    resp.headers["Retry-After"] = "5"
+    return resp, 503
 
 
 @app.errorhandler(413)

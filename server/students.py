@@ -41,7 +41,11 @@ DAILY_MISSES = 10         # wrong codes tried for one student in 24 hours; then 
 SESSION_DAYS = 120
 _EMAIL = re.compile(r"^[^\s@,;<>]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$")
 _SLUG = re.compile(r"^[\w.-]{1,64}$")
-LIMITS = {"code-email": (5, 3600), "code-ip": (30, 3600), "verify-ip": (40, 600), "verify-email": (15, 600)}
+# Per address limits are generous: a whole lecture hall on campus Wi-Fi can share one address, and a class told
+# "sign in now" mustn't lock itself out. What stops guessing and email floods is per email: the limits below, and
+# the daily caps above (kept in the database). Per address only stops one machine spraying many emails.
+LIMITS = {"code-email": (5, 3600), "code-ip": (300, 3600), "verify-ip": (300, 600), "verify-email": (15, 600),
+          "seen": (120, 60)}
 
 
 def _daily(owner_id, off, email, kind, cap):
@@ -340,6 +344,7 @@ def seen(handle, course, term):
     email = student_of(o["id"], off)
     if not email:
         raise Refusal(401, "Sign in to the course page first.", "signed-out")
+    _limit("seen", f"{o['id']}/{off}/{email}")
     ids = [str(x)[:80] for x in (body().get("ids") or []) if isinstance(x, str) and x.strip()][:200]
     t = time.time()
     with db.transaction() as c:

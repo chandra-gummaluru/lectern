@@ -232,3 +232,20 @@ def test_a_student_sees_only_the_marks_that_are_out(client, course):
     r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "marks", r.head())
     st = app.test_client(); sign_in(st, "maya@mail.utoronto.ca")
     assert st.get(HUB).get_json()["viewer"]["marks"] == {"a1": {"pts": 8}}
+
+
+def test_a_lecture_hall_on_one_address_can_all_sign_in(client, course):
+    """Campus Wi-Fi can put a whole class behind one address: told to sign in at once, they all can."""
+    many = [f"s{i}@mail.utoronto.ca" for i in range(60)]
+    enrol(course, *many)
+    for e in many:                       # every test client comes from the same address
+        sign_in(app.test_client(), e)
+
+
+def test_marking_announcements_seen_is_rate_limited(client, course):
+    enrol(course, "maya@mail.utoronto.ca")
+    s = app.test_client()
+    sign_in(s, "maya@mail.utoronto.ca")
+    n = students.LIMITS["seen"][0]
+    codes = [s.post(f"{HUB}/seen", json={"ids": ["a1"]}, headers=H).status_code for _ in range(n + 1)]
+    assert codes[:-1] == [200] * n and codes[-1] == 429

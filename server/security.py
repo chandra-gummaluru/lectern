@@ -101,18 +101,40 @@ MIN_PASSWORD = 12
 MAX_PASSWORD = 1024         # argon2 takes any length; this just stops someone posting megabytes
 _DUMMY = None
 
+# Each password check takes 64 MiB and a fraction of a second, so many at once (sign-in tries from many
+# addresses, which no per-address limit stops) could use up the server's memory. At most PASSWORD_SLOTS run
+# at a time; the rest wait their turn, up to PASSWORD_WAIT seconds, and are then refused as busy (503).
+PASSWORD_SLOTS = max(1, int(os.environ.get("LECTERN_PASSWORD_SLOTS") or 4))
+PASSWORD_WAIT = 10
+_slots = threading.BoundedSemaphore(PASSWORD_SLOTS)
+
+
+class Busy(Exception):
+    """Too many password checks at once (core.py answers 503, try again in a moment)."""
+
+
+class _Slot:
+    def __enter__(self):
+        if not _slots.acquire(timeout=PASSWORD_WAIT):
+            raise Busy()
+
+    def __exit__(self, *exc):
+        _slots.release()
+
 
 def hash_password(pw):
-    return _ph.hash(pw)
+    with _Slot():
+        return _ph.hash(pw)
 
 
 def check_password(stored, pw):
     """(ok, new hash or None). Takes the same time whether or not there's an account (see dummy_check)."""
-    try:
-        _ph.verify(stored, pw)
-    except (VerifyMismatchError, VerificationError, InvalidHashError):
-        return False, None
-    return True, (_ph.hash(pw) if _ph.check_needs_rehash(stored) else None)
+    with _Slot():
+        try:
+            _ph.verify(stored, pw)
+        except (VerifyMismatchError, VerificationError, InvalidHashError):
+            return False, None
+        return True, (_ph.hash(pw) if _ph.check_needs_rehash(stored) else None)
 
 
 def dummy_check(pw):

@@ -254,13 +254,14 @@ export function lecturesPage(ctx, r) {
     const list = weeks();
     pageHTML(`<div class="lt-in"><div class="lx">
       <div class="lx-head"><h1>Activities</h1><span class="spacer"></span>${status$()}
-        ${edit ? `<button type="button" class="lx-btn add" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
+        ${edit ? `<button type="button" class="lx-btn add" data-add-break title="A labelled gap between weeks, e.g. Reading Week">${ICON.plus}Add a Divider</button><button type="button" class="lx-btn add" data-add-week>${ICON.plus}Add a Week</button>` : ""}</div>
       ${taNote()}
       ${list.length ? `<div class="lx-list" data-units>${list.map(w => (w.isBreak ? breakHTML(w) : weekHTML(w))).join("")}</div>` : `<div class="lx-empty">No weeks yet.${edit ? " Add the term's first week." : ""}</div>`}
     </div></div>`);
     wire($(".lx"));
     if (!edit) return;
     $("[data-add-week]").onclick = addWeek;
+    $("[data-add-break]").onclick = addBreak;
   }
   // A week's number, for the circle beside it: the number in its name ("Week 4"), else its place among the weeks.
   const weekNum = w => { const m = /(\d+)/.exec(w.label || ""); return m ? m[1] : String(realWeeks().indexOf(w) + 1); };
@@ -363,6 +364,13 @@ export function lecturesPage(ctx, r) {
     const w = { id: uid(), label, start, end, topic: "", cards: [] };
     weeks().push(w); changed();
     toWeek(w);
+  }
+  // A divider (e.g. "Reading Week") goes at the end of the list; drag it to where it belongs.
+  function addBreak() {
+    const w = { id: uid(), isBreak: true, text: "" };
+    weeks().push(w); changed(); draw();
+    const inp = document.querySelector(`[data-break-text="${CSS.escape(w.id)}"]`);
+    if (inp) { inp.scrollIntoView({ block: "center" }); inp.focus(); }
   }
   function addLecture(w, kind = "lecture") {
     const x = { id: uid(), kind, label: nextLabel(weeks(), kind, w), title: "", description: "", files: [], ...(edit ? {} : { groups: [...lim].slice(0, 1) }) };

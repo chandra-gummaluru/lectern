@@ -29,3 +29,4 @@ a flow is fine when it ends without an error (several print `<name>: OK`).
 | Exams | `flow_examui`, `flow_standalone` |
 | Course page | `flow_hub`, `flow_course`, `flow_drag`, `flow_lectures`, `flow_parts`, `flow_sections`, `flow_links`, `flow_evalfiles`, `flow_ann` |
 | Students | `flow_students`, `flow_accommodations`, `flow_attendance`, `flow_mail` |
+| Export, Import, the demo course, My Marks | `flow_transfer` |

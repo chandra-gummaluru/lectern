@@ -1,0 +1,1716 @@
+diff --git a/README.md b/README.md
+index a6be994..e8c2981 100644
+--- a/README.md
++++ b/README.md
+@@ -7,6 +7,8 @@ Lectern is one place to run a course. For each course offering (a course in one
+ - **Build your course page.** Add weekly activities, announcements, evaluations and your teaching team, and Lectern turns them into a course website with tabs for *This week*, *Announcements*, *Activities*, *Evaluations* and *About*. Choose which tabs are public and which are for signed-in students only. You can embed the page in Quercus.
+ - **Keep your gradebook.** Set up evaluations (weights, due dates, "best N of M", makeups), import your class list from Quercus or ACORN, and enter marks. The marking scheme appears on your course page automatically, and each evaluation shows up in the week it's due.
+ - **Write exams and handouts.** From any evaluation, open its test or assignment and write it in place. Its total marks feed straight back into the gradebook.
++- **Show students their marks.** Signed-in students see each mark once you release it, on the evaluation's page and all together on **My Marks**. You can also show them their grade so far there (the gradebook's **Settings → Grade So Far**; off unless you turn it on).
++- **Reuse a course.** **Export** an offering (on its page) and **Import** it on Home as a new term: its course page, evaluations, activities, sections and exams come across, with the dates moved to the new term. Its students, marks, requests and announcements stay behind, so the file is safe to share with a colleague.
+ - **Handle accommodation requests.** Students request an accommodation for a missed evaluation from the course page. You approve or reject it in Lectern, and the student is emailed the decision.
+ - **Work as a team.** Add instructors and TAs to an offering. Instructors can do everything you can; TAs can see the gradebook and enter marks, but can't change the course setup.
+ 
+@@ -20,7 +22,7 @@ Lectern is one place to run a course. For each course offering (a course in one
+ 
+ 1. **Get an invitation.** Lectern is invite-only. Your institution's Lectern administrator sends you an email invitation (or an instructor does, if you're joining their teaching team).
+ 2. **Create your account.** Open the link, then choose your name, a password and the address for your course pages. We recommend turning on two-factor sign-in under **Your account**.
+-3. **Add a course offering** from Home, then fill in its course page, evaluations and class list.
++3. **Add a course offering** from Home, then fill in its course page, evaluations and class list. To look around first, **Load the demo course** on Home: a made-up CSC258 with students, marks and an exam, which you can delete when you're done.
+ 4. **Share your course page** with students: send them its link from the Students card, or embed it in Quercus.
+ 
+ Your work is saved on Lectern's server, and earlier versions are kept, so a mistake can be undone.
+diff --git a/docs/developers.md b/docs/developers.md
+index 57f848c..8f418ef 100644
+--- a/docs/developers.md
++++ b/docs/developers.md
+@@ -113,6 +113,18 @@ Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course
+ - Each enrolled student (not dropped) with an email can sign in; the card shows who has, and who's been sent the link.
+ - **Each offering can have its own email settings** (no screen for them now that Email the Class is gone; the API is still there, `server/classmail.py`): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails and sign-in codes use them too.
+ 
++## My Marks, and the grade so far
++
++- A signed-in student's marks come in the course page's API (`viewer.marks`, `server/hub.py`), only for evaluations the gradebook has **released**. The course page shows each on its evaluation's page and all of them on **My Marks** (`#marks`, `static/js/hub.js`).
++- **Grade so far** (`viewer.sofar`) is there only when the gradebook's Settings turn it on (`policies.show.sofar`). `server/grading.py` works it out exactly as the gradebook does (the Grade Builder's `studentResult`: makeups, reweighting, best N of M, the student's own accommodations), from the released marks only, so an unreleased mark counts as not marked yet. The final rules (ranges, rounding, automatic fail) aren't applied. `tests/test_grading.py` runs the builder's own JavaScript with node on the sample gradebooks (and randomized versions of them) and checks both agree, so **a change to `studentResult` needs the same change in `grading.py`**.
++
++## Export, Import and the demo course
++
++`server/transfer.py`.
++- **Export** (an offering's page, instructors only): a `.zip` with `lectern-export.json`, then `pub/` and `priv/` holding the offering's files relative to its folder. Left out: the gradebook's students, marks, accommodations (`overrides`), set grades (`finals`) and released flags; `accommodations.json`, `announcements.json` and `team.json`; who runs each section in `groups.json` (those are this server's accounts). Discussions, attendance and sign-ins are in the database and never go.
++- **Import** (Home): reads the manifest first (`/import/peek`), then brings the files in as a new offering of yours under any course and term you don't have, leaving the same things out again (a file can be made by hand). **Move its dates** shifts every date by whole weeks, from the first Monday of the old term to the new one's, so each keeps its weekday: ISO dates and announcement stamps in the JSON files (whole strings only, so links are left alone), each week's dates text, and the long dates and term name in exams (`exam.json` and the `.tex` files). Uploads up to `LECTERN_MAX_UPLOAD_MB`.
++- **The demo course** (Home): `sample-data`'s CSC258 Fall 2026, loaded as `csc258-demo` in the current term with the same date move. Its students get `@example.com` emails (which take no mail), the marks of the evaluations whose dates have passed are kept and released, and Grade So Far is on.
++
+ ## Where things are
+ 
+ | | Private (only you) | Public (published at `/p/<handle>/`) |
+diff --git a/sample-data/README.md b/sample-data/README.md
+index 8c8049b..7a7e1d1 100644
+--- a/sample-data/README.md
++++ b/sample-data/README.md
+@@ -3,4 +3,4 @@
+ Made-up data for trying Lectern and for its tests. Nothing here is real.
+ 
+ - `class-list.csv`: 40 students, laid out like a Quercus gradebook export. On an offering's page in Lectern: Students → import a class list.
+-- `demo-courses/` (public files: course pages) and `demo-courses-private/` (private files: gradebooks with students and marks, and a few exams): 11 course offerings (CSC108, CSC148, CSC209, CSC258, f25 to w27), laid out as an account's files are on the server (`data/files/<account id>/pub` and `…/priv`). The browser walkthroughs (tests/browser/) load them from here.
++- `demo-courses/` (public files: course pages) and `demo-courses-private/` (private files: gradebooks with students and marks, and a few exams): 11 course offerings (CSC108, CSC148, CSC209, CSC258, f25 to w27), laid out as an account's files are on the server (`data/files/<account id>/pub` and `…/priv`). The browser walkthroughs (tests/browser/) load them from here, and Lectern's **Load the demo course** (Home) loads `csc258/f26` from here as `csc258-demo`, dated to the current term.
+diff --git a/server/__init__.py b/server/__init__.py
+index 909f41c..c7c6828 100644
+--- a/server/__init__.py
++++ b/server/__init__.py
+@@ -15,6 +15,8 @@ Module map:
+ - hub.py        the course hub: an offering's course page in tabs, served from its course.json (/c/…)
+ - accommodations.py  accommodation requests: the students' form and its API, instructors' decisions
+ - classmail.py  emailing a class from Lectern, and each offering's own email settings
++- transfer.py   exporting and importing a course offering, and loading the demo course
++- grading.py    a student's grade so far, worked out as the gradebook does (My Marks)
+ - mailer.py     email (invitations, password resets, security notices, students), over SMTP
+ - admin.py      the admin panel (/admin): its own accounts and sign-in; invitations, accounts, email settings
+ - cli.py        python app.py admin / setup
+@@ -39,6 +41,7 @@ from .students import students_bp
+ from .places import places_bp
+ from .discuss import discuss_bp
+ from .attendance import attendance_bp
++from .transfer import transfer_bp
+ 
+ app.register_blueprint(pages_bp)
+ app.register_blueprint(auth_bp)
+@@ -53,3 +56,4 @@ app.register_blueprint(students_bp)
+ app.register_blueprint(places_bp)
+ app.register_blueprint(discuss_bp)
+ app.register_blueprint(attendance_bp)
++app.register_blueprint(transfer_bp)
+diff --git a/server/core.py b/server/core.py
+index d5ca5f3..ab5c782 100644
+--- a/server/core.py
++++ b/server/core.py
+@@ -90,8 +90,8 @@ def _origin(url):
+ 
+ @app.before_request
+ def _guard():
+-    # Only saves (a course page's uploads) may be big; sign-in and the rest are small JSON.
+-    if not (request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")):
++    # Only saves (a course page's uploads) and importing an offering may be big; sign-in and the rest are small JSON.
++    if not ((request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")) or request.path.startswith("/api/offerings/import")):
+         request.max_content_length = SMALL_BODY
+     # Anything but localhost goes over HTTPS: passwords and session cookies never travel in the clear.
+     if not secure_enough():
+diff --git a/server/grading.py b/server/grading.py
+new file mode 100644
+index 0000000..8c9a8a1
+--- /dev/null
++++ b/server/grading.py
+@@ -0,0 +1,304 @@
++"""One student's course grade so far, worked out the way the gradebook does it.
++
++This is the Grade Builder's studentResult (tools/grade-builder.html), in Python, so the course page can show
++a student their grade so far (My Marks) without sending them the gradebook. It follows the builder step by
++step and must keep doing so: tests/test_grading.py runs the builder's own JavaScript (with node, when it's
++installed) on the sample gradebooks and checks that both give the same answer for every student.
++
++Only the marks a student may see go in: hub.py keeps the evaluations whose marks aren't released out of it,
++so an unreleased mark counts as not marked yet. The course's final rules (ranges, rounding, automatic fail)
++aren't applied: they're for the final grade, and the page says so.
++"""
++import math
++import re
++
++STATUSES = {"missed": "Not submitted", "aiv": "Academic integrity violation", "excused": "Excused", "deferred": "Deferred"}
++_FLOAT = re.compile(r"\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)")
++
++
++def num(v):
++    """JavaScript's parseFloat, or 0 (the builder's num)."""
++    if isinstance(v, bool) or v is None:
++        return 0.0
++    if isinstance(v, (int, float)):
++        return float(v) if math.isfinite(v) else 0.0
++    m = _FLOAT.match(str(v))
++    if not m:
++        return 0.0
++    x = float(m.group(1))
++    return x if math.isfinite(x) else 0.0
++
++
++def _js_round(x):
++    """Math.round: halves go up."""
++    return math.floor(x + 0.5)
++
++
++def fmt_num(n):
++    """The builder's fmtNum: at most two decimals, written as JavaScript writes a number."""
++    v = _js_round(num(n) * 100) / 100
++    return str(int(v)) if v == int(v) else repr(v)
++
++
++def _truthy(x):
++    """JavaScript's truthiness (an empty object or list is true there)."""
++    if isinstance(x, (dict, list)):
++        return True
++    if isinstance(x, float) and math.isnan(x):
++        return False
++    return bool(x)
++
++
++def _dict(x):
++    return x if isinstance(x, dict) else {}
++
++
++def _list(x):
++    return x if isinstance(x, list) else []
++
++
++class Book:
++    """A gradebook (grades.json), with the builder's small helpers."""
++
++    def __init__(self, book):
++        b = _dict(book)
++        self.evals = [e for e in _list(b.get("evals")) if isinstance(e, dict)]
++        self.groups = [g for g in _list(b.get("groups")) if isinstance(g, dict)]
++        self.marks = _dict(b.get("marks"))
++        self.overrides = _dict(b.get("overrides"))
++
++    def eval_by_id(self, i):
++        return next((e for e in self.evals if e.get("id") == i), None)
++
++    def counted(self):
++        return [e for e in self.evals if not _truthy(e.get("makeupFor"))]
++
++    def group_of(self, e):
++        return next((g for g in self.groups if e.get("id") in _list(g.get("members"))), None)
++
++    def mark_of(self, s, e):
++        m = _dict(self.marks.get(s)).get(e)
++        return m if _truthy(m) and isinstance(m, dict) else {}
++
++    def override_of(self, s, e):
++        o = _dict(self.overrides.get(s)).get(e)
++        return o if _truthy(o) else None
++
++    def group_override(self, s, g):
++        return self.override_of(s, "g:" + str(g.get("id")))
++
++    def units(self):
++        out, done = [], set()
++        for e in self.counted():
++            g = self.group_of(e)
++            if not g:
++                out.append({"e": e, "w": num(e.get("weight"))})
++            elif g.get("id") not in done:
++                done.add(g.get("id"))
++                out.append({"g": g, "w": num(g.get("weight"))})
++        for g in self.groups:
++            if g.get("id") not in done:
++                out.append({"g": g, "w": num(g.get("weight"))})
++        return out
++
++    def weight_sum(self):
++        return sum(u["w"] for u in self.units())
++
++
++def status_of(m):
++    if _truthy(m.get("missed")):
++        return "missed"
++    st = m.get("status")
++    return st if isinstance(st, str) and st in STATUSES else ""
++
++
++def total_set(e):
++    return bool(e) and e.get("total") is not None and e.get("total") != "" and num(e.get("total")) > 0
++
++
++def ratio(pts, e):
++    return num(pts) / num(e.get("total")) if total_set(e) else None
++
++
++def _name(e):
++    return str((e or {}).get("name") or "")
++
++
++def share_parts(b, pol, e):
++    """A not-submitted policy's parts, as fractions of the weight: its makeups and where its weight moves."""
++    pol = _dict(pol)
++
++    def ok(i):
++        x = b.eval_by_id(i)
++        return bool(x) and x.get("id") != e.get("id") and not b.group_of(x)
++
++    mk = [{"id": t.get("id"), "f": max(0.0, num(t.get("share"))) / 100} for t in _list(pol.get("makeups")) if isinstance(t, dict) and ok(t.get("id"))]
++    to = [{"id": t.get("id"), "f": max(0.0, num(t.get("share"))) / 100}
++          for t in (_list(pol.get("to")) if pol.get("mode") == "reweight" else [])
++          if isinstance(t, dict) and ok(t.get("id")) and not _truthy(b.eval_by_id(t.get("id")).get("makeupFor")) and not any(x["id"] == t.get("id") for x in mk)]
++    if pol.get("mode") != "reweight":
++        mk = []
++    total = sum(x["f"] for x in mk + to)
++    if total > 1:
++        for x in mk + to:
++            x["f"] /= total
++    return {"mk": mk, "to": to, "total": total}
++
++
++def policy_for(b, s, e):
++    o, g = b.override_of(s, e.get("id")) or {}, b.group_of(e)
++    if g:
++        return {"weight": 0.0, "missed": {"mode": "zero", "to": []}, "group": g}
++    return {"weight": num(o.get("weight")) if o.get("weight") is not None else num(e.get("weight")),
++            "missed": o.get("missed") if _truthy(o.get("missed")) else e.get("missed")}
++
++
++def student_result(book, s):
++    """The builder's studentResult(s): each evaluation's weight, score (0..1), status and note, and the grade
++    so far (current: the average of what's settled, as a percentage) or final (once everything's settled)."""
++    b = book if isinstance(book, Book) else Book(book)
++    s = str(s)
++    rows, evs = {}, b.counted()
++    # 1. each evaluation on its own
++    for e in evs:
++        p, m = policy_for(b, s, e), b.mark_of(s, e.get("id"))
++        r = rows[e.get("id")] = {"w": p["weight"], "score": None, "status": "pending", "note": ""}
++        st = status_of(m)
++        if st == "missed":
++            r["missed"] = p["missed"]
++        elif st == "aiv":
++            r.update(score=0.0, status="aiv", note="Academic integrity violation: zero")
++        elif st == "excused":
++            r.update(w=0.0, status="excused", note="Excused: doesn't count")
++        elif st == "deferred":
++            r["note"] = "Deferred: still to come"
++        elif m.get("pts") is not None and total_set(e):
++            r.update(score=ratio(m["pts"], e), status="graded")
++        elif m.get("pts") is not None:
++            r["note"] = "Marked, but it's out of ? points: set its total and the mark counts"
++    # 2. work not submitted: its makeups (each worth its share) and the weight it moves; the rest is zero
++    for e in evs:
++        r = rows[e.get("id")]
++        if not _truthy(r.get("missed")):
++            continue
++        pol = _dict(r["missed"])
++        parts = share_parts(b, pol, e)
++        if pol.get("mode") != "reweight" or (not parts["mk"] and not any(t["id"] in rows for t in parts["to"])):
++            r.update(score=0.0, status="missed", note="Not submitted: counts as zero")
++            continue
++        if parts["mk"]:
++            sc, exc, pend = 0.0, 0.0, []
++            for x in parts["mk"]:
++                me, m = b.eval_by_id(x["id"]), b.mark_of(s, x["id"])
++                st = status_of(m)
++                if st == "excused":
++                    exc += x["f"]
++                elif m.get("pts") is not None and not st and total_set(me):
++                    sc += x["f"] * ratio(m["pts"], me)
++                elif st not in ("missed", "aiv"):
++                    pend.append(me)
++            if pend:
++                r.update(status="pending", note=f"Not submitted: the makeup ({', '.join(_name(x) for x in pend)}) is still to come")
++                del r["missed"]
++                continue
++            r["mk"] = {"sc": sc, "exc": exc}
++        r["w0"] = r["w"]
++        r["status"] = "reweight"
++    # 3. move the weight of reweighted work; a target that was itself reweighted passes on what it gets
++    for e in evs:
++        r = rows[e.get("id")]
++        if r["status"] == "reweight":
++            r["inbox"] = r["w"]
++    for _ in range(12):
++        moved = False
++        for e in evs:
++            r = rows[e.get("id")]
++            if r["status"] != "reweight" or not (r.get("inbox", 0) > 1e-12):
++                continue
++            to = [t for t in share_parts(b, r["missed"], e)["to"] if t["id"] in rows]
++            fr = [t["f"] for t in to]
++            amt = r["inbox"]
++            r["inbox"] = 0
++            for t, f in zip(to, fr):
++                gain, tr = amt * f, rows[t["id"]]
++                tr["w"] += gain
++                if tr["status"] == "reweight":
++                    tr["inbox"] = tr.get("inbox", 0) + gain
++            r["w"] -= amt * sum(fr)
++            kept = r["w"] > 1e-9
++            r["note"] = f"Not submitted: {'part of ' if kept else ''}its weight moved to {', '.join(_name(b.eval_by_id(t['id'])) for t in to)}{'; the rest counts as zero' if kept else ''}"
++            moved = True
++        if not moved:
++            break
++    for e in evs:   # what stays is the makeups' part (their marks) and the rest (zero)
++        r = rows[e.get("id")]
++        if r["status"] != "reweight":
++            continue
++        parts, W = share_parts(b, r["missed"], e), r["w0"]
++        r2 = lambda x: fmt_num(_js_round(x * 100) / 100)
++        mv = [t for t in parts["to"] if t["id"] in rows]
++        fmk, fto = sum(x["f"] for x in parts["mk"]), sum(x["f"] for x in mv)
++        rest = max(0.0, 1 - fmk - fto)
++        bits = []
++        if parts["mk"]:
++            many = len(parts["mk"]) > 1
++            bits.append(f"the makeup{'s' if many else ''} ({', '.join(_name(b.eval_by_id(x['id'])) for x in parts['mk'])}) count{'' if many else 's'} for {r2(W * fmk)}%")
++        if mv:
++            bits.append(f"{r2(W * fto)}% moved to {', '.join(_name(b.eval_by_id(t['id'])) for t in mv)}")
++        if rest > 1e-9:
++            bits.append(f"{r2(W * rest)}% counts as zero")
++        r["note"] = f"Not submitted: {'; '.join(bits)}"
++        if r.get("mk"):
++            r["w"] -= W * r["mk"]["exc"]
++        if r["w"] > 1e-9:
++            r["score"] = min(1.5, W * r["mk"]["sc"] / r["w"]) if r.get("mk") else 0.0
++            if r.get("mk"):
++                r["status"] = "madeup"
++        else:
++            r["w"], r["score"] = 0.0, None
++    # 4. groups: the best `keep` members that are in share the group's weight; the rest aren't counted
++    for g in b.groups:
++        go = b.group_override(s, g) or {}
++        members = _list(g.get("members"))
++        ex = set(_list(go.get("excused"))) | {i for i in members if status_of(b.mark_of(s, i)) == "excused"}
++        mem = [x for x in (b.eval_by_id(i) for i in members) if x]
++        live = [x for x in mem if x.get("id") not in ex]
++        for x in mem:
++            if x.get("id") in ex and x.get("id") in rows:
++                rows[x["id"]].update(w=0.0, score=None, status="excused", note="Excused (accommodation)", group=g.get("id"))
++        gw = num(go.get("weight")) if go.get("weight") is not None else num(g.get("weight"))
++        keep = max(1.0, min(num(go.get("keep")) if go.get("keep") is not None else num(g.get("keep")), float(len(live) or 1)))
++        done = [x for x in live if x.get("id") in rows and rows[x["id"]]["score"] is not None]
++        best = sorted(done, key=lambda x: -rows[x["id"]]["score"])[:int(keep)]
++        kept = {x["id"] for x in best}
++        for x in live:
++            r = rows.get(x.get("id"))
++            if not r:
++                continue
++            r["group"] = g.get("id")
++            if x["id"] in kept:
++                r["w"] = gw / keep
++                r["note"] = f"{r['note'] + ' · ' if r['note'] else ''}One of the best {fmt_num(keep)} in {g.get('name')}"
++            elif r["score"] is not None:
++                r.update(w=0.0, status="notcounted", note=f"Not counted: not among the best {fmt_num(keep)} in {g.get('name')}")
++
++    # A weight changed for this student: the others scale so the total stays the course's (usually 100%).
++    def g_weight(g):
++        go = b.group_override(s, g) or {}
++        live = any(b.eval_by_id(i) and i not in _list(go.get("excused")) and status_of(b.mark_of(s, i)) != "excused" for i in _list(g.get("members")))
++        return (num(go.get("weight")) if go.get("weight") is not None else num(g.get("weight"))) if live else 0.0
++
++    base = b.weight_sum()
++    eff = sum(g_weight(u["g"]) if "g" in u else 0.0 if status_of(b.mark_of(s, u["e"].get("id"))) == "excused" else policy_for(b, s, u["e"])["weight"] for u in b.units())
++    if eff > 0 and abs(base - eff) > 1e-9:
++        for e in evs:
++            rows[e.get("id")]["w"] *= base / eff
++    settled = [e for e in evs if rows[e.get("id")]["status"] != "pending"]
++    w_done = sum(rows[e.get("id")]["w"] for e in settled)
++    earned = sum(rows[e.get("id")]["w"] * (rows[e.get("id")]["score"] or 0) for e in settled)
++    pending = len(evs) - len(settled)
++    for r in rows.values():
++        for k in ("missed", "mk", "w0", "inbox"):
++            r.pop(k, None)
++    return {"rows": rows, "current": earned / w_done * 100 if w_done > 0 else None,
++            "final": earned if pending == 0 and evs else None, "earned": earned, "done": w_done, "pending": pending}
+diff --git a/server/hub.py b/server/hub.py
+index 98fab66..d7e4fb7 100644
+--- a/server/hub.py
++++ b/server/hub.py
+@@ -94,6 +94,16 @@ def _num(x):
+         return 0.0
+ 
+ 
++def shows_sofar(owner_id, offering, book=None):
++    """Whether My Marks shows each student their grade so far (the gradebook's Settings; off unless turned on)."""
++    if book is None:
++        try:
++            book = json.loads((Repo(owner_id, "priv").read(f"{offering}/grades.json") or b"{}").decode("utf-8"))
++        except (ValueError, UnicodeDecodeError):
++            return False
++    return isinstance(book, dict) and isinstance(book.get("policies"), dict) and isinstance(book["policies"].get("show"), dict) and book["policies"]["show"].get("sofar") is True
++
++
+ def gradebook_policies(owner_id, course, term):
+     """{evaluation id: {missed, total}}: what happens if each is missed (as the gradebook's editor shows it:
+     counts as zero, or makeups and weight moved to others, each with its share) and its points, read from the
+@@ -712,7 +722,7 @@ def hub_api(handle, course, term):
+         for e in _list(ev.get("evals")):
+             own_date(e)
+     # A signed-in student's own marks (the gradebook's), for each evaluation's page: points, or what happened.
+-    marks = {}
++    marks, sofar = {}, None
+     if student and "evaluations" in all_b:
+         from .students import roster
+         num = (roster(o["id"], offering).get(student) or {}).get("num")
+@@ -731,6 +741,16 @@ def hub_api(handle, course, term):
+                 marks[str(eid)[:64]] = {"status": st}
+             elif isinstance(m.get("pts"), (int, float)):
+                 marks[str(eid)[:64]] = {"pts": m["pts"]}
++        # Their grade so far (My Marks), when the gradebook's Settings show it: worked out as the gradebook
++        # does, from the released marks only (an unreleased one is not marked yet).
++        if num and shows_sofar(o["id"], offering, book):
++            from .grading import student_result
++            ov = book.get("overrides") if isinstance(book.get("overrides"), dict) else {}
++            seen = {"evals": book.get("evals"), "groups": book.get("groups"), "overrides": {str(num): ov.get(str(num)) or {}},
++                    "marks": {str(num): {k: v for k, v in (mine_m.items() if isinstance(mine_m, dict) else []) if k in out}}}
++            r = student_result(seen, str(num))
++            sofar = {"current": r["current"], "done": r["done"], "earned": r["earned"], "pending": r["pending"], "final": r["final"] is not None,
++                     "rows": {str(k)[:64]: {"w": x["w"], "status": x["status"], "note": x["note"]} for k, x in r["rows"].items()}}
+     head = about or {}
+     tabs, data = [], {}
+     for tid, title in TABS:
+@@ -748,6 +768,9 @@ def hub_api(handle, course, term):
+         viewer={"signedIn": signed, "role": None if preview == "public" else "student" if preview else role, "name": student or "",
+                 "staff": role in STAFF, "preview": preview, "staffRole": role if role in STAFF else None,
+                 **({"marks": marks} if student else {}),
++                **({"sofar": sofar} if student and sofar else {}),
++                # whether My Marks shows each student their grade so far (the gradebook's Settings)
++                **({"showsSofar": shows_sofar(o["id"], offering)} if role in STAFF else {}),
+                 # a student: the announcements they've seen (the others are New for them)
+                 **({"seen": [r["ann_id"] for r in db.all_("SELECT ann_id FROM announcements_seen WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], offering, student))]} if student else {})},
+         tabs=tabs, data=data,
+diff --git a/server/transfer.py b/server/transfer.py
+new file mode 100644
+index 0000000..a275c7c
+--- /dev/null
++++ b/server/transfer.py
+@@ -0,0 +1,417 @@
++"""Moving a course offering in and out of Lectern: Export, Import, and the demo course.
++
++Export (GET /api/offerings/<owner>/<course>/<term>/export) makes a .zip of one offering for its instructors:
++its course page and files (pub/), and its gradebook, activities, sections and exams (priv/), each relative to
++the offering's folder, with lectern-export.json saying what it is. What belongs to this term's students is
++left out, so the file can be shared with a colleague: the class list, marks and accommodations (and finals)
++from the gradebook, accommodation and remark requests, announcements, and who on the team runs which section
++(team.json, and the people in groups.json, are this server's accounts). Discussions, attendance and sign-ins
++are in the database, not in the files, so they never go.
++
++Import (POST /api/offerings/import, with /import/peek first to read a file's manifest) brings an export in as
++a new offering of the signed-in account, under any code and term that account doesn't have yet. The same
++things are left out again (a file can be made by hand), and with "move the dates" every date moves by whole
++weeks from the old term to the new one, so each activity and evaluation keeps its weekday.
++
++The demo (POST /api/offerings/demo) is sample-data's CSC258, loaded as csc258-demo in the current term: the
++same date move, with its students (emails at example.com, which takes no mail) and the marks of the
++evaluations whose dates have passed, released, so every part of Lectern has something in it.
++"""
++import io
++import json
++import os
++import re
++import zipfile
++from datetime import date, datetime, timedelta, timezone
++
++from flask import Blueprint, g, jsonify, request, send_file
++
++from . import db
++from .auth import Refusal, signed_in, text
++from .store import Repo, StoreError, clean_path
++from .teams import LEAD, _where, clean_offering
++
++transfer_bp = Blueprint("transfer", __name__)
++
++FORMAT = "lectern-export/1"
++MANIFEST = "lectern-export.json"
++MAX_FILES = 5000
++MAX_BYTES = 512 * 1024 * 1024   # unzipped
++# The offering's own files that are this term's students' (or this server's accounts'), never exported or imported.
++LEFT_OUT = {"accommodations.json", "announcements.json", "team.json"}
++ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++DEMO = ("csc258", "f26")   # sample-data/demo-courses(-private)/<course>/<term>
++DEMO_COURSE = "csc258-demo"
++
++_TERM = re.compile(r"^([wsf])(\d\d)$")
++_ISO = re.compile(r"^(\d{4})-(\d\d)-(\d\d)$")
++_MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
++_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
++_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
++# "Sep 7, 2026, 09:00" (an announcement's stamp), the whole string
++_STAMP = re.compile(r"^([A-Z][a-z]{2})[a-z]*\.? (\d{1,2}), (\d{4})(.*)$")
++# "Wednesday, October 28, 2026" (an exam's date, in exam.json and its .tex files), anywhere
++_LONG = re.compile(r"\b(?:(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), )?(January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2}), (\d{4})\b")
++
++
++# ── Terms and dates ──────────────────────────────────────────────────
++def term_name(t):
++    m = _TERM.match(t or "")
++    return f"{dict(w='Winter', s='Summer', f='Fall')[m.group(1)]} 20{m.group(2)}" if m else t
++
++
++def term_now(today=None):
++    """The term today is in (or the next one, between terms): f26, w27, s27."""
++    d = today or date.today()
++    return f"{'w' if d.month <= 4 else 's' if d.month <= 8 else 'f'}{d.year % 100:02d}"
++
++
++def term_monday(t):
++    """The first Monday of a term's first month (January, May or September): where its weeks are counted from."""
++    m = _TERM.match(t or "")
++    if not m:
++        return None
++    d = date(2000 + int(m.group(2)), {"w": 1, "s": 5, "f": 9}[m.group(1)], 1)
++    return d + timedelta(days=(7 - d.weekday()) % 7)
++
++
++def weeks_between(a, b):
++    """How many whole weeks term b is after term a (0 if either isn't a term)."""
++    x, y = term_monday(a), term_monday(b)
++    return round((y - x).days / 7) if x and y else 0
++
++
++def _shift_iso(s, days):
++    m = _ISO.match(s)
++    if not m:
++        return s
++    try:
++        return (date(int(m.group(1)), int(m.group(2)), int(m.group(3))) + timedelta(days=days)).isoformat()
++    except ValueError:
++        return s
++
++
++def _shift_stamp(s, days):
++    m = _STAMP.match(s)
++    if not m or m.group(1) not in _MON3:
++        return s
++    try:
++        d = date(int(m.group(3)), _MON3.index(m.group(1)) + 1, int(m.group(2))) + timedelta(days=days)
++    except ValueError:
++        return s
++    return f"{_MON3[d.month - 1]} {d.day}, {d.year}{m.group(4)}"
++
++
++def shift_text(s, days, old_term="", new_term=""):
++    """An exam's text: its long dates ("Wednesday, October 28, 2026") moved, and the term's name changed."""
++    def long(m):
++        try:
++            d = date(int(m.group(4)), _MONTHS.index(m.group(2)) + 1, int(m.group(3))) + timedelta(days=days)
++        except ValueError:
++            return m.group(0)
++        return f"{_DAYS[d.weekday()] + ', ' if m.group(1) else ''}{_MONTHS[d.month - 1]} {d.day}, {d.year}"
++    s = _LONG.sub(long, s) if days else s
++    if old_term and new_term and old_term != new_term and _TERM.match(old_term) and _TERM.match(new_term):
++        s = s.replace(term_name(old_term), term_name(new_term))
++    return s
++
++
++def shift_json(x, days):
++    """Every date in a JSON value moved by `days`: ISO dates and announcement stamps (whole strings only, so a
++    link that happens to have a date in it is left alone). A week's dates text is redone from its new start."""
++    if isinstance(x, dict):
++        out = {k: shift_json(v, days) for k, v in x.items()}
++        if isinstance(x.get("dates"), str) and _ISO.match(str(out.get("start") or "")):
++            from .hub import range_text
++            out["dates"] = range_text(out["start"], out.get("end") or out["start"])
++        return out
++    if isinstance(x, list):
++        return [shift_json(v, days) for v in x]
++    if isinstance(x, str) and days:
++        return _shift_stamp(_shift_iso(x, days), days)
++    return x
++
++
++# ── What's left out ──────────────────────────────────────────────────
++def scrub_book(b, course=None, term=None):
++    """A gradebook's setup, without this term's students: no class list, marks, accommodations or set grades,
++    and nothing released."""
++    if not isinstance(b, dict):
++        return b
++    b = dict(b, students=[], marks={}, overrides={}, finals={})
++    b["evals"] = [{k: v for k, v in e.items() if k != "released"} if isinstance(e, dict) else e for e in (b.get("evals") or [])]
++    if course and term:
++        b["course"] = dict(b.get("course") if isinstance(b.get("course"), dict) else {}, code=course.upper(), term=term_name(term))
++    return b
++
++
++def scrub_groups(d):
++    """The sections, without who runs them (those are this server's accounts)."""
++    if not isinstance(d, dict):
++        return d
++    gs = []
++    for gr in d.get("groups") or []:
++        if isinstance(gr, dict):
++            gr = {k: v for k, v in gr.items() if k != "people"}
++            gr["items"] = [{k: v for k, v in x.items() if k != "people"} if isinstance(x, dict) else x for x in (gr.get("items") or [])]
++        gs.append(gr)
++    return dict(d, groups=gs)
++
++
++def scrub_page(p, course=None, term=None):
++    """A course page (course.json): its own announcements out (an older page keeps them in its weeks)."""
++    if not isinstance(p, dict) or not isinstance(p.get("page"), dict):
++        return p
++    page = dict(p["page"])
++    page["sections"] = [dict(s, weeks=[{k: v for k, v in w.items() if k != "announcements"} if isinstance(w, dict) else w for w in s.get("weeks") or []])
++                        if isinstance(s, dict) and s.get("type") == "schedule" else s for s in page.get("sections") or []]
++    if course and term:
++        page.update(code=course.upper(), term=term_name(term))
++    return dict(p, page=page)
++
++
++def _json(b):
++    try:
++        return json.loads(b.decode("utf-8"))
++    except (ValueError, UnicodeDecodeError, AttributeError):
++        return None
++
++
++def _dump(x):
++    return (json.dumps(x, indent=1, ensure_ascii=False) + "\n").encode("utf-8")
++
++
++def prepare(area, rel, data, course, term, old_term, days, keep_people=False):
++    """One file of an offering, as it goes into another (export: course/term None; import; the demo: keep_people).
++    None: it's left out."""
++    name = rel.split("/")[-1]
++    top = "/" not in rel
++    if area == "priv" and top and name in LEFT_OUT and not (keep_people and name == "announcements.json"):
++        return None
++    j = _json(data) if name.endswith(".json") else None
++    if area == "priv" and top and name == "grades.json" and isinstance(j, dict):
++        j = j if keep_people else scrub_book(j, course, term)
++        if keep_people and course and term:
++            j = dict(j, course=dict(j.get("course") if isinstance(j.get("course"), dict) else {}, code=course.upper(), term=term_name(term)))
++    elif area == "priv" and top and name == "groups.json" and isinstance(j, dict):
++        j = scrub_groups(j)
++    elif area == "pub" and top and name == "course.json" and isinstance(j, dict):
++        j = j if keep_people else scrub_page(j)
++        if course and term and isinstance(j.get("page"), dict):
++            j = dict(j, page=dict(j["page"], code=course.upper(), term=term_name(term)))
++    if j is not None and course:   # only on the way in: the dates move
++        j = shift_json(j, days)
++        if name == "exam.json":
++            j = json.loads(shift_text(json.dumps(j, ensure_ascii=False), days, old_term, term))
++        return _dump(j)
++    if j is not None:
++        return _dump(j)
++    if course and name.endswith(".tex"):
++        try:
++            return shift_text(data.decode("utf-8"), days, old_term, term).encode("utf-8")
++        except UnicodeDecodeError:
++            return data
++    return data
++
++
++# ── Export ───────────────────────────────────────────────────────────
++def offering_files(uid, off):
++    """{"pub" | "priv": {path in the offering: bytes}}."""
++    out = {}
++    for area in ("pub", "priv"):
++        r, got = Repo(uid, area), {}
++        for x in r.walk():
++            if x["type"] == "blob" and x["path"].startswith(off + "/"):
++                b = r.read(x["path"])
++                if b is not None:
++                    got[x["path"][len(off) + 1:]] = b
++        out[area] = got
++    return out
++
++
++def about_title(files):
++    a = _json(files["priv"].get("about.json") or b"") or {}
++    if isinstance(a, dict) and str(a.get("title") or "").strip():
++        return str(a["title"]).strip()
++    p = _json(files["pub"].get("course.json") or b"") or {}
++    return str(((p.get("page") or {}) if isinstance(p, dict) else {}).get("title") or "")
++
++
++@transfer_bp.get("/api/offerings/<owner>/<course>/<term>/export")
++@signed_in
++def export(owner, course, term):
++    o, off, role = _where(owner, course, term)
++    if role not in LEAD:
++        raise Refusal(403, "Only the offering's instructors can export it.")
++    files = offering_files(o["id"], off)
++    if not files["pub"] and not files["priv"]:
++        raise Refusal(404, "This course offering has nothing in it to export yet.")
++    c, t = off.split("/")
++    buf = io.BytesIO()
++    n = 0
++    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
++        for area in ("pub", "priv"):
++            for rel, data in sorted(files[area].items()):
++                d = prepare(area, rel, data, None, None, None, 0)
++                if d is not None:
++                    z.writestr(f"{area}/{rel}", d)
++                    n += 1
++        z.writestr(MANIFEST, _dump({"format": FORMAT, "course": c, "term": t, "title": about_title(files), "files": n,
++                                    "exported": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
++                                    "leftOut": "students, marks, accommodations and requests, announcements, the teaching team"}))
++    buf.seek(0)
++    return send_file(buf, mimetype="application/zip", as_attachment=True, download_name=f"{c}-{t}.lectern.zip")
++
++
++# ── Import ───────────────────────────────────────────────────────────
++def read_export(f):
++    """(manifest, {"pub": {...}, "priv": {...}}) from an uploaded export, or a Refusal."""
++    if not f:
++        raise Refusal(400, "Choose a Lectern export file (.zip).")
++    try:
++        z = zipfile.ZipFile(f.stream if hasattr(f, "stream") else f)
++    except (zipfile.BadZipFile, OSError):
++        raise Refusal(400, "That isn't a Lectern export: it's not a .zip file.")
++    with z:
++        infos = [i for i in z.infolist() if not i.is_dir()]
++        if len(infos) > MAX_FILES:
++            raise Refusal(413, f"That export has more than {MAX_FILES} files.")
++        if sum(i.file_size for i in infos) > MAX_BYTES:
++            raise Refusal(413, "That export is too big to import.")
++        try:
++            man = json.loads(z.read(MANIFEST).decode("utf-8"))
++        except (KeyError, ValueError, UnicodeDecodeError):
++            raise Refusal(400, "That isn't a Lectern export: it has no lectern-export.json. Export the offering from Lectern (its Export button) and import that file.")
++        if not isinstance(man, dict) or man.get("format") != FORMAT:
++            raise Refusal(400, "That export is from a version of Lectern this one can't read.")
++        files = {"pub": {}, "priv": {}}
++        for i in infos:
++            area, _, rel = i.filename.partition("/")
++            if area not in files or not rel:
++                continue
++            try:
++                rel = clean_path(rel)
++            except StoreError:
++                continue   # a hidden or odd name: skipped
++            files[area][rel] = z.read(i)
++    return man, files
++
++
++def _peek(man, files):
++    c, t = str(man.get("course") or ""), str(man.get("term") or "")
++    return {"course": c, "term": t if _TERM.match(t) else "", "termName": term_name(t), "title": str(man.get("title") or "")[:300],
++            "files": len(files["pub"]) + len(files["priv"]),
++            "exams": sorted({r.split("/")[0] for r in files["priv"] if r.count("/") == 1 and r.endswith("/exam.json")}),
++            "hasGrades": "grades.json" in files["priv"], "hasPage": "course.json" in files["pub"]}
++
++
++def _has(uid, off):
++    return any(os.path.isdir(os.path.join(db.data_dir(), "files", str(uid), a, *off.split("/"))) for a in ("pub", "priv"))
++
++
++def _put(uid, off, files, course, term, old_term, days, message, keep_people=False):
++    """Write an offering's files into an account (both areas), each as one save."""
++    for area in ("pub", "priv"):
++        out = {}
++        for rel, data in files[area].items():
++            d = prepare(area, rel, data, course, term, old_term, days, keep_people)
++            if d is not None:
++                out[f"{off}/{rel}"] = d
++        if out:
++            r = Repo(uid, area)
++            try:
++                r.commit(out, message, r.head(), g.user["email"])
++            except StoreError as e:
++                raise Refusal(e.status, str(e))
++
++
++def _target(course, term):
++    c, t = str(course or "").strip().lower(), str(term or "").strip().lower()
++    if not re.match(r"^[a-z0-9][a-z0-9.-]{0,63}$", c):
++        raise Refusal(400, "Enter the course as letters and numbers, e.g. csc258.")
++    if not _TERM.match(t):
++        raise Refusal(400, "Choose the term, e.g. Fall 2026.")
++    return clean_offering(f"{c}/{t}")
++
++
++@transfer_bp.post("/api/offerings/import/peek")
++@signed_in
++def import_peek():
++    man, files = read_export(request.files.get("file"))
++    return jsonify(export=_peek(man, files))
++
++
++@transfer_bp.post("/api/offerings/import")
++@signed_in
++def import_offering():
++    man, files = read_export(request.files.get("file"))
++    off = _target(request.form.get("course"), request.form.get("term"))
++    uid = g.user["id"]
++    if _has(uid, off):
++        raise Refusal(409, f"You already have {off}. Choose another term (or delete that offering first).")
++    c, t = off.split("/")
++    old = str(man.get("term") or "")
++    days = 7 * weeks_between(old, t) if request.form.get("moveDates", "1") != "0" else 0
++    _put(uid, off, files, c, t, old, days, f"Import {off} (from {man.get('course')}/{old})")
++    title = text(request.form, "title", 300).strip()
++    if title or "about.json" not in files["priv"]:   # its title (asked for, as a new offering's is)
++        r = Repo(uid, "priv")
++        a = _json(r.read(f"{off}/about.json") or b"") or {}
++        a = dict(a if isinstance(a, dict) else {}, format="lectern-about/2")
++        a["title"] = title or a.get("title") or str(man.get("title") or "")
++        a.setdefault("description", "")
++        r.commit({f"{off}/about.json": _dump(a)}, f"Import {off}: its title", r.head(), g.user["email"])
++    return jsonify(ok=True, course=c, term=t, weeks=days // 7)
++
++
++# ── The demo course ──────────────────────────────────────────────────
++def demo_files():
++    c, t = DEMO
++    out = {"pub": {}, "priv": {}}
++    for area, top in (("pub", "demo-courses"), ("priv", "demo-courses-private")):
++        base = os.path.join(ROOT, "sample-data", top, c, t)
++        for d, _, fs in os.walk(base):
++            for x in fs:
++                full = os.path.join(d, x)
++                with open(full, "rb") as f:
++                    out[area][os.path.relpath(full, base).replace(os.sep, "/")] = f.read()
++    return out
++
++
++def demo_book(b, days, today):
++    """The demo's gradebook: its students with emails that take no mail, and the marks of what's happened by
++    today, released (the rest not marked yet); with the grade so far shown on My Marks."""
++    b = json.loads(json.dumps(b))
++    past = {e["id"] for e in b.get("evals") or [] if isinstance(e, dict) and e.get("date") and _shift_iso(e["date"], days) < today.isoformat()}
++    for e in b.get("evals") or []:
++        if isinstance(e, dict) and e.get("id") in past:
++            e["released"] = True
++    b["marks"] = {s: {k: v for k, v in (m or {}).items() if k in past} for s, m in (b.get("marks") or {}).items()}
++    fields = b.get("fields") if isinstance(b.get("fields"), dict) else {}
++    custom = [x for x in fields.get("custom") or [] if isinstance(x, dict) and x.get("id") != "email"]
++    b["fields"] = dict(fields, custom=[{"id": "email", "label": "Email"}] + custom, emailDomain="example.com")
++    for s in b.get("students") or []:
++        if isinstance(s, dict):
++            who = re.sub(r"[^a-z]+", ".", f"{s.get('first', '')} {s.get('last', '')}".lower()).strip(".") or f"student{s.get('num')}"
++            s["f"] = dict(s.get("f") or {}, email=f"{who}@example.com")
++    pol = b.get("policies") if isinstance(b.get("policies"), dict) else {}
++    b["policies"] = dict(pol, show=dict(pol.get("show") if isinstance(pol.get("show"), dict) else {}, sofar=True))
++    return b
++
++
++@transfer_bp.post("/api/offerings/demo")
++@signed_in
++def load_demo():
++    uid, today = g.user["id"], date.today()
++    t = term_now(today)
++    off = f"{DEMO_COURSE}/{t}"
++    if _has(uid, off):
++        raise Refusal(409, f"You already have the demo course ({off}). Delete it from its page to load a fresh one.", "have")
++    days = 7 * weeks_between(DEMO[1], t)
++    files = demo_files()
++    files["priv"]["grades.json"] = _dump(demo_book(_json(files["priv"]["grades.json"]), days, today))
++    files["priv"]["about.json"] = _dump({"format": "lectern-about/2", "title": "Computer Organization (Demo)",
++                                         "description": "A made-up course for trying Lectern: its students, marks and exam aren't real. Delete it from this page when you're done.",
++                                         "icon": ""})
++    _put(uid, off, files, DEMO_COURSE, t, DEMO[1], days, "The demo course", keep_people=True)
++    return jsonify(ok=True, course=DEMO_COURSE, term=t)
+diff --git a/static/css/hub.css b/static/css/hub.css
+index e6841d7..ba34b05 100644
+--- a/static/css/hub.css
++++ b/static/css/hub.css
+@@ -813,6 +813,24 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
+ .wk-w { flex: none; font: 500 22px/1 var(--font-serif); color: var(--ink); font-variant-numeric: tabular-nums; margin-left: 12px; }
+ .wk-sub { padding-left: 38px !important; }
+ .wk-sub h3 { font-size: 19px !important; }
++/* My Marks: each evaluation's mark on the right (the percent, the points under it), and the grade so far on top. */
++.mm-mk { flex: none; display: grid; justify-items: end; margin-left: 12px; text-align: right; min-width: 64px; }
++.mm-mk b { font: 500 24px/1.05 var(--font-serif); color: var(--ink); font-variant-numeric: tabular-nums; }
++.mm-mk small { font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
++.mm-mk.mm-st b { font-size: 16px; font-weight: 600; font-family: var(--font-ui); color: var(--ink-2); }
++.mm-mk.mm-none b { color: var(--ink-3); }
++.mm-off .wk-b h3, .mm-off .mm-mk b { color: var(--ink-3); }
++.mm-off .mm-mk b { text-decoration: line-through; text-decoration-thickness: 1px; }
++.mm-sum { display: flex; align-items: center; gap: 28px; margin: 0 0 18px; }
++.mm-big { flex: none; display: grid; min-width: 120px; }
++.mm-big b { font: 500 48px/1.05 var(--font-serif); color: var(--ink); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
++.mm-big b.mm-none { color: var(--ink-3); }
++.mm-big small { font: 700 11px/1.6 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
++.mm-what { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
++.mm-note { margin: 0 0 18px; text-align: left; }
++.mm-foot { margin: 14px 2px 0; color: var(--ink-3); font-size: 14px; }
++@media (max-width: 640px) { .mm-sum { flex-direction: column; align-items: flex-start; gap: 10px; } .mm-big b { font-size: 40px; } .mm-mk b { font-size: 20px; }
++  .mm-mk { min-width: 0; } .mm-mk.mm-st b { font-size: 12.5px; max-width: 76px; line-height: 1.25; } .hs-gcard .mm-row.wk-sub { padding-left: 14px !important; } }
+ .hs-kick .hs-tag { text-transform: none; letter-spacing: 0; font-weight: 600; }
+ /* This week: its number's circle filled (no pill). */
+ .hs-num.on { background: var(--accent-line); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--ink); }
+diff --git a/static/css/shell.css b/static/css/shell.css
+index c64f569..0bcaf1b 100644
+--- a/static/css/shell.css
++++ b/static/css/shell.css
+@@ -1350,3 +1350,17 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
+   .lt-modal { max-height: calc(100dvh - 24px); padding: 20px 18px 16px; }
+   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
+ }
++
++/* Home: a new account's start (New, Import, the demo), and the line offering the demo under your courses. */
++.lt-start { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
++.lt-start .lt-card.new { min-height: 170px; padding: 18px; text-align: center; }
++.lt-demo-line { display: flex; align-items: flex-start; gap: 10px; margin: 22px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--home-ink-3); }
++.lt-demo-line > svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
++.lt-demo-line .lt-link { color: var(--home-ink); font-weight: 600; }
++/* Import: the file, then what's in it. */
++.lt-imp-file input[type="file"] { font: inherit; font-weight: 400; font-size: 13.5px; }
++.lt-imp-what { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--home-card, #fff); border: 1px solid var(--home-line-2); font-size: 13.5px; line-height: 1.5; }
++.lt-imp-what span { color: var(--home-ink-3); }
++#im-rest { display: grid; gap: 14px; }
++#im-rest[hidden] { display: none; }
++.lt-check small { font-weight: 400; color: var(--ink-3); }
+diff --git a/static/js/hub.js b/static/js/hub.js
+index 12f5dfd..0703d55 100644
+--- a/static/js/hub.js
++++ b/static/js/hub.js
+@@ -11,6 +11,7 @@
+      #week/<i>            one week: its activities (with their files), what's due, its announcements
+      #evaluations         every evaluation and its weight
+      #evaluation/<id>     one evaluation (or group): when, its weight, files, accommodations
++     #marks               My Marks: a signed-in student's released marks, and their grade so far if it's shown
+      #about, #accommodations
+ 
+    Older addresses still work (#lectures, #evaluations/<id>, #week). About and My accommodations are
+@@ -108,8 +109,8 @@ function lockedSec(id, title) {
+   return `<section class="hs-sec"><div class="hs-sec-h hs-off"><h2>${esc(title)}</h2>${LOCK}</div><div class="hs-locked"><span>For people in the course.</span><a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a></div></section>`;
+ }
+ function lockedPage(id, title) {
+-  if (!tab(id)) return PAGES.home();   // a part this course doesn't use
+-  return `${path([[title]])}<div class="hb-locked">${LOCK}<h2>${esc(title)}</h2><p>${id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p>
++  if (!tab(id === "marks" ? "evaluations" : id)) return PAGES.home();   // a part this course doesn't use
++  return `${path([[title]])}<div class="hb-locked">${LOCK}<h2>${esc(title)}</h2><p>${id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : id === "marks" ? "Sign in to see your marks." : "This part of the course page is for people in the course. Sign in to see it."}</p>
+     <a class="hb-btn primary" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`;
+ }
+ const annsOn = key => ((data("announcements") || {}).items || []).filter(a => a.on === key).sort((x, y) => annTime(y) - annTime(x));
+@@ -206,7 +207,9 @@ function evalList() {
+ const unitOf = id => { const E = data("evaluations"); if (!E) return null; for (const u of E.units || []) { if (u.id === id) return { u }; if (u.kind === "group") { const m = (u.members || []).find(x => x.id === id); if (m) return { u: m, group: u }; } } const e = allEvals().find(x => x.id === id); return e ? { u: e } : null; };
+ 
+ // A row that opens a page of the course page (Evaluations, About the Course…), locked when it isn't open.
+-const linkRow = (id, t, sub, tb) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`;
++// (My Marks is always for signed-in people, whoever else can see the evaluations.)
++const linkRow = (id, t, sub, tb) => { const ok = id === "marks" ? open(tb) && D.viewer.signedIn : open(tb || id), hid = id === "marks" ? D.viewer.staff : hidden(tb || id);
++  return `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span>${!ok || hid ? `<span class="hs-lock" title="${ok ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`; };
+ // ── Requesting an accommodation ──────────────────────────────────────
+ // Signed in, so the course page knows who's asking (the email they signed in with); to be sure it's them,
+ // they give their identifier and name too, which must match the class list exactly (server/accommodations.py).
+@@ -469,6 +472,7 @@ const PAGES = {
+       ["announcements", "Announcements", "News for the class, newest first."],
+       ["activities", "Activities", "The term, week by week: lectures, tutorials and labs, with their files.", "lectures"],
+       ["evaluations", "Evaluations", "Every evaluation, its weight and when it is."],
++      ["marks", "My Marks", "Your mark on each evaluation, once it's out.", "evaluations"],
+       ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
+       ["accommodations", "My Requests", "Your accommodation and remark requests, and what was decided."],
+     ].filter(([id, , , t]) => tab(t || id) && !shown.has(id));
+@@ -641,6 +645,53 @@ const PAGES = {
+         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
+       </article>`;
+   },
++  // My Marks (#marks): every evaluation, as the Evaluations page lists them, with the student's mark on each once
++  // it's released; and, when the gradebook's Settings show it, their grade so far (server/grading.py works it out
++  // as the gradebook does, from the released marks) with what each evaluation counts for.
++  marks() {
++    if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
++    if (!D.viewer.signedIn) return lockedPage("marks", "My Marks");
++    const v = D.viewer, M = v.marks || {}, SF = v.sofar || null, R = (SF && SF.rows) || {};
++    const U = data("evaluations").units || [], MK = allEvals().filter(x => x.makeupFor && M[x.id]);
++    const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
++    const pct = n => `${fmtW(Math.round(n * 10) / 10)}%`;
++    // Their mark, on the right: the percent, with the points under it (or what happened, or not out yet).
++    const markCell = e => {
++      const m = M[e.id], t = e.total;
++      if (m && m.status) return `<span class="mm-mk mm-st"><b>${esc(ST[m.status] || m.status)}</b></span>`;
++      if (m && m.pts != null) return `<span class="mm-mk"><b>${t ? pct(m.pts / t * 100) : fmtW(m.pts)}</b><small>${fmtW(m.pts)} / ${t ? fmtW(t) : "?"}</small></span>`;
++      return `<span class="mm-mk mm-none"><b>—</b><small>Not out yet</small></span>`;
++    };
++    // Under its title: what it's worth; once it's settled (with the grade so far), what happened to it and
++    // what it counts for now, as the gradebook says.
++    const sub = (e, group) => {
++      const r = R[e.id];
++      if (r && r.status !== "pending") {
++        const notes = String(r.note || "").split(" · ").filter(n => n && !/^One of the best /.test(n));
++        return [...notes, r.w > 0 ? `Counts for ${fmtW(Math.round(r.w * 100) / 100)}% of your grade${group ? `, as one of the best ${group.keep}` : ""}` : ""].filter(Boolean).map(esc).join(" · ");
++      }
++      return esc(group ? `Worth ${fmtW(group.weight / Math.max(1, group.keep))}% if it's among the best ${group.keep}` : e.weight != null ? `Worth ${fmtW(e.weight)}%` : "");
++    };
++    const row = (e, opts = {}) => { const r = R[e.id], off = r && (r.status === "notcounted" || r.status === "excused");
++      return `<a class="wk-item wk-link hs-ev mm-row${opts.sub ? " wk-sub" : ""}${opts.mk ? " mk" : ""}${off ? " mm-off" : ""}" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span>
++        <div class="wk-b"><p class="hs-kick">${esc(opts.mk ? `Makeup for ${opts.mk.name}` : e.name)}</p><h3>${esc(e.title || e.name)}</h3>${opts.mk ? "" : sub(e, opts.group) ? `<p class="wk-when">${sub(e, opts.group)}</p>` : ""}</div>${markCell(e)}${CHEV}</a>`; };
++    const one = (e, opts = {}) => row(e, opts) + MK.filter(x => x.makeupFor === e.id).map(x => row(x, { ...opts, mk: e })).join("");
++    const rows = U.map(u => u.kind === "group"
++      ? `<div class="hs-gcard"><a class="wk-item wk-link hs-ev" href="#evaluation/${encodeURIComponent(u.id)}"><span class="hs-ic">${EV_ICON.group}</span><div class="wk-b"><p class="hs-kick">Group</p><h3>${esc(u.name)}</h3><p class="wk-when">${esc(`Worth ${fmtW(u.weight)}%: the best ${u.keep} of ${u.count} count`)}</p></div>${CHEV}</a><div class="hs-cards">${(u.members || []).map(m => one(m, { sub: true, group: u })).join("")}</div></div>`
++      : one(u)).join("");
++    // The grade so far, on top: the average of what's settled, and how much of the course that is.
++    const nOut = Object.keys(M).length;
++    const sum = !SF ? "" : SF.current == null
++      ? `<article class="ec-card mm-sum"><div class="mm-big"><b class="mm-none">—</b><small>Your grade so far</small></div><p class="mm-what">None of your marks are out yet. Your grade so far will appear here as they are.</p></article>`
++      : `<article class="ec-card mm-sum"><div class="mm-big"><b>${pct(SF.current)}</b><small>${SF.final ? "Your grade" : "Your grade so far"}</small></div>
++          <p class="mm-what">${SF.final ? "Every evaluation is marked. This is your grade from your marks" : `The average of your marks that are out, which make up ${fmtW(Math.round(SF.done * 10) / 10)}% of the course${SF.pending ? `; ${SF.pending} evaluation${SF.pending === 1 ? " isn't" : "s aren't"} marked yet` : ""}`}. It follows the marking scheme (best of, makeups, and any accommodation you have). Your final grade can still be adjusted by the course's rules, such as rounding.</p></article>`;
++    const staff = v.staff || v.preview
++      ? `<p class="hs-empty mm-note">Each student sees their own marks here, once they're out${v.showsSofar ? ", and their grade so far" : ""}. ${v.showsSofar ? "The grade so far can be turned off" : "Their grade so far can be turned on"} in the gradebook's Settings.</p>` : "";
++    return `${path([["My Marks"]])}${head("My Marks", "Your mark on each evaluation, once it's out.")}
++      ${staff || sum}
++      ${rows ? `<div class="hs-cards">${rows}</div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}
++      ${!staff && !nOut && !SF ? `<p class="mm-foot">None of your marks are out yet.</p>` : ""}`;
++  },
+   // The student's requests (accommodations.py), a card each as the other lists are: its state's icon, the
+   // evaluation, what was asked for, when, what was decided, and the note that came with it.
+   accommodations() {
+@@ -884,9 +935,9 @@ function header() {
+       menu.innerHTML = `${U.length ? `${U.map(item).join("")}<hr>` : ""}
+         <p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
+         ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
+-        ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
++        ${v.role === "student" && open("evaluations") ? `<a role="menuitem" href="#marks">My Marks</a>` : ""}${v.role === "student" && open("accommodations") ? `<a role="menuitem" href="#accommodations">My Requests</a>` : ""}${v.role === "student" ? `<hr><button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
+       btn.after(menu); btn.setAttribute("aria-expanded", "true");
+-      menu.querySelectorAll(".hb-upd").forEach(a => { a.onclick = () => close(); });
++      menu.querySelectorAll('.hb-upd, a[href^="#"]').forEach(a => { a.onclick = () => close(); });
+       const out = $("hb-out");
+       if (out) out.onclick = async () => { out.disabled = true; await fetch(`${root.dataset.api}/sign-out`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" } }).catch(() => {}); location.reload(); };
+     };
+diff --git a/static/js/lectern.js b/static/js/lectern.js
+index 55e0d2c..0d30cf6 100644
+--- a/static/js/lectern.js
++++ b/static/js/lectern.js
+@@ -47,6 +47,9 @@ const encPath = p => p.split("/").map(encodeURIComponent).join("/");
+ const svgI = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+ const ICON = {
+   plus: svgI('<path d="M12 5v14M5 12h14"/>'),
++  upload: svgI('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>'),
++  download: svgI('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>'),
++  demo: svgI('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>', 1.8),
+   term: svgI('<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', 1.8),
+   up: svgI('<path d="m18 15-6-6-6 6"/>'),
+   down: svgI('<path d="m6 9 6 6 6-6"/>'),
+@@ -671,15 +674,25 @@ function homePage() {
+     <p class="lt-lede">Each course offering is a course in one term, like <code>csc258/f26</code>. It has a course page for students, its evaluations and a gradebook, and a teaching team. Offerings you're on someone else's team for are here too.</p>
+     ${sourceBar()}
+     <div class="lt-sec"><h2>Course Offerings</h2>${terms.length ? `<select class="lt-filter lt-term-pick" id="lt-term" aria-label="Term">${termGroups.map(([h, ts]) => `<optgroup label="${h}">${ts.map(termOpt).join("")}</optgroup>`).join("")}</select>` : ""}
++      <button type="button" class="lt-btn" id="lt-imp"${all ? "" : " disabled"} title="Bring in a course offering exported from Lectern">${ICON.upload}Import</button>
+       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
+     <div id="lt-list"></div>
++    ${all && all.length && !all.some(o => !o.o && o.c === DEMO_COURSE) ? `<p class="lt-demo-line">${ICON.demo}<span>Want to try something without touching your courses? <button type="button" class="lt-link" id="lt-demo">Load the demo course</button>: a made-up CSC258 with students, marks and an exam, which you can delete when you're done.</span></p>` : ""}
+   </div>`);
+   $("#lt-new").onclick = newOfferingDialog;
++  $("#lt-imp").onclick = importDialog;
++  if ($("#lt-demo")) $("#lt-demo").onclick = e => loadDemo(e.currentTarget);
+   const ts = $("#lt-term"); if (ts) ts.onchange = () => { homeTerm = ts.value; homePage(); };
+   const list = $("#lt-list");
+   if (S.listError) { list.innerHTML = `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)} <button type="button" class="lt-link" id="lt-retry">Try again</button></p>`; $("#lt-retry").onclick = () => { listAll(); }; return; }
+   if (!all) { list.innerHTML = `<div class="lt-tbox"><div class="lt-older">${'<div class="lt-ochip ghost"><div class="lt-ghost-bar" style="width:45%;height:18px;margin:0"></div></div>'.repeat(3)}</div></div>`; return; }
+-  if (!all.length) { list.innerHTML = `<button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>`; $("#lt-new2").onclick = newOfferingDialog; return; }
++  if (!all.length) {
++    list.innerHTML = `<div class="lt-start"><button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>
++      <button type="button" class="lt-card new" id="lt-imp2">${ICON.upload}<span>Import a Course Offering</span><small>One exported from Lectern, yours or a colleague's</small></button>
++      <button type="button" class="lt-card new" id="lt-demo2">${ICON.demo}<span>Try the Demo Course</span><small>A made-up CSC258 with students, marks and an exam</small></button></div>`;
++    $("#lt-new2").onclick = newOfferingDialog; $("#lt-imp2").onclick = importDialog; $("#lt-demo2").onclick = e => loadDemo(e.currentTarget);
++    return;
++  }
+   // The term's courses, each with its icon and title (from about.json), over the term drawn large in the
+   // window's corner (fixed: it stays put as the page scrolls).
+   const offs = all.filter(o => o.t === homeTerm);
+@@ -746,6 +759,99 @@ function iconPicker(current, code, onPick) {
+     const on = m.querySelector(".lt-ip-i.on"); if (on) on.scrollIntoView({ block: "center" });
+   });
+ }
++// ── Export, Import and the demo course (server/transfer.py) ─────────
++const DEMO_COURSE = "csc258-demo";
++// Export: the offering as a .zip (its course page, gradebook setup, activities, sections and exams; not its
++// students, marks, requests or announcements), downloaded.
++async function exportOffering(c, t, btn) {
++  const was = btn.innerHTML; btn.disabled = true; btn.textContent = "Exporting…";
++  try {
++    const r = await fetch(`/api/offerings/${encodeURIComponent(curOwner() || S.user.handle)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/export`, { credentials: "same-origin", cache: "no-store" });
++    if (!r.ok) { let m = ""; try { m = (await r.json()).error; } catch (_) {} throw new Error(m || `Something went wrong (${r.status}).`); }
++    const url = URL.createObjectURL(await r.blob()), a = document.createElement("a");
++    a.href = url; a.download = `${c}-${t}.lectern.zip`; document.body.append(a); a.click(); a.remove();
++    setTimeout(() => URL.revokeObjectURL(url), 60000);
++    toast(`Exported ${c}/${t}, without its students, marks, requests or announcements.`);
++  } catch (e) { toast(`Couldn't export it. ${e.message}`); }
++  finally { btn.disabled = false; btn.innerHTML = was; }
++}
++// Import: an exported offering, as a new one of yours: its course and term (the file's, to start with: a
++// new term is the usual change), with its dates moved to the new term by whole weeks.
++function importDialog() {
++  const now = new Date(), y = now.getFullYear() % 100, mo = now.getMonth();
++  modal(`<h2>Import a Course Offering</h2><p>From a file exported from Lectern (an offering's Export button). It comes in as a new offering of yours, without the students, marks, requests or announcements it had.</p>
++    <div class="lt-form">
++      <label class="lt-imp-file"><span>Export file</span><input type="file" id="im-file" accept=".zip,application/zip"></label>
++      <p class="lt-imp-what" id="im-what" hidden></p>
++      <div id="im-rest" hidden>
++        <label>Course<input type="text" id="im-c" placeholder="csc258" spellcheck="false" autocomplete="off"><small>Lower case, as in the folder name.</small></label>
++        <label>Title<input type="text" id="im-title" autocomplete="off"></label>
++        <div class="two">
++          <label>Term<select id="im-s"><option value="f">Fall</option><option value="w">Winter</option><option value="s">Summer</option></select></label>
++          <label>Year<input type="text" id="im-y" value="20${String(y).padStart(2, "0")}" inputmode="numeric" autocomplete="off"></label>
++        </div>
++        <label class="lt-check"><input type="checkbox" id="im-move" checked> <span>Move its dates to the new term <small id="im-move-n"></small></span></label>
++      </div>
++    </div>
++    <p class="lt-err" id="im-err"></p>
++    <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok disabled>Import</button></div>`, (m, close) => {
++    m.querySelector("[data-no]").onclick = close;
++    const $m = q => m.querySelector(q), err = $m("#im-err"), ok = $m("[data-ok]");
++    let file = null, from = null;
++    const send = (path, extra = {}) => { const f = new FormData(); f.append("file", file); Object.entries(extra).forEach(([k, v]) => f.append(k, v));
++      return fetch(path, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" }, body: f })
++        .then(r => r.json().catch(() => ({})).then(d => (r.ok ? d : Promise.reject(new Error(d.error || `Something went wrong (${r.status}).`))))); };
++    const target = () => { const yy = /^(?:20)?(\d{2})$/.exec($m("#im-y").value.trim()); return yy ? `${$m("#im-s").value}${yy[1]}` : ""; };
++    // How far the dates move: from the first Monday of the old term to the new one's (as the server does it).
++    const monday = t => { const x = /^([wsf])(\d{2})$/.exec(t); if (!x) return null; const d = new Date(2000 + +x[2], { w: 0, s: 4, f: 8 }[x[1]], 1); d.setDate(1 + (8 - d.getDay()) % 7); return d; };
++    const moveNote = () => { const a = monday(from && from.term), b = monday(target()), n = a && b ? Math.round((b - a) / 6048e5) : 0;
++      $m("#im-move-n").textContent = n ? `(${Math.abs(n)} week${Math.abs(n) === 1 ? "" : "s"} ${n > 0 ? "later" : "earlier"}, so each keeps its weekday)` : "(it's the same term: nothing moves)"; };
++    ["#im-s", "#im-y"].forEach(q => $m(q).addEventListener("input", moveNote));
++    $m("#im-file").onchange = async () => {
++      file = $m("#im-file").files[0] || null; from = null; err.textContent = ""; ok.disabled = true; $m("#im-rest").hidden = true; $m("#im-what").hidden = true;
++      if (!file) return;
++      try { from = (await send("/api/offerings/import/peek")).export; }
++      catch (e) { err.textContent = e.message; return; }
++      const bits = [from.hasPage && "its course page", from.hasGrades && "its evaluations", from.exams.length && `${from.exams.length} exam${from.exams.length === 1 ? "" : "s"}`].filter(Boolean);
++      $m("#im-what").innerHTML = `<b>${esc(from.course.toUpperCase())} ${esc(from.termName)}</b>${from.title ? `: ${esc(from.title)}` : ""}<br><span>${esc(bits.length ? `With ${bits.join(", ").replace(/, ([^,]*)$/, " and $1")}.` : `${from.files} files.`)}</span>`;
++      $m("#im-what").hidden = false; $m("#im-rest").hidden = false;
++      $m("#im-c").value = from.course; $m("#im-title").value = from.title;
++      // The next term after the file's, to start with (importing is mostly for a new term).
++      const x = /^([wsf])(\d{2})$/.exec(from.term);
++      if (x) { const order = ["w", "s", "f"], k = order.indexOf(x[1]), nk = (k + 1) % 3; $m("#im-s").value = order[nk]; $m("#im-y").value = `20${String(+x[2] + (nk === 0 ? 1 : 0)).padStart(2, "0")}`; }
++      moveNote(); ok.disabled = false;
++    };
++    ok.onclick = async () => {
++      const c = $m("#im-c").value.trim().toLowerCase().replace(/\s+/g, ""), t = target();
++      if (!slugOK(c)) { err.textContent = "Enter the course as letters and numbers, e.g. csc258."; return; }
++      if (!t) { err.textContent = "Enter the year, e.g. 2027."; return; }
++      if (S.offerings && S.offerings.has(okey(c, t))) { err.textContent = `You already have ${c}/${t}. Choose another term.`; return; }
++      ok.disabled = true; ok.textContent = "Importing…"; err.textContent = "";
++      try {
++        const d = await send("/api/offerings/import", { course: c, term: t, title: $m("#im-title").value.trim(), moveDates: $m("#im-move").checked ? "1" : "0" });
++        close();
++        toast(`Imported ${d.course}/${d.term}.${d.weeks ? ` Its dates moved ${Math.abs(d.weeks)} weeks ${d.weeks > 0 ? "later" : "earlier"}.` : ""}`);
++        aboutCache.delete(`/${d.course}/${d.term}`);
++        await listAll().catch(() => null);
++        go({ page: "offering", c: d.course, t: d.term, o: "" });
++      } catch (e) { ok.disabled = false; ok.textContent = "Import"; err.textContent = e.message; }
++    };
++  });
++}
++// The demo course: sample-data's CSC258 as csc258-demo in this term, dated to it, with made-up students and marks.
++async function loadDemo(btn) {
++  if (btn) btn.disabled = true;
++  try {
++    const d = await Auth.api("/api/offerings/demo", {});
++    toast("The demo course is ready. Delete it from its page when you're done.");
++    await listAll().catch(() => null);
++    go({ page: "offering", c: d.course, t: d.term, o: "" });
++  } catch (e) {
++    if (btn) btn.disabled = false;
++    if (e.code === "have") { const t = (/\/(\w+)\)/.exec(e.message) || [])[1]; if (t) return go({ page: "offering", c: DEMO_COURSE, t, o: "" }); }
++    toast(`Couldn't load the demo course. ${e.message}`);
++  }
++}
+ function newOfferingDialog() {
+   const now = new Date(), y = now.getFullYear() % 100, mo = now.getMonth();
+   const season = mo >= 8 ? "f" : mo >= 4 ? "s" : "w";
+@@ -853,7 +959,7 @@ function offeringPage(c, t) {
+       <div class="lt-off-id"><h1 class="lt-off-h1"><span>${esc(c.toUpperCase())}</span><span id="lt-h1-title"></span></h1>
+         <p class="lt-term-line">${esc(termName(t))}</p>
+         ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "a coordinator"}</p>` : ""}</div>
+-      <div class="lt-off-acts"><a class="lt-btn primary" id="lt-view-page" href="${esc(hubURL(c, t))}" target="_blank" rel="noopener" title="The course page, as students see it">${ICON.page}View Course Page</a>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
++      <div class="lt-off-acts">${edit ? `<button type="button" class="lt-btn" id="lt-export" title="Download this offering as a file, to import as a new term or share with a colleague">${ICON.download}Export</button>` : ""}<a class="lt-btn primary" id="lt-view-page" href="${esc(hubURL(c, t))}" target="_blank" rel="noopener" title="The course page, as students see it">${ICON.page}View Course Page</a>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
+     </div>
+     <div class="lt-about" id="lt-about"></div>
+     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
+@@ -942,6 +1048,7 @@ function offeringPage(c, t) {
+   }).catch(() => {});
+   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
+   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
++  const exp = $("#lt-export"); if (exp) exp.onclick = () => exportOffering(c, t, exp);
+   aboutPart(c, t, edit);
+   teamPart(c, t);
+   groupsPart(c, t);
+diff --git a/tests/browser/README.md b/tests/browser/README.md
+index 74d8cff..7e025a4 100644
+--- a/tests/browser/README.md
++++ b/tests/browser/README.md
+@@ -29,3 +29,4 @@ a flow is fine when it ends without an error (several print `<name>: OK`).
+ | Exams | `flow_examui`, `flow_standalone` |
+ | Course page | `flow_hub`, `flow_course`, `flow_drag`, `flow_lectures`, `flow_parts`, `flow_sections`, `flow_links`, `flow_evalfiles`, `flow_ann` |
+ | Students | `flow_students`, `flow_accommodations`, `flow_attendance`, `flow_mail` |
++| Export, Import, the demo course, My Marks | `flow_transfer` |
+diff --git a/tests/browser/flow_hub.py b/tests/browser/flow_hub.py
+index 9d48caa..15b5d0b 100644
+--- a/tests/browser/flow_hub.py
++++ b/tests/browser/flow_hub.py
+@@ -24,7 +24,7 @@ DEMO = os.path.join(ROOT, "sample-data/demo-courses/csc258/f26")
+ OLD = open(os.path.join(DEMO, "info.html"), encoding="utf-8").read()
+ DATA = open(os.path.join(DEMO, "course.json"), encoding="utf-8").read()
+ C = "[data-lt-tool='course'] "
+-HOME = ["Announcements", "Activities", "Evaluations", "About the Course", "My Requests"]   # the home page's links
++HOME = ["Announcements", "Activities", "Evaluations", "My Marks", "About the Course", "My Requests"]   # the home page's links
+ TABS = ["This week", "Announcements", "Activities", "Evaluations", "About", "My requests"]   # the course page builder (Lectern) still has its tabs
+ 
+ 
+diff --git a/tests/browser/flow_transfer.py b/tests/browser/flow_transfer.py
+new file mode 100644
+index 0000000..beb3309
+--- /dev/null
++++ b/tests/browser/flow_transfer.py
+@@ -0,0 +1,123 @@
++"""The demo course, Export and Import, and a student's My Marks.
++
++1. A new account's Home offers New, Import and the demo. Try the Demo Course: csc258-demo opens, in this term.
++2. Home lists it, with no demo line any more. The gradebook's Settings have Grade So Far, turned on.
++3. Export downloads csc258-demo-<term>.lectern.zip, without the students.
++4. Import it: the dialog reads the file, suggests the next term, and says how far the dates move; it opens
++   as a new offering with the setup and no students.
++5. A demo student signs in to the course page and opens My Marks: their released marks, and their grade so
++   far. The teaching team's view of My Marks says what students see.
++Asserts as it goes; screenshots in shots/.
++
++Run:  python tests/browser/flow_transfer.py
++"""
++import io
++import json
++import os
++import re
++import sys
++import zipfile
++
++sys.path.insert(0, os.path.dirname(__file__))
++from playwright.sync_api import sync_playwright, expect
++from harness import Server, OUT, block_cdns
++
++
++def main():
++    errors = []
++    with Server() as srv, sync_playwright() as p:
++        from server import mailer, transfer
++        srv.account()
++        T = transfer.term_now()
++        b = p.chromium.launch()
++        ctx = b.new_context(viewport={"width": 1360, "height": 900}, accept_downloads=True); block_cdns(ctx)
++        me = ctx.new_page()
++        me.on("pageerror", lambda e: errors.append(f"pageerror: {e}"))
++        srv.sign_in(me)
++
++        # 1. A new account's Home, and the demo
++        me.wait_for_selector("#lt-demo2")
++        expect(me.locator(".lt-start .lt-card")).to_have_count(3)
++        me.wait_for_timeout(800); me.screenshot(path=f"{OUT}/700-home-empty.png")
++        me.click("#lt-demo2")
++        me.wait_for_selector(".lt-off-h1")
++        expect(me.locator(".lt-off-h1")).to_contain_text("CSC258-DEMO")
++        expect(me.locator("#lt-export")).to_be_visible()
++        me.wait_for_timeout(800)
++        me.screenshot(path=f"{OUT}/701-demo-offering.png")
++        book = json.loads(srv.text("priv", f"csc258-demo/{T}/grades.json"))
++        out = [e["id"] for e in book["evals"] if e.get("released")]
++        print("1 demo:", len(book["students"]), "students;", len(out), "evaluations released")
++
++        # 2. Home lists it; the gradebook's Settings
++        me.evaluate("location.hash = '#/'"); me.wait_for_selector(".lt-ochip")
++        expect(me.locator(".lt-ochip", has_text="CSC258-DEMO")).to_have_count(1)
++        expect(me.locator("#lt-demo")).to_have_count(0)
++        me.evaluate(f"location.hash = '#/csc258-demo/{T}/settings'")
++        me.wait_for_selector("[data-lt-tool='grades'] [data-pshow='sofar']")
++        expect(me.locator("[data-lt-tool='grades'] [data-pshow='sofar']")).to_be_checked()
++        me.locator("[data-lt-tool='grades'] [data-pshow='sofar']").scroll_into_view_if_needed()
++        me.screenshot(path=f"{OUT}/702-grade-settings.png")
++        print("2 settings: Grade So Far is on")
++
++        # 3. Export
++        me.evaluate(f"location.hash = '#/csc258-demo/{T}'"); me.wait_for_selector("#lt-export")
++        with me.expect_download() as dl:
++            me.click("#lt-export")
++        path = dl.value.path(); name = dl.value.suggested_filename
++        assert name == f"csc258-demo-{T}.lectern.zip", name
++        z = zipfile.ZipFile(path)
++        assert json.loads(z.read("priv/grades.json"))["students"] == [] and "priv/midterm/exam.json" in z.namelist()
++        print("3 export:", name, len(z.namelist()), "files")
++
++        # 4. Import it, as the next term
++        me.evaluate("location.hash = '#/'"); me.wait_for_selector("#lt-imp:not([disabled])")
++        me.click("#lt-imp"); me.wait_for_selector("#im-file")
++        me.set_input_files("#im-file", path)
++        me.wait_for_selector("#im-rest:not([hidden])")
++        assert me.input_value("#im-c") == "csc258-demo" and me.input_value("#im-title") == "Computer Organization (Demo)"
++        expect(me.locator("#im-move-n")).to_contain_text("later")
++        me.fill("#im-c", "csc258"); me.fill("#im-title", "Computer Organization")
++        me.screenshot(path=f"{OUT}/703-import.png")
++        new_t = me.eval_on_selector("#im-s", "s => s.value") + me.input_value("#im-y")[-2:]
++        me.click(".lt-modal [data-ok]")
++        me.wait_for_selector(".lt-off-h1:has-text('CSC258')")
++        me.wait_for_timeout(800)
++        me.screenshot(path=f"{OUT}/704-imported.png")
++        nb = json.loads(srv.text("priv", f"csc258/{new_t}/grades.json"))
++        assert nb["students"] == [] and nb["evals"] and nb["course"]["code"] == "CSC258", nb["course"]
++        print("4 import: csc258/" + new_t, len(nb["evals"]), "evaluations, no students")
++
++        # 5. My Marks, for a demo student who has marks out
++        s = next(x for x in book["students"] if any(book["marks"].get(x["num"], {}).get(e) for e in out))
++        email = s["f"]["email"]
++        stu = b.new_context(viewport={"width": 1200, "height": 900}).new_page()
++        stu.on("pageerror", lambda e: errors.append(f"student pageerror: {e}"))
++        hub = srv.base + f"c/chandra/csc258-demo/{T}/"
++        stu.goto(hub + "#marks"); stu.wait_for_selector(".hb-locked")
++        stu.goto(hub + "sign-in"); stu.fill("#si-e", email); stu.click("#si-email button[type=submit]")
++        stu.wait_for_selector("#si-c")
++        code = re.search(r"\b(\d{8})\b", [m for m in mailer.sent if m["to"] == email and "code" in m["subject"]][-1]["body"]).group(1)
++        stu.fill("#si-c", code); stu.click("#si-code button[type=submit]")
++        stu.wait_for_selector(".hs-sec")
++        stu.click("a.hs-link:has-text('My Marks')")
++        stu.wait_for_selector(".mm-sum")
++        big = stu.locator(".mm-big b").inner_text()
++        assert re.match(r"^\d+(\.\d)?%$", big), big
++        expect(stu.locator(".mm-row .mm-mk:not(.mm-none)")).not_to_have_count(0)
++        stu.wait_for_timeout(1200); stu.screenshot(path=f"{OUT}/705-my-marks.png", full_page=True)
++        stu.set_viewport_size({"width": 390, "height": 844}); stu.wait_for_timeout(1200)
++        stu.screenshot(path=f"{OUT}/706-my-marks-phone.png", full_page=True)
++        stu.click("#hb-acct"); expect(stu.locator(".hb-menu a[href='#marks']")).to_be_visible()
++        print("5 my marks:", s["first"], s["last"], "grade so far", big)
++
++        me.goto(hub + "#marks"); me.wait_for_selector(".mm-note"); me.wait_for_timeout(1200)
++        expect(me.locator(".mm-note")).to_contain_text("grade so far")
++        me.screenshot(path=f"{OUT}/707-my-marks-staff.png")
++        b.close()
++    assert not errors, errors
++    print("flow_transfer: OK")
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/tests/test_grading.py b/tests/test_grading.py
+new file mode 100644
+index 0000000..ef21565
+--- /dev/null
++++ b/tests/test_grading.py
+@@ -0,0 +1,129 @@
++"""The grade so far (server/grading.py) agrees with the gradebook's own (the Grade Builder's studentResult).
++
++The builder's JavaScript is taken out of tools/grade-builder.html and run with node on the same gradebooks:
++the sample ones, then the same with random statuses, accommodations, makeups and reweights. Every student's
++grade, and every evaluation's weight, score and status, must match. (Skipped where node isn't installed.)
++"""
++import copy
++import json
++import os
++import random
++import re
++import shutil
++import subprocess
++
++import pytest
++
++from server import grading
++
++ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++BOOKS = sorted(os.path.join(dp, f) for dp, _, fs in os.walk(os.path.join(ROOT, "sample-data/demo-courses-private")) for f in fs if f == "grades.json")
++NAMES = ["num", "fmtNum", "totalSet", "ratio", "evalById", "makeupsOf", "counted", "groupOf", "units", "groupShort", "markOf", "overrideOf",
++         "STATUSES", "statusOf", "groupOverride", "weightSum", "shortName", "shareParts", "policyFor", "studentResult"]
++
++
++def builder_js():
++    """The builder's grade functions, as a script that reads {book, students} on stdin and prints the results."""
++    src = open(os.path.join(ROOT, "tools/grade-builder.html"), encoding="utf-8").read()
++    out = []
++    for n in NAMES:
++        m = re.search(rf"^(const {n} = .*|function {n}\(.*)$", src, re.M)
++        assert m, f"{n} isn't in the grade builder any more: update server/grading.py and this test"
++        if m.group(1).startswith("const"):
++            out.append(m.group(1))
++            continue
++        i, depth = src.index("{", m.start()), 0
++        for j in range(i, len(src)):
++            depth += {"{": 1, "}": -1}.get(src[j], 0)
++            if depth == 0:
++                out.append(src[m.start():j + 1])
++                break
++    return "let model;\n" + "\n".join(out) + """
++let inp = ""; process.stdin.on("data", d => inp += d).on("end", () => {
++  const { book, students } = JSON.parse(inp); model = book;
++  const res = {}; students.forEach(s => { const r = studentResult(s), rows = {};
++    Object.entries(r.rows).forEach(([k, x]) => { rows[k] = { w: x.w, score: x.score, status: x.status, note: x.note }; });
++    res[s] = { current: r.current, final: r.final, earned: r.earned, pending: r.pending, rows }; });
++  process.stdout.write(JSON.stringify(res));
++});"""
++
++
++def js_results(book):
++    node = shutil.which("node")
++    p = subprocess.run([node, "-e", builder_js()], input=json.dumps({"book": book, "students": [s["num"] for s in book["students"]]}),
++                       capture_output=True, text=True, timeout=60)
++    assert p.returncode == 0, p.stderr
++    return json.loads(p.stdout)
++
++
++def close(a, b):
++    return (a is None and b is None) or (a is not None and b is not None and abs(a - b) < 1e-9)
++
++
++def same(book):
++    js = js_results(book)
++    for s in book["students"]:
++        py, want = grading.student_result(book, s["num"]), js[s["num"]]
++        for k in ("current", "final", "earned"):
++            assert close(py[k], want[k]), (s["num"], k, py[k], want[k])
++        assert py["pending"] == want["pending"]
++        for eid, w in want["rows"].items():
++            r = py["rows"][eid]
++            assert r["status"] == w["status"] and close(r["w"], w["w"]) and close(r["score"], w["score"]) and r["note"] == w["note"], (s["num"], eid, r, w)
++
++
++def shake(book, seed):
++    """The same gradebook with random statuses, accommodations, makeups and reweights."""
++    rnd, b = random.Random(seed), copy.deepcopy(book)
++    ids = [e["id"] for e in b["evals"]]
++    alone = [e for e in b["evals"] if not e.get("makeupFor") and not any(e["id"] in g["members"] for g in b["groups"])]
++    for e in alone:   # some are reweighted when missed, to others (and back: chains and loops)
++        if rnd.random() < 0.5:
++            others = [x["id"] for x in alone if x is not e]
++            e["missed"] = {"mode": "reweight", "split": "custom", "makeups": e["missed"].get("makeups", []),
++                           "to": [{"id": i, "share": rnd.choice([25, 50, 60, 100])} for i in rnd.sample(others, min(len(others), rnd.randint(1, 2)))]}
++    for s in b["students"]:
++        m = b["marks"].setdefault(s["num"], {})
++        for i in ids:
++            x = rnd.random()
++            if x < 0.05:
++                m[i] = {"status": rnd.choice(["aiv", "excused", "deferred"])}
++            elif x < 0.12:
++                m[i] = {"missed": True}
++            elif x < 0.17:
++                m.pop(i, None)
++        if rnd.random() < 0.3 and alone:
++            e = rnd.choice(alone)
++            b["overrides"].setdefault(s["num"], {})[e["id"]] = {"weight": rnd.choice([0, 5, 12.5, 30])}
++        if rnd.random() < 0.3 and b["groups"]:
++            g = b["groups"][0]
++            b["overrides"].setdefault(s["num"], {})["g:" + g["id"]] = {"keep": rnd.randint(1, 4), "excused": rnd.sample(g["members"], 1), **({"weight": 7} if rnd.random() < 0.5 else {})}
++    return b
++
++
++needs_node = pytest.mark.skipif(not shutil.which("node"), reason="node isn't installed")
++
++
++@needs_node
++@pytest.mark.parametrize("path", BOOKS, ids=lambda p: "/".join(p.split(os.sep)[-3:-1]))
++def test_the_same_as_the_gradebook_on_the_samples(path):
++    same(json.load(open(path, encoding="utf-8")))
++
++
++@needs_node
++@pytest.mark.parametrize("seed", range(6))
++def test_the_same_as_the_gradebook_with_accommodations_and_reweights(seed):
++    for path in BOOKS[::2]:
++        same(shake(json.load(open(path, encoding="utf-8")), seed * 31 + len(path)))
++
++
++def test_a_small_gradebook_by_hand():
++    book = {"evals": [{"id": "a", "name": "Assn 1", "total": 10, "weight": 40, "missed": {"mode": "zero"}},
++                      {"id": "t", "name": "Test 1", "total": 50, "weight": 60, "missed": {"mode": "reweight", "split": "custom", "to": [{"id": "a", "share": 100}], "makeups": []}}],
++            "groups": [], "marks": {"1": {"a": {"pts": 8}}, "2": {"a": {"pts": 5}, "t": {"missed": True}}}, "overrides": {}}
++    one = grading.student_result(book, "1")
++    assert one["current"] == pytest.approx(80) and one["pending"] == 1 and one["final"] is None
++    two = grading.student_result(book, "2")   # the test's weight moved to the assignment: 50% of everything
++    assert two["final"] == pytest.approx(50) and two["rows"]["a"]["w"] == pytest.approx(100)
++    assert two["rows"]["t"]["note"] == "Not submitted: 60% moved to Assn 1"
++    assert grading.fmt_num(12.345) == "12.35" and grading.fmt_num(3) == "3" and grading.num("12abc") == 12
+diff --git a/tests/test_students.py b/tests/test_students.py
+index 27c97f5..e91a3f9 100644
+--- a/tests/test_students.py
++++ b/tests/test_students.py
+@@ -234,6 +234,28 @@ def test_a_student_sees_only_the_marks_that_are_out(client, course):
+     assert st.get(HUB).get_json()["viewer"]["marks"] == {"a1": {"pts": 8}}
+ 
+ 
++def test_my_marks_grade_so_far_only_when_turned_on_and_only_from_released_marks(client, course):
++    enrol(course, "maya@mail.utoronto.ca")
++    r = store.Repo(course["id"], "priv")
++    b = json.loads(r.read("csc258/f26/grades.json"))
++    b["evals"] = [{"id": "mt", "name": "Test 1", "total": 50, "weight": 60, "missed": {"mode": "zero"}},
++                  {"id": "a1", "name": "Assn 1", "total": 10, "weight": 40, "released": True, "missed": {"mode": "zero"}}]
++    b["marks"] = {"1000": {"mt": {"pts": 10}, "a1": {"pts": 8}}, "2000": {"a1": {"pts": 1}}}
++    b["overrides"] = {"2000": {"a1": {"weight": 0}}}
++    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "marks", r.head())
++    st = app.test_client(); sign_in(st, "maya@mail.utoronto.ca")
++    assert "sofar" not in st.get(HUB).get_json()["viewer"]                   # off until the gradebook turns it on
++    assert client.get(HUB).get_json()["viewer"]["showsSofar"] is False      # (the teaching team is told which)
++    b["policies"] = {"show": {"sofar": True}}
++    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "on", r.head())
++    v = st.get(HUB).get_json()["viewer"]
++    # Test 1's 10/50 isn't out: it's not marked yet, so the grade so far is the assignment's 80%, on 40% of the course.
++    assert v["sofar"]["current"] == pytest.approx(80) and v["sofar"]["done"] == pytest.approx(40) and v["sofar"]["pending"] == 1
++    assert v["sofar"]["rows"]["mt"]["status"] == "pending" and v["sofar"]["rows"]["a1"]["status"] == "graded"
++    assert client.get(HUB).get_json()["viewer"]["showsSofar"] is True and "sofar" not in client.get(HUB).get_json()["viewer"]
++    assert "sofar" not in app.test_client().get(HUB).get_json()["viewer"]    # nobody's signed in
++
++
+ def test_a_lecture_hall_on_one_address_can_all_sign_in(client, course):
+     """Campus Wi-Fi can put a whole class behind one address: told to sign in at once, they all can."""
+     many = [f"s{i}@mail.utoronto.ca" for i in range(60)]
+diff --git a/tests/test_transfer.py b/tests/test_transfer.py
+new file mode 100644
+index 0000000..49bbdec
+--- /dev/null
++++ b/tests/test_transfer.py
+@@ -0,0 +1,164 @@
++"""Exporting an offering, importing it as another (without its students), and loading the demo course."""
++import io
++import json
++import zipfile
++from datetime import date
++
++import pytest
++
++from conftest import H, make_user
++from server import app, store, transfer
++from test_hub import publish
++from test_teams import add, member
++
++OFF = "csc258/f26"
++
++
++def seed(user):
++    """An offering with a little of everything, students' things included."""
++    publish(user)
++    r = store.Repo(user["id"], "priv")
++    book = {"format": "grade-builder/1", "course": {"code": "CSC258", "term": "Fall 2026"}, "fields": {"idLabel": "Student Number", "custom": []},
++            "evals": [{"id": "mt", "name": "Test 1", "date": "2026-10-28", "time": "18:10", "total": 50, "weight": 30, "released": True, "missed": {"mode": "zero"}}],
++            "groups": [], "students": [{"num": "1000", "first": "Maya", "last": "S", "f": {"email": "maya@mail.utoronto.ca"}}],
++            "marks": {"1000": {"mt": {"pts": 40}}}, "overrides": {"1000": {"mt": {"weight": 0}}}, "finals": {"1000": {"grade": 90}},
++            "policies": {"show": {"sofar": True}}}
++    r.commit({f"{OFF}/grades.json": json.dumps(book).encode(),
++              f"{OFF}/about.json": json.dumps({"format": "lectern-about/2", "title": "Computer Organization", "description": "Gates to CPUs"}).encode(),
++              f"{OFF}/lectures.json": json.dumps({"weeks": [{"label": "Week 1", "start": "2026-09-07", "end": "2026-09-11", "dates": "Sep 7 – 11", "cards": [
++                  {"id": "l1", "title": "Gates", "files": [{"label": "Slides", "url": "https://example.edu/2026-09-07/lec01.pdf"}]}]}]}).encode(),
++              f"{OFF}/announcements.json": json.dumps({"items": [{"id": "a1", "title": "Welcome", "date": "Sep 7, 2026, 09:00", "body": "Hi"}]}).encode(),
++              f"{OFF}/accommodations.json": json.dumps({"requests": [{"email": "maya@mail.utoronto.ca"}]}).encode(),
++              f"{OFF}/team.json": json.dumps({"people": {"1": {"office": "BA 1234"}}}).encode(),
++              f"{OFF}/groups.json": json.dumps({"groups": [{"id": "g1", "name": "LEC0101", "people": [1], "items": [{"day": 1, "start": "10:00", "people": [1]}]}]}).encode(),
++              f"{OFF}/midterm/exam.json": json.dumps({"format": "exam-builder/2", "meta": {"term": "Fall 2026", "date": "Wednesday, October 28, 2026, 18:10"}}).encode(),
++              f"{OFF}/midterm/midterm.tex": "\\renewcommand{\\ExamDate}{Wednesday, October 28, 2026, 18:10} Fall 2026".encode()}, "seed", r.head())
++
++
++def export_zip(client, off=OFF):
++    r = client.get(f"/api/offerings/chandra/{off}/export")
++    assert r.status_code == 200, r.get_json()
++    return zipfile.ZipFile(io.BytesIO(r.data))
++
++
++def test_an_export_has_the_setup_but_none_of_the_students(client, user):
++    seed(user)
++    z = export_zip(client)
++    names = set(z.namelist())
++    assert {"lectern-export.json", "pub/course.json", "priv/grades.json", "priv/about.json", "priv/lectures.json", "priv/groups.json", "priv/midterm/exam.json"} <= names
++    assert not names & {"priv/accommodations.json", "priv/announcements.json", "priv/team.json"}
++    man = json.loads(z.read("lectern-export.json"))
++    assert man["format"] == "lectern-export/1" and (man["course"], man["term"], man["title"]) == ("csc258", "f26", "Computer Organization")
++    b = json.loads(z.read("priv/grades.json"))
++    assert b["students"] == [] and b["marks"] == {} and b["overrides"] == {} and b["finals"] == {}
++    assert b["evals"][0]["weight"] == 30 and "released" not in b["evals"][0]
++    gr = json.loads(z.read("priv/groups.json"))["groups"][0]
++    assert "people" not in gr and "people" not in gr["items"][0] and gr["name"] == "LEC0101"
++    assert b"maya" not in b"".join(z.read(n) for n in names)
++
++
++def test_only_the_offerings_instructors_export_it(client, user):
++    seed(user)
++    ta, _ = member("ta@utoronto.ca", "tess")
++    add(client, "ta@utoronto.ca", "ta", who=ta)
++    assert ta.get(f"/api/offerings/chandra/{OFF}/export").status_code == 403
++    assert app.test_client().get(f"/api/offerings/chandra/{OFF}/export").status_code == 401
++    assert client.get("/api/offerings/chandra/csc258/w99/export").status_code == 404
++
++
++def upload(client, data, path="/api/offerings/import", **form):
++    return client.post(path, data={"file": (io.BytesIO(data), "x.lectern.zip"), **form}, headers=H, content_type="multipart/form-data")
++
++
++def test_importing_into_a_new_term_moves_the_dates_by_whole_weeks(client, user):
++    seed(user)
++    z = client.get(f"/api/offerings/chandra/{OFF}/export").data
++    p = upload(client, z, "/api/offerings/import/peek").get_json()["export"]
++    assert (p["course"], p["term"], p["title"], p["exams"], p["hasGrades"]) == ("csc258", "f26", "Computer Organization", ["midterm"], True)
++    r = upload(client, z, course="csc258", term="f27")
++    assert r.status_code == 200, r.get_json()
++    assert r.get_json()["weeks"] == 52   # Sep 7, 2026 → Sep 6, 2027: the same weekday
++    pv = store.Repo(user["id"], "priv")
++    b = json.loads(pv.read("csc258/f27/grades.json"))
++    assert b["evals"][0]["date"] == "2027-10-27" and b["students"] == [] and b["course"] == {"code": "CSC258", "term": "Fall 2027"}
++    w = json.loads(pv.read("csc258/f27/lectures.json"))["weeks"][0]
++    assert (w["start"], w["dates"]) == ("2027-09-06", "Sept 6 – 10")
++    assert w["cards"][0]["files"][0]["url"] == "https://example.edu/2026-09-07/lec01.pdf"   # a link is left alone
++    e = json.loads(pv.read("csc258/f27/midterm/exam.json"))["meta"]
++    assert e == {"term": "Fall 2027", "date": "Wednesday, October 27, 2027, 18:10"}
++    assert pv.read("csc258/f27/midterm/midterm.tex").decode() == "\\renewcommand{\\ExamDate}{Wednesday, October 27, 2027, 18:10} Fall 2027"
++    assert json.loads(pv.read("csc258/f27/about.json"))["title"] == "Computer Organization"
++    assert pv.read("csc258/f27/accommodations.json") is None and pv.read("csc258/f27/announcements.json") is None
++    assert json.loads(store.Repo(user["id"], "pub").read("csc258/f27/course.json"))["page"]["term"] == "Fall 2027"
++    # The offering it came from is untouched; importing over one you have is refused.
++    assert json.loads(pv.read(f"{OFF}/grades.json"))["students"]
++    assert upload(client, z, course="csc258", term="f26").status_code == 409
++
++
++def test_importing_without_moving_the_dates_and_under_another_name(client, user):
++    seed(user)
++    z = client.get(f"/api/offerings/chandra/{OFF}/export").data
++    other = app.test_client(); u2 = make_user(other, "ana@utoronto.ca", "Ana B", "ana")
++    r = upload(other, z, course="CSC258H1", term="w27", moveDates="0", title="Comp Org")
++    assert r.status_code == 200 and r.get_json()["course"] == "csc258h1"
++    pv = store.Repo(u2["id"], "priv")
++    assert json.loads(pv.read("csc258h1/w27/grades.json"))["evals"][0]["date"] == "2026-10-28"
++    assert json.loads(pv.read("csc258h1/w27/about.json"))["title"] == "Comp Org"
++
++
++@pytest.mark.parametrize("bad, why", [(b"not a zip", "not a .zip"), (None, "no lectern-export.json")])
++def test_import_refuses_what_isnt_an_export(client, user, bad, why):
++    if bad is None:
++        buf = io.BytesIO()
++        with zipfile.ZipFile(buf, "w") as z:
++            z.writestr("priv/grades.json", "{}")
++        bad = buf.getvalue()
++    r = upload(client, bad, course="csc258", term="f27")
++    assert r.status_code == 400 and why in r.get_json()["error"]
++    assert upload(client, b"x", course="csc258", term="f27").status_code == 400
++    assert app.test_client().post("/api/offerings/import", headers=H).status_code == 401
++
++
++def test_a_hand_made_export_still_leaves_the_students_out(client, user):
++    buf = io.BytesIO()
++    with zipfile.ZipFile(buf, "w") as z:
++        z.writestr("lectern-export.json", json.dumps({"format": "lectern-export/1", "course": "x", "term": "f26"}))
++        z.writestr("priv/grades.json", json.dumps({"students": [{"num": "1"}], "marks": {"1": {}}, "evals": [{"id": "a", "released": True}]}))
++        z.writestr("priv/accommodations.json", "{}")
++        z.writestr("priv/.secret", "x")
++        z.writestr("../evil.json", "x")
++    assert upload(client, buf.getvalue(), course="x", term="f26").status_code == 200
++    pv = store.Repo(user["id"], "priv")
++    b = json.loads(pv.read("x/f26/grades.json"))
++    assert b["students"] == [] and b["marks"] == {} and b["evals"] == [{"id": "a"}]
++    assert pv.read("x/f26/accommodations.json") is None
++    assert json.loads(pv.read("x/f26/about.json"))["title"] == ""
++
++
++def test_the_terms_and_their_weeks():
++    assert transfer.term_now(date(2026, 11, 14)) == "f26" and transfer.term_now(date(2027, 2, 1)) == "w27" and transfer.term_now(date(2027, 6, 1)) == "s27"
++    assert transfer.term_monday("f26") == date(2026, 9, 7) and transfer.term_monday("w27") == date(2027, 1, 4)
++    assert transfer.weeks_between("f26", "w27") == 17 and transfer.weeks_between("f26", "x") == 0
++    assert transfer.shift_json({"d": "2026-09-07", "s": "Sep 7, 2026, 09:00", "u": "see 2026-09-07"}, 7) == {"d": "2026-09-14", "s": "Sep 14, 2026, 09:00", "u": "see 2026-09-07"}
++
++
++def test_the_demo_course(client, user, monkeypatch):
++    r = client.post("/api/offerings/demo", headers=H)
++    assert r.status_code == 200, r.get_json()
++    t = r.get_json()["term"]
++    assert r.get_json()["course"] == "csc258-demo" and t == transfer.term_now()
++    pv = store.Repo(user["id"], "priv")
++    b = json.loads(pv.read(f"csc258-demo/{t}/grades.json"))
++    assert len(b["students"]) > 20 and all(s["f"]["email"].endswith("@example.com") for s in b["students"])
++    today = date.today().isoformat()
++    out = {e["id"] for e in b["evals"] if e.get("released")}
++    assert out == {e["id"] for e in b["evals"] if e.get("date") and e["date"] < today}
++    assert all(set(m) <= out for m in b["marks"].values()) and b["policies"]["show"]["sofar"] is True
++    assert json.loads(pv.read(f"csc258-demo/{t}/about.json"))["title"] == "Computer Organization (Demo)"
++    assert pv.read(f"csc258-demo/{t}/midterm/exam.json")
++    assert json.loads(store.Repo(user["id"], "pub").read(f"csc258-demo/{t}/course.json"))["page"]["code"] == "CSC258-DEMO"
++    again = client.post("/api/offerings/demo", headers=H)
++    assert again.status_code == 409 and again.get_json()["code"] == "have"
++    # Its course page works, and its week 1 starts on its term's first Monday.
++    j = client.get(f"/api/hub/chandra/csc258-demo/{t}").get_json()
++    assert j["course"]["code"] == "CSC258-DEMO" and j["data"]["lectures"]["weeks"][0]["start"] == transfer.term_monday(t).isoformat()
+diff --git a/tools/grade-builder.html b/tools/grade-builder.html
+index 556888e..d4d9652 100644
+--- a/tools/grade-builder.html
++++ b/tools/grade-builder.html
+@@ -2104,7 +2104,9 @@ function normalizeBook(x) {
+     // A rule: if [an evaluation] [is below X% | isn't submitted | is deferred], the grade is [capped at | set to] X% or a special grade.
+     autofail: (P.autofail || []).map(x => ({ id: x.id || uid(), target: x.target || "", when: ["missed", "deferred"].includes(x.when) ? x.when : "below", below: num(x.below), effect: ["set", "code"].includes(x.effect) ? x.effect : "cap", value: num(x.value), code: x.code || "IPR" })),
+     // Which of them the course page's About tab shows (the rules do unless turned off; ranges and rounding don't unless turned on).
+-    show: { ranges: !!(P.show || {}).ranges, round: !!(P.show || {}).round, rules: (P.show || {}).rules !== false } };
++    show: { ranges: !!(P.show || {}).ranges, round: !!(P.show || {}).round, rules: (P.show || {}).rules !== false,
++      // and whether each student sees their grade so far on the course page's My Marks (off unless turned on)
++      sofar: (P.show || {}).sofar === true } };
+   // A grade set by hand for one student: a percentage or a special grade, with why.
+   b.finals = b.finals && typeof b.finals === "object" ? b.finals : {};
+   return b;
+@@ -3864,6 +3866,8 @@ function settingsHTML() {
+         <select data-pol="effect"><option value="cap"${a.effect === "cap" ? " selected" : ""}>capped at</option><option value="set"${a.effect === "set" ? " selected" : ""}>set to</option><option value="code"${a.effect === "code" ? " selected" : ""}>a special grade:</option></select>${a.effect === "code" ? `<select data-pol="code">${CODES.map(([c2, l]) => `<option value="${c2}"${a.code === c2 ? " selected" : ""}>${c2} (${esc(l)})</option>`).join("")}</select>` : `<input type="number" class="num" step="any" data-pol="value" value="${esc(a.value)}">%`}
+         <span class="spacer"></span><button type="button" class="ic trash" data-act="pol-fdel" data-id="${esc(a.id)}" title="Delete this rule" aria-label="Delete this rule">${svg("trash")}</button></div>`).join("")}
+       <button type="button" class="add-mk" data-act="pol-fadd">${svg("plus")}Add a Rule</button>${P.autofail.length ? showBox("rules", sh.rules !== false, "these rules") : ""}</section>
++    <section class="set-card"><h2>Grade So Far</h2><p class="set-help">On the course page, My Marks lists each student's released marks. It can also show them their grade so far: the average of what's been released, worked out as the Grades tab does (best of, makeups, their accommodations). The ranges, rounding and rules above apply only to the final grade, so they aren't in it.</p>
++      <label class="set-show"><input type="checkbox" data-pshow="sofar"${sh.sofar ? " checked" : ""}> Show each student their grade so far on the course page (My Marks)</label></section>
+   </div>`;
+ }
+ 

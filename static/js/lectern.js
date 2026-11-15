@@ -47,6 +47,9 @@ const encPath = p => p.split("/").map(encodeURIComponent).join("/");
 const svgI = (d, w = 2) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const ICON = {
   plus: svgI('<path d="M12 5v14M5 12h14"/>'),
+  upload: svgI('<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>'),
+  download: svgI('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/>'),
+  demo: svgI('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>', 1.8),
   term: svgI('<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>', 1.8),
   up: svgI('<path d="m18 15-6-6-6 6"/>'),
   down: svgI('<path d="m6 9 6 6 6-6"/>'),
@@ -671,15 +674,25 @@ function homePage() {
     <p class="lt-lede">Each course offering is a course in one term, like <code>csc258/f26</code>. It has a course page for students, its evaluations and a gradebook, and a teaching team. Offerings you're on someone else's team for are here too.</p>
     ${sourceBar()}
     <div class="lt-sec"><h2>Course Offerings</h2>${terms.length ? `<select class="lt-filter lt-term-pick" id="lt-term" aria-label="Term">${termGroups.map(([h, ts]) => `<optgroup label="${h}">${ts.map(termOpt).join("")}</optgroup>`).join("")}</select>` : ""}
+      <button type="button" class="lt-btn" id="lt-imp"${all ? "" : " disabled"} title="Bring in a course offering exported from Lectern">${ICON.upload}Import</button>
       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
     <div id="lt-list"></div>
+    ${all && all.length && !all.some(o => !o.o && o.c === DEMO_COURSE) ? `<p class="lt-demo-line">${ICON.demo}<span>Want to try something without touching your courses? <button type="button" class="lt-link" id="lt-demo">Load the demo course</button>: a made-up CSC258 with students, marks and an exam, which you can delete when you're done.</span></p>` : ""}
   </div>`);
   $("#lt-new").onclick = newOfferingDialog;
+  $("#lt-imp").onclick = importDialog;
+  if ($("#lt-demo")) $("#lt-demo").onclick = e => loadDemo(e.currentTarget);
   const ts = $("#lt-term"); if (ts) ts.onchange = () => { homeTerm = ts.value; homePage(); };
   const list = $("#lt-list");
   if (S.listError) { list.innerHTML = `<p class="lt-note err">Couldn't read your courses. ${esc(S.listError.message)} <button type="button" class="lt-link" id="lt-retry">Try again</button></p>`; $("#lt-retry").onclick = () => { listAll(); }; return; }
   if (!all) { list.innerHTML = `<div class="lt-tbox"><div class="lt-older">${'<div class="lt-ochip ghost"><div class="lt-ghost-bar" style="width:45%;height:18px;margin:0"></div></div>'.repeat(3)}</div></div>`; return; }
-  if (!all.length) { list.innerHTML = `<button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>`; $("#lt-new2").onclick = newOfferingDialog; return; }
+  if (!all.length) {
+    list.innerHTML = `<div class="lt-start"><button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>
+      <button type="button" class="lt-card new" id="lt-imp2">${ICON.upload}<span>Import a Course Offering</span><small>One exported from Lectern, yours or a colleague's</small></button>
+      <button type="button" class="lt-card new" id="lt-demo2">${ICON.demo}<span>Try the Demo Course</span><small>A made-up CSC258 with students, marks and an exam</small></button></div>`;
+    $("#lt-new2").onclick = newOfferingDialog; $("#lt-imp2").onclick = importDialog; $("#lt-demo2").onclick = e => loadDemo(e.currentTarget);
+    return;
+  }
   // The term's courses, each with its icon and title (from about.json), over the term drawn large in the
   // window's corner (fixed: it stays put as the page scrolls).
   const offs = all.filter(o => o.t === homeTerm);
@@ -745,6 +758,99 @@ function iconPicker(current, code, onPick) {
     };
     const on = m.querySelector(".lt-ip-i.on"); if (on) on.scrollIntoView({ block: "center" });
   });
+}
+// ── Export, Import and the demo course (server/transfer.py) ─────────
+const DEMO_COURSE = "csc258-demo";
+// Export: the offering as a .zip (its course page, gradebook setup, activities, sections and exams; not its
+// students, marks, requests or announcements), downloaded.
+async function exportOffering(c, t, btn) {
+  const was = btn.innerHTML; btn.disabled = true; btn.textContent = "Exporting…";
+  try {
+    const r = await fetch(`/api/offerings/${encodeURIComponent(curOwner() || S.user.handle)}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/export`, { credentials: "same-origin", cache: "no-store" });
+    if (!r.ok) { let m = ""; try { m = (await r.json()).error; } catch (_) {} throw new Error(m || `Something went wrong (${r.status}).`); }
+    const url = URL.createObjectURL(await r.blob()), a = document.createElement("a");
+    a.href = url; a.download = `${c}-${t}.lectern.zip`; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast(`Exported ${c}/${t}, without its students, marks, requests or announcements.`);
+  } catch (e) { toast(`Couldn't export it. ${e.message}`); }
+  finally { btn.disabled = false; btn.innerHTML = was; }
+}
+// Import: an exported offering, as a new one of yours: its course and term (the file's, to start with: a
+// new term is the usual change), with its dates moved to the new term by whole weeks.
+function importDialog() {
+  const now = new Date(), y = now.getFullYear() % 100, mo = now.getMonth();
+  modal(`<h2>Import a Course Offering</h2><p>From a file exported from Lectern (an offering's Export button). It comes in as a new offering of yours, without the students, marks, requests or announcements it had.</p>
+    <div class="lt-form">
+      <label class="lt-imp-file"><span>Export file</span><input type="file" id="im-file" accept=".zip,application/zip"></label>
+      <p class="lt-imp-what" id="im-what" hidden></p>
+      <div id="im-rest" hidden>
+        <label>Course<input type="text" id="im-c" placeholder="csc258" spellcheck="false" autocomplete="off"><small>Lower case, as in the folder name.</small></label>
+        <label>Title<input type="text" id="im-title" autocomplete="off"></label>
+        <div class="two">
+          <label>Term<select id="im-s"><option value="f">Fall</option><option value="w">Winter</option><option value="s">Summer</option></select></label>
+          <label>Year<input type="text" id="im-y" value="20${String(y).padStart(2, "0")}" inputmode="numeric" autocomplete="off"></label>
+        </div>
+        <label class="lt-check"><input type="checkbox" id="im-move" checked> <span>Move its dates to the new term <small id="im-move-n"></small></span></label>
+      </div>
+    </div>
+    <p class="lt-err" id="im-err"></p>
+    <div class="lt-modal-acts"><button type="button" class="lt-btn" data-no>Cancel</button><button type="button" class="lt-btn primary" data-ok disabled>Import</button></div>`, (m, close) => {
+    m.querySelector("[data-no]").onclick = close;
+    const $m = q => m.querySelector(q), err = $m("#im-err"), ok = $m("[data-ok]");
+    let file = null, from = null;
+    const send = (path, extra = {}) => { const f = new FormData(); f.append("file", file); Object.entries(extra).forEach(([k, v]) => f.append(k, v));
+      return fetch(path, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" }, body: f })
+        .then(r => r.json().catch(() => ({})).then(d => (r.ok ? d : Promise.reject(new Error(d.error || `Something went wrong (${r.status}).`))))); };
+    const target = () => { const yy = /^(?:20)?(\d{2})$/.exec($m("#im-y").value.trim()); return yy ? `${$m("#im-s").value}${yy[1]}` : ""; };
+    // How far the dates move: from the first Monday of the old term to the new one's (as the server does it).
+    const monday = t => { const x = /^([wsf])(\d{2})$/.exec(t); if (!x) return null; const d = new Date(2000 + +x[2], { w: 0, s: 4, f: 8 }[x[1]], 1); d.setDate(1 + (8 - d.getDay()) % 7); return d; };
+    const moveNote = () => { const a = monday(from && from.term), b = monday(target()), n = a && b ? Math.round((b - a) / 6048e5) : 0;
+      $m("#im-move-n").textContent = n ? `(${Math.abs(n)} week${Math.abs(n) === 1 ? "" : "s"} ${n > 0 ? "later" : "earlier"}, so each keeps its weekday)` : "(it's the same term: nothing moves)"; };
+    ["#im-s", "#im-y"].forEach(q => $m(q).addEventListener("input", moveNote));
+    $m("#im-file").onchange = async () => {
+      file = $m("#im-file").files[0] || null; from = null; err.textContent = ""; ok.disabled = true; $m("#im-rest").hidden = true; $m("#im-what").hidden = true;
+      if (!file) return;
+      try { from = (await send("/api/offerings/import/peek")).export; }
+      catch (e) { err.textContent = e.message; return; }
+      const bits = [from.hasPage && "its course page", from.hasGrades && "its evaluations", from.exams.length && `${from.exams.length} exam${from.exams.length === 1 ? "" : "s"}`].filter(Boolean);
+      $m("#im-what").innerHTML = `<b>${esc(from.course.toUpperCase())} ${esc(from.termName)}</b>${from.title ? `: ${esc(from.title)}` : ""}<br><span>${esc(bits.length ? `With ${bits.join(", ").replace(/, ([^,]*)$/, " and $1")}.` : `${from.files} files.`)}</span>`;
+      $m("#im-what").hidden = false; $m("#im-rest").hidden = false;
+      $m("#im-c").value = from.course; $m("#im-title").value = from.title;
+      // The next term after the file's, to start with (importing is mostly for a new term).
+      const x = /^([wsf])(\d{2})$/.exec(from.term);
+      if (x) { const order = ["w", "s", "f"], k = order.indexOf(x[1]), nk = (k + 1) % 3; $m("#im-s").value = order[nk]; $m("#im-y").value = `20${String(+x[2] + (nk === 0 ? 1 : 0)).padStart(2, "0")}`; }
+      moveNote(); ok.disabled = false;
+    };
+    ok.onclick = async () => {
+      const c = $m("#im-c").value.trim().toLowerCase().replace(/\s+/g, ""), t = target();
+      if (!slugOK(c)) { err.textContent = "Enter the course as letters and numbers, e.g. csc258."; return; }
+      if (!t) { err.textContent = "Enter the year, e.g. 2027."; return; }
+      if (S.offerings && S.offerings.has(okey(c, t))) { err.textContent = `You already have ${c}/${t}. Choose another term.`; return; }
+      ok.disabled = true; ok.textContent = "Importing…"; err.textContent = "";
+      try {
+        const d = await send("/api/offerings/import", { course: c, term: t, title: $m("#im-title").value.trim(), moveDates: $m("#im-move").checked ? "1" : "0" });
+        close();
+        toast(`Imported ${d.course}/${d.term}.${d.weeks ? ` Its dates moved ${Math.abs(d.weeks)} weeks ${d.weeks > 0 ? "later" : "earlier"}.` : ""}`);
+        aboutCache.delete(`/${d.course}/${d.term}`);
+        await listAll().catch(() => null);
+        go({ page: "offering", c: d.course, t: d.term, o: "" });
+      } catch (e) { ok.disabled = false; ok.textContent = "Import"; err.textContent = e.message; }
+    };
+  });
+}
+// The demo course: sample-data's CSC258 as csc258-demo in this term, dated to it, with made-up students and marks.
+async function loadDemo(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const d = await Auth.api("/api/offerings/demo", {});
+    toast("The demo course is ready. Delete it from its page when you're done.");
+    await listAll().catch(() => null);
+    go({ page: "offering", c: d.course, t: d.term, o: "" });
+  } catch (e) {
+    if (btn) btn.disabled = false;
+    if (e.code === "have") { const t = (/\/(\w+)\)/.exec(e.message) || [])[1]; if (t) return go({ page: "offering", c: DEMO_COURSE, t, o: "" }); }
+    toast(`Couldn't load the demo course. ${e.message}`);
+  }
 }
 function newOfferingDialog() {
   const now = new Date(), y = now.getFullYear() % 100, mo = now.getMonth();
@@ -853,7 +959,7 @@ function offeringPage(c, t) {
       <div class="lt-off-id"><h1 class="lt-off-h1"><span>${esc(c.toUpperCase())}</span><span id="lt-h1-title"></span></h1>
         <p class="lt-term-line">${esc(termName(t))}</p>
         ${!own ? `<p class="lt-team-line">${esc(ownerName(curOwner()))}'s course offering · you're ${A_ROLE[role] || "a coordinator"}</p>` : ""}</div>
-      <div class="lt-off-acts"><a class="lt-btn primary" id="lt-view-page" href="${esc(hubURL(c, t))}" target="_blank" rel="noopener" title="The course page, as students see it">${ICON.page}View Course Page</a>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
+      <div class="lt-off-acts">${edit ? `<button type="button" class="lt-btn" id="lt-export" title="Download this offering as a file, to import as a new term or share with a colleague">${ICON.download}Export</button>` : ""}<a class="lt-btn primary" id="lt-view-page" href="${esc(hubURL(c, t))}" target="_blank" rel="noopener" title="The course page, as students see it">${ICON.page}View Course Page</a>${edit ? `<button type="button" class="lt-btn lt-trash" id="lt-del-off" title="Delete this course offering…" aria-label="Delete this course offering">${ICON.trash}</button>` : ""}</div>
     </div>
     <div class="lt-about" id="lt-about"></div>
     ${loading ? `<p class="lt-note">Checking what it has…</p>` : ""}
@@ -942,6 +1048,7 @@ function offeringPage(c, t) {
   }).catch(() => {});
   $("#lt-page").querySelectorAll("[data-part]").forEach(b => { b.onclick = () => go({ page: "tool", tool: "grades", part: b.dataset.part, c, t }); });
   const del = $("#lt-del-off"); if (del) del.onclick = () => deleteOfferingDialog(c, t);
+  const exp = $("#lt-export"); if (exp) exp.onclick = () => exportOffering(c, t, exp);
   aboutPart(c, t, edit);
   teamPart(c, t);
   groupsPart(c, t);

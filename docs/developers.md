@@ -113,6 +113,18 @@ Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course
 - Each enrolled student (not dropped) with an email can sign in; the card shows who has, and who's been sent the link.
 - **Each offering can have its own email settings** (no screen for them now that Email the Class is gone; the API is still there, `server/classmail.py`): any SMTP login, e.g. a course address as the sender. Saving sends you a test first; nothing is saved unless it goes through. They're kept on the server (not in the gradebook, which TAs can read), the password encrypted with the server's key and never shown again. Without them, Lectern's own email (the admin panel's, or `.env`'s) is used. The offering's accommodation emails and sign-in codes use them too.
 
+## My Marks, and the grade so far
+
+- A signed-in student's marks come in the course page's API (`viewer.marks`, `server/hub.py`), only for evaluations the gradebook has **released**. The course page shows each on its evaluation's page and all of them on **My Marks** (`#marks`, `static/js/hub.js`).
+- **Grade so far** (`viewer.sofar`) is there only when the gradebook's Settings turn it on (`policies.show.sofar`). `server/grading.py` works it out exactly as the gradebook does (the Grade Builder's `studentResult`: makeups, reweighting, best N of M, the student's own accommodations), from the released marks only, so an unreleased mark counts as not marked yet. The final rules (ranges, rounding, automatic fail) aren't applied. `tests/test_grading.py` runs the builder's own JavaScript with node on the sample gradebooks (and randomized versions of them) and checks both agree, so **a change to `studentResult` needs the same change in `grading.py`**.
+
+## Export, Import and the demo course
+
+`server/transfer.py`.
+- **Export** (an offering's page, instructors only): a `.zip` with `lectern-export.json`, then `pub/` and `priv/` holding the offering's files relative to its folder. Left out: the gradebook's students, marks, accommodations (`overrides`), set grades (`finals`) and released flags; `accommodations.json`, `announcements.json` and `team.json`; who runs each section in `groups.json` (those are this server's accounts). Discussions, attendance and sign-ins are in the database and never go.
+- **Import** (Home): reads the manifest first (`/import/peek`), then brings the files in as a new offering of yours under any course and term you don't have, leaving the same things out again (a file can be made by hand). **Move its dates** shifts every date by whole weeks, from the first Monday of the old term to the new one's, so each keeps its weekday: ISO dates and announcement stamps in the JSON files (whole strings only, so links are left alone), each week's dates text, and the long dates and term name in exams (`exam.json` and the `.tex` files). Uploads up to `LECTERN_MAX_UPLOAD_MB`.
+- **The demo course** (Home): `sample-data`'s CSC258 Fall 2026, loaded as `csc258-demo` in the current term with the same date move. Its students get `@example.com` emails (which take no mail), the marks of the evaluations whose dates have passed are kept and released, and Grade So Far is on.
+
 ## Where things are
 
 | | Private (only you) | Public (published at `/p/<handle>/`) |

@@ -94,6 +94,16 @@ def _num(x):
         return 0.0
 
 
+def shows_sofar(owner_id, offering, book=None):
+    """Whether My Marks shows each student their grade so far (the gradebook's Settings; off unless turned on)."""
+    if book is None:
+        try:
+            book = json.loads((Repo(owner_id, "priv").read(f"{offering}/grades.json") or b"{}").decode("utf-8"))
+        except (ValueError, UnicodeDecodeError):
+            return False
+    return isinstance(book, dict) and isinstance(book.get("policies"), dict) and isinstance(book["policies"].get("show"), dict) and book["policies"]["show"].get("sofar") is True
+
+
 def gradebook_policies(owner_id, course, term):
     """{evaluation id: {missed, total}}: what happens if each is missed (as the gradebook's editor shows it:
     counts as zero, or makeups and weight moved to others, each with its share) and its points, read from the
@@ -712,7 +722,7 @@ def hub_api(handle, course, term):
         for e in _list(ev.get("evals")):
             own_date(e)
     # A signed-in student's own marks (the gradebook's), for each evaluation's page: points, or what happened.
-    marks = {}
+    marks, sofar = {}, None
     if student and "evaluations" in all_b:
         from .students import roster
         num = (roster(o["id"], offering).get(student) or {}).get("num")
@@ -731,6 +741,16 @@ def hub_api(handle, course, term):
                 marks[str(eid)[:64]] = {"status": st}
             elif isinstance(m.get("pts"), (int, float)):
                 marks[str(eid)[:64]] = {"pts": m["pts"]}
+        # Their grade so far (My Marks), when the gradebook's Settings show it: worked out as the gradebook
+        # does, from the released marks only (an unreleased one is not marked yet).
+        if num and shows_sofar(o["id"], offering, book):
+            from .grading import student_result
+            ov = book.get("overrides") if isinstance(book.get("overrides"), dict) else {}
+            seen = {"evals": book.get("evals"), "groups": book.get("groups"), "overrides": {str(num): ov.get(str(num)) or {}},
+                    "marks": {str(num): {k: v for k, v in (mine_m.items() if isinstance(mine_m, dict) else []) if k in out}}}
+            r = student_result(seen, str(num))
+            sofar = {"current": r["current"], "done": r["done"], "earned": r["earned"], "pending": r["pending"], "final": r["final"] is not None,
+                     "rows": {str(k)[:64]: {"w": x["w"], "status": x["status"], "note": x["note"]} for k, x in r["rows"].items()}}
     head = about or {}
     tabs, data = [], {}
     for tid, title in TABS:
@@ -748,6 +768,9 @@ def hub_api(handle, course, term):
         viewer={"signedIn": signed, "role": None if preview == "public" else "student" if preview else role, "name": student or "",
                 "staff": role in STAFF, "preview": preview, "staffRole": role if role in STAFF else None,
                 **({"marks": marks} if student else {}),
+                **({"sofar": sofar} if student and sofar else {}),
+                # whether My Marks shows each student their grade so far (the gradebook's Settings)
+                **({"showsSofar": shows_sofar(o["id"], offering)} if role in STAFF else {}),
                 # a student: the announcements they've seen (the others are New for them)
                 **({"seen": [r["ann_id"] for r in db.all_("SELECT ann_id FROM announcements_seen WHERE owner_id = ? AND offering = ? AND email = ?", (o["id"], offering, student))]} if student else {})},
         tabs=tabs, data=data,

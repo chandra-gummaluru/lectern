@@ -90,8 +90,8 @@ def _origin(url):
 
 @app.before_request
 def _guard():
-    # Only saves (a course page's uploads) may be big; sign-in and the rest are small JSON.
-    if not (request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")):
+    # Only saves (a course page's uploads) and importing an offering may be big; sign-in and the rest are small JSON.
+    if not ((request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")) or request.path.startswith("/api/offerings/import")):
         request.max_content_length = SMALL_BODY
     # Anything but localhost goes over HTTPS: passwords and session cookies never travel in the clear.
     if not secure_enough():

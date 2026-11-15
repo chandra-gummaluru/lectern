@@ -11,6 +11,7 @@
      #week/<i>            one week: its activities (with their files), what's due, its announcements
      #evaluations         every evaluation and its weight
      #evaluation/<id>     one evaluation (or group): when, its weight, files, accommodations
+     #marks               My Marks: a signed-in student's released marks, and their grade so far if it's shown
      #about, #accommodations
 
    Older addresses still work (#lectures, #evaluations/<id>, #week). About and My accommodations are
@@ -108,8 +109,8 @@ function lockedSec(id, title) {
   return `<section class="hs-sec"><div class="hs-sec-h hs-off"><h2>${esc(title)}</h2>${LOCK}</div><div class="hs-locked"><span>For people in the course.</span><a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in</a></div></section>`;
 }
 function lockedPage(id, title) {
-  if (!tab(id)) return PAGES.home();   // a part this course doesn't use
-  return `${path([[title]])}<div class="hb-locked">${LOCK}<h2>${esc(title)}</h2><p>${id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : "This part of the course page is for people in the course. Sign in to see it."}</p>
+  if (!tab(id === "marks" ? "evaluations" : id)) return PAGES.home();   // a part this course doesn't use
+  return `${path([[title]])}<div class="hb-locked">${LOCK}<h2>${esc(title)}</h2><p>${id === "accommodations" ? "Sign in to ask for accommodations and follow your requests." : id === "marks" ? "Sign in to see your marks." : "This part of the course page is for people in the course. Sign in to see it."}</p>
     <a class="hb-btn primary" href="${esc(D.signIn || D.lectern)}">Sign in</a></div>`;
 }
 const annsOn = key => ((data("announcements") || {}).items || []).filter(a => a.on === key).sort((x, y) => annTime(y) - annTime(x));
@@ -206,7 +207,9 @@ function evalList() {
 const unitOf = id => { const E = data("evaluations"); if (!E) return null; for (const u of E.units || []) { if (u.id === id) return { u }; if (u.kind === "group") { const m = (u.members || []).find(x => x.id === id); if (m) return { u: m, group: u }; } } const e = allEvals().find(x => x.id === id); return e ? { u: e } : null; };
 
 // A row that opens a page of the course page (Evaluations, About the Course…), locked when it isn't open.
-const linkRow = (id, t, sub, tb) => `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span>${!open(tb || id) || hidden(tb || id) ? `<span class="hs-lock" title="${open(tb || id) ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`;
+// (My Marks is always for signed-in people, whoever else can see the evaluations.)
+const linkRow = (id, t, sub, tb) => { const ok = id === "marks" ? open(tb) && D.viewer.signedIn : open(tb || id), hid = id === "marks" ? D.viewer.staff : hidden(tb || id);
+  return `<a class="hs-row hs-link" href="#${id}"><span class="hs-t"><b>${esc(t)}</b><small>${esc(sub)}</small></span>${!ok || hid ? `<span class="hs-lock" title="${ok ? "Visitors who aren't signed in don't see this" : "Sign in to see this"}">${LOCK}</span>` : ""}${CHEV}</a>`; };
 // ── Requesting an accommodation ──────────────────────────────────────
 // Signed in, so the course page knows who's asking (the email they signed in with); to be sure it's them,
 // they give their identifier and name too, which must match the class list exactly (server/accommodations.py).
@@ -469,6 +472,7 @@ const PAGES = {
       ["announcements", "Announcements", "News for the class, newest first."],
       ["activities", "Activities", "The term, week by week: lectures, tutorials and labs, with their files.", "lectures"],
       ["evaluations", "Evaluations", "Every evaluation, its weight and when it is."],
+      ["marks", "My Marks", "Your mark on each evaluation, once it's out.", "evaluations"],
       ["about", "About the Course", "The teaching team, class times and office hours, and the course's rules."],
       ["accommodations", "My Requests", "Your accommodation and remark requests, and what was decided."],
     ].filter(([id, , , t]) => tab(t || id) && !shown.has(id));
@@ -640,6 +644,53 @@ const PAGES = {
         <header class="ec-head"><span class="hs-ic ec-ic">${REDO}</span><div class="ec-tt"><p class="hs-kick">Remark Request</p><h1>${evalTitle(u)}</h1><p class="ec-subline" id="rq-by" hidden></p></div></header>
         <div id="rq-box"><p class="hs-empty">Loading…</p></div>
       </article>`;
+  },
+  // My Marks (#marks): every evaluation, as the Evaluations page lists them, with the student's mark on each once
+  // it's released; and, when the gradebook's Settings show it, their grade so far (server/grading.py works it out
+  // as the gradebook does, from the released marks) with what each evaluation counts for.
+  marks() {
+    if (!open("evaluations")) return lockedPage("evaluations", "Evaluations");
+    if (!D.viewer.signedIn) return lockedPage("marks", "My Marks");
+    const v = D.viewer, M = v.marks || {}, SF = v.sofar || null, R = (SF && SF.rows) || {};
+    const U = data("evaluations").units || [], MK = allEvals().filter(x => x.makeupFor && M[x.id]);
+    const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };
+    const pct = n => `${fmtW(Math.round(n * 10) / 10)}%`;
+    // Their mark, on the right: the percent, with the points under it (or what happened, or not out yet).
+    const markCell = e => {
+      const m = M[e.id], t = e.total;
+      if (m && m.status) return `<span class="mm-mk mm-st"><b>${esc(ST[m.status] || m.status)}</b></span>`;
+      if (m && m.pts != null) return `<span class="mm-mk"><b>${t ? pct(m.pts / t * 100) : fmtW(m.pts)}</b><small>${fmtW(m.pts)} / ${t ? fmtW(t) : "?"}</small></span>`;
+      return `<span class="mm-mk mm-none"><b>—</b><small>Not out yet</small></span>`;
+    };
+    // Under its title: what it's worth; once it's settled (with the grade so far), what happened to it and
+    // what it counts for now, as the gradebook says.
+    const sub = (e, group) => {
+      const r = R[e.id];
+      if (r && r.status !== "pending") {
+        const notes = String(r.note || "").split(" · ").filter(n => n && !/^One of the best /.test(n));
+        return [...notes, r.w > 0 ? `Counts for ${fmtW(Math.round(r.w * 100) / 100)}% of your grade${group ? `, as one of the best ${group.keep}` : ""}` : ""].filter(Boolean).map(esc).join(" · ");
+      }
+      return esc(group ? `Worth ${fmtW(group.weight / Math.max(1, group.keep))}% if it's among the best ${group.keep}` : e.weight != null ? `Worth ${fmtW(e.weight)}%` : "");
+    };
+    const row = (e, opts = {}) => { const r = R[e.id], off = r && (r.status === "notcounted" || r.status === "excused");
+      return `<a class="wk-item wk-link hs-ev mm-row${opts.sub ? " wk-sub" : ""}${opts.mk ? " mk" : ""}${off ? " mm-off" : ""}" href="#evaluation/${encodeURIComponent(e.id)}"><span class="hs-ic">${EV_ICON[evType(e)]}</span>
+        <div class="wk-b"><p class="hs-kick">${esc(opts.mk ? `Makeup for ${opts.mk.name}` : e.name)}</p><h3>${esc(e.title || e.name)}</h3>${opts.mk ? "" : sub(e, opts.group) ? `<p class="wk-when">${sub(e, opts.group)}</p>` : ""}</div>${markCell(e)}${CHEV}</a>`; };
+    const one = (e, opts = {}) => row(e, opts) + MK.filter(x => x.makeupFor === e.id).map(x => row(x, { ...opts, mk: e })).join("");
+    const rows = U.map(u => u.kind === "group"
+      ? `<div class="hs-gcard"><a class="wk-item wk-link hs-ev" href="#evaluation/${encodeURIComponent(u.id)}"><span class="hs-ic">${EV_ICON.group}</span><div class="wk-b"><p class="hs-kick">Group</p><h3>${esc(u.name)}</h3><p class="wk-when">${esc(`Worth ${fmtW(u.weight)}%: the best ${u.keep} of ${u.count} count`)}</p></div>${CHEV}</a><div class="hs-cards">${(u.members || []).map(m => one(m, { sub: true, group: u })).join("")}</div></div>`
+      : one(u)).join("");
+    // The grade so far, on top: the average of what's settled, and how much of the course that is.
+    const nOut = Object.keys(M).length;
+    const sum = !SF ? "" : SF.current == null
+      ? `<article class="ec-card mm-sum"><div class="mm-big"><small>Course Grade</small><b class="mm-none">—</b></div><p class="mm-what">None of your marks are out yet. Your grade so far will appear here as they are.</p></article>`
+      : `<article class="ec-card mm-sum"><div class="mm-big"><small>Course Grade</small><b>${pct(SF.current)}</b></div>
+          <p class="mm-what">${SF.final ? "Every evaluation is marked. This is your grade from your marks" : `Your grade so far: the average of your marks that are out, which make up ${fmtW(Math.round(SF.done * 10) / 10)}% of the course${SF.pending ? `; ${SF.pending} evaluation${SF.pending === 1 ? " isn't" : "s aren't"} marked yet` : ""}`}. It follows the marking scheme (best of, makeups, and any accommodation you have). Your final grade can still be adjusted by the course's rules, such as rounding.</p></article>`;
+    const staff = v.staff || v.preview
+      ? `<p class="hs-empty mm-note">Each student sees their own marks here, once they're out${v.showsSofar ? ", and their grade so far" : ""}. ${v.showsSofar ? "The grade so far can be turned off" : "Their grade so far can be turned on"} in the gradebook's Settings.</p>` : "";
+    return `${path([["My Marks"]])}${head("My Marks", "Your mark on each evaluation, once it's out.")}
+      ${staff || sum}
+      ${rows ? `<div class="hs-cards">${rows}</div>` : `<p class="hs-empty">The marking scheme will appear here.</p>`}
+      ${!staff && !nOut && !SF ? `<p class="mm-foot">None of your marks are out yet.</p>` : ""}`;
   },
   // The student's requests (accommodations.py), a card each as the other lists are: its state's icon, the
   // evaluation, what was asked for, when, what was decided, and the note that came with it.
@@ -884,9 +935,9 @@ function header() {
       menu.innerHTML = `${U.length ? `${U.map(item).join("")}<hr>` : ""}
         <p>Signed in as <b>${esc(v.name)}</b>${v.role ? `<br><span>${esc(ROLE[v.role] || v.role)}</span>` : ""}</p><hr>
         ${v.staff ? `<a role="menuitem" href="${esc(D.lectern)}">Edit in Lectern</a><a role="menuitem" href="${esc(location.pathname + "?as=public" + location.hash)}">See it as a visitor</a>` : ""}
-        ${v.role === "student" ? `<button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
+        ${v.role === "student" && open("evaluations") ? `<a role="menuitem" href="#marks">My Marks</a>` : ""}${v.role === "student" && open("accommodations") ? `<a role="menuitem" href="#accommodations">My Requests</a>` : ""}${v.role === "student" ? `<hr><button type="button" role="menuitem" id="hb-out">Sign out</button>` : ""}`;
       btn.after(menu); btn.setAttribute("aria-expanded", "true");
-      menu.querySelectorAll(".hb-upd").forEach(a => { a.onclick = () => close(); });
+      menu.querySelectorAll('.hb-upd, a[href^="#"]').forEach(a => { a.onclick = () => close(); });
       const out = $("hb-out");
       if (out) out.onclick = async () => { out.disabled = true; await fetch(`${root.dataset.api}/sign-out`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1" } }).catch(() => {}); location.reload(); };
     };

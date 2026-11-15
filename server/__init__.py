@@ -15,6 +15,8 @@ Module map:
 - hub.py        the course hub: an offering's course page in tabs, served from its course.json (/c/…)
 - accommodations.py  accommodation requests: the students' form and its API, instructors' decisions
 - classmail.py  emailing a class from Lectern, and each offering's own email settings
+- transfer.py   exporting and importing a course offering, and loading the demo course
+- grading.py    a student's grade so far, worked out as the gradebook does (My Marks)
 - mailer.py     email (invitations, password resets, security notices, students), over SMTP
 - admin.py      the admin panel (/admin): its own accounts and sign-in; invitations, accounts, email settings
 - cli.py        python app.py admin / setup
@@ -39,6 +41,7 @@ from .students import students_bp
 from .places import places_bp
 from .discuss import discuss_bp
 from .attendance import attendance_bp
+from .transfer import transfer_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
@@ -53,3 +56,4 @@ app.register_blueprint(students_bp)
 app.register_blueprint(places_bp)
 app.register_blueprint(discuss_bp)
 app.register_blueprint(attendance_bp)
+app.register_blueprint(transfer_bp)

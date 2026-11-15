@@ -234,6 +234,28 @@ def test_a_student_sees_only_the_marks_that_are_out(client, course):
     assert st.get(HUB).get_json()["viewer"]["marks"] == {"a1": {"pts": 8}}
 
 
+def test_my_marks_grade_so_far_only_when_turned_on_and_only_from_released_marks(client, course):
+    enrol(course, "maya@mail.utoronto.ca")
+    r = store.Repo(course["id"], "priv")
+    b = json.loads(r.read("csc258/f26/grades.json"))
+    b["evals"] = [{"id": "mt", "name": "Test 1", "total": 50, "weight": 60, "missed": {"mode": "zero"}},
+                  {"id": "a1", "name": "Assn 1", "total": 10, "weight": 40, "released": True, "missed": {"mode": "zero"}}]
+    b["marks"] = {"1000": {"mt": {"pts": 10}, "a1": {"pts": 8}}, "2000": {"a1": {"pts": 1}}}
+    b["overrides"] = {"2000": {"a1": {"weight": 0}}}
+    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "marks", r.head())
+    st = app.test_client(); sign_in(st, "maya@mail.utoronto.ca")
+    assert "sofar" not in st.get(HUB).get_json()["viewer"]                   # off until the gradebook turns it on
+    assert client.get(HUB).get_json()["viewer"]["showsSofar"] is False      # (the teaching team is told which)
+    b["policies"] = {"show": {"sofar": True}}
+    r.commit({"csc258/f26/grades.json": json.dumps(b).encode()}, "on", r.head())
+    v = st.get(HUB).get_json()["viewer"]
+    # Test 1's 10/50 isn't out: it's not marked yet, so the grade so far is the assignment's 80%, on 40% of the course.
+    assert v["sofar"]["current"] == pytest.approx(80) and v["sofar"]["done"] == pytest.approx(40) and v["sofar"]["pending"] == 1
+    assert v["sofar"]["rows"]["mt"]["status"] == "pending" and v["sofar"]["rows"]["a1"]["status"] == "graded"
+    assert client.get(HUB).get_json()["viewer"]["showsSofar"] is True and "sofar" not in client.get(HUB).get_json()["viewer"]
+    assert "sofar" not in app.test_client().get(HUB).get_json()["viewer"]    # nobody's signed in
+
+
 def test_a_lecture_hall_on_one_address_can_all_sign_in(client, course):
     """Campus Wi-Fi can put a whole class behind one address: told to sign in at once, they all can."""
     many = [f"s{i}@mail.utoronto.ca" for i in range(60)]

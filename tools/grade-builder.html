@@ -2104,7 +2104,9 @@ function normalizeBook(x) {
     // A rule: if [an evaluation] [is below X% | isn't submitted | is deferred], the grade is [capped at | set to] X% or a special grade.
     autofail: (P.autofail || []).map(x => ({ id: x.id || uid(), target: x.target || "", when: ["missed", "deferred"].includes(x.when) ? x.when : "below", below: num(x.below), effect: ["set", "code"].includes(x.effect) ? x.effect : "cap", value: num(x.value), code: x.code || "IPR" })),
     // Which of them the course page's About tab shows (the rules do unless turned off; ranges and rounding don't unless turned on).
-    show: { ranges: !!(P.show || {}).ranges, round: !!(P.show || {}).round, rules: (P.show || {}).rules !== false } };
+    show: { ranges: !!(P.show || {}).ranges, round: !!(P.show || {}).round, rules: (P.show || {}).rules !== false,
+      // and whether each student sees their grade so far on the course page's My Marks (off unless turned on)
+      sofar: (P.show || {}).sofar === true } };
   // A grade set by hand for one student: a percentage or a special grade, with why.
   b.finals = b.finals && typeof b.finals === "object" ? b.finals : {};
   return b;
@@ -3864,6 +3866,8 @@ function settingsHTML() {
         <select data-pol="effect"><option value="cap"${a.effect === "cap" ? " selected" : ""}>capped at</option><option value="set"${a.effect === "set" ? " selected" : ""}>set to</option><option value="code"${a.effect === "code" ? " selected" : ""}>a special grade:</option></select>${a.effect === "code" ? `<select data-pol="code">${CODES.map(([c2, l]) => `<option value="${c2}"${a.code === c2 ? " selected" : ""}>${c2} (${esc(l)})</option>`).join("")}</select>` : `<input type="number" class="num" step="any" data-pol="value" value="${esc(a.value)}">%`}
         <span class="spacer"></span><button type="button" class="ic trash" data-act="pol-fdel" data-id="${esc(a.id)}" title="Delete this rule" aria-label="Delete this rule">${svg("trash")}</button></div>`).join("")}
       <button type="button" class="add-mk" data-act="pol-fadd">${svg("plus")}Add a Rule</button>${P.autofail.length ? showBox("rules", sh.rules !== false, "these rules") : ""}</section>
+    <section class="set-card"><h2>Grade So Far</h2><p class="set-help">On the course page, My Marks lists each student's released marks. It can also show them their grade so far: the average of what's been released, worked out as the Grades tab does (best of, makeups, their accommodations). The ranges, rounding and rules above apply only to the final grade, so they aren't in it.</p>
+      <label class="set-show"><input type="checkbox" data-pshow="sofar"${sh.sofar ? " checked" : ""}> Show each student their grade so far on the course page (My Marks)</label></section>
   </div>`;
 }
 

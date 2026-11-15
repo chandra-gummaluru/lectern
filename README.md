@@ -7,6 +7,8 @@ Lectern is one place to run a course. For each course offering (a course in one 
 - **Build your course page.** Add weekly activities, announcements, evaluations and your teaching team, and Lectern turns them into a course website with tabs for *This week*, *Announcements*, *Activities*, *Evaluations* and *About*. Choose which tabs are public and which are for signed-in students only. You can embed the page in Quercus.
 - **Keep your gradebook.** Set up evaluations (weights, due dates, "best N of M", makeups), import your class list from Quercus or ACORN, and enter marks. The marking scheme appears on your course page automatically, and each evaluation shows up in the week it's due.
 - **Write exams and handouts.** From any evaluation, open its test or assignment and write it in place. Its total marks feed straight back into the gradebook.
+- **Show students their marks.** Signed-in students see each mark once you release it, on the evaluation's page and all together on **My Marks**. You can also show them their grade so far there (the gradebook's **Settings → Grade So Far**; off unless you turn it on).
+- **Reuse a course.** **Export** an offering (on its page) and **Import** it on Home as a new term: its course page, evaluations, activities, sections and exams come across, with the dates moved to the new term. Its students, marks, requests and announcements stay behind, so the file is safe to share with a colleague.
 - **Handle accommodation requests.** Students request an accommodation for a missed evaluation from the course page. You approve or reject it in Lectern, and the student is emailed the decision.
 - **Work as a team.** Add instructors and TAs to an offering. Instructors can do everything you can; TAs can see the gradebook and enter marks, but can't change the course setup.
 
@@ -20,7 +22,7 @@ Lectern is one place to run a course. For each course offering (a course in one 
 
 1. **Get an invitation.** Lectern is invite-only. Your institution's Lectern administrator sends you an email invitation (or an instructor does, if you're joining their teaching team).
 2. **Create your account.** Open the link, then choose your name, a password and the address for your course pages. We recommend turning on two-factor sign-in under **Your account**.
-3. **Add a course offering** from Home, then fill in its course page, evaluations and class list.
+3. **Add a course offering** from Home, then fill in its course page, evaluations and class list. To look around first, **Load the demo course** on Home: a made-up CSC258 with students, marks and an exam, which you can delete when you're done.
 4. **Share your course page** with students: send them its link from the Students card, or embed it in Quercus.
 
 Your work is saved on Lectern's server, and earlier versions are kept, so a mistake can be undone.

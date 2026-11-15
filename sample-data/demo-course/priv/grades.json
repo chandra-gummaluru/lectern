@@ -1,0 +1,1338 @@
+{
+  "format": "grade-builder/1",
+  "course": {
+    "code": "DEMO101",
+    "term": "Fall 2026"
+  },
+  "fields": {
+    "idLabel": "Student Number",
+    "emailDomain": "",
+    "custom": [
+      {
+        "id": "email",
+        "label": "Email"
+      }
+    ]
+  },
+  "evals": [
+    {
+      "id": "q1",
+      "name": "Quiz 1",
+      "short": "Quiz 1",
+      "total": 10,
+      "weight": 0,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Quiz",
+      "title": "",
+      "date": "2026-09-25",
+      "time": "17:00",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    },
+    {
+      "id": "q2",
+      "name": "Quiz 2",
+      "short": "Quiz 2",
+      "total": 10,
+      "weight": 0,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Quiz",
+      "title": "",
+      "date": "2026-10-09",
+      "time": "17:00",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    },
+    {
+      "id": "q3",
+      "name": "Quiz 3",
+      "short": "Quiz 3",
+      "total": 10,
+      "weight": 0,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Quiz",
+      "title": "",
+      "date": "2026-10-30",
+      "time": "17:00",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    },
+    {
+      "id": "q4",
+      "name": "Quiz 4",
+      "short": "Quiz 4",
+      "total": 10,
+      "weight": 0,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Quiz",
+      "title": "",
+      "date": "2026-11-13",
+      "time": "17:00",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    },
+    {
+      "id": "q5",
+      "name": "Quiz 5",
+      "short": "Quiz 5",
+      "total": 10,
+      "weight": 0,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Quiz",
+      "title": "",
+      "date": "2026-11-27",
+      "time": "17:00",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    },
+    {
+      "id": "a1",
+      "name": "Assignment 1",
+      "short": "Assignment 1",
+      "total": 20,
+      "weight": 15,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "assignment",
+      "label": "Assignment",
+      "title": "Problem set",
+      "date": "2026-10-02",
+      "time": "23:59",
+      "shortAuto": false,
+      "release": "2026-09-18",
+      "releaseTime": "09:00"
+    },
+    {
+      "id": "mt",
+      "name": "Test 1",
+      "short": "Test 1",
+      "total": 50,
+      "weight": 25,
+      "makeupFor": null,
+      "missed": {
+        "mode": "reweight",
+        "to": [
+          {
+            "id": "fe",
+            "share": 100
+          }
+        ],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Test",
+      "title": "Midterm",
+      "date": "2026-10-28",
+      "time": "18:00",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    },
+    {
+      "id": "a2",
+      "name": "Assignment 2",
+      "short": "Assignment 2",
+      "total": 20,
+      "weight": 15,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "assignment",
+      "label": "Assignment",
+      "title": "Project",
+      "date": "2026-11-20",
+      "time": "23:59",
+      "shortAuto": false,
+      "release": "2026-11-06",
+      "releaseTime": "09:00"
+    },
+    {
+      "id": "fe",
+      "name": "Test 2",
+      "short": "Test 2",
+      "total": 100,
+      "weight": 35,
+      "makeupFor": null,
+      "missed": {
+        "mode": "zero",
+        "to": [],
+        "makeups": [],
+        "split": "custom"
+      },
+      "type": "test",
+      "label": "Test",
+      "title": "Final Exam",
+      "date": "",
+      "time": "",
+      "shortAuto": false,
+      "release": "",
+      "releaseTime": ""
+    }
+  ],
+  "groups": [
+    {
+      "id": "gq",
+      "name": "Quizzes",
+      "short": "",
+      "weight": 10,
+      "keep": 4,
+      "members": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5"
+      ]
+    }
+  ],
+  "students": [
+    {
+      "num": "1000000001",
+      "first": "Alex",
+      "last": "Abbott",
+      "f": {},
+      "name": "Abbott, Alex"
+    },
+    {
+      "num": "1000000002",
+      "first": "Sam",
+      "last": "Brooks",
+      "f": {},
+      "name": "Brooks, Sam"
+    },
+    {
+      "num": "1000000003",
+      "first": "Jordan",
+      "last": "Chen",
+      "f": {},
+      "name": "Chen, Jordan"
+    },
+    {
+      "num": "1000000004",
+      "first": "Taylor",
+      "last": "Diaz",
+      "f": {},
+      "name": "Diaz, Taylor"
+    },
+    {
+      "num": "1000000005",
+      "first": "Morgan",
+      "last": "Evans",
+      "f": {},
+      "name": "Evans, Morgan"
+    },
+    {
+      "num": "1000000006",
+      "first": "Casey",
+      "last": "Fischer",
+      "f": {},
+      "name": "Fischer, Casey"
+    },
+    {
+      "num": "1000000007",
+      "first": "Riley",
+      "last": "Garcia",
+      "f": {},
+      "name": "Garcia, Riley"
+    },
+    {
+      "num": "1000000008",
+      "first": "Jamie",
+      "last": "Hughes",
+      "f": {},
+      "name": "Hughes, Jamie"
+    },
+    {
+      "num": "1000000009",
+      "first": "Avery",
+      "last": "Ito",
+      "f": {},
+      "name": "Ito, Avery"
+    },
+    {
+      "num": "1000000010",
+      "first": "Quinn",
+      "last": "Jensen",
+      "f": {},
+      "name": "Jensen, Quinn"
+    },
+    {
+      "num": "1000000011",
+      "first": "Robin",
+      "last": "Khan",
+      "f": {},
+      "name": "Khan, Robin"
+    },
+    {
+      "num": "1000000012",
+      "first": "Drew",
+      "last": "Lopez",
+      "f": {},
+      "name": "Lopez, Drew"
+    },
+    {
+      "num": "1000000013",
+      "first": "Cameron",
+      "last": "Murphy",
+      "f": {},
+      "name": "Murphy, Cameron"
+    },
+    {
+      "num": "1000000014",
+      "first": "Skyler",
+      "last": "Nguyen",
+      "f": {},
+      "name": "Nguyen, Skyler"
+    },
+    {
+      "num": "1000000015",
+      "first": "Reese",
+      "last": "Okafor",
+      "f": {},
+      "name": "Okafor, Reese"
+    },
+    {
+      "num": "1000000016",
+      "first": "Emerson",
+      "last": "Patel",
+      "f": {},
+      "name": "Patel, Emerson"
+    },
+    {
+      "num": "1000000017",
+      "first": "Rowan",
+      "last": "Quinn",
+      "f": {},
+      "name": "Quinn, Rowan"
+    },
+    {
+      "num": "1000000018",
+      "first": "Hayden",
+      "last": "Rossi",
+      "f": {},
+      "name": "Rossi, Hayden"
+    },
+    {
+      "num": "1000000019",
+      "first": "Parker",
+      "last": "Singh",
+      "f": {},
+      "name": "Singh, Parker"
+    },
+    {
+      "num": "1000000020",
+      "first": "Sage",
+      "last": "Tanaka",
+      "f": {},
+      "name": "Tanaka, Sage"
+    },
+    {
+      "num": "1000000021",
+      "first": "Blake",
+      "last": "Underwood",
+      "f": {},
+      "name": "Underwood, Blake"
+    },
+    {
+      "num": "1000000022",
+      "first": "Logan",
+      "last": "Vargas",
+      "f": {},
+      "name": "Vargas, Logan"
+    },
+    {
+      "num": "1000000023",
+      "first": "Dakota",
+      "last": "Walsh",
+      "f": {},
+      "name": "Walsh, Dakota"
+    },
+    {
+      "num": "1000000024",
+      "first": "Elliot",
+      "last": "Xu",
+      "f": {},
+      "name": "Xu, Elliot"
+    },
+    {
+      "num": "1000000025",
+      "first": "Finley",
+      "last": "Young",
+      "f": {},
+      "name": "Young, Finley"
+    },
+    {
+      "num": "1000000026",
+      "first": "Harper",
+      "last": "Zhang",
+      "f": {},
+      "name": "Zhang, Harper"
+    },
+    {
+      "num": "1000000027",
+      "first": "Kai",
+      "last": "Bell",
+      "f": {},
+      "name": "Bell, Kai"
+    },
+    {
+      "num": "1000000028",
+      "first": "Lane",
+      "last": "Cole",
+      "f": {},
+      "name": "Cole, Lane"
+    },
+    {
+      "num": "1000000029",
+      "first": "Marlowe",
+      "last": "Dunn",
+      "f": {},
+      "name": "Dunn, Marlowe"
+    },
+    {
+      "num": "1000000030",
+      "first": "Noel",
+      "last": "Ellis",
+      "f": {},
+      "name": "Ellis, Noel"
+    }
+  ],
+  "marks": {
+    "1000000001": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 6
+      },
+      "q3": {
+        "pts": 7
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 8
+      },
+      "a1": {
+        "pts": 15
+      },
+      "mt": {
+        "pts": 36
+      },
+      "a2": {
+        "pts": 12.5
+      },
+      "fe": {
+        "pts": 76
+      }
+    },
+    "1000000002": {
+      "q1": {
+        "pts": 6
+      },
+      "q2": {
+        "pts": 6.5
+      },
+      "q3": {
+        "pts": 7
+      },
+      "q4": {
+        "pts": 6
+      },
+      "q5": {
+        "pts": 5.5
+      },
+      "a1": {
+        "pts": 12
+      },
+      "mt": {
+        "pts": 36
+      },
+      "a2": {
+        "missed": true
+      },
+      "fe": {
+        "pts": 61
+      }
+    },
+    "1000000003": {
+      "q1": {
+        "missed": true
+      },
+      "q2": {
+        "pts": 8.5
+      },
+      "q3": {
+        "pts": 7.5
+      },
+      "q4": {
+        "missed": true
+      },
+      "q5": {
+        "pts": 8
+      },
+      "a1": {
+        "pts": 15
+      },
+      "mt": {
+        "pts": 33
+      },
+      "a2": {
+        "pts": 16.5
+      },
+      "fe": {
+        "pts": 78
+      }
+    },
+    "1000000004": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "missed": true
+      },
+      "q3": {
+        "pts": 5.5
+      },
+      "q4": {
+        "missed": true
+      },
+      "q5": {
+        "pts": 8.5
+      },
+      "a1": {
+        "pts": 12.5
+      },
+      "mt": {
+        "pts": 32
+      },
+      "a2": {
+        "pts": 11
+      },
+      "fe": {
+        "pts": 72
+      }
+    },
+    "1000000005": {
+      "q1": {
+        "pts": 8
+      },
+      "q2": {
+        "pts": 6.5
+      },
+      "q3": {
+        "pts": 9.5
+      },
+      "q4": {
+        "pts": 9.5
+      },
+      "q5": {
+        "pts": 9
+      },
+      "a1": {
+        "pts": 17
+      },
+      "mt": {
+        "pts": 44
+      },
+      "a2": {
+        "pts": 17
+      },
+      "fe": {
+        "pts": 87
+      }
+    },
+    "1000000006": {
+      "q1": {
+        "pts": 9
+      },
+      "q2": {
+        "pts": 8.5
+      },
+      "q3": {
+        "pts": 8
+      },
+      "q4": {
+        "pts": 8
+      },
+      "q5": {
+        "missed": true
+      },
+      "a1": {
+        "pts": 15.5
+      },
+      "mt": {
+        "pts": 33
+      },
+      "a2": {
+        "pts": 14.5
+      },
+      "fe": {
+        "pts": 79
+      }
+    },
+    "1000000007": {
+      "q1": {
+        "pts": 6
+      },
+      "q2": {
+        "pts": 6
+      },
+      "q3": {
+        "pts": 7.5
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 6.5
+      },
+      "a1": {
+        "pts": 13.5
+      },
+      "mt": {
+        "pts": 33
+      },
+      "a2": {
+        "pts": 11
+      },
+      "fe": {
+        "pts": 52
+      }
+    },
+    "1000000008": {
+      "q1": {
+        "pts": 7.5
+      },
+      "q2": {
+        "pts": 6
+      },
+      "q3": {
+        "pts": 6
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 7.5
+      },
+      "a1": {
+        "pts": 13.5
+      },
+      "mt": {
+        "pts": 32
+      },
+      "a2": {
+        "pts": 10.5
+      },
+      "fe": {
+        "pts": 69
+      }
+    },
+    "1000000009": {
+      "q1": {
+        "pts": 5
+      },
+      "q2": {
+        "pts": 8.5
+      },
+      "q3": {
+        "missed": true
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 6.5
+      },
+      "a1": {
+        "pts": 16
+      },
+      "mt": {
+        "pts": 35
+      },
+      "a2": {
+        "pts": 13.5
+      },
+      "fe": {
+        "pts": 61
+      }
+    },
+    "1000000010": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 5.5
+      },
+      "q3": {
+        "pts": 6
+      },
+      "q4": {
+        "pts": 5.5
+      },
+      "q5": {
+        "pts": 6.5
+      },
+      "a1": {
+        "pts": 15
+      },
+      "mt": {
+        "pts": 32
+      },
+      "a2": {
+        "pts": 13.5
+      },
+      "fe": {
+        "pts": 53
+      }
+    },
+    "1000000011": {
+      "q1": {
+        "pts": 6
+      },
+      "q2": {
+        "pts": 5.5
+      },
+      "q3": {
+        "pts": 6
+      },
+      "q4": {
+        "pts": 5
+      },
+      "q5": {
+        "pts": 6
+      },
+      "a1": {
+        "pts": 10
+      },
+      "mt": {
+        "pts": 23
+      },
+      "a2": {
+        "pts": 10
+      },
+      "fe": {
+        "pts": 64
+      }
+    },
+    "1000000012": {
+      "q1": {
+        "pts": 9
+      },
+      "q2": {
+        "pts": 8
+      },
+      "q3": {
+        "pts": 8
+      },
+      "q4": {
+        "pts": 8
+      },
+      "q5": {
+        "pts": 8.5
+      },
+      "a1": {
+        "pts": 16
+      },
+      "mt": {
+        "pts": 36
+      },
+      "a2": {
+        "pts": 17.5
+      },
+      "fe": {
+        "pts": 92
+      }
+    },
+    "1000000013": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 7
+      },
+      "q3": {
+        "pts": 6
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 5
+      },
+      "a1": {
+        "pts": 14.5
+      },
+      "mt": {
+        "pts": 33
+      },
+      "a2": {
+        "pts": 12
+      },
+      "fe": {
+        "pts": 64
+      }
+    },
+    "1000000014": {
+      "q1": {
+        "pts": 8.5
+      },
+      "q2": {
+        "pts": 8.5
+      },
+      "q3": {
+        "pts": 7
+      },
+      "q4": {
+        "pts": 7
+      },
+      "q5": {
+        "pts": 6
+      },
+      "a1": {
+        "pts": 12
+      },
+      "mt": {
+        "pts": 37
+      },
+      "a2": {
+        "pts": 14.5
+      },
+      "fe": {
+        "pts": 77
+      }
+    },
+    "1000000015": {
+      "q1": {
+        "pts": 7.5
+      },
+      "q2": {
+        "missed": true
+      },
+      "q3": {
+        "pts": 7.5
+      },
+      "q4": {
+        "pts": 8
+      },
+      "q5": {
+        "pts": 6
+      },
+      "a1": {
+        "pts": 15.5
+      },
+      "mt": {
+        "pts": 30
+      },
+      "a2": {
+        "pts": 14.5
+      },
+      "fe": {
+        "pts": 61
+      }
+    },
+    "1000000016": {
+      "q1": {
+        "pts": 7
+      },
+      "q2": {
+        "pts": 6.5
+      },
+      "q3": {
+        "pts": 5.5
+      },
+      "q4": {
+        "missed": true
+      },
+      "q5": {
+        "pts": 6
+      },
+      "a1": {
+        "pts": 11.5
+      },
+      "mt": {
+        "pts": 26
+      },
+      "a2": {
+        "pts": 10.5
+      },
+      "fe": {
+        "pts": 60
+      }
+    },
+    "1000000017": {
+      "q1": {
+        "pts": 8.5
+      },
+      "q2": {
+        "pts": 8.5
+      },
+      "q3": {
+        "pts": 6.5
+      },
+      "q4": {
+        "pts": 8
+      },
+      "q5": {
+        "pts": 8.5
+      },
+      "a1": {
+        "pts": 15.5
+      },
+      "mt": {
+        "pts": 46
+      },
+      "a2": {
+        "pts": 14
+      },
+      "fe": {
+        "pts": 95
+      }
+    },
+    "1000000018": {
+      "q1": {
+        "pts": 7.5
+      },
+      "q2": {
+        "pts": 7
+      },
+      "q3": {
+        "pts": 7.5
+      },
+      "q4": {
+        "pts": 7
+      },
+      "q5": {
+        "pts": 6.5
+      },
+      "a1": {
+        "pts": 13.5
+      },
+      "mt": {
+        "pts": 40
+      },
+      "a2": {
+        "pts": 14
+      },
+      "fe": {
+        "pts": 77
+      }
+    },
+    "1000000019": {
+      "q1": {
+        "pts": 9
+      },
+      "q2": {
+        "pts": 9
+      },
+      "q3": {
+        "pts": 9
+      },
+      "q4": {
+        "pts": 9
+      },
+      "q5": {
+        "pts": 9.5
+      },
+      "a1": {
+        "pts": 20
+      },
+      "mt": {
+        "pts": 44
+      },
+      "a2": {
+        "pts": 17.5
+      },
+      "fe": {
+        "pts": 90
+      }
+    },
+    "1000000020": {
+      "q1": {
+        "pts": 9.5
+      },
+      "q2": {
+        "pts": 8
+      },
+      "q3": {
+        "pts": 9
+      },
+      "q4": {
+        "pts": 10
+      },
+      "q5": {
+        "pts": 10
+      },
+      "a1": {
+        "pts": 18
+      },
+      "mt": {
+        "pts": 48
+      },
+      "a2": {
+        "pts": 20
+      },
+      "fe": {
+        "pts": 100
+      }
+    },
+    "1000000021": {
+      "q1": {
+        "pts": 10
+      },
+      "q2": {
+        "pts": 10
+      },
+      "q3": {
+        "pts": 10
+      },
+      "q4": {
+        "pts": 9.5
+      },
+      "q5": {
+        "pts": 10
+      },
+      "a1": {
+        "pts": 20
+      },
+      "mt": {
+        "pts": 50
+      },
+      "a2": {
+        "missed": true
+      },
+      "fe": {
+        "pts": 86
+      }
+    },
+    "1000000022": {
+      "q1": {
+        "pts": 9.5
+      },
+      "q2": {
+        "pts": 8
+      },
+      "q3": {
+        "pts": 8
+      },
+      "q4": {
+        "pts": 10
+      },
+      "q5": {
+        "pts": 7.5
+      },
+      "a1": {
+        "pts": 17.5
+      },
+      "mt": {
+        "pts": 45
+      },
+      "a2": {
+        "pts": 18.5
+      },
+      "fe": {
+        "pts": 100
+      }
+    },
+    "1000000023": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 7.5
+      },
+      "q3": {
+        "pts": 8
+      },
+      "q4": {
+        "pts": 7.5
+      },
+      "q5": {
+        "pts": 9
+      },
+      "a1": {
+        "pts": 12
+      },
+      "mt": {
+        "pts": 38
+      },
+      "a2": {
+        "pts": 11.5
+      },
+      "fe": {
+        "pts": 73
+      }
+    },
+    "1000000024": {
+      "q1": {
+        "missed": true
+      },
+      "q2": {
+        "pts": 4
+      },
+      "q3": {
+        "pts": 4.5
+      },
+      "q4": {
+        "pts": 5.5
+      },
+      "q5": {
+        "pts": 5.5
+      },
+      "a1": {
+        "pts": 13.5
+      },
+      "mt": {
+        "pts": 25
+      },
+      "a2": {
+        "pts": 7.5
+      },
+      "fe": {
+        "pts": 47
+      }
+    },
+    "1000000025": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 7.5
+      },
+      "q3": {
+        "pts": 7.5
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 8
+      },
+      "a1": {
+        "missed": true
+      },
+      "mt": {
+        "pts": 50
+      },
+      "a2": {
+        "pts": 15
+      },
+      "fe": {
+        "pts": 80
+      }
+    },
+    "1000000026": {
+      "q1": {
+        "pts": 9.5
+      },
+      "q2": {
+        "pts": 10
+      },
+      "q3": {
+        "pts": 10
+      },
+      "q4": {
+        "pts": 9
+      },
+      "q5": {
+        "pts": 9.5
+      },
+      "a1": {
+        "pts": 19
+      },
+      "mt": {
+        "pts": 50
+      },
+      "a2": {
+        "pts": 19.5
+      },
+      "fe": {
+        "pts": 91
+      }
+    },
+    "1000000027": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 7
+      },
+      "q3": {
+        "missed": true
+      },
+      "q4": {
+        "pts": 7
+      },
+      "q5": {
+        "pts": 6.5
+      },
+      "a1": {
+        "pts": 13.5
+      },
+      "mt": {
+        "pts": 34
+      },
+      "a2": {
+        "pts": 10.5
+      },
+      "fe": {
+        "pts": 80
+      }
+    },
+    "1000000028": {
+      "q1": {
+        "pts": 8
+      },
+      "q2": {
+        "pts": 6
+      },
+      "q3": {
+        "pts": 5.5
+      },
+      "q4": {
+        "pts": 5
+      },
+      "q5": {
+        "pts": 6.5
+      },
+      "a1": {
+        "pts": 10
+      },
+      "mt": {
+        "pts": 30
+      },
+      "a2": {
+        "pts": 11.5
+      },
+      "fe": {
+        "pts": 54
+      }
+    },
+    "1000000029": {
+      "q1": {
+        "pts": 6.5
+      },
+      "q2": {
+        "pts": 5.5
+      },
+      "q3": {
+        "pts": 5.5
+      },
+      "q4": {
+        "pts": 6.5
+      },
+      "q5": {
+        "pts": 5
+      },
+      "a1": {
+        "pts": 10
+      },
+      "mt": {
+        "pts": 26
+      },
+      "a2": {
+        "pts": 12
+      },
+      "fe": {
+        "pts": 52
+      }
+    },
+    "1000000030": {
+      "q1": {
+        "pts": 5.5
+      },
+      "q2": {
+        "pts": 6.5
+      },
+      "q3": {
+        "pts": 6
+      },
+      "q4": {
+        "pts": 6
+      },
+      "q5": {
+        "pts": 7
+      },
+      "a1": {
+        "pts": 12.5
+      },
+      "mt": {
+        "pts": 31
+      },
+      "a2": {
+        "pts": 11
+      },
+      "fe": {
+        "pts": 64
+      }
+    }
+  },
+  "overrides": {},
+  "policies": {
+    "round": {
+      "step": 0,
+      "dir": "nearest"
+    },
+    "buckets": [],
+    "autofail": [],
+    "show": {
+      "ranges": false,
+      "round": false,
+      "rules": true,
+      "sofar": false
+    }
+  },
+  "finals": {}
+}

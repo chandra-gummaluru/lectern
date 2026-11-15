@@ -677,7 +677,7 @@ function homePage() {
       <button type="button" class="lt-btn" id="lt-imp"${all ? "" : " disabled"} title="Bring in a course offering exported from Lectern">${ICON.upload}Import</button>
       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
     <div id="lt-list"></div>
-    ${all && all.length && !all.some(o => !o.o && o.c === DEMO_COURSE) ? `<p class="lt-demo-line">${ICON.demo}<span>Want to try something without touching your courses? <button type="button" class="lt-link" id="lt-demo">Load the demo course</button>: a made-up CSC258 with students, marks and an exam, which you can delete when you're done.</span></p>` : ""}
+    ${all && all.length && !all.some(o => !o.o && o.c === DEMO_COURSE) ? `<p class="lt-demo-line">${ICON.demo}<span>Want to try something without touching your courses? <button type="button" class="lt-link" id="lt-demo">Load the demo course</button>: a made-up sample course with students, marks and a midterm, which you can delete when you're done.</span></p>` : ""}
   </div>`);
   $("#lt-new").onclick = newOfferingDialog;
   $("#lt-imp").onclick = importDialog;
@@ -689,7 +689,7 @@ function homePage() {
   if (!all.length) {
     list.innerHTML = `<div class="lt-start"><button type="button" class="lt-card new" id="lt-new2">${ICON.plus}<span>New Course Offering</span><small>A new term of a course, or a new course</small></button>
       <button type="button" class="lt-card new" id="lt-imp2">${ICON.upload}<span>Import a Course Offering</span><small>One exported from Lectern, yours or a colleague's</small></button>
-      <button type="button" class="lt-card new" id="lt-demo2">${ICON.demo}<span>Try the Demo Course</span><small>A made-up CSC258 with students, marks and an exam</small></button></div>`;
+      <button type="button" class="lt-card new" id="lt-demo2">${ICON.demo}<span>Try the Demo Course</span><small>A made-up sample course with students, marks and a midterm</small></button></div>`;
     $("#lt-new2").onclick = newOfferingDialog; $("#lt-imp2").onclick = importDialog; $("#lt-demo2").onclick = e => loadDemo(e.currentTarget);
     return;
   }
@@ -760,7 +760,7 @@ function iconPicker(current, code, onPick) {
   });
 }
 // ── Export, Import and the demo course (server/transfer.py) ─────────
-const DEMO_COURSE = "csc258-demo";
+const DEMO_COURSE = "demo101";
 // Export: the offering as a .zip (its course page, gradebook setup, activities, sections and exams; not its
 // students, marks, requests or announcements), downloaded.
 async function exportOffering(c, t, btn) {
@@ -838,7 +838,7 @@ function importDialog() {
     };
   });
 }
-// The demo course: sample-data's CSC258 as csc258-demo in this term, dated to it, with made-up students and marks.
+// The demo course: sample-data's generic DEMO101 (A Sample Course) in this term, dated to it, with made-up students and marks.
 async function loadDemo(btn) {
   if (btn) btn.disabled = true;
   try {

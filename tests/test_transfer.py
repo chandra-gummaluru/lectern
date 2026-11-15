@@ -146,19 +146,20 @@ def test_the_demo_course(client, user, monkeypatch):
     r = client.post("/api/offerings/demo", headers=H)
     assert r.status_code == 200, r.get_json()
     t = r.get_json()["term"]
-    assert r.get_json()["course"] == "csc258-demo" and t == transfer.term_now()
+    assert r.get_json()["course"] == "demo101" and t == transfer.term_now()
     pv = store.Repo(user["id"], "priv")
-    b = json.loads(pv.read(f"csc258-demo/{t}/grades.json"))
-    assert len(b["students"]) > 20 and all(s["f"]["email"].endswith("@example.com") for s in b["students"])
+    b = json.loads(pv.read(f"demo101/{t}/grades.json"))
+    assert len(b["students"]) == 30 and all(s["f"]["email"].endswith("@example.com") for s in b["students"])
     today = date.today().isoformat()
     out = {e["id"] for e in b["evals"] if e.get("released")}
     assert out == {e["id"] for e in b["evals"] if e.get("date") and e["date"] < today}
     assert all(set(m) <= out for m in b["marks"].values()) and b["policies"]["show"]["sofar"] is True
-    assert json.loads(pv.read(f"csc258-demo/{t}/about.json"))["title"] == "Computer Organization (Demo)"
-    assert pv.read(f"csc258-demo/{t}/midterm/exam.json")
-    assert json.loads(store.Repo(user["id"], "pub").read(f"csc258-demo/{t}/course.json"))["page"]["code"] == "CSC258-DEMO"
+    assert json.loads(pv.read(f"demo101/{t}/about.json"))["title"] == "A Sample Course"
+    assert pv.read(f"demo101/{t}/midterm/exam.json") and pv.read(f"demo101/{t}/announcements.json") and pv.read(f"demo101/{t}/lectures.json")
+    assert json.loads(store.Repo(user["id"], "pub").read(f"demo101/{t}/course.json"))["page"]["code"] == "DEMO101"
     again = client.post("/api/offerings/demo", headers=H)
     assert again.status_code == 409 and again.get_json()["code"] == "have"
     # Its course page works, and its week 1 starts on its term's first Monday.
-    j = client.get(f"/api/hub/chandra/csc258-demo/{t}").get_json()
-    assert j["course"]["code"] == "CSC258-DEMO" and j["data"]["lectures"]["weeks"][0]["start"] == transfer.term_monday(t).isoformat()
+    j = client.get(f"/api/hub/chandra/demo101/{t}").get_json()
+    assert j["course"]["code"] == "DEMO101" and j["data"]["lectures"]["weeks"][0]["start"] == transfer.term_monday(t).isoformat()
+    assert [u["name"] for u in j["data"]["evaluations"]["units"]] == ["Quizzes", "Assignment 1", "Test 1", "Assignment 2", "Test 2"]

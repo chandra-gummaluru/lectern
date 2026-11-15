@@ -1,0 +1,26 @@
+{
+ "format": "lectern-announcements/1",
+ "items": [
+  {
+   "id": "an1",
+   "title": "Welcome to the course",
+   "date": "Sep 7, 2026, 09:00",
+   "body": "Welcome! Lectures start on Tuesday. Tutorials start in week 2. Everything you need is on this page: the weeks and their activities, the evaluations, and the course's policies.",
+   "on": ""
+  },
+  {
+   "id": "an2",
+   "title": "Assignment 1 is out",
+   "date": "Sep 18, 2026, 09:00",
+   "body": "Assignment 1 is posted under Evaluations. It's due at the end of week 4.",
+   "on": ""
+  },
+  {
+   "id": "an3",
+   "title": "Midterm room and time",
+   "date": "Oct 20, 2026, 12:00",
+   "body": "The midterm is on Wednesday after Reading Week, 18:00 to 19:50. Bring your student card.",
+   "on": ""
+  }
+ ]
+}

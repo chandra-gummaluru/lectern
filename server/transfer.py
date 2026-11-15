@@ -13,9 +13,10 @@ a new offering of the signed-in account, under any code and term that account do
 things are left out again (a file can be made by hand), and with "move the dates" every date moves by whole
 weeks from the old term to the new one, so each activity and evaluation keeps its weekday.
 
-The demo (POST /api/offerings/demo) is sample-data's CSC258, loaded as csc258-demo in the current term: the
-same date move, with its students (emails at example.com, which takes no mail) and the marks of the
-evaluations whose dates have passed, released, so every part of Lectern has something in it.
+The demo (POST /api/offerings/demo) is sample-data/demo-course, a generic made-up course (DEMO101, "A Sample
+Course"), loaded as demo101 in the current term: the same date move, with its students (emails at example.com,
+which takes no mail) and the marks of the evaluations whose dates have passed, released, so every part of
+Lectern has something in it.
 """
 import io
 import json
@@ -40,8 +41,8 @@ MAX_BYTES = 512 * 1024 * 1024   # unzipped
 # The offering's own files that are this term's students' (or this server's accounts'), never exported or imported.
 LEFT_OUT = {"accommodations.json", "announcements.json", "team.json"}
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEMO = ("csc258", "f26")   # sample-data/demo-courses(-private)/<course>/<term>
-DEMO_COURSE = "csc258-demo"
+DEMO_TERM = "f26"           # sample-data/demo-course: its dates are Fall 2026's
+DEMO_COURSE = "demo101"
 
 _TERM = re.compile(r"^([wsf])(\d\d)$")
 _ISO = re.compile(r"^(\d{4})-(\d\d)-(\d\d)$")
@@ -366,10 +367,9 @@ def import_offering():
 
 # ── The demo course ──────────────────────────────────────────────────
 def demo_files():
-    c, t = DEMO
     out = {"pub": {}, "priv": {}}
-    for area, top in (("pub", "demo-courses"), ("priv", "demo-courses-private")):
-        base = os.path.join(ROOT, "sample-data", top, c, t)
+    for area in ("pub", "priv"):
+        base = os.path.join(ROOT, "sample-data", "demo-course", area)
         for d, _, fs in os.walk(base):
             for x in fs:
                 full = os.path.join(d, x)
@@ -407,11 +407,8 @@ def load_demo():
     off = f"{DEMO_COURSE}/{t}"
     if _has(uid, off):
         raise Refusal(409, f"You already have the demo course ({off}). Delete it from its page to load a fresh one.", "have")
-    days = 7 * weeks_between(DEMO[1], t)
+    days = 7 * weeks_between(DEMO_TERM, t)
     files = demo_files()
     files["priv"]["grades.json"] = _dump(demo_book(_json(files["priv"]["grades.json"]), days, today))
-    files["priv"]["about.json"] = _dump({"format": "lectern-about/2", "title": "Computer Organization (Demo)",
-                                         "description": "A made-up course for trying Lectern: its students, marks and exam aren't real. Delete it from this page when you're done.",
-                                         "icon": ""})
-    _put(uid, off, files, DEMO_COURSE, t, DEMO[1], days, "The demo course", keep_people=True)
+    _put(uid, off, files, DEMO_COURSE, t, DEMO_TERM, days, "The demo course", keep_people=True)
     return jsonify(ok=True, course=DEMO_COURSE, term=t)

@@ -1,0 +1,325 @@
+{
+ "format": "lectern-lectures/1",
+ "weeks": [
+  {
+   "id": "w1",
+   "label": "Week 1",
+   "start": "2026-09-07",
+   "end": "2026-09-11",
+   "topic": "Welcome and course overview",
+   "cards": [
+    {
+     "id": "lec1",
+     "kind": "lecture",
+     "label": "Lecture 1",
+     "title": "Welcome and course overview",
+     "description": "Slides and notes are posted after each lecture.",
+     "date": "Sep 8, 2026, 10:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w2",
+   "label": "Week 2",
+   "start": "2026-09-14",
+   "end": "2026-09-18",
+   "topic": "Foundations",
+   "cards": [
+    {
+     "id": "lec2",
+     "kind": "lecture",
+     "label": "Lecture 2",
+     "title": "Foundations",
+     "description": "",
+     "date": "Sep 15, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut1",
+     "kind": "tutorial",
+     "label": "Tutorial 1",
+     "title": "Practice: foundations",
+     "description": "",
+     "date": "Sep 17, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w3",
+   "label": "Week 3",
+   "start": "2026-09-21",
+   "end": "2026-09-25",
+   "topic": "Building on the basics",
+   "cards": [
+    {
+     "id": "lec3",
+     "kind": "lecture",
+     "label": "Lecture 3",
+     "title": "Building on the basics",
+     "description": "",
+     "date": "Sep 22, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut2",
+     "kind": "tutorial",
+     "label": "Tutorial 2",
+     "title": "Practice: building on the basics",
+     "description": "",
+     "date": "Sep 24, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w4",
+   "label": "Week 4",
+   "start": "2026-09-28",
+   "end": "2026-10-02",
+   "topic": "Working with examples",
+   "cards": [
+    {
+     "id": "lec4",
+     "kind": "lecture",
+     "label": "Lecture 4",
+     "title": "Working with examples",
+     "description": "",
+     "date": "Sep 29, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut3",
+     "kind": "tutorial",
+     "label": "Tutorial 3",
+     "title": "Practice: working with examples",
+     "description": "",
+     "date": "Oct 1, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w5",
+   "label": "Week 5",
+   "start": "2026-10-05",
+   "end": "2026-10-09",
+   "topic": "Patterns and principles",
+   "cards": [
+    {
+     "id": "lec5",
+     "kind": "lecture",
+     "label": "Lecture 5",
+     "title": "Patterns and principles",
+     "description": "",
+     "date": "Oct 6, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut4",
+     "kind": "tutorial",
+     "label": "Tutorial 4",
+     "title": "Practice: patterns and principles",
+     "description": "",
+     "date": "Oct 8, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w6",
+   "label": "Week 6",
+   "start": "2026-10-12",
+   "end": "2026-10-16",
+   "topic": "Putting it together",
+   "cards": [
+    {
+     "id": "lec6",
+     "kind": "lecture",
+     "label": "Lecture 6",
+     "title": "Putting it together",
+     "description": "",
+     "date": "Oct 13, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut5",
+     "kind": "tutorial",
+     "label": "Tutorial 5",
+     "title": "Practice: putting it together",
+     "description": "",
+     "date": "Oct 15, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "brk",
+   "isBreak": true,
+   "text": "Reading Week"
+  },
+  {
+   "id": "w7",
+   "label": "Week 7",
+   "start": "2026-10-26",
+   "end": "2026-10-30",
+   "topic": "Going further",
+   "cards": [
+    {
+     "id": "lec7",
+     "kind": "lecture",
+     "label": "Lecture 7",
+     "title": "Going further",
+     "description": "",
+     "date": "Oct 27, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut6",
+     "kind": "tutorial",
+     "label": "Tutorial 6",
+     "title": "Practice: going further",
+     "description": "",
+     "date": "Oct 29, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w8",
+   "label": "Week 8",
+   "start": "2026-11-02",
+   "end": "2026-11-06",
+   "topic": "Case studies",
+   "cards": [
+    {
+     "id": "lec8",
+     "kind": "lecture",
+     "label": "Lecture 8",
+     "title": "Case studies",
+     "description": "",
+     "date": "Nov 3, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut7",
+     "kind": "tutorial",
+     "label": "Tutorial 7",
+     "title": "Practice: case studies",
+     "description": "",
+     "date": "Nov 5, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w9",
+   "label": "Week 9",
+   "start": "2026-11-09",
+   "end": "2026-11-13",
+   "topic": "Applications",
+   "cards": [
+    {
+     "id": "lec9",
+     "kind": "lecture",
+     "label": "Lecture 9",
+     "title": "Applications",
+     "description": "",
+     "date": "Nov 10, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut8",
+     "kind": "tutorial",
+     "label": "Tutorial 8",
+     "title": "Practice: applications",
+     "description": "",
+     "date": "Nov 12, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w10",
+   "label": "Week 10",
+   "start": "2026-11-16",
+   "end": "2026-11-20",
+   "topic": "Advanced topics",
+   "cards": [
+    {
+     "id": "lec10",
+     "kind": "lecture",
+     "label": "Lecture 10",
+     "title": "Advanced topics",
+     "description": "",
+     "date": "Nov 17, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut9",
+     "kind": "tutorial",
+     "label": "Tutorial 9",
+     "title": "Practice: advanced topics",
+     "description": "",
+     "date": "Nov 19, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w11",
+   "label": "Week 11",
+   "start": "2026-11-23",
+   "end": "2026-11-27",
+   "topic": "Connections and extensions",
+   "cards": [
+    {
+     "id": "lec11",
+     "kind": "lecture",
+     "label": "Lecture 11",
+     "title": "Connections and extensions",
+     "description": "",
+     "date": "Nov 24, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut10",
+     "kind": "tutorial",
+     "label": "Tutorial 10",
+     "title": "Practice: connections and extensions",
+     "description": "",
+     "date": "Nov 26, 2026, 14:00",
+     "files": []
+    }
+   ]
+  },
+  {
+   "id": "w12",
+   "label": "Week 12",
+   "start": "2026-11-30",
+   "end": "2026-12-04",
+   "topic": "Review",
+   "cards": [
+    {
+     "id": "lec12",
+     "kind": "lecture",
+     "label": "Lecture 12",
+     "title": "Review",
+     "description": "",
+     "date": "Dec 1, 2026, 10:00",
+     "files": []
+    },
+    {
+     "id": "tut11",
+     "kind": "tutorial",
+     "label": "Tutorial 11",
+     "title": "Practice: review questions",
+     "description": "",
+     "date": "Dec 3, 2026, 14:00",
+     "files": []
+    }
+   ]
+  }
+ ]
+}

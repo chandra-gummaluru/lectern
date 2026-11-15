@@ -1,0 +1,245 @@
+{
+ "format": "lectern-course/1",
+ "page": {
+  "title": "A Sample Course",
+  "code": "DEMO101",
+  "term": "Fall 2026",
+  "school": "",
+  "description": "",
+  "sections": [],
+  "scheme": {
+   "from": "demo101/f26/grades.json",
+   "units": [
+    {
+     "kind": "group",
+     "id": "gq",
+     "name": "Quizzes",
+     "weight": 10,
+     "keep": 4,
+     "count": 5,
+     "members": [
+      {
+       "id": "q1",
+       "name": "Quiz 1",
+       "title": "",
+       "type": "test",
+       "total": 10,
+       "date": "2026-09-25",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "q2",
+       "name": "Quiz 2",
+       "title": "",
+       "type": "test",
+       "total": 10,
+       "date": "2026-10-09",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "q3",
+       "name": "Quiz 3",
+       "title": "",
+       "type": "test",
+       "total": 10,
+       "date": "2026-10-30",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "q4",
+       "name": "Quiz 4",
+       "title": "",
+       "type": "test",
+       "total": 10,
+       "date": "2026-11-13",
+       "time": "17:00",
+       "notes": []
+      },
+      {
+       "id": "q5",
+       "name": "Quiz 5",
+       "title": "",
+       "type": "test",
+       "total": 10,
+       "date": "2026-11-27",
+       "time": "17:00",
+       "notes": []
+      }
+     ]
+    },
+    {
+     "kind": "eval",
+     "id": "a1",
+     "name": "Assignment 1",
+     "title": "Problem set",
+     "type": "assignment",
+     "total": 20,
+     "date": "2026-10-02",
+     "time": "23:59",
+     "release": "2026-09-18",
+     "releaseTime": "09:00",
+     "weight": 15,
+     "notes": [],
+     "missed": {
+      "mode": "zero"
+     }
+    },
+    {
+     "kind": "eval",
+     "id": "mt",
+     "name": "Test 1",
+     "title": "Midterm",
+     "type": "test",
+     "total": 50,
+     "date": "2026-10-28",
+     "time": "18:00",
+     "weight": 25,
+     "notes": [
+      "If it isn't submitted, 25% moves to Test 2."
+     ],
+     "missed": {
+      "mode": "reweight",
+      "parts": [
+       {
+        "id": "fe",
+        "name": "Test 2",
+        "kind": "shift",
+        "pct": 25,
+        "was": 35
+       }
+      ],
+      "zero": 0
+     }
+    },
+    {
+     "kind": "eval",
+     "id": "a2",
+     "name": "Assignment 2",
+     "title": "Project",
+     "type": "assignment",
+     "total": 20,
+     "date": "2026-11-20",
+     "time": "23:59",
+     "release": "2026-11-06",
+     "releaseTime": "09:00",
+     "weight": 15,
+     "notes": [],
+     "missed": {
+      "mode": "zero"
+     }
+    },
+    {
+     "kind": "eval",
+     "id": "fe",
+     "name": "Test 2",
+     "title": "Final Exam",
+     "type": "test",
+     "total": 100,
+     "date": "",
+     "time": "",
+     "weight": 35,
+     "notes": [],
+     "missed": {
+      "mode": "zero"
+     }
+    }
+   ],
+   "evals": [
+    {
+     "id": "q1",
+     "name": "Quiz 1",
+     "title": "",
+     "type": "test",
+     "total": 10,
+     "date": "2026-09-25",
+     "time": "17:00"
+    },
+    {
+     "id": "q2",
+     "name": "Quiz 2",
+     "title": "",
+     "type": "test",
+     "total": 10,
+     "date": "2026-10-09",
+     "time": "17:00"
+    },
+    {
+     "id": "q3",
+     "name": "Quiz 3",
+     "title": "",
+     "type": "test",
+     "total": 10,
+     "date": "2026-10-30",
+     "time": "17:00"
+    },
+    {
+     "id": "q4",
+     "name": "Quiz 4",
+     "title": "",
+     "type": "test",
+     "total": 10,
+     "date": "2026-11-13",
+     "time": "17:00"
+    },
+    {
+     "id": "q5",
+     "name": "Quiz 5",
+     "title": "",
+     "type": "test",
+     "total": 10,
+     "date": "2026-11-27",
+     "time": "17:00"
+    },
+    {
+     "id": "a1",
+     "name": "Assignment 1",
+     "title": "Problem set",
+     "type": "assignment",
+     "total": 20,
+     "date": "2026-10-02",
+     "time": "23:59",
+     "release": "2026-09-18",
+     "releaseTime": "09:00"
+    },
+    {
+     "id": "mt",
+     "name": "Test 1",
+     "title": "Midterm",
+     "type": "test",
+     "total": 50,
+     "date": "2026-10-28",
+     "time": "18:00"
+    },
+    {
+     "id": "a2",
+     "name": "Assignment 2",
+     "title": "Project",
+     "type": "assignment",
+     "total": 20,
+     "date": "2026-11-20",
+     "time": "23:59",
+     "release": "2026-11-06",
+     "releaseTime": "09:00"
+    },
+    {
+     "id": "fe",
+     "name": "Test 2",
+     "title": "Final Exam",
+     "type": "test",
+     "total": 100,
+     "date": "",
+     "time": ""
+    }
+   ],
+   "policies": [],
+   "requests": {
+    "url": "http://localhost:38615/request",
+    "repo": "chandra",
+    "offering": "demo101/f26"
+   }
+  }
+ }
+}

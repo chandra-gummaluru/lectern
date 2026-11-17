@@ -18,7 +18,8 @@
   "preamble": "",
   "layout": "exam",
   "instructions": "",
-  "link": "mt"
+  "link": "mt",
+  "scan": true
  },
  "cover": {
   "on": true,
@@ -59,6 +60,453 @@
    }
   ]
  },
- "items": [],
- "total": 0
+ "items": [
+  {
+   "kind": "question",
+   "id": "ez0a3n8g",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "nhvrzyo1",
+     "type": "mc",
+     "body": "Which of these numbers is prime?",
+     "points": 2,
+     "solution": "29: its only factors are 1 and 29.",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [
+      {
+       "id": "m8w3d6no",
+       "text": "21",
+       "correct": false
+      },
+      {
+       "id": "s5nv2eqm",
+       "text": "27",
+       "correct": false
+      },
+      {
+       "id": "kf28xm4u",
+       "text": "29",
+       "correct": true
+      },
+      {
+       "id": "pz1ne13t",
+       "text": "33",
+       "correct": false
+      }
+     ],
+     "layout": "row",
+     "answer": "true",
+     "comps": {},
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "1lrejzx4",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "wbxxaqjc",
+     "type": "tf",
+     "body": "The angles of a triangle add up to $180^\\circ$.",
+     "points": 1,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {},
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "3n1h7upg",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "dmrufrjq",
+     "type": "ms",
+     "body": "Which of these numbers are even? Tick every one that is.",
+     "points": 2,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [
+      {
+       "id": "k56tl7af",
+       "text": "14",
+       "correct": true
+      },
+      {
+       "id": "ecw82h3i",
+       "text": "25",
+       "correct": false
+      },
+      {
+       "id": "lm92ifjt",
+       "text": "36",
+       "correct": true
+      },
+      {
+       "id": "vyed99w3",
+       "text": "49",
+       "correct": false
+      }
+     ],
+     "layout": "row",
+     "answer": "true",
+     "comps": {},
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "biswxzzd",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "rlaaz3cv",
+     "type": "written",
+     "body": "What is $12 \\times 7$? [[pr4m98uv]]",
+     "points": 2,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {
+      "pr4m98uv": {
+       "kind": "num",
+       "w": "3cm",
+       "ans": "84"
+      }
+     },
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "ni389utt",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "o7enjhjv",
+     "type": "written",
+     "body": "Write $\\frac{3}{8}$ as a decimal. [[hxb2mx69]]",
+     "points": 2,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {
+      "hxb2mx69": {
+       "kind": "num",
+       "w": "3.5cm",
+       "ans": "0.375"
+      }
+     },
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "c3da02rj",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "qp1n3tcp",
+     "type": "written",
+     "body": "Write 13 in binary, one bit in each cell. [[dv22dr9n]]",
+     "points": 2,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {
+      "dv22dr9n": {
+       "kind": "cells",
+       "n": 4,
+       "cell": "9mm",
+       "ans": "1,1,0,1"
+      }
+     },
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "pwn8gomk",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "5dcrhf2v",
+     "type": "written",
+     "body": "Write $\\frac{6}{8}$ in lowest terms: $[[7ej40gqa]]$",
+     "points": 2,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {
+      "7ej40gqa": {
+       "kind": "frac",
+       "w": "1.8cm",
+       "num": "3",
+       "den": "4"
+      }
+     },
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "idhs7dgt",
+   "marking": "zero",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "ihhc2frz",
+     "type": "written",
+     "body": "In one or two sentences, explain why the sum of two odd numbers is always even.",
+     "points": 3,
+     "solution": "An odd number is $2a+1$ and another is $2b+1$; their sum is $2(a+b+1)$, a multiple of 2.",
+     "rubric": [
+      {
+       "id": "lm2icm76",
+       "text": "Says odd numbers are one more than an even number (or writes $2k+1$)",
+       "delta": 1
+      },
+      {
+       "id": "og7av6i4",
+       "text": "Adds them and shows the sum is a multiple of 2",
+       "delta": 2
+      }
+     ],
+     "space": {
+      "mode": "height",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {},
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "break",
+   "id": "spky9yjv",
+   "title": "",
+   "body": ""
+  },
+  {
+   "kind": "question",
+   "id": "5s3xsix4",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "o07cd7ga",
+     "type": "written",
+     "body": "A few quick ones.",
+     "points": 0,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {},
+     "parts": [
+      {
+       "id": "3tflbx4c",
+       "type": "mc",
+       "body": "Which planet is closest to the Sun?",
+       "points": 1,
+       "solution": "",
+       "rubric": [],
+       "space": {
+        "mode": "none",
+        "h": "4cm"
+       },
+       "options": [
+        {
+         "id": "cptyp4pm",
+         "text": "Mercury",
+         "correct": true
+        },
+        {
+         "id": "0jk525mr",
+         "text": "Venus",
+         "correct": false
+        },
+        {
+         "id": "bmvcot7q",
+         "text": "Earth",
+         "correct": false
+        },
+        {
+         "id": "cyiqx3qd",
+         "text": "Mars",
+         "correct": false
+        }
+       ],
+       "layout": "cols2",
+       "answer": "true",
+       "comps": {},
+       "parts": []
+      },
+      {
+       "id": "ycwdoayi",
+       "type": "tf",
+       "body": "At sea level, water boils at $100^\\circ$C.",
+       "points": 1,
+       "solution": "",
+       "rubric": [],
+       "space": {
+        "mode": "none",
+        "h": "4cm"
+       },
+       "options": [],
+       "layout": "stack",
+       "answer": "true",
+       "comps": {},
+       "parts": []
+      },
+      {
+       "id": "5zgl02rx",
+       "type": "written",
+       "body": "A \\$40 shirt is 25\\% off. What is the sale price, in dollars? Show your working. [[nszik75t]]",
+       "points": 2,
+       "solution": "25\\% of \\$40 is \\$10, so it costs \\$30.",
+       "rubric": [],
+       "space": {
+        "mode": "height",
+        "h": "3cm"
+       },
+       "options": [],
+       "layout": "stack",
+       "answer": "true",
+       "comps": {
+        "nszik75t": {
+         "kind": "num",
+         "w": "3cm",
+         "ans": "30"
+        }
+       },
+       "parts": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "kind": "question",
+   "id": "9o8600ld",
+   "marking": "full",
+   "newPage": false,
+   "tags": [],
+   "notes": "",
+   "variants": [
+    {
+     "id": "pi2eyg4g",
+     "type": "written",
+     "body": "The capital of Canada is [[8d3rwyke]].",
+     "points": 1,
+     "solution": "",
+     "rubric": [],
+     "space": {
+      "mode": "none",
+      "h": "4cm"
+     },
+     "options": [],
+     "layout": "stack",
+     "answer": "true",
+     "comps": {
+      "8d3rwyke": {
+       "kind": "blank",
+       "len": "4cm",
+       "ans": "Ottawa"
+      }
+     },
+     "parts": []
+    }
+   ]
+  },
+  {
+   "kind": "rough",
+   "id": "xgakqk7i",
+   "title": "",
+   "body": ""
+  }
+ ],
+ "total": 21
 }

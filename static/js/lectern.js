@@ -686,7 +686,7 @@ function homePage() {
       <button type="button" class="lt-btn" id="lt-imp"${all ? "" : " disabled"} title="Bring in a course offering exported from Lectern">${ICON.upload}Import</button>
       <button type="button" class="lt-btn add" id="lt-new"${all ? "" : " disabled"}>${ICON.plus}New Course Offering</button></div>
     <div id="lt-list"></div>
-    ${all && all.length && !all.some(o => !o.o && o.c === DEMO_COURSE) ? `<p class="lt-demo-line">${ICON.demo}<span>Want to try something without touching your courses? <button type="button" class="lt-link" id="lt-demo">Load the demo course</button>: a made-up sample course with students, marks and a midterm, which you can delete when you're done.</span></p>` : ""}
+    ${all && all.length && !all.some(o => !o.o && o.c === DEMO_COURSE) ? `<p class="lt-demo-line">${ICON.demo}<span>Want to try something first? <button type="button" class="lt-link" id="lt-demo">Load the demo course</button>, a made-up course you can delete when you're done.</span></p>` : ""}
   </div>`);
   $("#lt-new").onclick = newOfferingDialog;
   $("#lt-imp").onclick = importDialog;

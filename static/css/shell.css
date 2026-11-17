@@ -1354,8 +1354,8 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 /* Home: a new account's start (New, Import, the demo), and the line offering the demo under your courses. */
 .lt-start { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 .lt-start .lt-card.new { min-height: 170px; padding: 18px; text-align: center; }
-.lt-demo-line { display: flex; align-items: flex-start; gap: 10px; margin: 22px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--home-ink-3); }
-.lt-demo-line > svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.lt-demo-line { display: flex; align-items: center; gap: 10px; margin: 22px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--home-ink-3); }
+.lt-demo-line > svg { flex: none; width: 18px; height: 18px; }
 .lt-demo-line .lt-link { color: var(--home-ink); font-weight: 600; }
 /* Import: the file, then what's in it. */
 .lt-imp-file input[type="file"] { font: inherit; font-weight: 400; font-size: 13.5px; }

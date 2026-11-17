@@ -440,7 +440,7 @@ def mark():
     if not ex.settings.get("scan"):
         raise Refusal(409, "Turn on Marking from scans in the exam's settings (and print it) first.")
     try:
-        import numpy, cv2, pypdfium2  # noqa: F401
+        import numpy, cv2, pypdfium2, PIL  # noqa: F401
     except ImportError:
         raise Refusal(503, "This Lectern can't mark scans yet: its server needs the scan packages (pip install -r requirements-scan.txt).")
     files = [ex.path("uploads", u["file"]) for u in _uploads(ex)]

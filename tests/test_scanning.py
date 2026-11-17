@@ -116,8 +116,15 @@ def test_print_scan_mark_review_send(client, user, demo):
 
     res = client.get(f"/api/scans/results?{q(demo)}").get_json()
     bs = res["booklets"]
+    for b, who in zip(bs, people):        # never the wrong student without a person; an unsure one, a person picks
+        if b["student"]["status"] == "auto":
+            assert b["student"]["num"] == who["num"], b["student"]
+        else:
+            assert b["student"]["status"] == "check"
+            r = client.post("/api/scans/review", json={"offering": demo["offering"], "exam": "midterm", "booklet": b["key"], "student": who["num"]}, headers=H)
+            assert r.status_code == 200 and r.get_json()["booklet"]["student"]["status"] == "done"
+    bs = client.get(f"/api/scans/results?{q(demo)}").get_json()["booklets"]
     assert [b["student"]["num"] for b in bs] == [people[0]["num"], people[1]["num"]]
-    assert all(b["student"]["status"] == "auto" for b in bs)
     one = {x["label"]: x for x in bs[0]["questions"]}
     assert one["8"]["status"] == "manual" and one["10"]["status"] == "manual" and one["1"]["score"] == 2
     two = {x["label"]: x for x in bs[1]["questions"]}

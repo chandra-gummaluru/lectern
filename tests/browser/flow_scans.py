@@ -104,6 +104,21 @@ def main():
         rows = me.locator(".sc-dc .dc-t")
         print("  to look at:", [rows.nth(i).inner_text().replace("\n", " ") for i in range(rows.count())])
 
+        # By Question: question 8 (written) in every booklet; the first student's gets full marks there.
+        me.click("[data-by='question']"); me.wait_for_selector(".sc-dc [data-gq]")
+        print("  by question:", [x.replace("\n", " ") for x in me.locator(".sc-dc .dc-t").all_inner_texts()][:4])
+        me.locator(".sc-dc [data-gq='8']").click(); me.wait_for_selector(".sc-book .sc-q")
+        assert "/questions/8" in me.evaluate("location.hash")
+        me.screenshot(path=f"{OUT}/scan-3b-question.png", full_page=True)
+        print("  question 8:", me.inner_text(".sc-book .lt-req-meta"), "|", me.locator(".sc-q").count(), "answers to look at")
+        assert me.locator(".sc-q").count() == 2
+        me.locator(".sc-q").first.locator("[data-full]").click(); me.wait_for_timeout(600)
+        assert me.locator(".sc-q").count() == 1, "the marked one leaves To Look At"
+        me.click("[data-qshow='all']"); me.wait_for_timeout(200)
+        assert me.locator(".sc-q").count() == 2 and me.locator(".sc-q.st-done").count() == 1
+        me.locator(".sc-qwho").first.click(); me.wait_for_selector(".sc-book .sc-cover, .sc-book .sc-pick")
+        assert "/scans/midterm/" in me.evaluate("location.hash") and "/questions/" not in me.evaluate("location.hash")
+
         # 3. Each booklet: mark what's left, then send.
         for n in (1, 2):
             me.evaluate(f"location.hash = '#/{off}/scans/midterm/{n}'")
@@ -111,26 +126,40 @@ def main():
             if n == 1:
                 me.screenshot(path=f"{OUT}/scan-4-booklet.png", full_page=True)
             print(f"3 booklet {n}:", me.inner_text(".sc-book h2"), "|", me.inner_text(".sc-book .lt-req-meta"))
-            if me.locator(".sc-pick [data-cand]").count():   # not sure whose it is: the cover says, and they pick
+            if "Unmatched" in me.inner_text(".sc-book h2"):   # not sure whose it is: the cover says, and they pick
+                assert "XXXXXXXXXX" in me.inner_text(".sc-book .lt-req-meta")
                 me.locator(".sc-pick [data-cand]", has_text=people[n - 1]["first"]).first.click() if me.locator(".sc-pick [data-cand]", has_text=people[n - 1]["first"]).count() \
                     else me.select_option("#sc-who", people[n - 1]["num"])
                 me.wait_for_timeout(500)
                 print("  whose: chosen", me.inner_text(".sc-book h2"))
             assert people[n - 1]["last"] in me.inner_text(".sc-book h2")
-            for _ in range(12):
+            for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():
                     break
                 q = left.first
                 label = q.get_attribute("data-q")
-                if n == 1 or label in ("8", "10"):
-                    q.locator("[data-full]").click()        # the first student is right throughout; written answers are fine
-                elif q.locator("[data-ok]").count():
-                    q.locator("[data-ok]").click()
+                answer = q.locator(".sc-read b").last.inner_text() if q.locator(".sc-read").count() else ""
+                if q.locator("[data-no]").count():          # "Is this what it says?"
+                    if n == 1:                               # no: they type what it says (the right answer)
+                        q.locator("[data-no]").click(); me.wait_for_selector(".sc-readin:focus")
+                        me.keyboard.type(answer); me.keyboard.press("Enter")
+                    else:
+                        q.locator("[data-yes]").click()
+                elif q.locator("[data-keep]").count():      # "Is there working worth part marks?" no
+                    q.locator("[data-keep]").click()
+                elif q.locator("[data-opt]").count():       # "Which is their answer?"
+                    q.locator(f"[data-opt='{answer}']" if n == 1 else "[data-opt]").first.click()
+                elif q.locator(".sc-readin").count():       # a word to read: they type it
+                    q.locator(".sc-readin").fill("Ottawa" if n == 1 else "Toronto"); q.locator("[data-readsave]").click()
+                elif n == 1 or label == "8":
+                    q.locator("[data-full]").click()
                 else:
                     q.locator("[data-zero]").click()
-                me.wait_for_timeout(400)
+                me.wait_for_timeout(450)
             me.wait_for_function("document.querySelector('.sc-book .lt-req-meta').textContent.includes('finished')")
+        typed = me.locator(".sc-q", has_text="typed")
+        print("  typed readings:", typed.count())
         me.screenshot(path=f"{OUT}/scan-5-finished.png", full_page=True)
         me.locator("#lt-path button", has_text="Print and Scan").first.click()
         me.wait_for_selector("#sc-send:not([disabled])")

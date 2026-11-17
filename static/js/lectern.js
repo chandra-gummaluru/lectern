@@ -11,7 +11,8 @@
      #/csc258/f26/announcements   announcements (announcements.js), each in its week on the course page
      #/csc258/f26/team/12    a teaching team member: their sections, times and office hours (team.js)
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
-     #/csc258/f26/scans/midterm[/3]   the exam on paper: its PDFs, its scans and their marks (scans.js); /3: booklet 3
+     #/csc258/f26/scans/midterm[/3]   the exam on paper: its PDFs, its scans and their marks (scans.js); /3: booklet 3;
+                                      /questions/4: question 4, in every booklet
      #/~ana/csc258/f26/…   the same, for an offering in someone else's files that you're on the teaching team of
      #/account             your account: password, two-factor sign-in, sessions
    Everything is kept on Lectern's server, in your account's two areas: "pub" (course pages, published
@@ -262,7 +263,7 @@ function parseHash() {
     if ((tool === "groups" || tool === "sections") && e) return { page: "groups", c, t, o, g: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
     if (tool === "attendance" && e && slugOK(e)) return { page: "attend", c, t, o, e };
-    if (tool === "scans" && e && slugOK(e)) return { page: "scans", c, t, o, e, b: /^\d+$/.test(p[4] || "") ? p[4] : "" };
+    if (tool === "scans" && e && slugOK(e)) return { page: "scans", c, t, o, e, b: /^\d+$/.test(p[4] || "") ? p[4] : "", q: p[4] === "questions" && p[5] ? p[5] : "" };
     if (tool === "discussions") return { page: "discuss", c, t, o, tg: e || "", id: p[4] || "" };
     return { page: "offering", c, t, o };
   }
@@ -275,7 +276,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "scans" ? `${at}/scans/${encodeURIComponent(r.e)}${r.b ? `/${r.b}` : ""}` : r.page === "discuss" ? `${at}/discussions${r.tg && r.id ? `/${encodeURIComponent(r.tg)}/${encodeURIComponent(r.id)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "scans" ? `${at}/scans/${encodeURIComponent(r.e)}${r.q ? `/questions/${encodeURIComponent(r.q)}` : r.b ? `/${r.b}` : ""}` : r.page === "discuss" ? `${at}/discussions${r.tg && r.id ? `/${encodeURIComponent(r.tg)}/${encodeURIComponent(r.id)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);

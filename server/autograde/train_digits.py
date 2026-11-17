@@ -1,130 +1,173 @@
-"""Train the digit reader (digits.npz beside this file). Run it only to remake the weights:
+"""Train the character reader (digits.npz beside this file). Only to remake the weights; it needs TensorFlow:
 
-    python -m server.autograde.train_digits [path/to/digits.png]
+    pip install tensorflow-cpu
+    python -m server.autograde.train_digits <folder with MNIST's four .gz files>
 
-Without a path it downloads OpenCV's handwritten-digit sample, samples/data/digits.png (5,000 digits, 500 of
-each, from MNIST: Yann LeCun and Corinna Cortes, CC BY-SA 3.0), from GitHub. The last 50 of each digit are held
-back to test on; 20 of each of those also go to tests/heldout-digits.npz, which the scan tests write into
-answer boxes as "handwriting". Training uses each digit several times, shifted, turned, scaled and with thinner
-or thicker strokes, at the size a scanned box has, so the network copes with pens and scanners.
+What it learns from:
+  digits        MNIST's 60,000 training digits (Yann LeCun, Corinna Cortes and Chris Burges; CC BY-SA 3.0),
+                each also turned, slanted and stretched; and digits drawn in OpenCV's handwriting-like (Hershey) fonts.
+  else (10)     what students also write in an answer box: $, %, letters, signs, and scribbles, drawn in the
+                same fonts and by hand-like random strokes; and "$" drawn the usual ways (an S with a line through).
+Every one goes through digits.prepare_many first, as reading does: the network sees one stroke width.
+
+It's tested on MNIST's 10,000 test digits (never trained on), as they come and as a pen and scanner would make
+them; 20 of each digit from those go to tests/heldout-digits.npz for the scan tests.
 """
-import io
+import gzip
 import os
 import sys
-import urllib.request
+import time
 
 import cv2
 import numpy as np
 
 from . import digits as D
 
-URL = "https://raw.githubusercontent.com/opencv/opencv/4.x/samples/data/digits.png"
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
+FONTS = [cv2.FONT_HERSHEY_SIMPLEX, cv2.FONT_HERSHEY_DUPLEX, cv2.FONT_HERSHEY_COMPLEX, cv2.FONT_HERSHEY_TRIPLEX,
+         cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, cv2.FONT_HERSHEY_SCRIPT_COMPLEX, cv2.FONT_HERSHEY_PLAIN, cv2.FONT_HERSHEY_COMPLEX_SMALL]
+# Not digits, and not easily taken for one (no l, I, O, S, Z, B, G, b, g, q, /, ( or )).
+OTHERS = "$$$$%&@#+=<>?!*xXacdehkmnprtuvwyACDEFHKMNPRUVWY"
 
 
-def load(path=None):
-    if path:
-        img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    else:
-        data = urllib.request.urlopen(URL, timeout=60).read()
-        img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_GRAYSCALE)
-    cells = [np.hsplit(r, 100) for r in np.vsplit(img, 50)]
-    cells = np.array(cells).reshape(-1, 20, 20)      # 500 of each digit, in order 0..9
-    labels = np.repeat(np.arange(10), 500)
-    return cells, labels
+def idx(path):
+    with gzip.open(path, "rb") as f:
+        data = f.read()
+    if int.from_bytes(data[2:3], "big") != 8:
+        raise ValueError(path)
+    dims = data[3]
+    shape = [int.from_bytes(data[4 + 4 * i:8 + 4 * i], "big") for i in range(dims)]
+    return np.frombuffer(data, np.uint8, offset=4 + 4 * dims).reshape(shape)
 
 
-def scanned(cell, rng):
-    """A 20x20 sample as a scanned box would show it: about 60 pixels high, a little turned, shifted and scaled,
-    with its strokes made thinner or thicker."""
-    big = cv2.resize(cell, (60, 60), interpolation=cv2.INTER_CUBIC)
-    a, s = rng.uniform(-12, 12), rng.uniform(0.85, 1.12)
-    M = cv2.getRotationMatrix2D((30, 30), a, s)
-    M[:, 2] += rng.uniform(-3, 3, 2)
-    big = cv2.warpAffine(big, M, (60, 60))
-    mask = (big > 110).astype(np.uint8)
-    k = rng.integers(0, 5)
+def warp(m, rng, strong=1.0):
+    """Turned, slanted, stretched and shifted a little (a binary image, any size)."""
+    h, w = m.shape
+    big = cv2.copyMakeBorder(m, h // 2, h // 2, w // 2, w // 2, cv2.BORDER_CONSTANT, value=0)
+    H, W = big.shape
+    a = np.deg2rad(rng.uniform(-14, 14) * strong)
+    sh = rng.uniform(-0.3, 0.3) * strong
+    sx, sy = np.exp(rng.uniform(-0.15, 0.15) * strong), np.exp(rng.uniform(-0.15, 0.15) * strong)
+    R = np.array([[np.cos(a), -np.sin(a)], [np.sin(a), np.cos(a)]]) @ np.array([[1, sh], [0, 1]]) @ np.diag([sx, sy])
+    c = np.array([W / 2, H / 2])
+    M = np.hstack([R, (c - R @ c)[:, None]])
+    return (cv2.warpAffine(big.astype(np.float32), M, (W, H)) > 0.5).astype(np.uint8)
+
+
+def font_char(ch, rng):
+    font = FONTS[rng.integers(len(FONTS))] | (cv2.FONT_ITALIC if rng.random() < 0.3 else 0)
+    img = np.zeros((96, 96), np.uint8)
+    cv2.putText(img, ch, (18, 70), font, rng.uniform(1.4, 2.0), 255, int(rng.integers(1, 5)), cv2.LINE_AA)
+    return warp((img > 100).astype(np.uint8), rng)
+
+
+def dollar(rng):
+    """$ by hand: an S (from a font) with a line through it, or across it top and bottom."""
+    s = font_char("S", rng)
+    ys, xs = np.nonzero(s)
+    if len(xs) == 0:
+        return s
+    cx = int(np.median(xs) + rng.normal(0, 2))
+    top, bot = ys.min() - int(rng.uniform(2, 10)), ys.max() + int(rng.uniform(2, 10))
+    cv2.line(s, (cx + int(rng.normal(0, 2)), max(0, top)), (cx + int(rng.normal(0, 2)), min(s.shape[0] - 1, bot)), 1, int(rng.integers(1, 4)))
+    return s
+
+
+def scribble(rng):
+    img = np.zeros((64, 64), np.uint8)
+    pts = rng.uniform(8, 56, (int(rng.integers(3, 8)), 2)).astype(np.int32)
+    cv2.polylines(img, [pts], False, 1, int(rng.integers(1, 4)))
+    return img
+
+
+def augment_mnist(img, rng):
+    m = cv2.resize(img, (56, 56), interpolation=cv2.INTER_CUBIC) > 110
+    return warp(m.astype(np.uint8), rng)
+
+
+def pen(img, rng):
+    """A digit as a pen would leave it in a scanned box: bigger, thinner or thicker, a little broken."""
+    m = cv2.resize(img, (64, 64), interpolation=cv2.INTER_CUBIC)
+    m = (m > rng.uniform(80, 200)).astype(np.uint8)
+    k = rng.integers(0, 3)
     if k == 1:
-        mask = cv2.erode(mask, np.ones((2, 2), np.uint8))
+        m = cv2.erode(m, np.ones((3, 3), np.uint8))
     elif k == 2:
-        mask = cv2.dilate(mask, np.ones((2, 2), np.uint8))
-    elif k == 3:
-        mask = cv2.dilate(mask, np.ones((3, 3), np.uint8))
-    return mask
+        m = cv2.dilate(m, np.ones((3, 3), np.uint8))
+    return m
 
 
-def as_mask(cell):
-    big = cv2.resize(cell, (60, 60), interpolation=cv2.INTER_CUBIC)
-    return (big > 110).astype(np.uint8)
+def build(Xtr, ytr, rng):
+    masks, labels = [], []
+    for img, y in zip(Xtr, ytr):
+        masks.append((img > 100).astype(np.uint8)); labels.append(y)
+        masks.append(augment_mnist(img, rng)); labels.append(y)
+    for _ in range(12000):
+        d = int(rng.integers(10))
+        masks.append(font_char(str(d), rng)); labels.append(d)
+    for _ in range(9000):
+        masks.append(font_char(OTHERS[rng.integers(len(OTHERS))], rng)); labels.append(D.OTHER)
+    for _ in range(5000):
+        masks.append(dollar(rng)); labels.append(D.OTHER)
+    for _ in range(4000):
+        masks.append(scribble(rng)); labels.append(D.OTHER)
+    return masks, np.array(labels)
 
 
-def featurize(masks):
-    X = []
-    for m in masks:
-        img = D.prepare(m)
-        X.append(D.features(img if img is not None else np.zeros((20, 20), np.float32)))
-    return np.array(X, np.float32)
+def prepare(masks, chunk=4000):
+    out = []
+    for i in range(0, len(masks), chunk):
+        out.append(D.prepare_many(masks[i:i + chunk]))
+        print(f"\r  prepared {min(i + chunk, len(masks))} of {len(masks)}", end="", flush=True)
+    print()
+    return np.concatenate(out)
 
 
-def train(X, y, epochs=40, hidden=160, seed=0):
-    rng = np.random.default_rng(seed)
-    mu, sd = X.mean(0), X.std(0) + 1e-3
-    Xn = (X - mu) / sd
-    d = X.shape[1]
-    P = {"W1": rng.normal(0, np.sqrt(2 / d), (d, hidden)).astype(np.float32), "b1": np.zeros(hidden, np.float32),
-         "W2": rng.normal(0, np.sqrt(2 / hidden), (hidden, 10)).astype(np.float32), "b2": np.zeros(10, np.float32)}
-    m = {k: np.zeros_like(v) for k, v in P.items()}
-    v = {k: np.zeros_like(x) for k, x in P.items()}
-    Y = np.eye(10, dtype=np.float32)[y]
-    t, lr, wd = 0, 1e-3, 1e-4
-    for ep in range(epochs):
-        idx = rng.permutation(len(Xn))
-        for i in range(0, len(idx), 128):
-            b = idx[i:i + 128]
-            xb, yb = Xn[b], Y[b]
-            h = np.maximum(0, xb @ P["W1"] + P["b1"])
-            z = h @ P["W2"] + P["b2"]
-            z -= z.max(1, keepdims=True)
-            p = np.exp(z)
-            p /= p.sum(1, keepdims=True)
-            g = (p - yb) / len(b)
-            G = {"W2": h.T @ g + wd * P["W2"], "b2": g.sum(0)}
-            gh = (g @ P["W2"].T) * (h > 0)
-            G["W1"] = xb.T @ gh + wd * P["W1"]
-            G["b1"] = gh.sum(0)
-            t += 1
-            for k in P:
-                m[k] = 0.9 * m[k] + 0.1 * G[k]
-                v[k] = 0.999 * v[k] + 0.001 * G[k] ** 2
-                P[k] -= lr * (m[k] / (1 - 0.9 ** t)) / (np.sqrt(v[k] / (1 - 0.999 ** t)) + 1e-8)
-        if ep == int(epochs * 0.7):
-            lr /= 5
-    P["mu"], P["sd"] = mu.astype(np.float32), sd.astype(np.float32)
-    return P
+def model():
+    import tensorflow as tf
+    L = tf.keras.layers
+    m = tf.keras.Sequential([
+        tf.keras.Input((28, 28, 1)),
+        L.RandomTranslation(0.08, 0.08), L.RandomRotation(0.03),
+        L.Conv2D(32, 3, activation="relu", name="c1"), L.Conv2D(32, 3, activation="relu", name="c2"), L.MaxPooling2D(),
+        L.Conv2D(64, 3, activation="relu", name="c3"), L.MaxPooling2D(),
+        L.Flatten(), L.Dropout(0.25), L.Dense(128, activation="relu", name="d1"), L.Dropout(0.3), L.Dense(11, activation="softmax", name="d2")])
+    m.compile(optimizer=tf.keras.optimizers.Adam(1e-3), loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+    return m
 
 
 def main(argv):
-    cells, labels = load(argv[0] if argv else None)
-    keep = np.array([i % 500 < 450 for i in range(5000)])
-    rng = np.random.default_rng(1)
-    tr_cells, tr_y = cells[keep], labels[keep]
-    masks, ys = [], []
-    for c, yv in zip(tr_cells, tr_y):
-        masks.append(as_mask(c)); ys.append(yv)
-        for _ in range(5):
-            masks.append(scanned(c, rng)); ys.append(yv)
-    X, y = featurize(masks), np.array(ys)
-    print(f"training on {len(X)} samples")
-    P = train(X, y)
-    te_cells, te_y = cells[~keep], labels[~keep]
-    Xt = (featurize([scanned(c, rng) for c in te_cells]) - P["mu"]) / P["sd"]
-    acc = (D.forward(P, Xt).argmax(1) == te_y).mean()
-    print(f"held-out accuracy (scanned look): {acc:.4f}")
-    np.savez_compressed(os.path.join(HERE, "digits.npz"), **{k: v.astype(np.float16 if k.startswith("W") else np.float32) for k, v in P.items()})
-    # 20 held-out samples of each digit for the tests
-    sel = np.concatenate([np.where(~keep & (labels == d))[0][:20] for d in range(10)])
-    np.savez_compressed(os.path.join(ROOT, "tests", "heldout-digits.npz"), images=cells[sel], labels=labels[sel])
+    src = argv[0]
+    rng = np.random.default_rng(0)
+    Xtr, ytr = idx(os.path.join(src, "train-images-idx3-ubyte.gz")), idx(os.path.join(src, "train-labels-idx1-ubyte.gz"))
+    Xte, yte = idx(os.path.join(src, "t10k-images-idx3-ubyte.gz")), idx(os.path.join(src, "t10k-labels-idx1-ubyte.gz"))
+    t = time.time()
+    masks, y = build(Xtr, ytr, rng)
+    X = prepare(masks)
+    print(f"{len(X)} training samples ({time.time() - t:.0f}s)")
+    import tensorflow as tf
+    tf.random.set_seed(0)
+    m = model()
+    perm = rng.permutation(len(X))
+    X, y = X[perm], y[perm]
+    m.fit(X[..., None], y, batch_size=128, epochs=int(os.environ.get("EPOCHS", 8)), validation_split=0.04, verbose=2,
+          callbacks=[tf.keras.callbacks.ReduceLROnPlateau(patience=1, factor=0.3)])
+    P = {}
+    for name in ("c1", "c2", "c3", "d1", "d2"):
+        w, b = m.get_layer(name).get_weights()
+        P[name[:2] + "w"], P[name[:2] + "b"] = w.astype(np.float16), b.astype(np.float32)
+    np.savez_compressed(os.path.join(HERE, "digits.npz"), **P)
+    # Tests, with the numpy network (as the server reads).
+    D._net = None
+    plain = D.forward(D._load(), prepare([(x > 100).astype(np.uint8) for x in Xte]))
+    print(f"MNIST test digits: {(plain.argmax(1) == yte).mean():.4f} right; {(plain.argmax(1) == D.OTHER).mean():.4f} called something else")
+    penned = D.forward(D._load(), prepare([pen(x, rng) for x in Xte]))
+    print(f"  as a pen and scanner would make them: {(penned.argmax(1) == yte).mean():.4f}")
+    oth = D.forward(D._load(), prepare([font_char(c, rng) for c in "$%&@#+=?xX" * 20] + [dollar(rng) for _ in range(200)]))
+    print(f"symbols called something else: {(oth.argmax(1) == D.OTHER).mean():.4f}")
+    sel = np.concatenate([np.where(yte == d)[0][:20] for d in range(10)])
+    np.savez_compressed(os.path.join(ROOT, "tests", "heldout-digits.npz"), images=Xte[sel], labels=yte[sel])
     print("wrote digits.npz and tests/heldout-digits.npz")
 
 

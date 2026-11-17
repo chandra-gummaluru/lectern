@@ -512,7 +512,9 @@ def view(ex, results, review, roster):
             q = dict(q)
             r = (rv.get("q") or {}).get(q["label"])
             if r is not None:
-                q.update(score=r.get("score"), status="done", by=r.get("by", ""), machine=q.get("score"))
+                q.update(score=r.get("score"), status="done", by=r.get("by", ""), machine=q.get("score"), machineRead=q.get("read"))
+                if "read" in r:
+                    q.update(read=r["read"], typed=True)
             if q["status"] not in ("auto", "done"):
                 open_ += 1
             total += q.get("score") or 0
@@ -633,7 +635,15 @@ def review():
             q = next((x for x in b.get("questions") or [] if x["label"] == d.get("label")), None)
             if not q:
                 raise Refusal(404, "That question isn't in this booklet.")
-            if d.get("score") is None:
+            if "read" in d:                     # what the answer says (typed, or the option picked): scored as the grader would
+                from .autograde.grade import find_node, score_typed
+                node = find_node(ex.exam, q.get("id"))
+                if not node:
+                    raise Refusal(409, "That question has changed in the exam since it was marked.")
+                text = str(d.get("read") or "")[:200]
+                s, shown = score_typed(node, text)
+                one.setdefault("q", {})[q["label"]] = {"score": s, "read": shown, "by": g.user["name"], "at": time.time()}
+            elif d.get("score") is None:
                 (one.get("q") or {}).pop(q["label"], None)
             else:
                 s = _num(d.get("score"))

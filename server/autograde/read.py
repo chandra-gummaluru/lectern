@@ -15,11 +15,34 @@ from . import digits
 FILLED, TRACE, TICK = 0.25, 0.06, 0.06
 
 
+class Ink:
+    """The student's ink on a lined-up page, three ways. A pixel is ink when it's dark and away from printed ink;
+    pale pixels count by hysteresis (when they join ink that's clearly dark), so a light stroke stays whole without
+    picking up the scanner's specks. How pale depends on the use:
+      strict  only clearly dark ink: digits stay thin and their loops open on a blurry scan;
+      loose   pale ink too: a fine pen or pencil, or a faint scan, stays in one piece;
+      mid     between: for how filled a bubble or box is.
+    Handwriting is read both strictly and loosely, and the surer reading is kept."""
+    def __init__(self, scan, tpage):
+        bg = float(np.percentile(scan, 95))
+        strong = scan < 0.7 * bg
+        free = 1 - tpage.ink
+        self.strict = strong.astype(np.uint8) & free
+        self.mid = self._grow(scan, strong, 0.85 * bg) & free
+        self.loose = self._grow(scan, strong, 0.94 * bg) & free
+
+    @staticmethod
+    def _grow(scan, strong, level):
+        weak = (scan < level).astype(np.uint8)
+        n, lab = cv2.connectedComponents(weak, connectivity=8)
+        keep = np.zeros(n, bool)
+        keep[np.unique(lab[strong])] = True
+        keep[0] = False
+        return keep[lab].astype(np.uint8)
+
+
 def student_ink(scan, tpage):
-    """1 where the student wrote: dark on the scan and away from printed ink."""
-    bg = float(np.percentile(scan, 95))
-    dark = (scan < 0.8 * bg).astype(np.uint8)
-    return dark & (1 - tpage.ink)
+    return Ink(scan, tpage)
 
 
 def _crop(mask, r, inset=0):
@@ -32,6 +55,8 @@ def _crop(mask, r, inset=0):
 
 def fill(mask, r, round_=True):
     """The share of a bubble's (round) or box's inside that is the student's ink."""
+    if isinstance(mask, Ink):
+        mask = mask.mid
     x, y, w, h = r
     if round_:
         cx, cy, rad = x + w / 2, y + h / 2, 0.8 * min(w, h) / 2
@@ -103,8 +128,8 @@ def _split(c, depth=0):
 
 
 class Reading:
-    """What's written in a box: its characters, each with the digit reader's probabilities (None for a minus sign
-    or a decimal point), and whether there was a mark it couldn't explain."""
+    """What's written in a box: its characters, each with the reader's 11 probabilities (None for a minus sign or a
+    decimal point; "?" is a mark that isn't a digit), and whether there was a mark it couldn't explain."""
     def __init__(self, chars, odd=False, cut=False):
         self.chars, self.odd, self.cut = chars, odd, cut   # cut: touching characters were cut apart
 
@@ -118,8 +143,21 @@ class Reading:
         s = min([float(p.max()) for _, p in self.chars if p is not None] + [1.0])
         return min(s, 0.5) if self.odd else s
 
+    @property
+    def strays_sure(self):
+        """Whether the marks that aren't digits at either end are surely not digits ($, a unit)."""
+        t = self.text
+        ends = [p for (c, p) in self.chars[:len(t) - len(t.lstrip("?"))] + self.chars[len(t.rstrip("?")):] if c == "?"]
+        return all(p is not None and p[digits.OTHER] >= 0.9 for p in ends)
+
+    @property
+    def core(self):
+        """The text without marks that aren't digits at either end ("$30" → "30"); None if one is in the middle."""
+        t = self.text.strip("?")
+        return None if "?" in t else t
+
     def chance(self, text):
-        """How likely the same ink says text instead (the digit reader's probabilities, character by character)."""
+        """How likely the same ink says text instead (the reader's probabilities, character by character)."""
         text = str(text or "").strip()
         if len(text) != len(self.chars):
             return 1.0 if self.cut else 0.0                 # cut wrongly, it could say anything
@@ -148,16 +186,28 @@ def read_chars(part):
             chars.append(("-", None))
             continue
         p = digits.read(m[y:y + h, x:x + w])
-        chars.append((str(int(np.argmax(p))), p))
+        k = int(np.argmax(p))
+        chars.append(("?" if k == digits.OTHER else str(k), p))     # "?": a mark that isn't a digit ($, a letter, a scribble)
     return Reading(chars, odd, any(len(c) > 5 for c in comps))
 
 
 def read_box(mask, r, inset=4):
-    return read_chars(_crop(mask, r, inset))
+    """A Reading of a box's handwriting: read strictly and loosely (see Ink), the surer kept."""
+    if not isinstance(mask, Ink):
+        return read_chars(_crop(mask, r, inset))
+    a, b = read_chars(_crop(mask.strict, r, inset)), read_chars(_crop(mask.loose, r, inset))
+    if not a.chars or not b.chars:
+        return a if a.chars else b
+    return a if a.sure >= b.sure else b
 
 
 def digit_probs(mask, r, inset=3):
-    """For one cell: None if it's empty, else the ten probabilities of its digit."""
+    """For one cell: None if it's empty, else the 11 probabilities of what's in it (read both ways: see Ink)."""
+    if isinstance(mask, Ink):
+        a, b = digit_probs(mask.strict, r, inset), digit_probs(mask.loose, r, inset)
+        if a is None or b is None:
+            return None if a is None and b is None else (a if b is None else b) if digit_probs(mask.mid, r, inset) is not None else None
+        return a if a.max() >= b.max() else b
     part = _crop(mask, r, inset)
     comps = _components(part)
     if not comps:

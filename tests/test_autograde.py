@@ -297,7 +297,7 @@ def test_marks_scans(built, tmp_path):
                 unsure.append((b["student"]["name"], label, q["read"]))
                 continue
             assert q["score"] == score, (b["student"]["name"], label, {k: v for k, v in q.items() if k != "picture"})
-    assert len(unsure) <= 3, unsure                            # of 16 handwritten answers
+    assert len(unsure) <= 6, unsure                            # of 16 handwritten answers (wrong ones are looked at more)
     b3 = {q["label"]: q for q in res["booklets"][2]["questions"]}
     assert b3["2"]["status"] == "auto" and b3["2"]["read"] == "none"   # left blank
     b2 = {q["label"]: q for q in res["booklets"][1]["questions"]}

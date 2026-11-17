@@ -1435,7 +1435,13 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .sc-score { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; color: var(--home-ink-2); font-weight: 600; }
 .sc-score input { width: 64px; height: 32px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--home-line-2); border-radius: 7px; background: var(--home-card); color: var(--home-ink); font: 600 14px var(--font-ui); text-align: right; }
 .sc-read { margin: 8px 0 0; font-size: 14px; color: var(--home-ink-2); }
-.sc-note { margin: 4px 0 0; font-size: 13.5px; color: #9a7400; }
+.sc-note { display: flex; align-items: flex-start; gap: 7px; margin: 8px 0 0; font-size: 14px; line-height: 1.45; color: #8a6800; }
+.sc-note svg { flex: none; width: 16px; height: 16px; margin-top: 1px; color: #b58a00; }
+.sc-readv { padding: 0 2px; border: 0; border-bottom: 1px dashed var(--home-ink-3); background: transparent; font: 700 14px var(--font-ui); color: var(--home-ink); cursor: text; }
+.sc-readv:hover { border-bottom-color: var(--home-ink); background: var(--accent-bg, #fbf0d2); }
+.sc-readin { width: 160px; height: 30px; box-sizing: border-box; margin-left: 4px; padding: 0 8px; border: 1px solid var(--home-ink-3); border-radius: 7px; background: var(--home-card); color: var(--home-ink); font: 600 14px var(--font-ui); }
+.sc-readin:focus { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; }
+.sc-qlab { font-size: 13.5px; color: var(--home-ink-2); margin-right: 2px; }
 .sc-qa { margin-top: 10px; }
 .sc-by { font-size: 13px; color: var(--home-ink-3); margin-left: 4px; }
 @media (max-width: 640px) { .sc-row { grid-template-columns: minmax(0, 1fr) auto; } .sc-row .sc-pill { grid-column: 1 / -1; justify-self: start; } .sc-file { grid-template-columns: 18px minmax(0, 1fr) auto; } .sc-file .sc-fmeta { grid-column: 2; } }
@@ -1449,3 +1455,10 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .sc-ed .lx-adds { margin-top: 12px; }
 .sc-ed .lx-ed-head .lx-ic:disabled { opacity: .4; cursor: default; }
 .sc-ed .lx-ed-head .lx-ic svg { width: 18px; height: 18px; }
+.sc-bybar { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--home-line); }
+.sc-bybar + .sc-dc .dc-head { margin-top: 12px; padding-top: 0; border-top: 0; }
+.sc-qwho { padding: 0; font: inherit; color: inherit; text-decoration: none; }
+.sc-qwho:hover { text-decoration: underline; text-underline-offset: 3px; }
+.sc-qv { font-size: 12.5px; font-weight: 400; color: var(--home-ink-3); }
+.sc-book .sc-dc .dc-head { margin-top: 14px; }
+.sc-book .sc-dc + .sc-key { margin-top: 12px; }

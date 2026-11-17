@@ -26,7 +26,10 @@ _FLOAT = re.compile(r"\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)")
 # Handwriting. A misread almost never turns into exactly the right answer, so a reading that matches the answer is
 # trusted from RIGHT sure. One that doesn't is marked wrong without a person only when it's WRONG sure and the right
 # answer is an unlikely reading of the same ink (below ALT); otherwise it goes to a person.
-RIGHT, WRONG, ALT = 0.6, 0.95, 0.01
+RIGHT, WRONG, ALT = 0.35, 0.92, 0.01
+# A student is matched without a person only when the next likeliest student on the class list is e^ID_GAP (about 400)
+# times less likely: marks going to the wrong student is worse than a click to confirm.
+ID_GAP = 6.0
 
 
 def num(v):
@@ -108,13 +111,13 @@ def choose_one(fills):
     """(index or None, status, note) for bubbles of which one should be filled."""
     cand = [i for i, f in enumerate(fills) if f >= read.TRACE]
     if not cand:
-        return None, "auto", "left blank"
+        return None, "auto", "Left blank."
     if len(cand) == 1:
         return cand[0], "auto", ""
     best = max(cand, key=lambda i: fills[i])
     if fills[best] >= read.FILLED and all(fills[i] < 2 * read.TRACE for i in cand if i != best):
-        return best, "auto", "a stray mark elsewhere was ignored"
-    return best, "check", "more than one bubble has ink"
+        return best, "auto", "A stray mark elsewhere was left out."
+    return best, "check", "More than one bubble has ink. Which is their answer?"
 
 
 class Booklet:
@@ -168,7 +171,8 @@ def mark_choice(b, n):
         return {"status": "check" if unsure else "auto", "score": pts if ok else 0.0,
                 "read": ", ".join(LET[i] for i, m in enumerate(marked) if m) or "none",
                 "answer": ", ".join(LET[i] for i, r in enumerate(right) if r),
-                "note": "a box is faintly marked" if unsure else "", "fills": [round(f, 3) for f in fills],
+                "note": "A box is only faintly marked. Which are their answers?" if unsure else "", "ask": "choice" if unsure else "",
+                "options": [LET[k] for k in range(len(ids))], "multi": True, "fills": [round(f, 3) for f in fills],
                 "picture": b.picture(ids, right=260)}
     fills = [read.fill(g[2], g[0]) for g in got]
     i, status, note = choose_one(fills)
@@ -177,11 +181,13 @@ def mark_choice(b, n):
         chosen = vals[i] if i is not None else None
         name = {"true": "True", "false": "False"}
         return {"status": status, "score": pts if chosen == answer else 0.0, "read": name.get(chosen, "none"),
-                "answer": name[answer], "note": note, "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=180)}
+                "answer": name[answer], "note": note, "ask": "choice" if status == "check" else "", "options": ["True", "False"],
+                "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=180)}
     right = [k for k, o in enumerate(n["options"]) if o.get("correct")]
     return {"status": status, "score": pts if i is not None and i in right else 0.0,
             "read": LET[i] if i is not None else "none", "answer": " or ".join(LET[k] for k in right),
-            "note": note, "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260)}
+            "note": note, "ask": "choice" if status == "check" else "", "options": [LET[k] for k in range(len(ids))],
+            "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260)}
 
 
 def _trusted(correct, sure, alt):
@@ -202,8 +208,10 @@ def mark_comp(b, nid, cid, c):
         key = str(c.get("ans", "")).strip()
         if not r.chars:
             return False, True, "blank", key, [rid]
-        ok = same(number(r.text), number(key), c.get("tol"))
-        return ok, _trusted(ok, r.sure, r.chance(key)), r.text, key, [rid]
+        ok = same(number(r.core), number(key), c.get("tol"))
+        # A mark that surely isn't a digit at either end ($30, 30 cm) is left out; anywhere else, a person reads it.
+        trusted = _trusted(ok, r.sure, r.chance(key)) and ("?" not in r.text or (ok and r.core is not None and r.strays_sure))
+        return ok, trusted, r.text, key, [rid]
     if k == "frac":
         gn, gd = b.get(rid + ":n"), b.get(rid + ":d")
         if not gn or not gd:
@@ -213,9 +221,10 @@ def mark_comp(b, nid, cid, c):
         a, d = number(kn), number(kd)
         if not rn.chars and not rd.chars:
             return False, True, "blank", f"{kn}/{kd}", [rid + ":n", rid + ":d"]
-        got = number(f"{rn.text}/{rd.text}") if rn.text and rd.text else None
+        got = number(f"{rn.core}/{rd.core}") if rn.core and rd.core else None
         ok = same(got, a / d) if a is not None and d else False
-        return ok, _trusted(ok, min(rn.sure, rd.sure), rn.chance(kn) * rd.chance(kd)), f"{rn.text or '?'}/{rd.text or '?'}", f"{kn}/{kd}", [rid + ":n", rid + ":d"]
+        trusted = _trusted(ok, min(rn.sure, rd.sure), rn.chance(kn) * rd.chance(kd)) and "?" not in rn.text + rd.text
+        return ok, trusted, f"{rn.text or '?'}/{rd.text or '?'}", f"{kn}/{kd}", [rid + ":n", rid + ":d"]
     if k == "cells":
         cnt = max(1, int(round(num(c.get("n")))) or 1)
         want = ([x.strip() for x in str(c.get("ans") or "").split(",")] + [""] * cnt)[:cnt]
@@ -228,7 +237,8 @@ def mark_comp(b, nid, cid, c):
         seen, sure, alt, ok = [], 1.0, 1.0, True
         for g, w in zip(gs, want):
             p = read.digit_probs(g[2], g[0])
-            ch = "" if p is None else str(int(p.argmax()))
+            k = None if p is None else int(p.argmax())
+            ch = "" if p is None else "?" if k == 10 else str(k)
             if p is not None:
                 sure = min(sure, float(p.max()))
             alt *= (float(p[int(w)]) if w else 0.0) if p is not None else float(not w)
@@ -248,7 +258,7 @@ def mark_written(b, n):
         sp = b.template.find(f"{n['id']}.space")[0]
         if has_space and sp is not None and sp.number not in b.pages:
             return {"status": "missing"}
-        return {"status": "manual", "note": "written answer", "picture": pic}
+        return {"status": "manual", "picture": pic}
     results = [mark_comp(b, n["id"], cid, c) for cid, c in comps]
     if any(r is None for r in results):
         return {"status": "missing"}
@@ -256,22 +266,90 @@ def mark_written(b, n):
     reads = "; ".join(r[2] for r in results)
     answers = "; ".join(r[3] for r in results)
     if any(r[0] is None for r in results):
-        return {"status": "manual", "note": "an answer to read", "read": reads, "answer": answers, "picture": b.picture(ids, right=40)}
+        return {"status": "manual", "ask": "type", "read": "", "answer": answers, "picture": b.picture(ids, right=40)}
     right = sum(1 for r in results if r[0])
     score = round(pts * right / len(results) * 2) / 2
-    status, note = "auto", ""
+    status, note, ask = "auto", "", ""
     if not all(r[1] for r in results):
-        status, note = "check", "not sure of the handwriting: is this what it says?"
+        status, ask = "check", "read"
+        note = ("There's a mark that isn't a digit. Is this what it says?" if any("?" in r[2] for r in results if not r[1])
+                else "Not sure of the handwriting. Is this what it says?")
     elif has_space and right < len(results):
-        status, note = "check", "wrong answer: look at the working for part marks"
+        status, note, ask = "check", "The answer is wrong. Is there working worth part marks?", "working"
     pic = b.picture(ids, right=40)
-    return {"status": status, "score": score, "read": reads, "answer": answers, "note": note, "picture": pic}
+    return {"status": status, "score": score, "read": reads, "answer": answers, "note": note, "ask": ask, "picture": pic}
 
 
 def mark_node(b, n):
     if n.get("type") in ("mc", "ms", "tf"):
         return mark_choice(b, n)
     return mark_written(b, n)
+
+
+# ── What a person says the answer is ───────────────────────────────────
+
+def find_node(exam, nid):
+    """The question or sub-question with this id, in any version."""
+    def walk(n):
+        if n.get("id") == nid:
+            return n
+        for p in n.get("parts") or []:
+            f = walk(p)
+            if f:
+                return f
+        return None
+    for it in exam.get("items") or []:
+        for v in it.get("variants") or []:
+            f = walk(v)
+            if f:
+                return f
+    return None
+
+
+def _clean_number(t):
+    """A typed number without what's around it: "$30" → "30", "30 dollars" → "30", "1,250" → "1250"."""
+    t = str(t or "").strip().replace(",", "").replace(" ", "").replace("\u2212", "-")
+    return re.sub(r"^[^\d.+-]+|[^\d.]+$", "", t)
+
+
+def _words(t):
+    return re.sub(r"[^\w]+", " ", str(t or "")).strip().lower()
+
+
+def score_typed(n, typed):
+    """(score, the reading as it's kept) for an answer as a person says it reads: a letter (or letters) for multiple
+    choice, True or False, or the written answer (pieces separated by ";", cells by spaces)."""
+    pts = num(n.get("points"))
+    t = str(typed or "").strip()
+    if n.get("type") == "tf":
+        v = t.lower()[:1]
+        got = "true" if v == "t" else "false" if v == "f" else None
+        return (pts if got == (n.get("answer") or "true") else 0.0), {"true": "True", "false": "False"}.get(got, "none")
+    if n.get("type") in ("mc", "ms"):
+        opts = n.get("options") or []
+        picked = sorted({LET.index(c) for c in t.upper() if c in LET[:len(opts)]})
+        right = [k for k, o in enumerate(opts) if o.get("correct")]
+        ok = (picked == right) if n.get("type") == "ms" else (len(picked) == 1 and picked[0] in right)
+        return (pts if ok else 0.0), ", ".join(LET[k] for k in picked) or "none"
+    comps = [(n.get("comps") or {})[m.group(1)] for m in TOKEN.finditer(n.get("body") or "") if m.group(1) in (n.get("comps") or {})]
+    parts = [x.strip() for x in t.split(";")] if len(comps) > 1 else [t]
+    parts += [""] * (len(comps) - len(parts))
+    right = 0
+    for c, x in zip(comps, parts):
+        k = c.get("kind")
+        if k == "num":
+            right += same(number(_clean_number(x)), number(c.get("ans")), c.get("tol"))
+        elif k == "frac":
+            a, d = number(c.get("num")), number(c.get("den"))
+            right += bool(a is not None and d) and same(number(_clean_number(x.replace(" ", ""))) if "/" not in x else number("/".join(_clean_number(y) for y in x.split("/", 1))), a / d)
+        elif k == "cells":
+            cnt = max(1, int(round(num(c.get("n")))) or 1)
+            want = ([y.strip() for y in str(c.get("ans") or "").split(",")] + [""] * cnt)[:cnt]
+            got = (re.split(r"[\s,]+", x) if re.search(r"[\s,]", x) else list(x)) + [""] * cnt
+            right += [g.strip().lower() for g in got[:cnt]] == [w.lower() for w in want]
+        else:                                           # a blank line or box: the words, any case or punctuation
+            right += bool(x) and _words(x) == _words(c.get("ans"))
+    return (round(pts * right / max(1, len(comps)) * 2) / 2), t
 
 
 # ── Whose exam ─────────────────────────────────────────────────────────
@@ -319,10 +397,10 @@ def identify_student(b, exam, roster):
     scored.sort(key=lambda x: -x[1])
     best = scored[0]
     gap = best[1] - (scored[1][1] if len(scored) > 1 else -1e9)
-    sure = math.exp(best[0]) > 0.35 and gap > 3.0
+    sure = math.exp(best[0]) > 0.35 and gap > ID_GAP
     s = best[2]
     out.update(status="auto" if sure else "check", num=str(s["num"]), name=f"{s.get('first', '')} {s.get('last', '')}".strip(),
-               note="" if sure else "not sure who this is: check the cover",
+               note="" if sure else "Not sure whose booklet this is. Check the cover.",
                candidates=[{"num": str(x[2]["num"]), "name": f"{x[2].get('first', '')} {x[2].get('last', '')}".strip()} for x in scored[:3]])
     return out
 
@@ -391,5 +469,5 @@ def run(exam, template_paths, scan_paths, roster=None, progress=None):
         if len(rs) > 1:
             for r in rs:
                 r["student"]["status"] = "check"
-                r["student"]["note"] = f"{len(rs)} booklets matched this student"
+                r["student"]["note"] = f"{len(rs)} booklets matched this student. Check the cover."
     return {"booklets": done, "unread": unread}

@@ -125,6 +125,27 @@ Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course
 - **Import** (Home): reads the manifest first (`/import/peek`), then brings the files in as a new offering of yours under any course and term you don't have, leaving the same things out again (a file can be made by hand). **Move its dates** shifts every date by whole weeks, from the first Monday of the old term to the new one's, so each keeps its weekday: ISO dates and announcement stamps in the JSON files (whole strings only, so links are left alone), each week's dates text, and the long dates and term name in exams (`exam.json` and the `.tex` files). Uploads up to `LECTERN_MAX_UPLOAD_MB`.
 - **The demo course** (Home): `sample-data/demo-course`, a generic made-up course (DEMO101, A Sample Course, written for Fall 2026), loaded as `demo101` in the current term with the same date move. Its students get `@example.com` emails (which take no mail), the marks of the evaluations whose dates have passed are kept and released, and Grade So Far is on.
 
+## Marking scanned exams
+
+`server/autograde/` marks printed exams from their scans: multiple choice, true or false, multiple answers, number boxes, fractions and rows of cells, and finds whose exam it is from the cover's student-number boxes. For now it's a command on the server; a page for it in Lectern comes next.
+
+1. **In the Exam Builder**, Settings › Pages › **Marking from scans**. The student copy then gets a black square near each corner and a QR code at the top left of every page (`LECTERN|<course-term-exam[-version]>|<page>`), and every answer piece gets an invisible tag in the PDF giving where it is (`\ScanCode` and `\ScanID` in `course.cls` v2.6; the answer key and marking guide get none of it). Compile the student copy as usual and print that PDF.
+2. **Scan** the written exams, whole booklets one after another, any page order within a booklet, either way up.
+3. **Mark:**
+
+   ```
+   pip install -r requirements-scan.txt
+   python app.py autograde exam.json --pdf midterm.pdf --scans scans.pdf --class grades.json --out results
+   ```
+
+   One `--pdf` per version (the printed student copies), any number of `--scans` (PDFs or images), and the offering's gradebook for its class list. It writes `results/review.html` (each booklet, a picture of every answer, what was read, the ones to look at), `marks.csv` and `results.json`.
+
+How it reads a page: the QR code says which exam, version and page it is; the corner squares line the scan up with the printed page, so every tagged piece is at known pixels; the printed ink (outlines, labels) is taken away, leaving the student's. A bubble is filled from a quarter of its inside, a check box is ticked from a little ink. Handwritten digits are read by a small network (`digits.py`, weights in `digits.npz`, trained by `train_digits.py` on OpenCV's MNIST sample, 97% on held-out digits). The student is the class-list number that best fits the cover's digits.
+
+Each question comes back **marked**, **check** (marked, but a person should look: two bubbles filled, unsure handwriting, a wrong number in a question with room for working), **mark by hand** (written answers, blanks and boxes with words) or **page missing**. Handwriting is careful on purpose: a reading that matches the answer is trusted, but one that doesn't is marked wrong only when every digit is clear and the right answer is an unlikely reading of the same ink; anything else is a check. Multiple answers is all or nothing; answer pieces in one question share its marks.
+
+`tests/test_autograde.py` makes an exam with the builder's own LaTeX code, compiles it, writes answers on its pages (held-out handwritten digits the network never saw), "scans" them (turned, scaled, blurred, speckled, out of order, upside down) and checks the results. On 108 such booklets: every student found, every bubble right, no handwriting marked wrong without a flag, about a quarter of handwritten answers sent to a check. Real pens and scanners will differ: look at the first real batch closely.
+
 ## Where things are
 
 | | Private (only you) | Public (published at `/p/<handle>/`) |
@@ -139,9 +160,9 @@ A course offering is the same folder in both. Only the course page and its files
 ## How it's put together
 
 ```
-app.py                  python app.py: the runner (and its commands: setup, admin)
+app.py                  python app.py: the runner (and its commands: setup, admin, autograde)
 new-lectern.sh          a new Lectern: code, Python environment, requirements, then setup
-requirements.txt        the server's Python packages (requirements-dev.txt: pytest, Playwright)
+requirements.txt        the server's Python packages (requirements-dev.txt: pytest, Playwright; requirements-scan.txt: marking scans)
 server/                 the Flask server (one module per area; each starts with what it does)
   core.py               the Flask app: HTTPS, cross-site request checks, security headers (no caching)
   paths.py              where things are
@@ -162,6 +183,7 @@ server/                 the Flask server (one module per area; each starts with 
   places.py             finding a building or address for a Where
   classmail.py          emailing a class, and each offering's own email settings (/api/mail/…)
   mailer.py             email (SMTP)
+  autograde/            marking scanned exams (python app.py autograde): layout, scan, read, digits, grade, report
 templates/              index.html (the splash and the app), admin.html, hub.html and hub-signin.html (the course page)
 static/css/             splash.css, shell.css (Lectern), hub.css (the course page), admin.css
 static/js/              one file per page or part, each starting with what it is. The main ones:
@@ -172,7 +194,8 @@ static/js/              one file per page or part, each starting with what it is
                         account menu); it caches nothing, and only shows "You're offline" when the server can't be reached
 static/vendor/          Tesseract (reading ID cards in the browser), with its licences
 tools/                  the three builders, each still a single HTML file that works on its own;
-                        suite.css (their shared look, kept identical in all three) and course.cls (the exam class) for reference
+                        suite.css (their shared look, kept identical in all three) and course.cls (the exam class: the
+                        Exam Builder carries a copy, COURSE_CLS, which must stay identical; a test checks)
 docs/                   ui-patterns.md (named UI patterns to follow); archive/ (the early build plans)
 sample-data/            made-up courses and a class list, for trying Lectern and for the tests
 tests/                  python -m pytest (the server); tests/browser/ (Playwright walkthroughs: see its README)

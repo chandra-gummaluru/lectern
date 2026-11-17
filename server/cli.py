@@ -1,9 +1,11 @@
-"""Lectern's command line, on the server. One job: admins.
+"""Lectern's command line, on the server: admins, setup, and marking scanned exams.
 
   python app.py admin you@example.com    add an admin for the admin panel (/admin), with its password and
                                          two-factor code set up here; for an existing admin, replace both
                                          (a forgotten password or a lost phone)
   python app.py setup                    set this Lectern up (or change its settings), adding the first admin
+  python app.py autograde exam.json --pdf <student copy>.pdf --scans <scans>.pdf [--class grades.json]
+                                         mark scanned exams (see server/autograde; needs requirements-scan.txt)
 
 Everything else (inviting people, looking after accounts, email settings) is in the admin panel.
 """
@@ -13,7 +15,7 @@ import sys
 
 from . import db, security as sec
 
-COMMANDS = ("setup", "admin")
+COMMANDS = ("setup", "admin", "autograde")
 
 
 def ask(q, default=""):
@@ -73,5 +75,8 @@ def main(argv):
         return setup(argv[1:])
     if len(argv) == 2 and argv[0] == "admin":
         return add_admin(argv[1])
+    if argv and argv[0] == "autograde":
+        from .autograde import main as autograde
+        return autograde(argv[1:])
     print(__doc__)
     sys.exit(1)

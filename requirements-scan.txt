@@ -1,0 +1,5 @@
+# Marking scanned exams (python app.py autograde; server/autograde). The rest of Lectern doesn't need these.
+-r requirements.txt
+numpy>=1.24
+opencv-python-headless>=4.8
+pypdfium2>=4.20

@@ -34,10 +34,15 @@
 %  Changes in v2.5:
 %    * Two fields side by side are one box apart, so their boxes line up
 %      with the rows above and below.
+%  Changes in v2.6:
+%    * Marking from scans: \ScanCode{...} puts corner squares and a QR page
+%      code on every page of the student copy, and \ScanID{...} tags the
+%      next bubble, box, row of cells or answer space so the grader can
+%      find it (see SCANNING below).
 % ============================================================================
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{course}[2026/10/16 v2.5 course handout/assignment/exam/quiz class]
+\ProvidesClass{course}[2026/11/17 v2.6 course handout/assignment/exam/quiz class]
 
 % ---- switches (defined first so the class options can set them) ------------
 \newif\ifshowstudentinfo
@@ -79,6 +84,64 @@
 \RequirePackage{longtable}
 \RequirePackage{varwidth}
 \RequirePackage{graphicx}
+\RequirePackage{pdfrender}
+
+% ============================================================================
+%  SCANNING -- for marking the student copy from scans.
+%  \ScanCode{csc258-f26-midterm-A} in the preamble turns it on for the
+%  student copy (the answer key and marking guide get none of it):
+%    * a black square near each corner of every page, to straighten a scan;
+%    * a QR code at the top left holding LECTERN|<code>|<page>, so pages can
+%      be scanned in any order and versions don't get mixed up;
+%    * an invisible tag on each answer piece that follows \ScanID{<id>}
+%      (bubbles, check boxes, true/false, blanks, boxes, number boxes,
+%      fractions, rows of cells, answer spaces). The tag is text in the PDF,
+%      "LT:<id>:<width>:<height>" (pt) starting at the piece's lower left,
+%      which the grader reads from the PDF you print. Nothing is printed.
+%  Keep the corners and the top 2.5cm of each page clear: the squares sit
+%  8mm from each edge and are 7mm wide; the QR code is 15mm.
+% ============================================================================
+\newif\ifCT@scanning
+\newcommand{\CT@scancode}{}
+\newcommand{\ScanCode}[1]{%
+  \RequirePackage{qrcode}%
+  \renewcommand{\CT@scancode}{#1}%
+  \AtBeginDocument{\ifshowsolutions\else\CT@scanningtrue\fi}%
+}
+\newcommand{\CT@ScanMarks}{%
+  \begin{tikzpicture}[overlay]
+    \fill (8mm,-8mm) rectangle ++(7mm,-7mm);
+    \fill (\paperwidth-8mm,-8mm) rectangle ++(-7mm,-7mm);
+    \fill (8mm,-\paperheight+8mm) rectangle ++(7mm,7mm);
+    \fill (\paperwidth-8mm,-\paperheight+8mm) rectangle ++(-7mm,7mm);
+    \node[anchor=north west, inner sep=0pt] at (19mm,-8mm)
+      {\qrcode[height=15mm]{LECTERN|\CT@scancode|\thepage}};
+    \node[anchor=north west, inner sep=0pt, font=\tiny\ttfamily] at (36mm,-8mm)
+      {\CT@scancode\ p.\thepage};
+  \end{tikzpicture}%
+}
+\AddToHook{shipout/background}{\ifCT@scanning\put(0,0){\CT@ScanMarks}\fi}
+
+% \ScanID{id} names the next answer piece; the piece uses it up.
+\gdef\CT@nextid{}
+\newcommand{\ScanID}[1]{\gdef\CT@nextid{#1}}
+\newcommand{\CT@doneid}{\gdef\CT@nextid{}}
+\newcommand{\CT@ifid}[1]{\ifCT@scanning\ifx\CT@nextid\@empty\else#1\fi\fi}
+% The tag itself: invisible text of no size, id + suffix, width, height.
+\newcommand{\CT@tagtext}[3]{%
+  \smash{\rlap{\textpdfrender{TextRenderingMode=Invisible}{\tiny\ttfamily
+    LT:\CT@nextid#1:\strip@pt\dimexpr#2\relax:\strip@pt\dimexpr#3\relax}}}}
+% In a line: a piece #2 wide and #3 high whose lower left is #4 below here.
+\newcommand{\CT@htag}[4]{\CT@ifid{\rlap{\raisebox{#4}{\CT@tagtext{#1}{#2}{#3}}}}}
+% In a tikzpicture: a piece whose lower left is at (#2,#3), #4 by #5.
+\newcommand{\CT@ptag}[5]{\CT@ifid{\pgftext[left,base,at={\pgfpoint{#2}{#3}}]{\CT@tagtext{#1}{#4}{#5}}}}
+% A box of material, tagged with its own size.
+\newsavebox{\CT@sbox}
+\newcommand{\CT@boxed}[2]{%
+  \sbox{\CT@sbox}{#2}%
+  \CT@htag{#1}{\wd\CT@sbox}{\ht\CT@sbox+\dp\CT@sbox}{-\dp\CT@sbox}%
+  \usebox{\CT@sbox}%
+}
 
 % ============================================================================
 %  COURSE INFO -- defaults. Override in your .tex with \renewcommand{...}{...}
@@ -172,7 +235,12 @@
 \newcommand{\rubric}[2]{\par\noindent\makebox[3.2em][r]{$#1$}\quad #2}
 
 % Answer space: blank space in the student copy, nothing in the key.
-\newcommand{\answerspace}[1]{\ifshowsolutions\else\par\vspace{#1}\fi}
+\newcommand{\answerspace}[1]{%
+  \ifshowsolutions\else
+    \par
+    \CT@ifid{\nointerlineskip\noindent\CT@htag{}{\linewidth}{#1}{-#1}\par\nointerlineskip}%
+    \vspace{#1}%
+  \fi\CT@doneid}
 
 % ============================================================================
 %  STYLE -- black & white, simple.
@@ -225,13 +293,18 @@
 \AtBeginDocument{\ifdim\StudentBoxSize=0pt \setlength{\StudentBoxSize}{\dimexpr\textwidth/16\relax}\fi}
 
 % A row of n square boxes.
+% With scanning on, each box is tagged cover:f<k>:c<i> (k counts the rows
+% from 0, a pair's left one first; i counts its boxes from 0).
+\newcount\CT@fieldno
 \newcommand{\CharBoxes}[1]{%
   \pgfmathsetlengthmacro{\CT@boxlen}{min(\StudentBoxSize, \linewidth/#1)}%
   \begin{tikzpicture}[baseline=-0.5ex, x=\CT@boxlen, y=\CT@boxlen]
     \foreach \i in {0,...,\numexpr#1-1\relax} {
       \draw[black, line width=0.7pt] (\i,0) rectangle ++(1,1);
+      \ifCT@scanning\gdef\CT@nextid{cover:f\the\CT@fieldno}\CT@ptag{:c\i}{\i*\CT@boxlen}{0pt}{\CT@boxlen}{\CT@boxlen}\fi
     }
   \end{tikzpicture}%
+  \global\advance\CT@fieldno 1\relax\CT@doneid
 }
 
 \newcommand{\InfoBoxRow}[2]{%
@@ -623,6 +696,7 @@
 \newcommand{\checkbox}[1][Option]{%
   \begin{tikzpicture}[baseline=0]
     \node[draw=black, minimum size=0.5cm] (s) {};
+    \CT@ptag{}{-0.25cm}{-0.25cm}{0.5cm}{0.5cm}\CT@doneid
     \node[right=0cm of s, align=left]{#1};
   \end{tikzpicture}%
 }
@@ -631,6 +705,7 @@
 \newcommand{\CT@choice}[2]{%
   \begin{tikzpicture}[baseline=0]
     \node[circle, draw=black, fill=#1, minimum size=0.5cm] (s) {};
+    \CT@ptag{}{-0.25cm}{-0.25cm}{0.5cm}{0.5cm}\CT@doneid
     \node[right=0cm of s, yshift=-0.3mm, align=left]{#2};
   \end{tikzpicture}%
 }
@@ -643,6 +718,8 @@
   \\~\\
   \begin{tikzpicture}
     \node[circle, draw=black, fill=#1, minimum size=0.5cm] at (0,0) (t) {};
+    \CT@ptag{:T}{-0.25cm}{-0.25cm}{0.5cm}{0.5cm}%
+    \CT@ptag{:F}{3.75cm}{-0.25cm}{0.5cm}{0.5cm}\CT@doneid
     \node[right=0cm of t, yshift=-1mm, align=left]{True};
     \node[circle, draw=black, fill=#2, minimum size=0.5cm] at (4,0) (f) {};
     \node[right=0cm of f, yshift=-1mm, align=left]{False};
@@ -660,6 +737,7 @@
 \newcommand{\correctcheckbox}[1][Option]{%
   \begin{tikzpicture}[baseline=0]
     \node[draw=black, minimum size=0.5cm] (s) {\ifshowsolutions$\checkmark$\fi};
+    \CT@ptag{}{-0.25cm}{-0.25cm}{0.5cm}{0.5cm}\CT@doneid
     \node[right=0cm of s, align=left]{#1};
   \end{tikzpicture}%
 }
@@ -680,14 +758,17 @@
 %   \ansfrac[1.5cm]{num}{den}    a fraction: two boxes over each other
 %   \anscells[7mm]{a,b,c,d}      a row of cells (one per list item; leave items empty for blank cells)
 \newcommand{\CT@ans}[1]{\ifshowsolutions #1\fi}
-\newcommand{\ansblank}[2][3cm]{\underline{\makebox[#1]{\CT@ans{#2}}}}
-\newcommand{\ansbox}[3]{\fbox{\parbox[c][#2][c]{#1}{\centering\strut\CT@ans{#3}}}}
-\newcommand{\ansnum}[2][2.5cm]{\fbox{\makebox[#1][c]{\rule[-0.35em]{0pt}{1.35em}\CT@ans{#2}}}}
+% With \ScanID before them, each is tagged for the grader (see SCANNING).
+\newcommand{\ansblank}[2][3cm]{\CT@htag{}{#1}{1.6em}{-0.4em}\CT@doneid\underline{\makebox[#1]{\CT@ans{#2}}}}
+\newcommand{\ansbox}[3]{\CT@boxed{}{\fbox{\parbox[c][#2][c]{#1}{\centering\strut\CT@ans{#3}}}}\CT@doneid}
+\newcommand{\ansnum}[2][2.5cm]{\CT@boxed{}{\fbox{\makebox[#1][c]{\rule[-0.35em]{0pt}{1.35em}\CT@ans{#2}}}}\CT@doneid}
 \newcommand{\ansfrac}[3][1.5cm]{%
-  \ensuremath{\vcenter{\hbox{\fbox{\makebox[#1][c]{\rule[-0.3em]{0pt}{1.2em}\CT@ans{#2}}}}\vspace{2pt}\hrule height 0.6pt\vspace{2pt}\hbox{\fbox{\makebox[#1][c]{\rule[-0.3em]{0pt}{1.2em}\CT@ans{#3}}}}}}%
+  \ensuremath{\vcenter{\hbox{\CT@boxed{:n}{\fbox{\makebox[#1][c]{\rule[-0.3em]{0pt}{1.2em}\CT@ans{#2}}}}}\vspace{2pt}\hrule height 0.6pt\vspace{2pt}\hbox{\CT@boxed{:d}{\fbox{\makebox[#1][c]{\rule[-0.3em]{0pt}{1.2em}\CT@ans{#3}}}}}}}%
+  \CT@doneid
 }
 \newcommand{\anscells}[2][7mm]{%
-  \tikz[baseline=0.25*#1]{\foreach \x [count=\i from 0] in {#2} {\draw[line width=0.7pt] (\i*#1,0) rectangle ++(#1,#1); \ifshowsolutions\node at (\i*#1+0.5*#1,0.5*#1) {\x};\fi}}%
+  \tikz[baseline=0.25*#1]{\foreach \x [count=\i from 0] in {#2} {\draw[line width=0.7pt] (\i*#1,0) rectangle ++(#1,#1); \CT@ptag{:c\i}{\i*#1}{0pt}{#1}{#1}\ifshowsolutions\node at (\i*#1+0.5*#1,0.5*#1) {\x};\fi}}%
+  \CT@doneid
 }
 
 % Blank underline (for fill-in-the-blank prose)

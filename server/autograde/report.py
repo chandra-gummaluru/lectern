@@ -15,18 +15,23 @@ def _fmt(x):
     return str(int(x)) if float(x) == int(x) else f"{x:g}"
 
 
-def write(results, out_dir, title="Scanned exams"):
-    pics = os.path.join(out_dir, "pictures")
+def save_pictures(results, pics, prefix="pictures/"):
+    """Each picture in the results (JPEG bytes) to a file in pics; the results then name it (prefix + file name)."""
     os.makedirs(pics, exist_ok=True)
-    bs = results["booklets"]
-    for i, b in enumerate(bs, 1):                           # pictures to files, names in the results
+    for i, b in enumerate(results["booklets"], 1):
         for key, item in [("student", b["student"])] + [(q["label"], q) for q in b["questions"]]:
             data = item.pop("picture", None)
             if data:
                 name = f"b{i:03d}-{'cover' if key == 'student' else key.replace('(', '').replace(')', '')}.jpg"
                 with open(os.path.join(pics, name), "wb") as f:
                     f.write(data)
-                item["picture"] = f"pictures/{name}"
+                item["picture"] = prefix + name
+    return results
+
+
+def write(results, out_dir, title="Scanned exams"):
+    save_pictures(results, os.path.join(out_dir, "pictures"))
+    bs = results["booklets"]
     with open(os.path.join(out_dir, "results.json"), "w", encoding="utf-8") as f:
         json.dump(results, f, indent=1)
 

@@ -127,7 +127,16 @@ Each offering's course page is served by Lectern in tabs at `/c/<handle>/<course
 
 ## Marking scanned exams
 
-`server/autograde/` marks printed exams from their scans: multiple choice, true or false, multiple answers, number boxes, fractions and rows of cells, and finds whose exam it is from the cover's student-number boxes. For now it's a command on the server; a page for it in Lectern comes next.
+`server/autograde/` marks printed exams from their scans: multiple choice, true or false, multiple answers, number boxes, fractions and rows of cells, and finds whose exam it is from the cover's student-number boxes. Each exam's **Print and Scan** page (`static/js/scans.js`, `#/<course>/<term>/scans/<exam>`, from the Exam Builder's top bar; `server/scanning.py`, `/api/scans…`) does it all in Lectern:
+
+- **Print.** The server compiles the exam's saved `.tex` files with pdflatex: the student copy, answer key and marking guide, per version. LaTeX runs as a guest: `-no-shell-escape`, `openin_any=p` and `openout_any=p` (it reads and writes only in its own temporary folder: no absolute paths, no `..`), and limits on time and file size; `tests/test_scanning.py` checks it can't read `/etc/hostname`. PDFs are cached by what they're made from (`data/latex/cache`, 14 days; LaTeX's own font caches in `data/latex/var`). The owner's or a coordinator's download of the student copy is kept as the **printed copy**, and scans are marked against it, so an exam changed after printing still marks right (the page says when it has changed). Settings: `LECTERN_LATEX_AT_ONCE` (compiles at once, default 2).
+- **Scans.** Uploaded one file at a time (PDFs or images, up to `LECTERN_MAX_SCAN_MB`, default 1024), then **Mark the Scans** runs the grader in a background thread (`job.json` has its progress, with a heartbeat: a server restart shows it stopped).
+- **Review.** Each booklet: its cover (whose it is: confirm or pick from the class list), and every question with a picture of the answer, what was read, the answer and its score. A person's scores and choices are kept in `review.json`, apart from the grader's `results.json`, so marking again (more scans) keeps them (booklets are known by their scanned pages).
+- **Send.** Each finished booklet (student known, every question marked or checked) becomes the student's mark for the exam's evaluation (`settings.link`), written into `grades.json` by the server. Marks that differ from what's there are listed and replaced only when asked.
+- **Who.** Anyone on the teaching team sees the page and the PDFs; the owner and coordinators print the copy that's marked against, upload, mark and delete; they and TAs review and send marks.
+- **Where.** `data/scans/<owner id>/<course>/<term>/<exam>/` (`printed/`, `uploads/`, `pictures-<when>/`, `results.json`, `review.json`): outside the offering's files, so students' scans aren't versioned, exported or counted in the account's space. **Delete the scans and results** removes the folder; deleting an account moves it with the account's files.
+
+The grader can also be run by hand, without Lectern's page:
 
 1. **In the Exam Builder**, Settings › Pages › **Marking from scans**. The student copy then gets a black square near each corner and a QR code at the top left of every page (`LECTERN|<course-term-exam[-version]>|<page>`), and every answer piece gets an invisible tag in the PDF giving where it is (`\ScanCode` and `\ScanID` in `course.cls` v2.6; the answer key and marking guide get none of it). Compile the student copy as usual and print that PDF.
 2. **Scan** the written exams, whole booklets one after another, any page order within a booklet, either way up.
@@ -153,6 +162,7 @@ Each question comes back **marked**, **check** (marked, but a person should look
 | Course page | | `csc258/f26/info.html` and its linked files |
 | Grades | `csc258/f26/grades.json` | |
 | Exams | `csc258/f26/<exam>/exam.json` and its `.tex` files | |
+| Scanned exams | `data/scans/<account id>/csc258/f26/<exam>/` (outside the files: scans, results, the printed copy) | |
 | Accommodation requests | `csc258/f26/accommodations.json` | |
 
 A course offering is the same folder in both. Only the course page and its files are public; grades and exams never are. On the server they're under `data/files/<account id>/pub` and `…/priv`.
@@ -184,12 +194,14 @@ server/                 the Flask server (one module per area; each starts with 
   classmail.py          emailing a class, and each offering's own email settings (/api/mail/…)
   mailer.py             email (SMTP)
   autograde/            marking scanned exams (python app.py autograde): layout, scan, read, digits, grade, report
+  scanning.py           an exam's Print and Scan page: PDFs (pdflatex), scans, marking them, review, marks to the gradebook
 templates/              index.html (the splash and the app), admin.html, hub.html and hub-signin.html (the course page)
 static/css/             splash.css, shell.css (Lectern), hub.css (the course page), admin.css
 static/js/              one file per page or part, each starting with what it is. The main ones:
   lectern.js            the shell: Home, a course offering, the pinned path, opening builders
   scope.js              runs each builder in its own scope (see below)
   hub.js, hub-view.js   the course page (hub-view.js is its look, shared with the Course Page Builder)
+  scans.js              an exam's Print and Scan page: its PDFs, scans, the grader's results, reviewing a booklet
   sw.js                 the service worker that makes Lectern installable as an app (Install Lectern, in the
                         account menu); it caches nothing, and only shows "You're offline" when the server can't be reached
 static/vendor/          Tesseract (reading ID cards in the browser), with its licences

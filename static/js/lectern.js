@@ -11,6 +11,7 @@
      #/csc258/f26/announcements   announcements (announcements.js), each in its week on the course page
      #/csc258/f26/team/12    a teaching team member: their sections, times and office hours (team.js)
      #/csc258/f26/exams/midterm   the Exam Builder on csc258/f26/midterm/exam.json (private repo)
+     #/csc258/f26/scans/midterm[/3]   the exam on paper: its PDFs, its scans and their marks (scans.js); /3: booklet 3
      #/~ana/csc258/f26/…   the same, for an offering in someone else's files that you're on the teaching team of
      #/account             your account: password, two-factor sign-in, sessions
    Everything is kept on Lectern's server, in your account's two areas: "pub" (course pages, published
@@ -26,6 +27,7 @@ import { lecturesPage, lecturesUnsaved } from "./lectures.js";
 import { teamMemberPage } from "./team.js";
 import { announcementsPage } from "./announcements.js";
 import { mountAttendance } from "./attendance.js";
+import { scansPage } from "./scans.js";
 import { discussionsPage, mountDiscussion, unanswered, css as hubCSS } from "./discussions.js";
 import { studentsCard } from "./students.js";
 import { emailCard } from "./mailsettings.js";
@@ -260,6 +262,7 @@ function parseHash() {
     if ((tool === "groups" || tool === "sections") && e) return { page: "groups", c, t, o, g: e };
     if (tool === "announcements") return { page: "announcements", c, t, o, a: e || "" };
     if (tool === "attendance" && e && slugOK(e)) return { page: "attend", c, t, o, e };
+    if (tool === "scans" && e && slugOK(e)) return { page: "scans", c, t, o, e, b: /^\d+$/.test(p[4] || "") ? p[4] : "" };
     if (tool === "discussions") return { page: "discuss", c, t, o, tg: e || "", id: p[4] || "" };
     return { page: "offering", c, t, o };
   }
@@ -272,7 +275,7 @@ const hashFor = r => {
   if (r.page === "home") return "#/";
   if (r.page === "account") return "#/account";
   const at = `#/${r.o ? `~${r.o}/` : ""}${r.c}/${r.t}`;
-  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "discuss" ? `${at}/discussions${r.tg && r.id ? `/${encodeURIComponent(r.tg)}/${encodeURIComponent(r.id)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
+  return r.page === "offering" ? at : r.page === "accom" ? `${at}/${r.k === "remark" ? "remarks" : "accommodations"}${r.q ? `/${encodeURIComponent(r.q)}` : ""}` : r.page === "team" ? `${at}/team/${encodeURIComponent(r.p)}` : r.page === "groups" ? `${at}/sections/${encodeURIComponent(r.g)}` : r.page === "announcements" ? `${at}/announcements${r.a ? `/${encodeURIComponent(r.a)}` : ""}` : r.page === "attend" ? `${at}/attendance/${encodeURIComponent(r.e)}` : r.page === "scans" ? `${at}/scans/${encodeURIComponent(r.e)}${r.b ? `/${r.b}` : ""}` : r.page === "discuss" ? `${at}/discussions${r.tg && r.id ? `/${encodeURIComponent(r.tg)}/${encodeURIComponent(r.id)}` : ""}` : r.page === "lectures" ? `${at}/activities${r.w ? `/${encodeURIComponent(r.w)}${r.l ? `/${encodeURIComponent(r.l)}` : ""}` : ""}` : r.tool === "exams" ? `${at}/exams/${r.e}`
     : r.tool === "grades" ? `${at}/${PARTS[r.part || "book"].slug}` : `${at}/${r.tool}`;
 };
 const routeKey = r => hashFor(r);
@@ -636,6 +639,12 @@ function renderPage() {
       onDone: () => { if (hashFor(S.route) === key) Lectern.openAttendance(r.e); },
       path: ev => renderPath([HOME_STEP, offeringStep(r.c, r.t), toEval, { label: ev.name, go: () => Lectern.openAttendance(r.e) }, { label: "Attendance" }]) });
     return { leave: () => box._stop && box._stop() };
+  }
+  if (r.page === "scans") {   // an exam on paper: its PDFs, scans and their marks (the Exam Builder's Print and Scan opens it)
+    const openExam = () => go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: r.e });
+    hubCSS();   // its list of booklets is the requests' list (the course page's list styles)
+    return scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [HOME_STEP, offeringStep(r.c, r.t)], owner: curOwner(), openExam,
+      unsaved: () => unsavedTools().some(u => u.name === "exams" && u.path === `${r.c}/${r.t}/${r.e}/exam.json`) }, r);
   }
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
     steps: [HOME_STEP, offeringStep(r.c, r.t)], markdown: s => window.HubView.markdown(s), me: S.user.id, api: Auth.api, owner: () => curOwner() || S.user.handle,
@@ -1638,6 +1647,8 @@ Lectern.attendanceEl = id => { const r = S.route, key = `${curOwner()}/${r.c}/${
 Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;
   go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: String(id), groupEd: "", student: "", stAcc: "", stFrom: "" } });
   let n = 0; const find = () => { const s = document.querySelector(`[data-att-slot="${CSS.escape(String(id))}"]`); if (s) { const h = s.previousElementSibling || s; h.scrollIntoView({ block: "start", behavior: "smooth" }); } else if (++n < 40) setTimeout(find, 100); }; setTimeout(find, 150); };
+// The Exam Builder's Print and Scan: the open exam on paper.
+Lectern.openScans = () => { const r = S.route; if (r.page === "tool" && r.tool === "exams" && r.e) go({ page: "scans", c: r.c, t: r.t, e: r.e }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).
 Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", ...(String(id).startsWith("m-") ? { k: "remark" } : {}), c: r.c, t: r.t, q: String(id) }); };

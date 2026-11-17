@@ -7,6 +7,7 @@ Lectern is one place to run a course. For each course offering (a course in one 
 - **Build your course page.** Add weekly activities, announcements, evaluations and your teaching team, and Lectern turns them into a course website with tabs for *This week*, *Announcements*, *Activities*, *Evaluations* and *About*. Choose which tabs are public and which are for signed-in students only. You can embed the page in Quercus.
 - **Keep your gradebook.** Set up evaluations (weights, due dates, "best N of M", makeups), import your class list from Quercus or ACORN, and enter marks. The marking scheme appears on your course page automatically, and each evaluation shows up in the week it's due.
 - **Write exams and handouts.** From any evaluation, open its test or assignment and write it in place. Its total marks feed straight back into the gradebook.
+- **Print exams and mark them from scans.** An exam's **Print and Scan** makes its PDFs (student copy, answer key, marking guide). Turn on **Marking from scans** in the exam's settings, and after the test upload the scanned booklets: Lectern marks the multiple choice, true or false and number answers, finds whose booklet each is, and shows you the rest (written answers, anything it wasn't sure of) to mark. Then send the marks to the gradebook.
 - **Show students their marks.** Signed-in students see each mark once you release it, on the evaluation's page and all together on **My Marks**. You can also show them their grade so far there (the gradebook's **Settings → Grade So Far**; off unless you turn it on).
 - **Reuse a course.** **Export** an offering (on its page) and **Import** it on Home as a new term: its course page, evaluations, activities, sections and exams come across, with the dates moved to the new term. Its students, marks, requests and announcements stay behind, so the file is safe to share with a colleague.
 - **Handle accommodation requests.** Students request an accommodation for a missed evaluation from the course page. You approve or reject it in Lectern, and the student is emailed the decision.
@@ -55,6 +56,8 @@ python app.py
 ```
 
 On a server, run it under tmux or systemd so it keeps running.
+
+**Exams as PDFs, and marking scanned exams** need two more things on the server: LaTeX (TeX Live, with its LaTeX "extra" packages: on Debian or Ubuntu, `sudo apt install texlive-latex-extra texlive-pictures`) and a few Python packages (`pip install -r requirements-scan.txt`). Without them the rest of Lectern works, and an exam's Print and Scan page says what's missing.
 
 ### Invite people
 

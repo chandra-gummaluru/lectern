@@ -1,0 +1,155 @@
+"""Print and Scan, end to end in a browser against the real server (harness.Server), on the demo course.
+
+1. The owner loads the demo course, opens its midterm in the Exam Builder and clicks Print and Scan.
+2. They download the student copy (kept as the printed copy); two students "write" it (test_autograde's pen
+   on the printed pages, then "scanned"), and the scan is uploaded and marked.
+3. They open a booklet, mark its written answers and confirm what the grader wasn't sure of, then send the
+   marks to the gradebook (replacing the demo's own Test 1 marks).
+
+    python tests/browser/flow_scans.py
+Asserts as it goes; screenshots in shots/.
+"""
+import io, json, os, sys, tempfile
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(HERE))
+sys.path.insert(0, HERE); sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "tests"))
+from playwright.sync_api import sync_playwright
+from harness import Server, OUT, block_cdns
+
+
+def answers(exam):
+    """What two students write: everything right, and the first two questions wrong."""
+    from server.autograde import grade
+    import test_autograde as T
+    L = {label: n for label, n in grade.leaves(exam, 0)}
+    right = lambda n: next(o["id"] for o in n["options"] if o["correct"])
+    comp = lambda n, kind: next(k for k, c in n["comps"].items() if c["kind"] == kind)
+    good = {f"{L['1']['id']}.{right(L['1'])}": "fill", f"{L['2']['id']}:T": "fill",
+            **{f"{L['3']['id']}.{o['id']}": "tick" for o in L["3"]["options"] if o["correct"]},
+            f"{L['4']['id']}.{comp(L['4'], 'num')}": "84", f"{L['5']['id']}.{comp(L['5'], 'num')}": "0.375",
+            **T.cells(f"{L['6']['id']}.{comp(L['6'], 'cells')}", "1101"),
+            f"{L['7']['id']}.{comp(L['7'], 'frac')}:n": "3", f"{L['7']['id']}.{comp(L['7'], 'frac')}:d": "4",
+            f"{L['9(a)']['id']}.{right(L['9(a)'])}": "fill", f"{L['9(b)']['id']}:T": "fill", f"{L['9(c)']['id']}.{comp(L['9(c)'], 'num')}": "30"}
+    wrong = {k: v for k, v in good.items() if not k.startswith(L["1"]["id"]) and not k.startswith(L["2"]["id"])}
+    wrong[f"{L['1']['id']}.{L['1']['options'][0]['id']}"] = "fill"
+    wrong[f"{L['2']['id']}:F"] = "fill"
+    return [good, wrong]
+
+
+def scan_pdf(printed, people, ans, path):
+    import numpy as np
+    from PIL import Image
+    import test_autograde as T
+    from server.autograde import layout
+    src = path + ".printed.pdf"
+    open(src, "wb").write(printed)
+    t = layout.load_template(src)
+    rng = np.random.default_rng(5)
+    pages = []
+    for k, (who, a) in enumerate(zip(people, ans)):
+        pages += [T.scanned(img, rng) for img in T.booklet(t, who, a, T.Pen(k + 11), rng)]
+    ims = [Image.fromarray(x) for x in pages]
+    ims[0].save(path, format="PDF", save_all=True, append_images=ims[1:], resolution=200)
+
+
+def main():
+    errors = []
+    tmp = tempfile.mkdtemp(prefix="lectern-scans-")
+    with Server() as srv, sync_playwright() as p:
+        owner = srv.account()
+        b = p.chromium.launch()
+        ctx = b.new_context(viewport={"width": 1360, "height": 900}); block_cdns(ctx)
+        me = ctx.new_page(); me.on("pageerror", lambda e: errors.append(f"owner: {e}"))
+        srv.sign_in(me)
+        d = me.evaluate("""() => fetch('/api/offerings/demo', {method: 'POST', headers: {'X-Lectern': '1'}}).then(r => r.json())""")
+        t = d["term"]; off = f"demo101/{t}"
+        print("1 the demo course:", off)
+
+        # The Exam Builder's Print and Scan opens the page.
+        me.evaluate(f"location.hash = '#/{off}/exams/midterm'"); me.evaluate("location.reload()")
+        me.wait_for_selector("#tb-scans", timeout=20000)
+        me.wait_for_timeout(800)
+        assert "Which of these numbers is prime" in me.inner_text("[data-lt-tool='exams']"), "the demo's midterm is open"
+        me.screenshot(path=f"{OUT}/scan-0-builder.png")
+        me.click("#tb-scans")
+        me.wait_for_selector(".sc-ed .sc-docs")
+        assert "/scans/midterm" in me.evaluate("location.hash")
+        me.screenshot(path=f"{OUT}/scan-1-page.png", full_page=True)
+        print("  page:", me.inner_text(".sc-ed .lt-req-meta"))
+
+        # 2. The student copy (kept as printed), written on by two students, scanned and uploaded.
+        href = me.get_attribute(".sc-docs a[data-print]", "href")
+        assert "print=1" in href, href
+        r = ctx.request.get(srv.base.rstrip("/") + href)
+        assert r.ok and r.body()[:4] == b"%PDF", r.status
+        for doc in ("key", "guide"):
+            k = ctx.request.get(srv.base.rstrip("/") + me.get_attribute(f".sc-docs a[href*='doc={doc}']", "href"))
+            assert k.ok and k.body()[:4] == b"%PDF"
+        exam = json.loads(srv.text("priv", f"{off}/midterm/exam.json"))
+        book = json.loads(srv.text("priv", f"{off}/grades.json"))
+        people = book["students"][6:8]
+        scan = os.path.join(tmp, "Class scan.pdf")
+        scan_pdf(r.body(), people, answers(exam), scan)
+        me.evaluate("location.reload()"); me.wait_for_selector(".sc-ed .sc-state")
+        assert "Printed" in me.inner_text(".sc-state"), me.inner_text(".sc-state")
+        me.set_input_files("#sc-file", scan)
+        me.wait_for_selector(".sc-files .sc-file", timeout=30000)
+        print("2 uploaded:", me.inner_text(".sc-files .sc-file").replace("\n", " "))
+        me.click("#sc-mark")
+        me.wait_for_selector(".sc-job", timeout=10000)
+        me.screenshot(path=f"{OUT}/scan-2-marking.png")
+        me.wait_for_selector(".sc-dc", timeout=180000)
+        me.screenshot(path=f"{OUT}/scan-3-results.png", full_page=True)
+        print("  results:", me.inner_text(".sc-dc .dc-title"))
+        rows = me.locator(".sc-dc .dc-t")
+        print("  to look at:", [rows.nth(i).inner_text().replace("\n", " ") for i in range(rows.count())])
+
+        # 3. Each booklet: mark what's left, then send.
+        for n in (1, 2):
+            me.evaluate(f"location.hash = '#/{off}/scans/midterm/{n}'")
+            me.wait_for_selector(".sc-book .sc-q")
+            if n == 1:
+                me.screenshot(path=f"{OUT}/scan-4-booklet.png", full_page=True)
+            print(f"3 booklet {n}:", me.inner_text(".sc-book h2"), "|", me.inner_text(".sc-book .lt-req-meta"))
+            if me.locator(".sc-pick [data-cand]").count():   # not sure whose it is: the cover says, and they pick
+                me.locator(".sc-pick [data-cand]", has_text=people[n - 1]["first"]).first.click() if me.locator(".sc-pick [data-cand]", has_text=people[n - 1]["first"]).count() \
+                    else me.select_option("#sc-who", people[n - 1]["num"])
+                me.wait_for_timeout(500)
+                print("  whose: chosen", me.inner_text(".sc-book h2"))
+            assert people[n - 1]["last"] in me.inner_text(".sc-book h2")
+            for _ in range(12):
+                left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
+                if not left.count():
+                    break
+                q = left.first
+                label = q.get_attribute("data-q")
+                if n == 1 or label in ("8", "10"):
+                    q.locator("[data-full]").click()        # the first student is right throughout; written answers are fine
+                elif q.locator("[data-ok]").count():
+                    q.locator("[data-ok]").click()
+                else:
+                    q.locator("[data-zero]").click()
+                me.wait_for_timeout(400)
+            me.wait_for_function("document.querySelector('.sc-book .lt-req-meta').textContent.includes('finished')")
+        me.screenshot(path=f"{OUT}/scan-5-finished.png", full_page=True)
+        me.locator("#lt-path button", has_text="Print and Scan").first.click()
+        me.wait_for_selector("#sc-send:not([disabled])")
+        print("  send:", me.inner_text("#sc-send"))
+        me.click("#sc-send")
+        me.wait_for_selector(".lt-modal [data-yes]")
+        print("  asks:", me.inner_text(".lt-modal h2"))
+        me.click(".lt-modal [data-yes]")
+        me.wait_for_timeout(1500)
+        me.screenshot(path=f"{OUT}/scan-6-sent.png", full_page=True)
+        book = json.loads(srv.text("priv", f"{off}/grades.json"))
+        got = {s["num"]: book["marks"][s["num"]]["mt"] for s in people}
+        print("  in the gradebook:", got)
+        assert got[people[0]["num"]] == {"pts": 21}, got
+        assert got[people[1]["num"]]["pts"] < 21
+        b.close()
+    assert not errors, errors
+    print("flow_scans: OK")
+
+
+if __name__ == "__main__":
+    main()

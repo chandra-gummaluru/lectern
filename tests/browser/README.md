@@ -26,7 +26,7 @@ a flow is fine when it ends without an error (several print `<name>: OK`).
 | Accounts and the shell | `flow_auth`, `flow_shell`, `flow_bar`, `flow_nav`, `flow_save`, `flow_install` |
 | Teaching teams and roles | `flow_teams`, `flow_team`, `flow_roles` |
 | Gradebook | `flow_evals`, `flow_fx`, `flow_cellst`, `flow_finals`, `flow_makeups`, `flow_policies` |
-| Exams | `flow_examui`, `flow_standalone` |
+| Exams | `flow_examui`, `flow_standalone`, `flow_scans` (print, scans, marking, review, marks to the gradebook) |
 | Course page | `flow_hub`, `flow_course`, `flow_drag`, `flow_lectures`, `flow_parts`, `flow_sections`, `flow_links`, `flow_evalfiles`, `flow_ann` |
 | Students | `flow_students`, `flow_accommodations`, `flow_attendance`, `flow_mail` |
 | Export, Import, the demo course, My Marks | `flow_transfer` |

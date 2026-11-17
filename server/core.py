@@ -90,8 +90,10 @@ def _origin(url):
 
 @app.before_request
 def _guard():
-    # Only saves (a course page's uploads) and importing an offering may be big; sign-in and the rest are small JSON.
-    if not ((request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")) or request.path.startswith("/api/offerings/import")):
+    # Only saves (a course page's uploads), importing an offering and scanned exams may be big; sign-in and the rest are small JSON.
+    if request.path == "/api/scans/upload":
+        request.max_content_length = int(os.environ.get("LECTERN_MAX_SCAN_MB") or 1024) * 1024 * 1024
+    elif not ((request.path.startswith("/api/store/") and request.path.endswith("/git/blobs")) or request.path.startswith("/api/offerings/import")):
         request.max_content_length = SMALL_BODY
     # Anything but localhost goes over HTTPS: passwords and session cookies never travel in the clear.
     if not secure_enough():

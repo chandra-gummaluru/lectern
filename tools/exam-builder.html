@@ -1825,6 +1825,11 @@ function render() {
   const seg = (act, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${String(v) === String(cur)}">${l}</button>`).join("")}</div>`;
   // The top bar has no view switch or zoom: the gear and Fit float over the page, the marking guide is a tick in the edit bar.
   $("#tb-view").innerHTML = ""; $("#tb-right").innerHTML = "";
+  // In Lectern, a saved exam can be printed (PDFs made on the server) and marked from its scans: Print and Scan.
+  if (window.Lectern && window.Lectern.openScans && gh.path && S.layout !== "handout") {
+    $("#tb-right").innerHTML = `<button type="button" id="tb-scans" title="Its PDFs, and marking it from scans">Print and Scan</button>`;
+    $("#tb-scans").onclick = () => window.Lectern.openScans();
+  }
   drawFloat();
   const tbh = $(".tb").offsetHeight; if (tbh) document.documentElement.style.setProperty("--tbh", `${tbh}px`);   // the question toolbar sticks just below it
   applyZoom();

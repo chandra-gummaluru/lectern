@@ -344,7 +344,7 @@ def delete_user(u):
     os.makedirs(dest, exist_ok=False)
     moved = []
     try:
-        for part in ("files", "history"):     # first, so that a later account can never find these under its id
+        for part in ("files", "history", "scans"):     # first, so that a later account can never find these under its id
             src = os.path.join(root, part, str(uid))
             if os.path.isdir(src):
                 os.replace(src, os.path.join(dest, part))

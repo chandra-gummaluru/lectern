@@ -42,6 +42,7 @@ from .places import places_bp
 from .discuss import discuss_bp
 from .attendance import attendance_bp
 from .transfer import transfer_bp
+from .scanning import scans_bp
 
 app.register_blueprint(pages_bp)
 app.register_blueprint(auth_bp)
@@ -57,3 +58,4 @@ app.register_blueprint(places_bp)
 app.register_blueprint(discuss_bp)
 app.register_blueprint(attendance_bp)
 app.register_blueprint(transfer_bp)
+app.register_blueprint(scans_bp)

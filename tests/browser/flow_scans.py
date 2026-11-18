@@ -176,7 +176,7 @@ def main():
                 right_ = {"4": ["84"], "5": ["0.375"], "6": list("1101"), "7": ["3", "4"], "9(c)": ["30"]}
                 if q.locator(".sc-note [data-yes]").count():   # "Is this what it says?"
                     if n == 1 and label in right_:             # no: they type what it says (the right answer) in the copy
-                        boxes = q.locator(":scope > .dz-one .dz-field input")
+                        boxes = q.locator(":scope > .sc-pair .dz-field input")
                         for k, v in enumerate(right_[label]):
                             boxes.nth(k).fill(v)
                         boxes.nth(len(right_[label]) - 1).press("Enter")

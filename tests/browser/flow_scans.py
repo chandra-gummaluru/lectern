@@ -157,16 +157,14 @@ def main():
                 assert q1().locator("[data-hot][aria-pressed='true']").count() == 2 and q1().locator(".sc-qh .sc-score input").input_value() == "0"
                 q1().locator("[data-hot]:not(.right)[aria-pressed='true']").click(); me.wait_for_timeout(700)   # the wrong one emptied
                 assert q1().locator("[data-hot].right[aria-pressed='true']").count() == 1 and q1().locator(".sc-qh .sc-score input").input_value() == "2"
+                assert not q1().locator(".sc-qh .sc-score").is_visible() and me.locator(".sc-q[data-q='8'] .sc-qh .sc-score").is_visible()   # scores: only where a person marks
                 q1().screenshot(path=f"{OUT}/scan-4g-picked.png")
                 q1().locator("[data-undo]").click(); me.wait_for_timeout(700)
                 q2 = me.locator(".sc-q[data-q='2']")
                 assert not q2.locator(".sc-cm, .sc-cap").count(), "a choice question: no comments, no note, no instructions"
                 q2.screenshot(path=f"{OUT}/scan-4f-grader.png")
-                me.click("[data-view='marked']"); me.wait_for_timeout(200)       # as the student gets it: tick or cross, the right one in green
-                assert q2.locator("[data-hot] .sc-pk.no").is_visible()
-                q2.screenshot(path=f"{OUT}/scan-4h-marked.png")
-                me.click("[data-view='read']"); me.wait_for_timeout(200)
-                assert not q2.locator("[data-hot] .sc-pk.no").is_visible()
+                assert me.locator(".lx-sec", has_text="Check What Was Read").count() and me.locator(".lx-sec", has_text="Mark by Hand").count()
+                assert not me.locator("[data-view]").count()                     # one view: no Marked tab
             for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():

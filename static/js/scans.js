@@ -25,39 +25,19 @@ const RIGHT = SVG('<path d="m9 18 6-6-6-6"/>');
 const LET = "ABCDEF";
 const TICK = SVG('<path d="m6 12.5 4 4L18 8"/>');
 const CROSS = SVG('<path d="M7 7l10 10M17 7 7 17"/>');
-// Two ways to see the answers, a toggle above the questions: Their Answers (what was read, a black ring, to correct
-// by clicking the scan) and Marked (as the student gets it: a tick or cross by their answer, the right one in green).
-const viewSeg = () => `<div class="sc-viewbar"><span class="lx-seg" role="group" aria-label="Show">${[["read", "Their Answers"], ["marked", "Marked"]].map(([v, l]) => `<button type="button" data-view="${v}" aria-pressed="${ui.view === v}">${l}</button>`).join("")}</span>
-  <p class="lx-help sc-cap sc-keyline sc-only-marked">`;
-const KEY = `<p class="lx-help sc-cap sc-keyline"><span class="sc-key-i"><span class="sc-pk ok">${TICK}</span>their answer, right</span><span class="sc-key-i"><span class="sc-pk no">${CROSS}</span>their answer, wrong</span><span class="sc-key-i"><i class="sc-ring-k"></i>the right answer</span></p>`;
-const VIEW = () => viewSeg() + KEY.replace('<p class="lx-help sc-cap sc-keyline">', "") + "</div>";
 const WARN = SVG('<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2h.01"/>');
-function marks(x) {
-  const s = x.status, by = x.by ? ` by ${x.by}` : "";
-  if (s === "missing") return { src: "", done: false, tip: "This page wasn't in the scans" };
-  const computer = s === "auto" || s === "check" || (s === "done" && !x.typed && x.machine != null && x.score === x.machine);
-  const done = s === "auto" || s === "done";
-  const tip = computer ? (s === "auto" ? "Marked by the computer" : s === "check" ? "Marked by the computer: it wasn't sure, so look at it" : `Marked by the computer, checked${by}`)
-    : done ? `Marked by hand${by}` : "To be marked by hand";
-  return { src: computer ? "computer" : "hand", done, tip };
-}
 const fmtN = x => (x == null ? "–" : String(Math.round(x * 100) / 100));
 // A booklet's mark, as the course page and gradebook show one: the percent big, its points under it.
 const markHTML = b => { const pc = b.out_of ? Math.round(b.total / b.out_of * 1000) / 10 : null;
   return `<div class="sc-mk"><b>${pc != null ? `${fmtN(pc)}%` : fmtN(b.total)}</b><small>${fmtN(b.total)} / ${fmtN(b.out_of)}${b.ready ? "" : " so far"}</small></div>`; };
-// A question's state, in words, as an outlined pill (Item Head: no big status icons).
-const PILL = { auto: ["Marked by the computer", "done"], check: ["Check this", "check"], manual: ["Mark by hand", "check"], missing: ["Page missing", "missing"] };
-const pillHTML = (x, esc) => { const m = marks(x);
-  const [t, v] = x.status === "done" ? [m.src === "computer" ? "Checked" : "Marked by hand", "done"] : PILL[x.status] || [x.status, "open"];
-  return `<span class="sc-pill sc-qpill v-${v}" title="${esc(m.tip)}">${esc(t)}</span>`; };
 const when = s => { const d = new Date(s * 1000); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
 const size = b => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
-const ui = { show: "open", q: "", by: "booklet", qShow: "", qWas: "", view: "read" };
-const editing = new Set();
-const adding = new Set();
-const noting = new Set();    // answers with the note box opened, though it has no note yet    // answers with the New Comment form open ("<booklet>|<question>")
+const ui = { show: "open", q: "", by: "booklet", qShow: "", qWas: "" };
+const editing = new Set();   // answers whose reading is open to type ("<booklet>|<question>")
+const adding = new Set();    // answers with the New Comment form open
+const noting = new Set();    // answers with the note box opened, though it has no note yet
 // A comment's marks as the marking guide writes them: −1, +2, ±0.
-const dl = d => (d == null ? "" : d > 0 ? `+${fmtN(d)}` : d < 0 ? `−${fmtN(-d)}` : "±0");   // answers whose reading is open to type ("<booklet>|<question>")
+const dl = d => (d == null ? "" : d > 0 ? `+${fmtN(d)}` : d < 0 ? `−${fmtN(-d)}` : "±0");
 
 export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, renderPath, steps, owner, unsaved, openExam }, r) {
   const params = x => new URLSearchParams({ ...(owner ? { owner } : {}), offering: `${r.c}/${r.t}`, exam: r.e, ...x }).toString();
@@ -280,6 +260,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const sure = st.status === "auto" || st.status === "done";
     const pages = b.where || (b.pages || []).join(", ");
     const q = x => qCard(x, b, `Question ${esc(x.label)}`);
+    // The questions as the work goes: first make sure what the computer read is right (it marks those), then mark the rest.
+    const checks = b.questions.filter(x => !isJudged(x)), byHand = b.questions.filter(isJudged);
     box.innerHTML = `<div class="lx-editor sc-ed sc-book">
       <div class="lx-ed-head sc-hasmk"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
         <div class="gr-tt"><p class="gr-kind">Booklet ${i} of ${bs.length}</p><h2>${esc(name)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
@@ -292,8 +274,10 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       ${sure ? `<p class="lx-help">${st.status === "done" ? `Chosen${st.by ? ` by ${esc(st.by)}` : ""}.` : `Found from the student number${st.read && st.read !== st.num ? ` (read as ${esc(st.read)})` : ""}.`}</p>`
         : `<p class="sc-note">${WARN}<span>${esc(st.note || "Not sure whose booklet this is. Check the cover.")}${st.read ? ` The number reads as ${esc(st.read)}.` : ""}</span></p>`}
       ${can ? `<div class="sc-pick">${picker}</div>` : ""}
-      <h3 class="lx-sec">Questions</h3>
-      ${VIEW()}<div class="sc-qs v-${ui.view}">${b.questions.map(q).join("")}</div>
+      ${checks.length ? `<h3 class="lx-sec">Check What Was Read</h3><p class="lx-help">The computer marks these from what it read. Fix anything it read wrong in the copy under each scan.</p>
+      <div class="sc-qs">${checks.map(q).join("")}</div>` : ""}
+      ${byHand.length ? `<h3 class="lx-sec">Mark by Hand</h3><p class="lx-help">Give each a score: tick the rubric's comments that apply, or type it.</p>
+      <div class="sc-qs">${byHand.map(q).join("")}</div>` : ""}
     </div>`;
     box.querySelectorAll("[data-go]").forEach(x => { x.onclick = () => go({ ...r, b: x.dataset.go }); });
     const save = what => review(b, what).then(ok => { if (ok) { const y = window.scrollY; drawBooklet(); window.scrollTo(0, y); } });
@@ -327,7 +311,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       <div class="hb lt-dc sc-dc"><section class="dc"><div class="dc-head"><h2 class="ec-sec dc-title">${ui.qShow === "open" ? "To Look At" : "Every Answer"} <span>· ${list.length}</span></h2>
         <div class="dc-tools"><div class="dc-sort" role="tablist">${seg("open", "To Look At", open.length)}${seg("all", "All", all.length)}</div></div></div>
         ${list.length ? "" : `<p class="dc-none">Nothing left to look at in this question.${nextOpen ? ` <button type="button" class="lt-link" data-gq="${esc(nextOpen)}">Question ${esc(nextOpen)}</button> has some.` : ""}</p>`}</section></div>
-      ${VIEW()}<div class="sc-qs v-${ui.view}">${list.map(a => qCard(a.x, a.b, `<button type="button" class="lt-link sc-qwho" data-book="${(R.booklets.indexOf(a.b)) + 1}" title="Open their booklet">${who(a)}</button>${a.b.version ? `<span class="sc-qv">Version ${esc(a.b.version)}</span>` : ""}`)).join("")}</div>
+      <div class="sc-qs">${list.map(a => qCard(a.x, a.b, `<button type="button" class="lt-link sc-qwho" data-book="${(R.booklets.indexOf(a.b)) + 1}" title="Open their booklet">${who(a)}</button>${a.b.version ? `<span class="sc-qv">Version ${esc(a.b.version)}</span>` : ""}`)).join("")}</div>
     </div>`;
     box.querySelectorAll("[data-gq]").forEach(x => { x.onclick = () => x.dataset.gq && go({ ...r, b: "", q: x.dataset.gq }); });
     box.querySelectorAll("[data-qshow]").forEach(x => { x.onclick = () => { ui.qShow = x.dataset.qshow; drawQuestion(); }; });
@@ -380,6 +364,13 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     return `<div class="dz-one"><div class="pp dz-field pp-${kind}" data-kind="${kind}" style="--r:${ratio}"><img class="pp-img" src="${esc(p.paper)}" alt="" aria-hidden="true"><div class="pp-on">${rects.map((r, i) => `<input class="pp-in" type="text" value="${esc(parts[i] || "")}" style="${at(r)};--h:${r[3]}" aria-label="${esc(label)}${rects.length > 1 ? ` ${i + 1}` : ""}" spellcheck="false" autocomplete="off"${kind === "cells" ? ' maxlength="2"' : ""}${can ? "" : " disabled"}>`).join("")}${marks ? `<span class="pp-marks" style="${at(rects[rects.length - 1] || [0, 0, 0, 0])}">${marks}</span>` : ""}</div></div></div>`;
   }
 
+  // Whether a person marks a question (writing, room for working, or a rubric to give), or the computer does, from what
+  // it read (then a person only makes sure it read it right).
+  function isJudged(x) {
+    const node = pieceOf(x), choice = Array.isArray(x.options) || (node && node.type !== "written");
+    return !choice && (!node || !node.comps.length || !!node.space || ((R.rubrics || {})[x.id] || { lines: [] }).lines.length > 0);
+  }
+
   // A question's answer, as a card: who marked it and whether it's done, its score, the scan, the typed copy.
   function qCard(x, b, title) {
     const s = x.status, can = S.can.mark && s !== "missing", id = `${b.key}|${x.label}`;
@@ -387,6 +378,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const node = pieceOf(x), choice = Array.isArray(x.options) || (node && node.type !== "written");
     const one = node && node.type === "written" && node.comps.length === 1 && !blanks ? node.comps[0] : null;
     const ask = s === "check" ? x.ask : "";
+    // Comments and a note only where a person judges the answer (writing, or room for working, or a rubric to give),
+    // not where they're only making sure what the computer read is right.
+    const judged = isJudged(x);
     const by = x.typed ? `<p class="lx-help sc-by-line">Changed${x.by ? ` by ${esc(x.by)}` : ""}.</p>` : "";
     // The typed copy: of a choice question, or of its one answer piece (several blanks have a row each, below).
     const onPaper = x.paper && Array.isArray(x.fields) && x.fields.length;
@@ -398,15 +392,15 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       : ask && x.note ? `<p class="sc-note">${WARN}<span>${esc(x.note)}${can && fix ? `${fix} <button type="button" class="lt-link" data-${ask === "choice" ? "hotok" : "yes"}>it's read right</button>.` : ""}</span></p>` : "";
     const acts = !can ? ""
       : ask === "working" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-yes title="Give part marks in the score box">Yes</button><button type="button" class="lt-btn sc-sm" data-keep>No</button></div>`
-      : s === "manual" && !one ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>`
+      : s === "manual" && !one && judged ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>`
       : s === "done" ? `<div class="sc-qa"><button type="button" class="lt-link sc-undo" data-undo>Undo</button></div>` : "";
-    return `<div class="sc-q st-${s}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
-        <div class="sc-qh"><h4 class="sc-qt">${title}</h4>${pillHTML(x, esc)}
+    return `<div class="sc-q st-${s}${judged ? " judged" : " readq"}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
+        <div class="sc-qh"><h4 class="sc-qt">${title}</h4>
           <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" placeholder="–" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
         ${x.picture && !blanks ? `<div class="sc-pair${one && one.kind === "frac" ? " side" : ""}"><img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">${digi}</div>` : digi}${by}
         ${blanks ? `<div class="sc-bls">${blanks.map((y, k) => blankRow(y, k, b, x, can, node)).join("")}</div>` : ""}
         ${note}${acts}
-        ${choice ? "" : commentsHTML(x, b, can)}
+        ${judged ? commentsHTML(x, b, can) : ""}
       </div>`;
   }
   // A question's comments for the student: the grader's (for what it marked down), the rubric's as buttons that set the
@@ -464,12 +458,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     } catch (e) { toast(e.message); if (el) el.focus(); return false; }
   }
   function wireCards(redraw) {
-    box.querySelectorAll("[data-view]").forEach(t => { t.onclick = () => {
-      ui.view = t.dataset.view;
-      box.querySelectorAll("[data-view]").forEach(k => k.setAttribute("aria-pressed", String(k.dataset.view === ui.view)));
-      const qs = box.querySelector(".sc-qs"); if (qs) qs.className = `sc-qs v-${ui.view}`;
-      const bar = box.querySelector(".sc-viewbar"); if (bar) bar.dataset.v = ui.view; }; });
-    const bar0 = box.querySelector(".sc-viewbar"); if (bar0) bar0.dataset.v = ui.view;
     box.querySelectorAll(".sc-q[data-k]").forEach(el => {
       const b = R.booklets.find(y => y.key === el.dataset.k), x = b && b.questions.find(y => y.label === el.dataset.q), inp = el.querySelector(".sc-qh .sc-score input");
       if (!x) return;

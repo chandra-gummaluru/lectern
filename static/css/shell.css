@@ -1554,10 +1554,6 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-cap .sc-pk { width: 15px; height: 15px; }
 .sc-ring-k { display: inline-block; width: 11px; height: 11px; border: 2px solid #2f8f5b; border-radius: 50%; background: rgb(47 143 91 / .24); }
 .sc-ring-k.sq { border-radius: 4px; }
-/* Their Answers / Marked: the toggle above the questions, and the key that shows with Marked. */
-.sc-viewbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 4px 0 2px; }
-.sc-viewbar .sc-keyline { margin: 0; }
-.sc-viewbar[data-v="read"] .sc-only-marked { display: none; }
 .sc-qs.v-marked .sc-only-read { display: none; }
 /* The typed copy of what was read, under the scan (scans.js, digiChoice and digiField): drawn as the paper has it.
    Their Answers: filled bubbles in ink, boxes holding what was read, to correct. Marked: a red tick or cross by each
@@ -1623,3 +1619,6 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-pair.side { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 14px; }
 .sc-pair > .sc-pic, .sc-pair > .dz-one > .pp, .sc-pair > .pp, .sc-pair > .dz { margin-top: 10px; }
 .sc-pair > .dz-one { margin-top: 0; }
+/* Their Answers is for making sure what the computer read is right: no scores there on questions it marks from what it
+   read (they show in Marked). A question a person marks keeps its score box in both. */
+.sc-q.readq .sc-score { display: none; }   /* the computer marks it from what it read: no score to give */

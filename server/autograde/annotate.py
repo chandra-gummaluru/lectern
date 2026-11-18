@@ -273,11 +273,19 @@ def cross(d, x, y, s, colour=RED, w=5):
     d.line([(x + s, y), (x, y + s)], fill=colour, width=w)
 
 
-def ring(d, rect, colour=GREEN, pad=8, w=4, square=False):
-    """A green ring round a right answer: a circle round a bubble, a rounded square round a tick box."""
+def ring(page, rect, colour=GREEN, pad=8, w=4, square=False):
+    """A green ring round a right answer, filled with a light wash of green: a circle round a bubble, a rounded square
+    round a tick box. Drawn on its own layer, so the wash lets the student's ink show through."""
     x, y, ww, hh = rect
     box = [x - pad, y - pad, x + ww + pad, y + hh + pad]
-    d.rounded_rectangle(box, radius=int((ww + 2 * pad) * .28), outline=colour, width=w) if square else d.ellipse(box, outline=colour, width=w)
+    layer = Image.new("RGBA", page.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    wash = (*colour, 46)
+    if square:
+        d.rounded_rectangle(box, radius=int((ww + 2 * pad) * .28), fill=wash, outline=(*colour, 255), width=w)
+    else:
+        d.ellipse(box, fill=wash, outline=(*colour, 255), width=w)
+    page.paste(Image.alpha_composite(page.convert("RGBA"), layer).convert("RGB"))
 
 
 def baseline(img, xs, y, tall):
@@ -308,7 +316,8 @@ def mark_page(img, dpi, marks, notes):
         elif kind == "cross":
             cross(d, *((x + w - s * .3, y - s * .5) if on else (x - s - 10, cy)), s * .8)
         elif kind == "ring":
-            ring(d, (x, y, w, h), square=len(m) > 2 and m[2] == "square")
+            ring(page, (x, y, w, h), square=len(m) > 2 and m[2] == "square")
+            d = ImageDraw.Draw(page)
         elif kind == "big":
             d.text((x, y), m[2], fill=RED, font=font("hand", int(dpi * .42)), anchor=m[3])
         elif kind == "write":                     # a score in the cover's table or a question's "[   ] / 2" box

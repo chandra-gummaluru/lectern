@@ -160,6 +160,11 @@ def main():
                 q2 = me.locator(".sc-q[data-q='2']")
                 assert "Incorrect answer selected" in q2.locator(".sc-cm-auto").inner_text()
                 q2.screenshot(path=f"{OUT}/scan-4f-grader.png")
+                me.click("[data-view='marked']"); me.wait_for_timeout(200)       # as the student gets it: tick or cross, the right one in green
+                assert q2.locator(".sc-ring").is_visible() and q2.locator(".sc-pk.no").is_visible()
+                q2.screenshot(path=f"{OUT}/scan-4h-marked.png")
+                me.click("[data-view='read']"); me.wait_for_timeout(200)
+                assert not q2.locator(".sc-ring").is_visible()
             for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():

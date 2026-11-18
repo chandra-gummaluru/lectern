@@ -1549,7 +1549,7 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 /* The right answers ringed in green on a choice question's picture, as on the marked PDF. */
 .sc-picw { position: relative; width: fit-content; max-width: 100%; margin: 10px 0 0; }
 .sc-picw .sc-pic { margin: 0; }
-.sc-ring { position: absolute; box-sizing: border-box; margin: -7px 0 0 -7px; padding: 7px; border: 2.5px solid #2f8f5b; border-radius: 50%; box-sizing: content-box; pointer-events: none; }
+.sc-ring { position: absolute; box-sizing: border-box; margin: -7px 0 0 -7px; padding: 7px; border: 2.5px solid #2f8f5b; border-radius: 50%; box-sizing: content-box; background: rgb(47 143 91 / .24); pointer-events: none; }
 .sc-ring.sq { border-radius: 9px; }   /* multiple answers: tick boxes, so a rounded square */
 /* Picking their answer on the scan: each bubble (and its label) is a button; the one read is ringed in ink. */
 .sc-hot { position: absolute; margin: -5px 0 0 -5px; padding: 5px; box-sizing: content-box; border: 0; background: transparent; cursor: pointer; border-radius: 10px; }
@@ -1557,6 +1557,23 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-hot.sq::before { border-radius: 8px; }
 .sc-hot:hover { background: rgb(29 35 41 / .05); }
 .sc-hot:hover::before { border-color: var(--home-ink-3); }
-.sc-hot.on::before { border: 2.5px solid var(--home-ink); }
 .sc-hot:focus-visible { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; }
 .sc-cap { margin: 6px 0 0; }
+/* What they chose: a red tick (right) or cross (wrong) just left of the bubble, as on the marked PDF; and the key. */
+.sc-pk { display: inline-flex; color: #c0392b; }
+.sc-pk svg { width: 100%; height: 100%; stroke-width: 3.2; }
+.sc-hot > .sc-pk { position: absolute; left: -26px; top: 50%; width: 24px; height: 24px; transform: translateY(-50%); }
+.sc-cap .sc-key-i { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; white-space: nowrap; }
+.sc-cap .sc-pk { width: 15px; height: 15px; }
+.sc-ring-k { display: inline-block; width: 11px; height: 11px; border: 2px solid #2f8f5b; border-radius: 50%; background: rgb(47 143 91 / .24); }
+.sc-ring-k.sq { border-radius: 4px; }
+/* Their Answers / Marked: one picture, two ways to see it. Their Answers rings what was read in black (click to change);
+   Marked shows it as the student gets it: a tick or cross by their answer, the right one ringed in green. */
+.sc-viewbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 4px 0 2px; }
+.sc-viewbar .sc-keyline { margin: 0; }
+.sc-viewbar[data-v="read"] .sc-only-marked { display: none; }
+.sc-qs.v-read .sc-ring, .sc-qs.v-read .sc-hot > .sc-pk { display: none; }
+.sc-qs.v-read .sc-hot.on::before { border: 3px solid var(--home-ink); }
+.sc-qs.v-marked .sc-hot { pointer-events: none; }
+.sc-qs.v-marked .sc-hot::before { display: none; }
+.sc-qs.v-marked .sc-only-read { display: none; }

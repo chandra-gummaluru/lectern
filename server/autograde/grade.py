@@ -150,6 +150,19 @@ class Booklet:
         x1 = max(g[0][0] + g[0][2] for g in got); y1 = max(g[0][1] + g[0][3] for g in got)
         return read.picture(img, (x0, y0, x1 - x0, y1 - y0), pad=pad, right=right)
 
+    def spots(self, rids, right=0, pad=14):
+        """Where each piece is in picture(rids, right, pad), as fractions of it: [[left, top, width, height]], so the
+        page can ring the right answers on it."""
+        got = [self.get(rid) for rid in rids]
+        if not got or any(g is None for g in got):
+            return None
+        H, W = got[0][1].shape
+        x0 = min(g[0][0] for g in got); y0 = min(g[0][1] for g in got)
+        x1 = max(g[0][0] + g[0][2] for g in got); y1 = max(g[0][1] + g[0][3] for g in got)
+        L, T = max(0, int(x0 - pad)), max(0, int(y0 - pad))
+        R, B = min(W, int(x1 + pad + right)), min(H, int(y1 + pad))
+        return [[round((g[0][0] - L) / (R - L), 4), round((g[0][1] - T) / (B - T), 4), round(g[0][2] / (R - L), 4), round(g[0][3] / (B - T), 4)] for g in got]
+
 
 # ── Marking one question ───────────────────────────────────────────────
 
@@ -176,7 +189,7 @@ def mark_choice(b, n):
                 "answer": ", ".join(LET[i] for i, r in enumerate(right) if r),
                 "note": "A box is only faintly marked. Which are their answers?" if unsure else "", "ask": "choice" if unsure else "",
                 "options": [LET[k] for k in range(len(ids))], "multi": True, "fills": [round(f, 3) for f in fills],
-                "picture": b.picture(ids, right=260)}
+                "picture": b.picture(ids, right=260), "spots": b.spots(ids, right=260), "right": [k for k, r in enumerate(right) if r]}
     fills = [read.fill(g[2], g[0]) for g in got]
     i, status, note = choose_one(fills)
     if t == "tf":
@@ -185,12 +198,13 @@ def mark_choice(b, n):
         name = {"true": "True", "false": "False"}
         return {"status": status, "score": pts if chosen == answer else 0.0, "read": name.get(chosen, "none"),
                 "answer": name[answer], "note": note, "ask": "choice" if status == "check" else "", "options": ["True", "False"],
-                "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=180)}
+                "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=180), "spots": b.spots(ids, right=180),
+                "right": [vals.index(answer)]}
     right = [k for k, o in enumerate(n["options"]) if o.get("correct")]
     return {"status": status, "score": pts if i is not None and i in right else 0.0,
             "read": LET[i] if i is not None else "none", "answer": " or ".join(LET[k] for k in right),
             "note": note, "ask": "choice" if status == "check" else "", "options": [LET[k] for k in range(len(ids))],
-            "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260)}
+            "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260), "spots": b.spots(ids, right=260), "right": right}
 
 
 def ms_score(n, ticked, right):

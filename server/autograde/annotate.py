@@ -273,9 +273,11 @@ def cross(d, x, y, s, colour=RED, w=5):
     d.line([(x + s, y), (x, y + s)], fill=colour, width=w)
 
 
-def ring(d, rect, colour=GREEN, pad=8, w=4):
+def ring(d, rect, colour=GREEN, pad=8, w=4, square=False):
+    """A green ring round a right answer: a circle round a bubble, a rounded square round a tick box."""
     x, y, ww, hh = rect
-    d.ellipse([x - pad, y - pad, x + ww + pad, y + hh + pad], outline=colour, width=w)
+    box = [x - pad, y - pad, x + ww + pad, y + hh + pad]
+    d.rounded_rectangle(box, radius=int((ww + 2 * pad) * .28), outline=colour, width=w) if square else d.ellipse(box, outline=colour, width=w)
 
 
 def baseline(img, xs, y, tall):
@@ -306,7 +308,7 @@ def mark_page(img, dpi, marks, notes):
         elif kind == "cross":
             cross(d, *((x + w - s * .3, y - s * .5) if on else (x - s - 10, cy)), s * .8)
         elif kind == "ring":
-            ring(d, (x, y, w, h))
+            ring(d, (x, y, w, h), square=len(m) > 2 and m[2] == "square")
         elif kind == "big":
             d.text((x, y), m[2], fill=RED, font=font("hand", int(dpi * .42)), anchor=m[3])
         elif kind == "write":                     # a score in the cover's table or a question's "[   ] / 2" box
@@ -385,7 +387,7 @@ def booklet_pdf(exam, templates, page_image, booklet, shown, answers=False, dpi=
                 if k in got:
                     pm(w, "tick" if k in right else "cross", w[3])
                 if answers and k in right and k not in got:
-                    pm(w, "ring", w[3])
+                    pm(w, "ring", w[3], "square" if typ == "ms" else "")
         elif q.get("blanks") or any(x[1][0] == "blank" for x in where):
             bl = q.get("blanks")
             for k in sorted({x[1][1] for x in where if x[1][0] == "blank"}):

@@ -1546,3 +1546,17 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-cnote-in { width: 100%; height: 32px; box-sizing: border-box; padding: 0 2px; border: 0; border-bottom: 1px dashed var(--home-ink-3); background: transparent; color: var(--home-ink); font: italic 15px var(--font-serif); }
 .sc-cnote-in:focus { outline: 0; border-bottom: 1.5px solid var(--accent, #c99a06); }
 .sc-cm-note > span:last-child { font: italic 15px var(--font-serif); color: var(--home-ink); }
+/* The right answers ringed in green on a choice question's picture, as on the marked PDF. */
+.sc-picw { position: relative; width: fit-content; max-width: 100%; margin: 10px 0 0; }
+.sc-picw .sc-pic { margin: 0; }
+.sc-ring { position: absolute; box-sizing: border-box; margin: -7px 0 0 -7px; padding: 7px; border: 2.5px solid #2f8f5b; border-radius: 50%; box-sizing: content-box; pointer-events: none; }
+.sc-ring.sq { border-radius: 9px; }   /* multiple answers: tick boxes, so a rounded square */
+/* Picking their answer on the scan: each bubble (and its label) is a button; the one read is ringed in ink. */
+.sc-hot { position: absolute; margin: -5px 0 0 -5px; padding: 5px; box-sizing: content-box; border: 0; background: transparent; cursor: pointer; border-radius: 10px; }
+.sc-hot::before { content: ""; position: absolute; left: 1px; top: 1px; width: calc(var(--bw) + 8px); height: calc(100% - 2px); box-sizing: border-box; border-radius: 50%; border: 2px dashed transparent; }
+.sc-hot.sq::before { border-radius: 8px; }
+.sc-hot:hover { background: rgb(29 35 41 / .05); }
+.sc-hot:hover::before { border-color: var(--home-ink-3); }
+.sc-hot.on::before { border: 2.5px solid var(--home-ink); }
+.sc-hot:focus-visible { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; }
+.sc-cap { margin: 6px 0 0; }

@@ -151,6 +151,12 @@ def main():
                 assert pdf.ok and pdf.body()[:4] == b"%PDF"
                 open(f"{OUT}/scan-4e-marked.pdf", "wb").write(pdf.body())
             if n == 2:          # what the grader says about what it marked down, in the same list
+                q1 = lambda: me.locator(".sc-q[data-q='1']")                  # a wrong bubble; a person says they chose the right one
+                assert q1().locator("[data-hot]").count() == 4 and q1().locator("[data-hot]:not([data-right])[aria-pressed='true']").count() == 1
+                q1().locator("[data-hot][data-right]").click(); me.wait_for_timeout(700)
+                assert q1().locator("[data-hot][data-right][aria-pressed='true']").count() == 1 and q1().locator(".sc-qh .sc-score input").input_value() == "2"
+                q1().screenshot(path=f"{OUT}/scan-4g-picked.png")
+                q1().locator("[data-undo]").click(); me.wait_for_timeout(700)
                 q2 = me.locator(".sc-q[data-q='2']")
                 assert "Incorrect answer selected" in q2.locator(".sc-cm-auto").inner_text()
                 q2.screenshot(path=f"{OUT}/scan-4f-grader.png")
@@ -170,6 +176,17 @@ def main():
                         q.locator("[data-yes]").click()
                 elif q.locator("[data-keep]").count():      # "Is there working worth part marks?" no
                     q.locator("[data-keep]").click()
+                elif q.locator("[data-hotok]").count():     # "Which is their answer?": the bubbles on the scan
+                    if n == 1:                              # the first student got it right: click the right ones
+                        for _ in range(6):
+                            off_ = q.locator("[data-hot][data-right][aria-pressed='false'], [data-hot]:not([data-right])[aria-pressed='true']")
+                            if not off_.count() or not q.locator("[data-hotok]").count():
+                                break
+                            off_.first.click(); me.wait_for_timeout(500)
+                        if q.locator("[data-hotok]").count():
+                            q.locator("[data-hotok]").click()
+                    else:
+                        q.locator("[data-hotok]").click()
                 elif q.locator("[data-opt]").count():       # "Which is their answer?"
                     q.locator(f"[data-opt='{answer}']" if n == 1 else "[data-opt]").first.click()
                 elif q.locator(".sc-bl [data-byes]").count():   # a blank of several the grader wasn't sure of: yes

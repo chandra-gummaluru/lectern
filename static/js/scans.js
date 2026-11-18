@@ -331,7 +331,18 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   function qCard(x, b, title) {
     const s = x.status, can = S.can.mark && s !== "missing", id = `${b.key}|${x.label}`;
     const blanks = x.blanks && x.blanks.length > 1 ? x.blanks : null;
-    const choice = Array.isArray(x.options), readable = !blanks && (choice || x.read != null);
+    // The right answers ringed in green on the picture, as on the marked PDF (then "Answer" needn't be written out).
+    const rings = x.spots && x.right ? x.right.map(k => x.spots[k]).filter(Boolean).map(([l, t, w, h]) => `<i class="sc-ring${x.multi ? " sq" : ""}" style="left:${l * 100}%;top:${t * 100}%;width:${w * 100}%;height:${h * 100}%" title="The right answer" aria-hidden="true"></i>`).join("") : "";
+    const choice = Array.isArray(x.options);
+    // A choice question with its bubbles' places: what they answered is picked by clicking the bubble on the scan.
+    const hot = choice && can && x.spots && x.spots.length === x.options.length && x.spots.every(Boolean);
+    const picked = new Set(x.multi ? String(x.read || "").split(", ") : [x.read]);
+    const hots = hot ? x.spots.map(([l, t, w, h], k) => {
+      const next = x.spots.find(([l2, t2]) => l2 > l && Math.abs(t2 - t) < h / 2), wide = Math.min(next ? next[0] - l - .01 : 1 - l, w * 3.2);
+      const o = x.options[k], on = picked.has(o);
+      return `<button type="button" class="sc-hot${x.multi ? " sq" : ""}${on ? " on" : ""}" data-hot="${esc(o)}"${(x.right || []).includes(k) ? " data-right" : ""} aria-pressed="${on}" style="left:${l * 100}%;top:${t * 100}%;width:${wide * 100}%;height:${h * 100}%;--bw:${(w / wide) * 100}%" title="${on ? (x.multi ? "Ticked: click if it isn't" : "Their answer") : x.multi ? "Click if they ticked this one" : "Click if this is their answer"}" aria-label="${esc(o)}"></button>`;
+    }).join("") : "";
+    const readable = !blanks && !hot && (choice || x.read != null);
     const open = can && readable && (editing.has(id) || (s === "manual" && x.ask === "type"));
     const ask = s === "check" ? x.ask : "";
     const readV = x.read == null || x.read === "" ? "nothing" : x.read;
@@ -344,9 +355,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         : can ? `<button type="button" class="sc-readv" data-edit title="Not what it says? Click to change it">${esc(readV)}</button>` : `<span class="sc-fv">${esc(readV)}</span>`;
       const by = x.typed ? `<small class="sc-by">typed${x.by ? ` by ${esc(x.by)}` : ""}</small>` : "";
       const wrong = x.answer && x.read != null && !choice && String(x.read).replace(/\s+/g, "") !== String(x.answer).replace(/\s+/g, "");
-      read = `<div class="sc-facts${open && !choice ? " editing" : ""}">${pickNow ? "" : `<div class="sc-f"><span class="sc-fk">Read</span><span class="sc-fval${wrong ? " off" : ""}">${shown}${by}</span></div>`}${x.answer ? `<div class="sc-f"><span class="sc-fk">Answer</span><span class="sc-fv">${esc(x.answer)}</span></div>` : ""}@@ACTS@@</div>`;
+      read = `<div class="sc-facts${open && !choice ? " editing" : ""}">${pickNow ? "" : `<div class="sc-f"><span class="sc-fk">Read</span><span class="sc-fval${wrong ? " off" : ""}">${shown}${by}</span></div>`}${x.answer && !rings ? `<div class="sc-f"><span class="sc-fk">Answer</span><span class="sc-fv">${esc(x.answer)}</span></div>` : ""}@@ACTS@@</div>`;
     }
-    const pick = choice && can && (open || ask === "choice") ? `<div class="sc-qa sc-f"><span class="sc-fk">Their answer</span><span class="sc-qa"><span class="lx-seg" role="group">${x.options.map(o => `<button type="button" data-opt="${esc(o)}" aria-pressed="${x.multi ? String(x.read).split(", ").includes(o) : x.read === o}">${esc(o)}</button>`).join("")}</span>${x.multi ? `<button type="button" class="lt-btn sc-sm" data-optsave>Save</button>` : ""}${editing.has(id) ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span></div>` : "";
+    const pick = choice && can && !hot && (open || ask === "choice") ? `<div class="sc-qa sc-f"><span class="sc-fk">Their answer</span><span class="sc-qa"><span class="lx-seg" role="group">${x.options.map(o => `<button type="button" data-opt="${esc(o)}" aria-pressed="${x.multi ? String(x.read).split(", ").includes(o) : x.read === o}">${esc(o)}</button>`).join("")}</span>${x.multi ? `<button type="button" class="lt-btn sc-sm" data-optsave>Save</button>` : ""}${editing.has(id) ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span></div>` : "";
     const note = s === "missing" ? `<p class="sc-note">${WARN}<span>This page wasn't in the scans.</span></p>` : ask && x.note ? `<p class="sc-note">${WARN}<span>${esc(x.note)}</span></p>` : "";
     const acts = !can ? ""
       : open && !choice ? (s === "manual" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>` : "")
@@ -357,7 +368,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     return `<div class="sc-q st-${s}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
         <div class="sc-qh"><h4 class="sc-qt">${title}</h4>${pillHTML(x, esc)}
           <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" placeholder="–" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
-        ${x.picture && !blanks ? `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">` : ""}
+        ${x.picture && !blanks && hot ? `<div class="sc-picw sc-hotw"><img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">${rings}${hots}</div>
+          <p class="lx-help sc-cap">${x.typed ? `Changed${x.by ? ` by ${esc(x.by)}` : ""}. ` : ""}${x.multi ? "Click a box to tick or untick it" : "Click the bubble they filled"} if it wasn't read right.${ask === "choice" ? ` <button type="button" class="lt-link" data-hotok>It's read right</button>` : ""}</p>`
+        : x.picture && !blanks ? (rings ? `<div class="sc-picw"><img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">${rings}</div>` : `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">`) : ""}
         ${blanks ? `<div class="sc-bls">${blanks.map((y, k) => blankRow(y, k, b, x, can)).join("")}</div>` : ""}
         ${read.replace("@@ACTS@@", open && !choice ? `<span class="sc-fa"><button type="button" class="lt-btn sc-sm primary" data-readsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span>` : "")}${note}${pick}${acts}
         ${commentsHTML(x, b, can)}
@@ -501,6 +514,12 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
           send({ score: n }); };
         bi.onkeydown = e => { if (e.key === "Enter") bi.blur(); };
       });
+      // Their answer picked on the scan: a bubble (one answer), or a box ticked or unticked (multiple answers).
+      el.querySelectorAll("[data-hot]").forEach(h => { h.onclick = () => {
+        if (!x.multi) return say(h.dataset.hot);
+        const now = new Set([...el.querySelectorAll("[data-hot]")].filter(k => (k === h) !== (k.getAttribute("aria-pressed") === "true")).map(k => k.dataset.hot));
+        say([...now].join("")); }; });
+      on("[data-hotok]", () => say(x.multi ? String(x.read || "").split(", ").join("") : x.read));
       const opts = [...el.querySelectorAll("[data-opt]")];
       opts.forEach(o => { o.onclick = () => {
         if (!x.multi) return say(o.dataset.opt);

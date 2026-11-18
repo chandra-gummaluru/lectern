@@ -515,6 +515,7 @@ def view(ex, results, review, roster):
         for q in b.get("questions") or []:
             q = dict(q)
             r = (rv.get("q") or {}).get(q["label"])
+            q["history"] = (rv.get("log") or {}).get(q["label"]) or []
             if q.get("blanks"):
                 _blanks(ex, results, q, (r or {}).get("blanks") or {})
             if r is not None and "score" in r:
@@ -530,6 +531,7 @@ def view(ex, results, review, roster):
             qs.append(q)
         out.append({"key": k, "pages": b.get("pages"), "where": _where(b.get("pages"), names), "version": b.get("version", ""), "student": st,
                     "cover": _pic(ex, results, (b.get("student") or {}).get("picture")),
+                    "studentHistory": (rv.get("log") or {}).get("student") or [],
                     "questions": qs, "total": round(total, 2), "out_of": b.get("out_of"), "open": open_, "emailed": emailed.get(k)})
     for b in out:            # one student in two booklets: neither is finished until a person says whose each is
         st = b["student"]
@@ -696,6 +698,9 @@ def review_with(ex, d):
     with _running_lock:
         rv = ex.read_json("review.json", {})
         one = rv.setdefault("booklets", {}).setdefault(k, {})
+
+        def log(where, what):                   # the edit history: who changed what, when (kept through undos)
+            one.setdefault("log", {}).setdefault(where, []).append({"at": time.time(), "by": g.user["name"], "what": what})
         if "student" in d:
             num = str(d.get("student") or "")
             if num:
@@ -703,8 +708,11 @@ def review_with(ex, d):
                 if num not in {str(s.get("num")) for s in roster}:
                     raise Refusal(400, "That student isn't on the class list.")
                 one.update(student=num, studentBy=g.user["name"])
+                p = next((s for s in roster if str(s.get("num")) == num), {})
+                log("student", f"Student: {p.get('last', '')}, {p.get('first', '')} ({num})")
             else:
                 one.pop("student", None)
+                log("student", "Student: back to the cover's reading")
         if "label" in d:
             q = next((x for x in b.get("questions") or [] if x["label"] == d.get("label")), None)
             if not q:
@@ -712,6 +720,8 @@ def review_with(ex, d):
             qd0 = one.setdefault("q", {}).setdefault(q["label"], {})
             if "note" in d:                     # a note for the student
                 t = str(d.get("note") or "").strip()[:2000]
+                if t != qd0.get("note", ""):
+                    log(q["label"], f"Note: “{t}”" if t else "Note removed")
                 qd0.update(note=t) if t else qd0.pop("note", None)
             if "rubric" in d:                   # the rubric comments given: they set the score
                 from .autograde.grade import nodes_of, rubric_score
@@ -720,9 +730,15 @@ def review_with(ex, d):
                     raise Refusal(409, "That question has changed in the exam since it was marked.")
                 lines = {c.get("id"): c for c in node.get("rubric") or [] if c.get("id")}
                 ids = [i for i in dict.fromkeys(d.get("rubric") or []) if i in lines]
+                from .autograde.grade import plain
+                had = set(qd0.get("rubric") or [])
+                said = lambda i: f"{_signed(lines[i].get('delta'))} {plain(lines[i].get('text', ''))}"
+                gave, took = [i for i in ids if i not in had], [i for i in had if i not in ids and i in lines]
                 if ids:
                     qd0.update(rubric=ids, score=rubric_score(node, mode, [lines[i].get("delta") for i in ids]), by=g.user["name"], at=time.time())
+                    log(q["label"], "; ".join([*(f"Gave {said(i)}" for i in gave), *(f"Took back {said(i)}" for i in took)]) + f" (score {qd0['score']:g})")
                 else:
+                    log(q["label"], "Took back every comment: back to the computer's marking")
                     for k2 in ("rubric", "score", "read", "by", "at"):
                         qd0.pop(k2, None)
             elif d.get("blank"):                  # one blank of several: its reading, a yes to the grader's, or its own score
@@ -736,18 +752,23 @@ def review_with(ex, d):
                 w = blank_points(node, [c for _, c in cs])[at]
                 dec = one.setdefault("q", {}).setdefault(q["label"], {}).setdefault("blanks", {})
                 mine = {"by": g.user["name"], "at": time.time()}
+                was = (dec.get(x["id"]) or {}).get("read", x.get("read") or "")
                 if "read" in d:
                     text = str(d.get("read") or "")[:200].strip()
                     dec[x["id"]] = {"score": round(w, 4) if piece_right(cs[at][1], text) else 0.0, "read": text, **mine}
+                    log(q["label"], f"Blank {at + 1}: “{text}” confirmed" if text == was else f"Blank {at + 1}: read as “{text}” (was “{was}”)")
                 elif d.get("keep"):
                     dec[x["id"]] = {"score": x.get("score") or 0.0, **mine}
+                    log(q["label"], f"Blank {at + 1}: “{was}” confirmed")
                 elif d.get("score") is None:
                     dec.pop(x["id"], None)
+                    log(q["label"], f"Blank {at + 1}: back to the computer's reading")
                 else:
                     s = _num(d.get("score"))
                     if s is None or s < 0 or s > w + 1e-9:
                         raise Refusal(400, f"A score from 0 to {w:g}.")
                     dec[x["id"]] = {**{k2: v for k2, v in (dec.get(x["id"]) or {}).items() if k2 == "read"}, "score": round(s, 2), **mine}
+                    log(q["label"], f"Blank {at + 1}: score {s:g} of {w:g}")
                 for k2 in ("score", "read", "rubric", "by", "at"):     # a blank decided: the question goes by its blanks again
                     qd0.pop(k2, None)
                 if not qd0.get("blanks"):
@@ -759,10 +780,13 @@ def review_with(ex, d):
                     raise Refusal(409, "That question has changed in the exam since it was marked.")
                 text = str(d.get("read") or "")[:200]
                 s, shown = score_typed(node, text)
+                was = qd0.get("read", q.get("read") or "")
                 one.setdefault("q", {}).setdefault(q["label"], {}).update(score=s, read=shown, by=g.user["name"], at=time.time())
+                log(q["label"], f"“{shown}” confirmed" if shown == was else f"Read as “{shown}” (was “{was or 'nothing'}”)")
             elif "score" in d and d.get("score") is None:     # undo: back to the grader's marking (a note stays)
                 for k2 in ("score", "read", "blanks", "rubric", "by", "at"):
                     qd0.pop(k2, None)
+                log(q["label"], "Undone: back to the computer's marking")
             elif "score" in d:
                 s = _num(d.get("score"))
                 if s is None or s < 0 or s > (q.get("points") or 0) + 1e-9:
@@ -770,11 +794,18 @@ def review_with(ex, d):
                 qd = one.setdefault("q", {}).setdefault(q["label"], {})
                 qd.pop("read", None)
                 qd.update(score=round(s, 2), by=g.user["name"], at=time.time())
+                same = q.get("status") == "check" and q.get("ask") == "read" and abs(s - (q.get("score") or 0)) < 1e-9
+                log(q["label"], f"“{q.get('read', '')}” confirmed" if same else f"Score {s:g} of {(q.get('points') or 0):g}")
             if not qd0:
                 one["q"].pop(q["label"], None)
         ex.write_json("review.json", rv)
     _, roster = _roster(ex)
     return jsonify(booklet=next(x for x in view(ex, results, rv, roster) if x["key"] == k))
+
+
+def _signed(d):
+    d = _num(d) or 0
+    return f"+{d:g}" if d > 0 else f"−{-d:g}" if d < 0 else "±0"
 
 
 def _annotated(ex, results, shown, key, answers, templates, reader):

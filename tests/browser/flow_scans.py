@@ -66,6 +66,15 @@ def main():
         t = d["term"]; off = f"demo101/{t}"
         print("1 the demo course:", off)
 
+        # From the gradebook: Test 1's exam and its Print and Scan, For the Teaching Team (no Open button in its head).
+        G = "[data-lt-tool='grades'] "
+        me.evaluate(f"location.hash = '#/{off}/evaluations'"); me.evaluate("location.reload()")
+        me.wait_for_selector(G + ".erow[data-id='mt']", timeout=20000); me.click(G + ".erow[data-id='mt']")
+        me.wait_for_selector(G + ".editor[data-eval='mt'] [data-act='ev-scans']", timeout=15000)
+        assert "The exam" in me.inner_text(G + ".editor[data-eval='mt'] .tf-list") and not me.query_selector(G + ".ed-acts [data-act='ev-build']")
+        me.click(G + ".editor[data-eval='mt'] [data-act='ev-scans']"); me.wait_for_selector(".sc-ed, .lx-editor", timeout=15000)
+        assert "/scans/midterm" in me.evaluate("location.hash"), me.evaluate("location.hash")
+
         # The Exam Builder's Print and Scan opens the page.
         me.evaluate(f"location.hash = '#/{off}/exams/midterm'"); me.evaluate("location.reload()")
         me.wait_for_selector("#tb-scans", timeout=20000)
@@ -105,6 +114,22 @@ def main():
         rows = me.locator(".sc-dc .dc-t")
         print("  to look at:", [rows.nth(i).inner_text().replace("\n", " ") for i in range(rows.count())])
 
+        # Fix Scans: question by question, only the answers the grader wasn't sure how to read (not the written ones).
+        me.click("#sc-fix"); me.wait_for_selector(".sc-book .gr-kind")
+        assert me.inner_text(".sc-book .gr-kind").lower() == "fix scans", me.inner_text(".sc-book .gr-kind")
+        assert me.inner_text(".sc-book h2").startswith("Question 4") and me.locator(".sc-q").count() == 1, "one answer at a time"
+        assert not me.locator(".sc-q .sc-qt:visible").count(), "no name: just the reading"
+        me.screenshot(path=f"{OUT}/scan-3a-fix.png", full_page=True)
+        copy = me.locator(".sc-q .dz-field input").first                  # it read 64: fix it to 84, then Okay
+        copy.fill("84"); me.click("[data-fixok]"); me.wait_for_timeout(900)
+        assert not me.locator(".sc-q").count() and me.locator(".sc-fixnext [data-fixgo]").count(), me.inner_text(".sc-book")
+        me.locator(".sc-fixnext [data-fixgo]").click(); me.wait_for_timeout(400)
+        assert me.inner_text(".sc-book h2").startswith("Question 10")
+        me.click("[data-fixok]"); me.wait_for_timeout(300)                # a word nobody has typed yet: Okay says so
+        assert me.locator(".sc-q").count() == 1
+        print("  fix scans: question 4 fixed, question 10 waits for the word")
+        me.click("[data-fixdone]"); me.wait_for_selector("#sc-fix")
+
         # By Question: question 8 (written) in every booklet; the first student's gets full marks there.
         me.click("[data-by='question']"); me.wait_for_selector(".sc-dc [data-gq]")
         print("  by question:", [x.replace("\n", " ") for x in me.locator(".sc-dc .dc-t").all_inner_texts()][:4])
@@ -134,6 +159,7 @@ def main():
                 me.wait_for_timeout(500)
                 print("  whose: chosen", me.inner_text(".sc-book h2"))
             assert people[n - 1]["last"] in me.inner_text(".sc-book h2")
+            me.screenshot(path=f"{OUT}/scan-4i-unsure-{n}.png", full_page=True)
             if n == 1:          # Question 8 by its rubric: each comment given sets the score (from zero); a note for the student
                 q8 = lambda: me.locator(".sc-q[data-q='8']")
                 for k in range(q8().locator("[data-rub]").count()):
@@ -145,12 +171,17 @@ def main():
                 q8().locator(".sc-nd").fill("0"); q8().locator(".sc-nt").fill("Good use of algebra")
                 q8().locator("[data-csave]").click(); me.wait_for_timeout(900)
                 assert q8().locator("[data-rub]").count() == 3 and q8().locator(".sc-qh .sc-score input").input_value() == "3"
+                q8().locator(".sc-hist summary").click()                       # its edit history: who changed what, when
+                hist = q8().locator(".sc-hist li").all_inner_texts()
+                assert len(hist) >= 4 and "Gave +2 Adds them" in " ".join(hist) and "Note:" in " ".join(hist), hist
                 q8().scroll_into_view_if_needed()
                 me.screenshot(path=f"{OUT}/scan-4d-comments.png", full_page=True)
                 pdf = me.request.get(srv.base.rstrip("/") + me.get_attribute(".sc-book a[href*='annotated']", "href"))
                 assert pdf.ok and pdf.body()[:4] == b"%PDF"
                 open(f"{OUT}/scan-4e-marked.pdf", "wb").write(pdf.body())
             if n == 2:          # picking their answer on the scan, and the two views of it
+                assert not me.locator(".sc-q[data-q='1']").count(), "read with confidence: hidden until asked for"
+                me.click("[data-sure]"); me.wait_for_selector(".sc-q[data-q='1']")
                 q1 = lambda: me.locator(".sc-q[data-q='1']")                  # a wrong bubble; a person says they chose the right one
                 assert q1().locator("[data-hot]").count() == 4 and q1().locator("[data-hot]:not(.right)[aria-pressed='true']").count() == 1
                 q1().locator("[data-hot].right").click(); me.wait_for_timeout(700)           # two filled: wrong
@@ -172,14 +203,14 @@ def main():
                 q = left.first
                 label = q.get_attribute("data-q")
                 right_ = {"4": ["84"], "5": ["0.375"], "6": list("1101"), "7": ["3", "4"], "9(c)": ["30"]}
-                if q.locator(".sc-note [data-yes]").count():   # "Is this what it says?"
+                if q.locator(".sc-rr[data-yes]").count():   # "Is this what it says?"
                     if n == 1 and label in right_:             # no: they type what it says (the right answer) in the copy
                         boxes = q.locator(":scope > .sc-pair .dz-field input")
                         for k, v in enumerate(right_[label]):
                             boxes.nth(k).fill(v)
                         boxes.nth(len(right_[label]) - 1).press("Enter")
                     else:
-                        q.locator(".sc-note [data-yes]").click()
+                        q.locator(".sc-rr[data-yes]").click()
                 elif q.locator("[data-keep]").count():      # "Is there working worth part marks?" no
                     q.locator("[data-keep]").click()
                 elif q.locator("[data-hotok]").count():     # "Which is their answer?": the bubbles on the scan

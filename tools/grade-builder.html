@@ -895,6 +895,17 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ef-row input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 14px var(--font-ui); }
 .ef-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .ef-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 6px; }
+/* For the Teaching Team: its exam (and Print and Scan) as rows, then the team's own links. */
+.tf-list { display: grid; gap: 6px; margin: 0 0 8px; }
+.tf-list:empty { display: none; }
+.tf-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); color: var(--ink); font: 14px var(--font-ui); text-align: left; cursor: pointer; }
+.tf-row:hover { border-color: var(--accent); background: rgb(201 154 6 / .06); }
+.tf-row > svg { flex: none; width: 18px; height: 18px; color: var(--ink-3); }
+.tf-row > svg:last-child { width: 16px; height: 16px; }
+.tf-t { flex: 1; display: grid; min-width: 0; }
+.tf-t b { font-weight: 600; }
+.tf-t small { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tf-build { width: fit-content; }
 @media (max-width: 560px) { .ef-row { grid-template-columns: 1fr 36px; } .ef-row input[data-ed="ef-url"] { grid-column: 1; } }
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
 .acm-tick input { grid-row: span 2; align-self: start; margin-top: 4px; }
@@ -1869,6 +1880,7 @@ const ICON = {
   dashcircle: '<circle cx="12" cy="12" r="8.5" stroke-dasharray="3.2 2.6"/><path d="M8.5 12h7"/>',   // excused
   flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',   // automatic fail
   doc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  print: '<path d="M7 8V3h10v5"/><rect x="3" y="8" width="18" height="9" rx="2"/><path d="M7 14h10v7H7z"/>',
   clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',   // deferred
 };
 // The arrow used everywhere something goes from one value to another.
@@ -3103,11 +3115,6 @@ function evalRowHTML(e, sub = false, of = null) {   // of: the evaluation it's a
       <p class="er-when">${esc(whenSentence(e))}${secDatesNote(e) ? `<span class="er-sd">${esc(secDatesNote(e))}</span>` : ""}</p></div>
       <p>${of ? `Only for students who don't submit ${esc(shortName(of))}.` : `Worth ${fmtNum(sub ? Math.round(num(g.weight) / Math.max(1, num(g.keep)) * 100) / 100 : num(e.weight))}%.${sub ? "" : ` ${policySentence(e)}`}`}</p></div></div>`;
 }
-// Build: open the evaluation's exam (a test) or handout (an assignment), made for it the first time.
-function buildBtn(e) {
-  const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout";
-  return `<button type="button" class="ec-btn2" data-act="ev-build" data-id="${esc(e.id)}" title="${d ? `Open ${esc(d.folder)}: its questions and total marks` : `Start a${what === "exam" ? "n exam" : " handout"} for ${esc(e.name)}, named and dated`}">${d ? `${svg("doc")}Open ${what}` : `${PIC.build}Build`}</button>`;
-}
 // A group as a long card, with its members as sub-cards inside it.
 function groupRowHTML(g) {
   const n = g.members.length, keep = num(g.keep), each = num(g.weight) / Math.max(1, keep);
@@ -3186,7 +3193,7 @@ function drawEvalEditor() {
   const e = evalById(m.dataset.eval); if (!e) { ui.evalEd = ""; return render(); }
   const g = groupOf(e), mks = makeupsOf(e), p = e.missed;
   const fld = (key, label, val, type, extra = "", id = e.id) => `<label class="pf"><span>${label}</span><input type="${type}" data-f="${key}" data-id="${esc(id)}" value="${esc(val)}"${extra}></label>`;
-  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts">${HOSTED ? buildBtn(e).replace('class="ec-btn2"', 'class="btn"') : ""}<button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
+  $("#ed-in", m).innerHTML = `<div class="ed-head" style="--c:${colorOf(e)}">${evIcon(e, true)}${edTitle(e)}<span class="ed-acts"><button type="button" class="ic trash" data-ed="delete" title="Delete evaluation" aria-label="Delete evaluation">${svg("trash")}</button></span></div>
     <h3 class="ed-sec ed-first">General</h3>
     <div class="ed-grid what">
       <div class="pf"><span>Type</span><div class="seg ed-seg" role="group" aria-label="Type">${E_TYPES.map(([v, l]) => `<button type="button" data-ed="etype" data-v="${v}" aria-pressed="${e.type === v}">${l}</button>`).join("")}</div></div>
@@ -3211,6 +3218,7 @@ function drawEvalEditor() {
     ${accomHTML(e)}
     ${remarkHTML(e)}
     ${filesHTML(e)}
+    ${teamFilesHTML(e)}
     <h3 class="ed-sec">Discussion</h3>
     <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
     ${HOSTED && window.Lectern.discussionEl && e.discussion !== false ? `<div data-dc-slot="eval:${esc(e.id)}"></div>` : ""}
@@ -3294,6 +3302,19 @@ function filesHTML(e) {
     <p class="ed-help">Each one is a button students click on the course page, with this evaluation.</p>
     ${fs.map((f, i) => `<div class="ef-row"><input type="text" data-ed="ef-label" data-i="${i}" value="${esc(f.label || "")}" placeholder="Button text, e.g. Handout" aria-label="Button text" autocomplete="off"><input type="url" data-ed="ef-url" data-i="${i}" value="${esc(f.url || "")}" placeholder="https://…" aria-label="Link" autocomplete="off"><button type="button" class="ic trash" data-ed="ef-del" data-i="${i}" title="Remove it" aria-label="Remove it">${svg("trash")}</button></div>`).join("")}
     <div class="ef-acts">${HOSTED && window.Lectern.uploadPublic ? `<button type="button" class="btn add" data-ed="ef-up">${svg("plus")}Upload a File</button><input type="file" id="ef-file" hidden>` : ""}<button type="button" class="btn add" data-ed="ef-add">${svg("plus")}Add a Link</button></div>`;
+}
+// For the teaching team, never students: its exam or handout (made in the Exam Builder; there by itself once it's
+// linked to this evaluation) and the exam's Print and Scan, then any links the team adds (e.teamFiles).
+function teamFilesHTML(e) {
+  const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout", fs = e.teamFiles || [];
+  const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}">${svg("doc")}<span class="tf-t"><b>The ${what}</b><small>${esc(d.folder)} · its questions, answer key and marking guide, in the Exam Builder</small></span>${svg("chev")}</button>
+      ${what === "exam" ? `<button type="button" class="tf-row" data-act="ev-scans" data-id="${esc(e.id)}">${svg("print")}<span class="tf-t"><b>Print and Scan</b><small>print the student copy, scan the written booklets, mark them</small></span>${svg("chev")}</button>` : ""}`
+    : `<button type="button" class="btn add tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Make a${what === "exam" ? "n Exam" : " Handout"}</button>`;
+  return `<h3 class="ed-sec">For the Teaching Team</h3>
+    <p class="ed-help">Only the teaching team sees these, never students.${HOSTED && !d ? ` Make its ${what} in the Exam Builder and it's listed here.` : ""}</p>
+    <div class="tf-list">${doc}</div>
+    ${fs.map((f, i) => `<div class="ef-row"><input type="text" data-ed="tf-label" data-i="${i}" value="${esc(f.label || "")}" placeholder="Name, e.g. Solutions draft" aria-label="Name" autocomplete="off"><input type="url" data-ed="tf-url" data-i="${i}" value="${esc(f.url || "")}" placeholder="https://…" aria-label="Link" autocomplete="off"><button type="button" class="ic trash" data-ed="tf-del" data-i="${i}" title="Remove it" aria-label="Remove it">${svg("trash")}</button></div>`).join("")}
+    <div class="ef-acts"><button type="button" class="btn add" data-ed="tf-add">${svg("plus")}Add a Link</button></div>`;
 }
 // Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
 // where its weight moves. It can apply only to students who ask (and you approve); students can also ask for
@@ -3419,6 +3440,10 @@ document.addEventListener("input", ev => {
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.type === "checkbox") return;   // ticks are handled on "change"
   if (t.dataset.ed === "nt-text") return;   // a note being written: added with Add note
+  if (t.dataset.ed === "tf-label" || t.dataset.ed === "tf-url") {   // a link for the teaching team, typed
+    const e = evalById(m.dataset.eval), f = e && (e.teamFiles || [])[+t.dataset.i]; if (!f) return;
+    noteTyping(); f[t.dataset.ed === "tf-label" ? "label" : "url"] = t.value.trim(); unsaved = true; refreshSoon(); return;
+  }
   if (t.dataset.ed === "ef-label" || t.dataset.ed === "ef-url") {   // an evaluation's file or link, typed
     const e = evalById(m.dataset.eval), f = e && (e.files || [])[+t.dataset.i]; if (!f) return;
     noteTyping(); f[t.dataset.ed === "ef-label" ? "label" : "url"] = t.value.trim(); unsaved = true; refreshSoon(); return;
@@ -3535,6 +3560,8 @@ document.addEventListener("click", ev => {
       err => { b.disabled = false; toast(err.message); });
   }
   if (a === "ef-add") { change(() => { e.files = [...(e.files || []), { label: (e.files || []).length ? "" : e.type === "test" ? "Practice" : "Handout", url: "" }]; }); const ins = $$('[data-ed="ef-url"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
+  if (a === "tf-add") { change(() => { e.teamFiles = [...(e.teamFiles || []), { label: "", url: "" }]; }); const ins = $$('[data-ed="tf-label"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
+  if (a === "tf-del") { change(() => { e.teamFiles.splice(+b.dataset.i, 1); if (!e.teamFiles.length) delete e.teamFiles; }); return; }
   if (a === "ef-del") { change(() => { e.files.splice(+b.dataset.i, 1); if (!e.files.length) delete e.files; }); return; }
   if (a === "ef-up") {   // choose a file; it's uploaded straight away (to the public files), then listed here
     const inp = $("#ef-file", m); if (!inp) return;
@@ -4281,6 +4308,10 @@ function act(b) {
       return evalEditor(c.id);
     }
     case "ev-upload": return uploadMarks(b.dataset.id);
+    case "ev-scans": {   // the linked exam's Print and Scan, in Lectern
+      const d = docLinks.get(b.dataset.id); if (!d || !window.Lectern || !window.Lectern.openScansFor) return;
+      return window.Lectern.openScansFor(d.folder);
+    }
     case "ev-build": {   // Lectern opens (or starts) the linked exam or handout
       const e = evalById(b.dataset.id); if (!e || !window.Lectern || !window.Lectern.build) return;
       return window.Lectern.build({ id: e.id, name: e.name, label: e.label, type: e.type, date: e.date, time: e.time });

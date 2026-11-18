@@ -1649,6 +1649,7 @@ Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;
   go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: String(id), groupEd: "", student: "", stAcc: "", stFrom: "" } });
   let n = 0; const find = () => { const s = document.querySelector(`[data-att-slot="${CSS.escape(String(id))}"]`); if (s) { const h = s.previousElementSibling || s; h.scrollIntoView({ block: "start", behavior: "smooth" }); } else if (++n < 40) setTimeout(find, 100); }; setTimeout(find, 150); };
 // The Exam Builder's Print and Scan: the open exam on paper.
+Lectern.openScansFor = folder => { const r = S.route; if (r.c && r.t && folder) go({ page: "scans", c: r.c, t: r.t, e: folder }); };   // from an evaluation in Grades
 Lectern.openScans = () => { const r = S.route; if (r.page === "tool" && r.tool === "exams" && r.e) go({ page: "scans", c: r.c, t: r.t, e: r.e }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).

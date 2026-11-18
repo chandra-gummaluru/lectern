@@ -157,6 +157,8 @@ def test_print_scan_mark_review_send(client, user, demo):
     assert t2["score"] == 0.5 and t2["blanks"][1]["score"] == 0.5
     t2 = next(x for x in rb(bs[1], blank=t2["blanks"][1]["id"], score=0).get_json()["booklet"]["questions"] if x["label"] == "10")
     assert t2["score"] == 0
+    whats = [h["what"] for h in t2["history"]]                                     # every change, who and when
+    assert whats[0] == "Blank 1: read as “Toronto” (was “”)" and "Blank 2: score 0.5 of 1" in whats and all(h["by"] and h["at"] for h in t2["history"]), whats
     bs = client.get(f"/api/scans/results?{q(demo)}").get_json()["booklets"]
 
     # Comments: the grader's for what it marked down; the rubric's set the score; a new one goes into the exam.

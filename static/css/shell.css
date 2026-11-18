@@ -1622,3 +1622,31 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 /* Their Answers is for making sure what the computer read is right: no scores there on questions it marks from what it
    read (they show in Marked). A question a person marks keeps its score box in both. */
 .sc-q.readq .sc-score { display: none; }   /* the computer marks it from what it read: no score to give */
+/* Fix Scans: the button that starts it, in the results; and the way on when a question is done. */
+.sc-fixbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 18px 0 0; padding: 14px 16px; border: 1px solid var(--home-line-2); border-radius: 10px; background: var(--home-card); }
+.sc-fixbar .lx-help { margin: 0; }
+.sc-rr svg { width: 15px; height: 15px; }
+.sc-fixnext { margin-top: 16px; font-size: 15px; }
+.lx-acts .lt-btn svg { width: 15px; height: 15px; }
+.sc-q.readq .sc-qh:has(> .sc-qt:empty) { display: none; }   /* Fix Scans: no title (whose it is doesn't matter), no score */
+.sc-q.readq .sc-qh:has(> .sc-qt:empty) + .sc-pair > :first-child, .sc-q.readq .sc-qh:has(> .sc-qt:empty) + .sc-pair > .sc-pic { margin-top: 0; }
+/* Fix Scans, one answer at a time: no Read Right (Okay says it), and Okay under the answer. */
+.sc-fixing .sc-rr { display: none; }
+.sc-okbar { display: flex; justify-content: flex-end; margin-top: 14px; }
+.sc-okbar .lt-btn { min-width: 110px; }
+.sc-okbar .lx-help { margin: 0; }
+.sc-q > .sc-note:first-of-type, .sc-bm > .sc-note { margin: 0 0 8px; }   /* the grader's warning, at the top */
+.sc-fixing .sc-q > .sc-note { margin-top: 0; }
+/* An answer's edit history (who changed what, when), folded under its last change. */
+.sc-hist { margin: 8px 0 0; font-size: 13px; color: var(--home-ink-3); }
+.sc-hist summary { cursor: pointer; width: fit-content; list-style: none; }
+.sc-hist summary::-webkit-details-marker { display: none; }
+.sc-hist summary::after { content: " ▾"; font-size: 11px; }
+.sc-hist[open] summary::after { content: " ▴"; }
+.sc-hist summary:hover { color: var(--home-ink); }
+.sc-hist ol { display: grid; gap: 4px; margin: 8px 0 0; padding: 8px 12px; list-style: none; border-left: 2px solid var(--home-line); }
+.sc-hist li { display: grid; grid-template-columns: max-content max-content minmax(0, 1fr); gap: 12px; color: var(--home-ink-2); }
+.sc-hist-w { white-space: nowrap; }
+.sc-hist li b { font-weight: 600; color: var(--home-ink); }
+.sc-hist-w { font-variant-numeric: tabular-nums; color: var(--home-ink-3); }
+@media (max-width: 640px) { .sc-hist li { grid-template-columns: 1fr; gap: 0; } }

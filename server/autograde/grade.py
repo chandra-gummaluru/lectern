@@ -150,6 +150,36 @@ class Booklet:
         x1 = max(g[0][0] + g[0][2] for g in got); y1 = max(g[0][1] + g[0][3] for g in got)
         return read.picture(img, (x0, y0, x1 - x0, y1 - y0), pad=pad, right=right)
 
+    def paper(self, rids, right=0, pad=14):
+        """The same piece of the printed copy as picture(rids, right, pad), clean: for the page's typed copy of what
+        was read, drawn on the exam itself. With its size, so the page can size what it writes on it."""
+        found = [self.template.find(rid) for rid in rids]
+        if not found or any(tp is None for tp, _ in found):
+            return None
+        img = found[0][0].image
+        x0 = min(r[0] for _, r in found); y0 = min(r[1] for _, r in found)
+        x1 = max(r[0] + r[2] for _, r in found); y1 = max(r[1] + r[3] for _, r in found)
+        return read.picture(img, (x0, y0, x1 - x0, y1 - y0), pad=pad, right=right)
+
+    def paper_size(self, rids, right=0, pad=14):
+        """[width, height] in pixels of paper(rids, right, pad)."""
+        found = [self.template.find(rid) for rid in rids]
+        if not found or any(tp is None for tp, _ in found):
+            return None
+        H, W = found[0][0].image.shape
+        x0 = min(r[0] for _, r in found); y0 = min(r[1] for _, r in found)
+        x1 = max(r[0] + r[2] for _, r in found); y1 = max(r[1] + r[3] for _, r in found)
+        return [min(W, int(x1 + pad + right)) - max(0, int(x0 - pad)), min(H, int(y1 + pad)) - max(0, int(y0 - pad))]
+
+    def on_paper(self, ids, groups, right=0, pad=14):
+        """A typed copy's paper and where its pieces are: {"paper", "size", "fields": [[rect, …] per piece]}."""
+        sp = self.spots(ids, right=right, pad=pad)
+        if not sp:
+            return {}
+        at = dict(zip(ids, sp))
+        return {"paper": self.paper(ids, right=right, pad=pad), "size": self.paper_size(ids, right=right, pad=pad),
+                "fields": [[at[i] for i in g] for g in groups]}
+
     def spots(self, rids, right=0, pad=14):
         """Where each piece is in picture(rids, right, pad), as fractions of it: [[left, top, width, height]], so the
         page can ring the right answers on it."""
@@ -189,7 +219,8 @@ def mark_choice(b, n):
                 "answer": ", ".join(LET[i] for i, r in enumerate(right) if r),
                 "note": "A box is only faintly marked. Which are their answers?" if unsure else "", "ask": "choice" if unsure else "",
                 "options": [LET[k] for k in range(len(ids))], "multi": True, "fills": [round(f, 3) for f in fills],
-                "picture": b.picture(ids, right=260), "spots": b.spots(ids, right=260), "right": [k for k, r in enumerate(right) if r]}
+                "picture": b.picture(ids, right=260), "spots": b.spots(ids, right=260), "right": [k for k, r in enumerate(right) if r],
+                **b.on_paper(ids, [[i] for i in ids], right=260)}
     fills = [read.fill(g[2], g[0]) for g in got]
     i, status, note = choose_one(fills)
     if t == "tf":
@@ -199,12 +230,13 @@ def mark_choice(b, n):
         return {"status": status, "score": pts if chosen == answer else 0.0, "read": name.get(chosen, "none"),
                 "answer": name[answer], "note": note, "ask": "choice" if status == "check" else "", "options": ["True", "False"],
                 "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=180), "spots": b.spots(ids, right=180),
-                "right": [vals.index(answer)]}
+                "right": [vals.index(answer)], **b.on_paper(ids, [[i] for i in ids], right=180)}
     right = [k for k, o in enumerate(n["options"]) if o.get("correct")]
     return {"status": status, "score": pts if i is not None and i in right else 0.0,
             "read": LET[i] if i is not None else "none", "answer": " or ".join(LET[k] for k in right),
             "note": note, "ask": "choice" if status == "check" else "", "options": [LET[k] for k in range(len(ids))],
-            "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260), "spots": b.spots(ids, right=260), "right": right}
+            "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260), "spots": b.spots(ids, right=260), "right": right,
+            **b.on_paper(ids, [[i] for i in ids], right=260)}
 
 
 def ms_score(n, ticked, right):
@@ -319,8 +351,9 @@ def mark_written(b, n):
     answers = "; ".join(r[3] for r in results)
     if len(comps) > 1:
         return _mark_blanks(b, n, comps, results, ids, has_space)
+    paper = b.on_paper(ids, [r[4] for r in results], right=40)
     if any(r[0] is None for r in results):
-        return {"status": "manual", "ask": "type", "read": "", "answer": answers, "picture": b.picture(ids, right=40)}
+        return {"status": "manual", "ask": "type", "read": "", "answer": answers, "picture": b.picture(ids, right=40), **paper}
     right = sum(1 for r in results if r[0])
     score = round(pts * right / len(results) * 2) / 2
     status, note, ask = "auto", "", ""
@@ -331,7 +364,7 @@ def mark_written(b, n):
     elif has_space and right < len(results):
         status, note, ask = "check", "The answer is wrong. Is there working worth part marks?", "working"
     pic = b.picture(ids, right=40)
-    return {"status": status, "score": score, "read": reads, "answer": answers, "note": note, "ask": ask, "picture": pic}
+    return {"status": status, "score": score, "read": reads, "answer": answers, "note": note, "ask": ask, "picture": pic, **paper}
 
 
 def _blank_note(r):
@@ -347,7 +380,7 @@ def _mark_blanks(b, n, comps, results, ids, has_space):
         else:
             st, sc, note = ("auto" if r[1] else "check"), (w if r[0] else 0.0), ("" if r[1] else _blank_note(r))
         blanks.append({"id": cid, "kind": c.get("kind"), "points": round(w, 4), "status": st, "score": sc, "read": r[2] if r[0] is not None else "",
-                       "answer": r[3], "note": note, "picture": b.picture(r[4], right=40)})
+                       "answer": r[3], "note": note, "picture": b.picture(r[4], right=40), **b.on_paper(r[4], [r[4]], right=40)})
     out = {"read": "; ".join(x["read"] for x in blanks), "answer": "; ".join(x["answer"] for x in blanks), "blanks": blanks,
            "picture": b.picture(ids, right=40), "note": "", "ask": "", "space": has_space,
            "even": all(_own(c) is None for _, c in comps)}

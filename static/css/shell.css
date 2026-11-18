@@ -1595,3 +1595,27 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-qs.v-marked .dz-opt.right { background: rgb(47 143 91 / .1); }
 .sc-qs.v-marked .dz-opt, .sc-qs.v-marked .dz-field input { pointer-events: none; }
 .sc-qs.v-marked .dz-field input { border-color: var(--home-line-2); }
+/* The typed copy on the exam itself (scans.js, paperChoice and paperField): the clean printed copy with what was read
+   put back on it, bubbles filled in pencil and words typed into the boxes, which you click or type in to correct. */
+.pp { position: relative; display: block; width: fit-content; max-width: 100%; margin-top: 10px; border: 1px solid var(--home-line-2); border-radius: 8px; background: #fff; overflow: visible; }
+.pp-img { display: block; max-width: 100%; border-radius: 8px; }
+.pp-on { position: absolute; inset: 0; container-type: inline-size; }   /* the layer on the paper: its width sizes the writing */
+.pp-opt { position: absolute; margin: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.pp.sq .pp-opt { border-radius: 3px; }
+.pp-opt:hover:not(:disabled) { box-shadow: 0 0 0 3px rgb(201 154 6 / .45); }
+.pp-opt:disabled { cursor: default; }
+.pp-opt.on::after { content: ""; position: absolute; inset: 14%; border-radius: inherit; background: #1f2329; opacity: .88; }
+.pp.sq .pp-opt.on::after { inset: 8%; background: center / 100% no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f2329' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 12.5 5 5L20 6'/%3E%3C/svg%3E"); opacity: 1; }
+.pp-mk { display: none; position: absolute; right: calc(100% + 4px); top: 50%; width: 1.3em; height: 1.3em; transform: translateY(-50%); font-size: 16px; }
+.pp .pp-in { height: auto; position: absolute; box-sizing: border-box; margin: 0; padding: 0 .3em; border: 0; border-radius: 2px; background: transparent; color: #1f2a52; text-align: center;
+  font: 500 calc(var(--h) * var(--r) * 100cqw * .62) var(--font-serif); font-variant-numeric: lining-nums; }
+.pp .pp-in:hover:not(:disabled) { background: rgb(201 154 6 / .08); }
+.pp .pp-in:focus { outline: 2px solid var(--accent, #c99a06); outline-offset: 0; background: rgb(255 255 255 / .6); }
+.pp.pp-blank .pp-in { text-align: left; padding-left: .4em; }
+.pp-marks { position: absolute; display: none; pointer-events: none; }
+.pp-marks .dz-mk { position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); margin: 0; }
+.pp-marks .dz-ans { position: absolute; left: 0; top: calc(100% + 4px); white-space: nowrap; }
+.sc-qs.v-marked .pp-mk, .sc-qs.v-marked .pp-marks { display: block; }
+.sc-qs.v-marked .pp-opt { pointer-events: none; }
+.sc-qs.v-marked .pp-opt.right { box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px #2f8f5b; background: rgb(47 143 91 / .18); }
+.sc-qs.v-marked .pp .pp-in { height: auto; pointer-events: none; }

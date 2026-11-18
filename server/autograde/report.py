@@ -22,12 +22,13 @@ def save_pictures(results, pics, prefix="pictures/"):
         items = [("student", b["student"])] + [(q["label"], q) for q in b["questions"]]
         items += [(f"{q['label']}_{x['id']}", x) for q in b["questions"] for x in q.get("blanks") or []]   # each blank's own
         for key, item in items:
-            data = item.pop("picture", None)
-            if data:
-                name = f"b{i:03d}-{'cover' if key == 'student' else key.replace('(', '').replace(')', '')}.jpg"
-                with open(os.path.join(pics, name), "wb") as f:
-                    f.write(data)
-                item["picture"] = prefix + name
+            for kind, end in (("picture", ""), ("paper", "_paper")):     # the scan, and the clean printed copy under it
+                data = item.pop(kind, None)
+                if data:
+                    name = f"b{i:03d}-{'cover' if key == 'student' else key.replace('(', '').replace(')', '')}{end}.jpg"
+                    with open(os.path.join(pics, name), "wb") as f:
+                        f.write(data)
+                    item[kind] = prefix + name
     return results
 
 

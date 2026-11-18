@@ -357,10 +357,28 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     if (kind === "cells") { const vs = v.split(/\s+/); return `<span class="dz-field dz-cells">${Array.from({ length: n }, (_, i) => input("dz-cell", (vs[i] || "").replace(/^[_?]$/, ""), `${label}: cell ${i + 1}`, ' maxlength="2"')).join("")}</span>`; }
     return `<span class="dz-field">${input(kind === "blank" ? "dz-line" : kind === "box" ? "dz-box wide" : "dz-box", v, label, ' placeholder="What does it say?"')}</span>`;
   }
-  const fieldValue = f => { const vs = [...f.querySelectorAll("input")].map(i => i.value.trim());
-    return f.classList.contains("dz-frac") ? (vs.some(Boolean) ? `${vs[0]}/${vs[1]}` : "") : f.classList.contains("dz-cells") ? vs.map(c => c || "_").join(" ") : vs[0]; };
+  const fieldValue = f => { const vs = [...f.querySelectorAll("input")].map(i => i.value.trim()), k = f.dataset.kind || "";
+    return f.classList.contains("dz-frac") || k === "frac" ? (vs.some(Boolean) ? `${vs[0]}/${vs[1]}` : "") : f.classList.contains("dz-cells") || k === "cells" ? vs.map(c => c || "_").join(" ") : vs[0]; };
   // What a piece got, for the Marked view: a tick, or a cross and the right answer under it in green.
   const fieldMarks = (score, pts, answer) => score == null ? "" : `<span class="dz-mk">${score >= pts - 1e-9 ? `<span class="sc-pk ok">${TICK}</span>` : `<span class="sc-pk no">${CROSS}</span>`}</span>${score < pts - 1e-9 && answer ? `<span class="dz-ans">${esc(answer)}</span>` : ""}`;
+
+  // The typed copy drawn on the exam itself: the same piece of the printed copy as the scan, clean, with what was read
+  // put back on it: bubbles filled (click to fill or empty), boxes, blanks and cells holding what was read (type in them).
+  const at = ([l, t, w, h]) => `left:${l * 100}%;top:${t * 100}%;width:${w * 100}%;height:${h * 100}%`;
+  function paperChoice(x, node, can) {
+    const vals = x.options || node.opts.map((_, k) => (node.type === "tf" ? ["True", "False"][k] : LET[k]));
+    const picked = new Set(String(x.read || "").split(", ")), sq = node.type === "ms";
+    return `<div class="pp${sq ? " sq" : ""}" role="group" aria-label="What they answered"><img class="pp-img" src="${esc(x.paper)}" alt="" aria-hidden="true"><div class="pp-on">${x.fields.map(([r], k) => {
+      const v = vals[k], on = picked.has(v), ok = node.right.includes(k);
+      return `<button type="button" class="pp-opt${on ? " on" : ""}${ok ? " right" : ""}" data-hot="${esc(v)}" aria-pressed="${on}" style="${at(r)}"${can ? "" : " disabled"} title="${on ? "Filled: click if it isn't" : "Click if they filled this one"}" aria-label="${esc(node.opts[k] || v)}">${on ? `<span class="pp-mk sc-pk ${ok ? "ok" : "no"}" aria-hidden="true">${ok ? TICK : CROSS}</span>` : ""}</button>`;
+    }).join("")}</div></div>`;
+  }
+  function paperField(p, kind, value, can, label, marks) {
+    const v = value == null || value === "blank" || value === "nothing" ? "" : String(value), rects = p.fields[0] || [];
+    const parts = kind === "frac" ? v.split("/").map(z => z.replace(/^\?$/, "")) : kind === "cells" ? v.split(/\s+/).map(z => z.replace(/^[_?]$/, "")) : [v];
+    const ratio = p.size ? p.size[1] / p.size[0] : .25;
+    return `<div class="dz-one"><div class="pp dz-field pp-${kind}" data-kind="${kind}" style="--r:${ratio}"><img class="pp-img" src="${esc(p.paper)}" alt="" aria-hidden="true"><div class="pp-on">${rects.map((r, i) => `<input class="pp-in" type="text" value="${esc(parts[i] || "")}" style="${at(r)};--h:${r[3]}" aria-label="${esc(label)}${rects.length > 1 ? ` ${i + 1}` : ""}" spellcheck="false" autocomplete="off"${kind === "cells" ? ' maxlength="2"' : ""}${can ? "" : " disabled"}>`).join("")}${marks ? `<span class="pp-marks" style="${at(rects[rects.length - 1] || [0, 0, 0, 0])}">${marks}</span>` : ""}</div></div></div>`;
+  }
 
   // A question's answer, as a card: who marked it and whether it's done, its score, the scan, the typed copy.
   function qCard(x, b, title) {
@@ -371,7 +389,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const ask = s === "check" ? x.ask : "";
     const by = x.typed ? `<p class="lx-help sc-by-line">Changed${x.by ? ` by ${esc(x.by)}` : ""}.</p>` : "";
     // The typed copy: of a choice question, or of its one answer piece (several blanks have a row each, below).
-    const digi = s === "missing" ? "" : choice && node ? digiChoice(x, node, can)
+    const onPaper = x.paper && Array.isArray(x.fields) && x.fields.length;
+    const digi = s === "missing" ? "" : choice && node && onPaper ? paperChoice(x, node, can) : choice && node ? digiChoice(x, node, can)
+      : one && onPaper ? paperField(x, one.kind, x.read, can, "What they wrote", fieldMarks(x.score, x.points, x.answer))
       : one ? `<div class="dz dz-one">${digiField(one.kind, one.n, x.read, can, "What they wrote")}${fieldMarks(x.score, x.points, x.answer)}</div>` : "";
     const fix = ask === "read" ? " Fix it below, or" : ask === "choice" ? " Fill or empty the bubbles below, or" : "";
     const note = s === "missing" ? `<p class="sc-note">${WARN}<span>This page wasn't in the scans.</span></p>`
@@ -427,7 +447,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         <span class="sc-bn" aria-label="Blank ${k + 1}">${k + 1}</span>
         <div class="sc-bm">
           ${y.picture ? `<img class="sc-pic sc-bpic" src="${esc(y.picture)}" alt="Blank ${k + 1}, as scanned" loading="lazy">` : ""}
-          <div class="dz dz-one">${digiField(kind, n, y.read, can, `What they wrote in blank ${k + 1}`)}${fieldMarks(y.score, y.points, y.answer)}${by}</div>
+          ${y.paper && Array.isArray(y.fields) && y.fields.length ? paperField(y, kind, y.read, can, `What they wrote in blank ${k + 1}`, fieldMarks(y.score, y.points, y.answer)) + by
+            : `<div class="dz dz-one">${digiField(kind, n, y.read, can, `What they wrote in blank ${k + 1}`)}${fieldMarks(y.score, y.points, y.answer)}${by}</div>`}
           ${ask}
         </div>
         <span class="sc-score sc-bscore"><input type="number" min="0" max="${y.points}" step="0.5" value="${y.score == null ? "" : fmtN(y.score)}" placeholder="–" aria-label="Score for blank ${k + 1}"${can ? "" : " disabled"}><span>/ ${fmtN(y.points)}</span></span>
@@ -510,7 +531,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         const go = () => { const v = fieldValue(f); if (v !== was) save(v); };
         f.addEventListener("focusout", e => { if (!f.contains(e.relatedTarget)) go(); });
         f.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); go(); } if (e.key === "Escape") { f.querySelectorAll("input").forEach(i => { i.value = i.defaultValue; }); e.target.blur(); } });
-        if (f.classList.contains("dz-cells")) f.querySelectorAll("input").forEach((i, k, all) => { i.oninput = () => { if (i.value && all[k + 1]) all[k + 1].focus(); }; }); };
+        if (f.classList.contains("dz-cells") || f.dataset.kind === "cells") f.querySelectorAll("input").forEach((i, k, all) => { i.oninput = () => { if (i.value && all[k + 1]) all[k + 1].focus(); }; }); };
       watch(el.querySelector(":scope > .dz-one .dz-field"), v => say(v));
       // Each blank of several: its reading, a yes to the grader's, or its own score.
       el.querySelectorAll(".sc-bl[data-blank]").forEach(row => {

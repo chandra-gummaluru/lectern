@@ -526,6 +526,7 @@ def view(ex, results, review, roster):
                 open_ += 1
             total += q.get("score") or 0
             q["picture"] = _pic(ex, results, q.get("picture"))
+            q["paper"] = _pic(ex, results, q.get("paper"))
             qs.append(q)
         out.append({"key": k, "pages": b.get("pages"), "where": _where(b.get("pages"), names), "version": b.get("version", ""), "student": st,
                     "cover": _pic(ex, results, (b.get("student") or {}).get("picture")),
@@ -561,6 +562,7 @@ def _blanks(ex, results, q, dec):
             if "read" in y:
                 x.update(read=y["read"], typed=True)
         x["picture"] = _pic(ex, results, x.get("picture"))
+        x["paper"] = _pic(ex, results, x.get("paper"))
         bl.append(x)
     q["blanks"] = bl
     if not dec:

@@ -163,10 +163,10 @@ def main():
                 assert not q2.locator(".sc-cm, .sc-cap").count(), "a choice question: no comments, no note, no instructions"
                 q2.screenshot(path=f"{OUT}/scan-4f-grader.png")
                 me.click("[data-view='marked']"); me.wait_for_timeout(200)       # as the student gets it: tick or cross, the right one in green
-                assert q2.locator(".dz-opt .sc-pk.no").is_visible()
+                assert q2.locator("[data-hot] .sc-pk.no").is_visible()
                 q2.screenshot(path=f"{OUT}/scan-4h-marked.png")
                 me.click("[data-view='read']"); me.wait_for_timeout(200)
-                assert not q2.locator(".dz-opt .sc-pk.no").is_visible()
+                assert not q2.locator("[data-hot] .sc-pk.no").is_visible()
             for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():

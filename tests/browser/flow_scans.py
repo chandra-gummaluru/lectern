@@ -128,8 +128,8 @@ def main():
             print(f"3 booklet {n}:", me.inner_text(".sc-book h2"), "|", me.inner_text(".sc-book .lt-req-meta"))
             if "Unmatched" in me.inner_text(".sc-book h2"):   # not sure whose it is: the cover says, and they pick
                 assert "XXXXXXXXXX" in me.inner_text(".sc-book .lt-req-meta")
-                me.locator(".sc-pick [data-cand]", has_text=people[n - 1]["first"]).first.click() if me.locator(".sc-pick [data-cand]", has_text=people[n - 1]["first"]).count() \
-                    else me.select_option("#sc-who", people[n - 1]["num"])
+                assert not me.locator("[data-cand]").count(), "no suggested students: just the dropdown"
+                me.select_option("#sc-who", people[n - 1]["num"])
                 me.wait_for_timeout(500)
                 print("  whose: chosen", me.inner_text(".sc-book h2"))
             assert people[n - 1]["last"] in me.inner_text(".sc-book h2")
@@ -139,7 +139,8 @@ def main():
                     break
                 q = left.first
                 label = q.get_attribute("data-q")
-                answer = q.locator(".sc-read b").last.inner_text() if q.locator(".sc-read").count() else ""
+                ans = q.locator(".sc-facts .sc-f", has_text="Answer").locator(".sc-fv")
+                answer = ans.last.inner_text() if ans.count() else ""
                 if q.locator("[data-no]").count():          # "Is this what it says?"
                     if n == 1:                               # no: they type what it says (the right answer)
                         q.locator("[data-no]").click(); me.wait_for_selector(".sc-readin:focus")

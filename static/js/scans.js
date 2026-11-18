@@ -22,9 +22,6 @@ const LEFT = SVG('<path d="m15 18-6-6 6-6"/>');
 const PLUS = SVG('<path d="M12 5v14M5 12h14"/>');
 const SEARCH = SVG('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>');
 const RIGHT = SVG('<path d="m9 18 6-6-6-6"/>');
-// A question's two marks: who marked it (the computer, or by hand: yellow) and whether it's done (a check).
-const COMPUTER = SVG('<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>');
-const HAND = SVG('<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>');
 const TICK = SVG('<path d="m6 12.5 4 4L18 8"/>');
 const WARN = SVG('<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2h.01"/>');
 function marks(x) {
@@ -36,9 +33,15 @@ function marks(x) {
     : done ? `Marked by hand${by}` : "To be marked by hand";
   return { src: computer ? "computer" : "hand", done, tip };
 }
-const marksHTML = (x, esc) => { const m = marks(x);
-  return `<span class="sc-marks" title="${esc(m.tip)}" aria-label="${esc(m.tip)}">${m.src ? `<span class="sc-src">${m.src === "computer" ? COMPUTER : HAND}</span>` : ""}<span class="sc-done${m.done ? " on" : ""}">${m.done ? TICK : ""}</span></span>`; };
 const fmtN = x => (x == null ? "–" : String(Math.round(x * 100) / 100));
+// A booklet's mark, as the course page and gradebook show one: the percent big, its points under it.
+const markHTML = b => { const pc = b.out_of ? Math.round(b.total / b.out_of * 1000) / 10 : null;
+  return `<div class="sc-mk"><b>${pc != null ? `${fmtN(pc)}%` : fmtN(b.total)}</b><small>${fmtN(b.total)} / ${fmtN(b.out_of)}${b.ready ? "" : " so far"}</small></div>`; };
+// A question's state, in words, as an outlined pill (Item Head: no big status icons).
+const PILL = { auto: ["Marked by the computer", "done"], check: ["Check this", "check"], manual: ["Mark by hand", "check"], missing: ["Page missing", "missing"] };
+const pillHTML = (x, esc) => { const m = marks(x);
+  const [t, v] = x.status === "done" ? [m.src === "computer" ? "Checked" : "Marked by hand", "done"] : PILL[x.status] || [x.status, "open"];
+  return `<span class="sc-pill sc-qpill v-${v}" title="${esc(m.tip)}">${esc(t)}</span>`; };
 const when = s => { const d = new Date(s * 1000); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
 const size = b => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 const ui = { show: "open", q: "", by: "booklet", qShow: "", qWas: "" };
@@ -146,7 +149,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const left = b => b.open ? `${b.open} to look at` : matched(b) ? "finished" : "student to match";
     const row = b => `<div class="dc-t lt-rq-row sc-r"><span class="lt-rq-st"><span class="sc-done${b.ready ? " on" : ""}" title="${b.ready ? "Finished" : "Not finished"}">${b.ready ? TICK : ""}</span></span>
         <button type="button" class="dc-t-b" data-b="${bs.indexOf(b) + 1}"><b class="dc-t-title">${nameOf(b)}${b.version ? `<span class="lt-dc-of"> / Version ${esc(b.version)}</span>` : ""}</b>
-          <span class="dc-t-meta">${esc(numOf(b))} · ${fmtN(b.total)} of ${fmtN(b.out_of)} · ${left(b)}</span></button></div>`;
+          <span class="dc-t-meta">${esc(numOf(b))} · ${fmtN(b.total)} / ${fmtN(b.out_of)} · ${left(b)}</span></button></div>`;
     const unread = res.unread.length ? `<p class="lt-note"><b>${res.unread.length} page${res.unread.length === 1 ? "" : "s"} couldn't be placed:</b> ${res.unread.slice(0, 8).map(u => `${esc(u.page)} (${esc(u.why)})`).join("; ")}${res.unread.length > 8 ? "; …" : ""}.</p>` : "";
     const notes = res.notes.map(n => `<p class="lt-note">${esc(n)}</p>`).join("");
     const sent = res.sent ? ` Sent ${res.sent.n} ${esc(when(res.sent.at))}${res.sent.by ? ` by ${esc(res.sent.by)}` : ""}.` : "";
@@ -235,27 +238,25 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const people = (R.students || []).slice().sort((a, c) => `${a.last} ${a.first}`.localeCompare(`${c.last} ${c.first}`));
     const picker = `<select id="sc-who" aria-label="Whose booklet"><option value="">Choose the student…</option>${people.map(p => `<option value="${esc(p.num)}"${p.num === st.num ? " selected" : ""}>${esc(`${p.last}, ${p.first}`)} · ${esc(p.num)}</option>`).join("")}</select>`;
     const sure = st.status === "auto" || st.status === "done";
-    const cands = (st.candidates || []).filter(x => x.num !== st.num);
     const pages = b.where || (b.pages || []).join(", ");
     const q = x => qCard(x, b, `Question ${esc(x.label)}`);
     box.innerHTML = `<div class="lx-editor sc-ed sc-book">
-      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
+      <div class="lx-ed-head sc-hasmk"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
         <div class="gr-tt"><p class="gr-kind">Booklet ${i} of ${bs.length}</p><h2>${esc(name)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
+        ${markHTML(b)}
         <span class="lx-acts">${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-go="${nextOpen}">Next to Look At</button>` : ""}
           <button type="button" class="lx-ic" data-go="${i - 1}" title="The booklet before" aria-label="The booklet before"${i > 1 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-go="${i + 1}" title="The next booklet" aria-label="The next booklet"${i < bs.length ? "" : " disabled"}>${RIGHT}</button></span></div>
-      <p class="lt-req-meta">${esc(numOf(b))} · ${b.version ? `Version ${esc(b.version)} · ` : ""}${esc(pages)} · ${fmtN(b.total)} of ${fmtN(b.out_of)} · ${b.ready ? "finished" : `${b.open || "nothing"} to look at`}</p>
+      <p class="lt-req-meta">${esc(numOf(b))} · ${b.version ? `Version ${esc(b.version)} · ` : ""}${esc(pages)} · ${b.ready ? "finished" : `${b.open || "nothing"} to look at`}</p>
       <h3 class="lx-sec">Student</h3>
       ${b.cover ? `<img class="sc-pic sc-cover" src="${esc(b.cover)}" alt="The cover's name and number boxes, as scanned">` : ""}
       ${sure ? `<p class="lx-help">${st.status === "done" ? `Chosen${st.by ? ` by ${esc(st.by)}` : ""}.` : `Found from the student number${st.read && st.read !== st.num ? ` (read as ${esc(st.read)})` : ""}.`}</p>`
         : `<p class="sc-note">${WARN}<span>${esc(st.note || "Not sure whose booklet this is. Check the cover.")}${st.read ? ` The number reads as ${esc(st.read)}.` : ""}</span></p>`}
-      ${can ? `<div class="sc-pick">${!sure ? [st.num && { num: st.num, name: st.name }, ...cands].filter(Boolean).slice(0, 3).map(x => `<button type="button" class="lt-btn sc-sm" data-cand="${esc(x.num)}">${esc(x.name || x.num)} · ${esc(x.num)}</button>`).join("") : ""}${picker}</div>` : ""}
+      ${can ? `<div class="sc-pick">${picker}</div>` : ""}
       <h3 class="lx-sec">Questions</h3>
-      <p class="lx-help sc-key"><span class="sc-src">${COMPUTER}</span> marked by the computer <span class="sc-src">${HAND}</span> marked by hand <span class="sc-done on">${TICK}</span> done <span class="sc-done"></span> not done yet</p>
       <div class="sc-qs">${b.questions.map(q).join("")}</div>
     </div>`;
     box.querySelectorAll("[data-go]").forEach(x => { x.onclick = () => go({ ...r, b: x.dataset.go }); });
     const save = what => review(b, what).then(ok => { if (ok) { const y = window.scrollY; drawBooklet(); window.scrollTo(0, y); } });
-    box.querySelectorAll("[data-cand]").forEach(x => { x.onclick = () => save({ student: x.dataset.cand }); });
     const w = $("#sc-who"); if (w) w.onchange = () => save({ student: w.value });
     wireCards(drawBooklet);
   }
@@ -286,7 +287,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       <div class="hb lt-dc sc-dc"><section class="dc"><div class="dc-head"><h2 class="ec-sec dc-title">${ui.qShow === "open" ? "To Look At" : "Every Answer"} <span>· ${list.length}</span></h2>
         <div class="dc-tools"><div class="dc-sort" role="tablist">${seg("open", "To Look At", open.length)}${seg("all", "All", all.length)}</div></div></div>
         ${list.length ? "" : `<p class="dc-none">Nothing left to look at in this question.${nextOpen ? ` <button type="button" class="lt-link" data-gq="${esc(nextOpen)}">Question ${esc(nextOpen)}</button> has some.` : ""}</p>`}</section></div>
-      <p class="lx-help sc-key"><span class="sc-src">${COMPUTER}</span> marked by the computer <span class="sc-src">${HAND}</span> marked by hand <span class="sc-done on">${TICK}</span> done <span class="sc-done"></span> not done yet</p>
       <div class="sc-qs">${list.map(a => qCard(a.x, a.b, `<button type="button" class="lt-link sc-qwho" data-book="${(R.booklets.indexOf(a.b)) + 1}" title="Open their booklet">${who(a)}</button>${a.b.version ? `<span class="sc-qv">Version ${esc(a.b.version)}</span>` : ""}`)).join("")}</div>
     </div>`;
     box.querySelectorAll("[data-gq]").forEach(x => { x.onclick = () => x.dataset.gq && go({ ...r, b: "", q: x.dataset.gq }); });
@@ -302,26 +302,30 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const open = can && readable && (editing.has(id) || (s === "manual" && x.ask === "type"));
     const ask = s === "check" ? x.ask : "";
     const readV = x.read == null || x.read === "" ? "nothing" : x.read;
+    // What was read and the answer, side by side, each under a gray caps label (as the student card's fields).
+    const pickNow = choice && can && (open || ask === "choice");
     let read = "";
     if (readable) {
       const shown = open && !choice
         ? `<input class="sc-readin" type="text" value="${esc(x.read || "")}" placeholder="What does it say?" aria-label="What the answer says" spellcheck="false">`
-        : can ? `<button type="button" class="sc-readv" data-edit title="Not what it says? Click to change it">${esc(readV)}</button>` : `<b>${esc(readV)}</b>`;
-      read = `<p class="sc-read">${choice && (open || ask === "choice") ? "" : `Read: ${shown}`}${x.answer ? `${choice && (open || ask === "choice") ? "" : " · "}Answer: <b>${esc(x.answer)}</b>` : ""}${x.typed ? ` <span class="sc-by">(typed${x.by ? ` by ${esc(x.by)}` : ""})</span>` : ""}</p>`;
+        : can ? `<button type="button" class="sc-readv" data-edit title="Not what it says? Click to change it">${esc(readV)}</button>` : `<span class="sc-fv">${esc(readV)}</span>`;
+      const by = x.typed ? `<small class="sc-by">typed${x.by ? ` by ${esc(x.by)}` : ""}</small>` : "";
+      const wrong = x.answer && x.read != null && !choice && String(x.read).replace(/\s+/g, "") !== String(x.answer).replace(/\s+/g, "");
+      read = `<div class="sc-facts${open && !choice ? " editing" : ""}">${pickNow ? "" : `<div class="sc-f"><span class="sc-fk">Read</span><span class="sc-fval${wrong ? " off" : ""}">${shown}${by}</span></div>`}${x.answer ? `<div class="sc-f"><span class="sc-fk">Answer</span><span class="sc-fv">${esc(x.answer)}</span></div>` : ""}@@ACTS@@</div>`;
     }
-    const pick = choice && can && (open || ask === "choice") ? `<div class="sc-qa"><span class="sc-qlab">Their answer:</span><span class="lx-seg" role="group">${x.options.map(o => `<button type="button" data-opt="${esc(o)}" aria-pressed="${x.multi ? String(x.read).split(", ").includes(o) : x.read === o}">${esc(o)}</button>`).join("")}</span>${x.multi ? `<button type="button" class="lt-btn sc-sm" data-optsave>Save</button>` : ""}${editing.has(id) ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</div>` : "";
+    const pick = choice && can && (open || ask === "choice") ? `<div class="sc-qa sc-f"><span class="sc-fk">Their answer</span><span class="sc-qa"><span class="lx-seg" role="group">${x.options.map(o => `<button type="button" data-opt="${esc(o)}" aria-pressed="${x.multi ? String(x.read).split(", ").includes(o) : x.read === o}">${esc(o)}</button>`).join("")}</span>${x.multi ? `<button type="button" class="lt-btn sc-sm" data-optsave>Save</button>` : ""}${editing.has(id) ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span></div>` : "";
     const note = s === "missing" ? `<p class="sc-note">${WARN}<span>This page wasn't in the scans.</span></p>` : ask && x.note ? `<p class="sc-note">${WARN}<span>${esc(x.note)}</span></p>` : "";
     const acts = !can ? ""
-      : open && !choice ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm primary" data-readsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}${s === "manual" ? `<button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button>` : ""}</div>`
+      : open && !choice ? (s === "manual" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>` : "")
       : ask === "read" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-yes>Yes</button><button type="button" class="lt-btn sc-sm" data-no>No</button></div>`
       : ask === "working" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-yes title="Give part marks in the score box">Yes</button><button type="button" class="lt-btn sc-sm" data-keep>No</button></div>`
       : s === "manual" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>`
       : s === "done" ? `<div class="sc-qa"><button type="button" class="lt-link sc-undo" data-undo>Undo</button></div>` : "";
     return `<div class="sc-q st-${s}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
-        <div class="sc-qh"><b>${title}</b>${marksHTML(x, esc)}
-          <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
+        <div class="sc-qh"><h4 class="sc-qt">${title}</h4>${pillHTML(x, esc)}
+          <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" placeholder="–" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
         ${x.picture ? `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">` : ""}
-        ${read}${note}${pick}${acts}
+        ${read.replace("@@ACTS@@", open && !choice ? `<span class="sc-fa"><button type="button" class="lt-btn sc-sm primary" data-readsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span>` : "")}${note}${pick}${acts}
       </div>`;
   }
   // A decision about a booklet (its student, or a question's score): saved, and the booklet as it is now kept.

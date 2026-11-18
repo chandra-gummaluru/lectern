@@ -545,7 +545,7 @@ def _comments(q, r, nodes):
     node, _ = nodes.get(q.get("id"), (None, "full"))
     rub = {c.get("id"): c for c in (node or {}).get("rubric") or [] if c.get("id")}
     q["comments"] = [{"id": i, "text": plain(rub[i].get("text", "")), "delta": _num(rub[i].get("delta")) or 0} for i in (r or {}).get("rubric") or [] if i in rub]
-    q["note"] = (r or {}).get("note", "")
+    q["forStudent"] = (r or {}).get("note", "")       # the team's note to the student ("note" is the grader's warning)
     q["auto"] = [] if (r and "score" in r) or not node else auto_comments(node, q)
 
 
@@ -644,7 +644,21 @@ def results_():
     from .autograde.grade import nodes_of, plain
     rubrics = {nid: {"marking": mode, "lines": [{"id": c.get("id"), "text": plain(c.get("text", "")), "delta": _num(c.get("delta")) or 0} for c in n.get("rubric") or [] if c.get("id")]}
                for nid, (n, mode) in nodes_of(ex.exam).items()} if results else {}
-    return jsonify(booklets=view(ex, results, ex.read_json("review.json", {}), roster) if results else [], rubrics=rubrics,
+    # Each question's answer pieces, for the page's typed copy of what was read: its options (and which are right), or
+    # its boxes, blanks, fractions and rows of cells, in order.
+    from .autograde.grade import comps_of
+    pieces = {}
+    for nid, (n, _) in (nodes_of(ex.exam).items() if results else []):
+        t = n.get("type")
+        if t == "tf":
+            pieces[nid] = {"type": t, "opts": ["True", "False"], "right": [0 if (n.get("answer") or "true") == "true" else 1]}
+        elif t in ("mc", "ms"):
+            pieces[nid] = {"type": t, "opts": [plain(o.get("text")) for o in n.get("options") or []],
+                           "right": [k for k, o in enumerate(n.get("options") or []) if o.get("correct")]}
+        else:
+            pieces[nid] = {"type": "written", "comps": [{"id": cid, "kind": c.get("kind"), "n": max(1, int(_num(c.get("n")) or 1)) if c.get("kind") == "cells" else 1}
+                                                        for cid, c in comps_of(n)]}
+    return jsonify(booklets=view(ex, results, ex.read_json("review.json", {}), roster) if results else [], rubrics=rubrics, pieces=pieces,
                    students=[{"num": str(s.get("num")), "first": s.get("first", ""), "last": s.get("last", "")} for s in roster])
 
 

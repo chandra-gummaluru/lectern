@@ -1546,34 +1546,52 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-cnote-in { width: 100%; height: 32px; box-sizing: border-box; padding: 0 2px; border: 0; border-bottom: 1px dashed var(--home-ink-3); background: transparent; color: var(--home-ink); font: italic 15px var(--font-serif); }
 .sc-cnote-in:focus { outline: 0; border-bottom: 1.5px solid var(--accent, #c99a06); }
 .sc-cm-note > span:last-child { font: italic 15px var(--font-serif); color: var(--home-ink); }
-/* The right answers ringed in green on a choice question's picture, as on the marked PDF. */
-.sc-picw { position: relative; width: fit-content; max-width: 100%; margin: 10px 0 0; }
-.sc-picw .sc-pic { margin: 0; }
-.sc-ring { position: absolute; box-sizing: border-box; margin: -7px 0 0 -7px; padding: 7px; border: 2.5px solid #2f8f5b; border-radius: 50%; box-sizing: content-box; background: rgb(47 143 91 / .24); pointer-events: none; }
-.sc-ring.sq { border-radius: 9px; }   /* multiple answers: tick boxes, so a rounded square */
-/* Picking their answer on the scan: each bubble (and its label) is a button; the one read is ringed in ink. */
-.sc-hot { position: absolute; margin: -5px 0 0 -5px; padding: 5px; box-sizing: content-box; border: 0; background: transparent; cursor: pointer; border-radius: 10px; }
-.sc-hot::before { content: ""; position: absolute; left: 1px; top: 1px; width: calc(var(--bw) + 8px); height: calc(100% - 2px); box-sizing: border-box; border-radius: 50%; border: 2px dashed transparent; }
-.sc-hot.sq::before { border-radius: 8px; }
-.sc-hot:hover { background: rgb(29 35 41 / .05); }
-.sc-hot:hover::before { border-color: var(--home-ink-3); }
-.sc-hot:focus-visible { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; }
 .sc-cap { margin: 6px 0 0; }
 /* What they chose: a red tick (right) or cross (wrong) just left of the bubble, as on the marked PDF; and the key. */
 .sc-pk { display: inline-flex; color: #c0392b; }
 .sc-pk svg { width: 100%; height: 100%; stroke-width: 3.2; }
-.sc-hot > .sc-pk { position: absolute; left: -26px; top: 50%; width: 24px; height: 24px; transform: translateY(-50%); }
 .sc-cap .sc-key-i { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; white-space: nowrap; }
 .sc-cap .sc-pk { width: 15px; height: 15px; }
 .sc-ring-k { display: inline-block; width: 11px; height: 11px; border: 2px solid #2f8f5b; border-radius: 50%; background: rgb(47 143 91 / .24); }
 .sc-ring-k.sq { border-radius: 4px; }
-/* Their Answers / Marked: one picture, two ways to see it. Their Answers rings what was read in black (click to change);
-   Marked shows it as the student gets it: a tick or cross by their answer, the right one ringed in green. */
+/* Their Answers / Marked: the toggle above the questions, and the key that shows with Marked. */
 .sc-viewbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 4px 0 2px; }
 .sc-viewbar .sc-keyline { margin: 0; }
 .sc-viewbar[data-v="read"] .sc-only-marked { display: none; }
-.sc-qs.v-read .sc-ring, .sc-qs.v-read .sc-hot > .sc-pk { display: none; }
-.sc-qs.v-read .sc-hot.on::before { border: 3px solid var(--home-ink); }
-.sc-qs.v-marked .sc-hot { pointer-events: none; }
-.sc-qs.v-marked .sc-hot::before { display: none; }
 .sc-qs.v-marked .sc-only-read { display: none; }
+/* The typed copy of what was read, under the scan (scans.js, digiChoice and digiField): drawn as the paper has it.
+   Their Answers: filled bubbles in ink, boxes holding what was read, to correct. Marked: a red tick or cross by each
+   answer and the right options in green, as the student gets it. */
+.dz { margin-top: 12px; }
+.dz-choice { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.dz-opt { display: inline-flex; align-items: center; gap: 9px; padding: 5px 10px 5px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--home-ink); font: 16px var(--font-serif); cursor: pointer; text-align: left; }
+.dz-opt:hover:not(:disabled) { background: var(--home-strip); }
+.dz-opt:disabled { cursor: default; }
+.dz-b { flex: none; width: 20px; height: 20px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--home-ink-2); background: var(--home-card); }
+.dz-choice.sq .dz-b { border-radius: 4px; }
+.dz-opt.on .dz-b { background: var(--home-ink); border-color: var(--home-ink); }
+.dz-choice.sq .dz-opt.on .dz-b { background: var(--home-card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231f2329' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7'/%3E%3C/svg%3E") center / 16px no-repeat; }
+.dz-mk { display: none; width: 18px; height: 18px; margin-right: -4px; }
+.dz-mk .sc-pk { width: 18px; height: 18px; }
+.dz-one { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dz-field { display: inline-flex; align-items: center; gap: 4px; }
+.dz-field input { box-sizing: border-box; height: 40px; padding: 0 10px; border: 1.5px solid var(--home-ink-2); border-radius: 2px; background: var(--home-card); color: var(--home-ink); font: 20px var(--font-serif); font-variant-numeric: lining-nums; }
+.dz-field input:focus { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; }
+.dz-field input::placeholder { font: italic 15px var(--font-serif); color: var(--home-ink-3); }
+.dz-field .dz-box { width: 150px; }
+.dz-field .dz-box.wide { width: 260px; }
+.dz-field .dz-line { width: 220px; border-width: 0 0 1.5px; border-radius: 0; background: transparent; }
+.dz-frac { flex-direction: column; gap: 3px; }
+.dz-frac .dz-box { width: 90px; height: 36px; text-align: center; }
+.dz-frac i { width: 96px; border-top: 1.5px solid var(--home-ink-2); }
+.dz-cells { gap: 0; }
+.dz-cells .dz-cell { width: 40px; height: 40px; padding: 0; text-align: center; border-radius: 0; margin-left: -1.5px; }
+.dz-cells .dz-cell:first-child { margin-left: 0; }
+.dz-ans { display: none; font: italic 17px var(--font-serif); color: #2f8f5b; }
+.sc-by-line { margin: 6px 0 0; }
+.sc-qs.v-marked .dz-mk { display: inline-flex; }
+.sc-qs.v-marked .dz-ans { display: inline; }
+.sc-qs.v-marked .dz-opt.right .dz-b { box-shadow: 0 0 0 3px var(--home-card), 0 0 0 5px #2f8f5b; }
+.sc-qs.v-marked .dz-opt.right { background: rgb(47 143 91 / .1); }
+.sc-qs.v-marked .dz-opt, .sc-qs.v-marked .dz-field input { pointer-events: none; }
+.sc-qs.v-marked .dz-field input { border-color: var(--home-line-2); }

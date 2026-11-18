@@ -350,3 +350,12 @@ def test_multiple_select_marks_off_per_wrong_box():
     assert said == [{"text": "Incorrect answer selected: 25", "delta": -1}]
     said = auto_comments(n, {"points": 2, "score": 1, "read": "A", "answer": "A, C"})
     assert said[0]["text"] == "Correct answer not selected" and said[0]["answer"] == "36"
+
+
+def test_a_single_answer_can_be_read_as_two_or_none():
+    from server.autograde.grade import score_typed, auto_comments
+    tf = {"type": "tf", "points": 1, "answer": "false"}
+    assert score_typed(tf, "False") == (1, "False") and score_typed(tf, "True, False") == (0, "True, False") and score_typed(tf, "") == (0, "none")
+    mc = {"type": "mc", "points": 2, "options": [{"id": "a"}, {"id": "b", "correct": True}, {"id": "c"}]}
+    assert score_typed(mc, "B")[0] == 2 and score_typed(mc, "BC") == (0, "B, C") and score_typed(mc, "") == (0, "none")
+    assert auto_comments(mc, {"points": 2, "score": 0, "read": "B, C"})[0]["text"] == "More than one answer selected"

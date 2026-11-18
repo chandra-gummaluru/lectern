@@ -22,6 +22,7 @@ const LEFT = SVG('<path d="m15 18-6-6 6-6"/>');
 const PLUS = SVG('<path d="M12 5v14M5 12h14"/>');
 const SEARCH = SVG('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>');
 const RIGHT = SVG('<path d="m9 18 6-6-6-6"/>');
+const LET = "ABCDEF";
 const TICK = SVG('<path d="m6 12.5 4 4L18 8"/>');
 const CROSS = SVG('<path d="M7 7l10 10M17 7 7 17"/>');
 // Two ways to see the answers, a toggle above the questions: Their Answers (what was read, a black ring, to correct
@@ -335,54 +336,58 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   }
 
   // A question's answer, as a card: who marked it and whether it's done, its score, a picture of it, what was read.
+  // ── The typed copy of an answer: what was read, drawn as the paper has it, to correct ──
+  // Under the scan, each answer piece as on paper: bubbles or tick boxes with their options (click to fill or empty
+  // them; a student can fill two, or none), or boxes, fractions, rows of cells and blank lines holding what was read
+  // (type in them). In the Marked view the same copy shows a tick or cross by each answer and the right ones in green.
+  const pieceOf = x => (R && R.pieces && R.pieces[x.id]) || null;
+  function digiChoice(x, node, can) {
+    const vals = x.options || node.opts.map((_, k) => (node.type === "tf" ? ["True", "False"][k] : LET[k]));
+    const picked = new Set(String(x.read || "").split(", "));
+    return `<div class="dz dz-choice${node.type === "ms" ? " sq" : ""}" role="group" aria-label="What they answered">${vals.map((v, k) => {
+      const on = picked.has(v), ok = node.right.includes(k);
+      return `<button type="button" class="dz-opt${on ? " on" : ""}${ok ? " right" : ""}" data-hot="${esc(v)}" aria-pressed="${on}"${can ? "" : " disabled"} title="${on ? "Filled: click if it isn't" : "Click if they filled this one"}">
+          <span class="dz-mk" aria-hidden="true">${on ? `<span class="sc-pk ${ok ? "ok" : "no"}">${ok ? TICK : CROSS}</span>` : ""}</span><span class="dz-b" aria-hidden="true"></span><span class="dz-t">${esc(node.opts[k] || v)}</span></button>`;
+    }).join("")}</div>`;
+  }
+  function digiField(kind, n, value, can, label) {
+    const v = value == null || value === "blank" || value === "nothing" ? "" : String(value), dis = can ? "" : " disabled";
+    const input = (cls, val, l, more = "") => `<input class="${cls}" type="text" value="${esc(val)}" aria-label="${esc(l)}" spellcheck="false" autocomplete="off"${more}${dis}>`;
+    if (kind === "frac") { const [a = "", c = ""] = v.split("/"); return `<span class="dz-field dz-frac">${input("dz-box", a.replace(/^\?$/, ""), `${label}: top`)}<i></i>${input("dz-box", c.replace(/^\?$/, ""), `${label}: bottom`)}</span>`; }
+    if (kind === "cells") { const vs = v.split(/\s+/); return `<span class="dz-field dz-cells">${Array.from({ length: n }, (_, i) => input("dz-cell", (vs[i] || "").replace(/^[_?]$/, ""), `${label}: cell ${i + 1}`, ' maxlength="2"')).join("")}</span>`; }
+    return `<span class="dz-field">${input(kind === "blank" ? "dz-line" : kind === "box" ? "dz-box wide" : "dz-box", v, label, ' placeholder="What does it say?"')}</span>`;
+  }
+  const fieldValue = f => { const vs = [...f.querySelectorAll("input")].map(i => i.value.trim());
+    return f.classList.contains("dz-frac") ? (vs.some(Boolean) ? `${vs[0]}/${vs[1]}` : "") : f.classList.contains("dz-cells") ? vs.map(c => c || "_").join(" ") : vs[0]; };
+  // What a piece got, for the Marked view: a tick, or a cross and the right answer under it in green.
+  const fieldMarks = (score, pts, answer) => score == null ? "" : `<span class="dz-mk">${score >= pts - 1e-9 ? `<span class="sc-pk ok">${TICK}</span>` : `<span class="sc-pk no">${CROSS}</span>`}</span>${score < pts - 1e-9 && answer ? `<span class="dz-ans">${esc(answer)}</span>` : ""}`;
+
+  // A question's answer, as a card: who marked it and whether it's done, its score, the scan, the typed copy.
   function qCard(x, b, title) {
     const s = x.status, can = S.can.mark && s !== "missing", id = `${b.key}|${x.label}`;
     const blanks = x.blanks && x.blanks.length > 1 ? x.blanks : null;
-    // The right answers ringed in green on the picture, as on the marked PDF (then "Answer" needn't be written out).
-    const rings = x.spots && x.right ? x.right.map(k => x.spots[k]).filter(Boolean).map(([l, t, w, h]) => `<i class="sc-ring${x.multi ? " sq" : ""}" style="left:${l * 100}%;top:${t * 100}%;width:${w * 100}%;height:${h * 100}%" title="The right answer" aria-hidden="true"></i>`).join("") : "";
-    const choice = Array.isArray(x.options);
-    // A choice question with its bubbles' places: what they answered is picked by clicking the bubble on the scan.
-    const hot = choice && can && x.spots && x.spots.length === x.options.length && x.spots.every(Boolean);
-    const picked = new Set(x.multi ? String(x.read || "").split(", ") : [x.read]);
-    const hots = hot ? x.spots.map(([l, t, w, h], k) => {
-      const next = x.spots.find(([l2, t2]) => l2 > l && Math.abs(t2 - t) < h / 2), wide = Math.min(next ? next[0] - l - .01 : 1 - l, w * 3.2);
-      const o = x.options[k], on = picked.has(o), ok = (x.right || []).includes(k);
-      // What they chose, marked as the marked PDF marks it: a tick if it's right, a cross if it isn't.
-      const mark = on ? `<span class="sc-pk ${ok ? "ok" : "no"}" aria-hidden="true">${ok ? TICK : CROSS}</span>` : "";
-      return `<button type="button" class="sc-hot${x.multi ? " sq" : ""}${on ? " on" : ""}" data-hot="${esc(o)}"${(x.right || []).includes(k) ? " data-right" : ""} aria-pressed="${on}" style="left:${l * 100}%;top:${t * 100}%;width:${wide * 100}%;height:${h * 100}%;--bw:${(w / wide) * 100}%" title="${on ? (x.multi ? "Ticked: click if it isn't" : "Their answer") : x.multi ? "Click if they ticked this one" : "Click if this is their answer"}" aria-label="${esc(o)}${on ? (ok ? ": chosen, right" : ": chosen, wrong") : ""}">${mark}</button>`;
-    }).join("") : "";
-    const readable = !blanks && !hot && (choice || x.read != null);
-    const open = can && readable && (editing.has(id) || (s === "manual" && x.ask === "type"));
+    const node = pieceOf(x), choice = Array.isArray(x.options) || (node && node.type !== "written");
+    const one = node && node.type === "written" && node.comps.length === 1 && !blanks ? node.comps[0] : null;
     const ask = s === "check" ? x.ask : "";
-    const readV = x.read == null || x.read === "" ? "nothing" : x.read;
-    // What was read and the answer, side by side, each under a gray caps label (as the student card's fields).
-    const pickNow = choice && can && (open || ask === "choice");
-    let read = "";
-    if (readable) {
-      const shown = open && !choice
-        ? `<input class="sc-readin" type="text" value="${esc(x.read || "")}" placeholder="What does it say?" aria-label="What the answer says" spellcheck="false">`
-        : can ? `<button type="button" class="sc-readv" data-edit title="Not what it says? Click to change it">${esc(readV)}</button>` : `<span class="sc-fv">${esc(readV)}</span>`;
-      const by = x.typed ? `<small class="sc-by">typed${x.by ? ` by ${esc(x.by)}` : ""}</small>` : "";
-      const wrong = x.answer && x.read != null && !choice && String(x.read).replace(/\s+/g, "") !== String(x.answer).replace(/\s+/g, "");
-      read = `<div class="sc-facts${open && !choice ? " editing" : ""}">${pickNow ? "" : `<div class="sc-f"><span class="sc-fk">Read</span><span class="sc-fval${wrong ? " off" : ""}">${shown}${by}</span></div>`}${x.answer && !rings ? `<div class="sc-f"><span class="sc-fk">Answer</span><span class="sc-fv">${esc(x.answer)}</span></div>` : ""}@@ACTS@@</div>`;
-    }
-    const pick = choice && can && !hot && (open || ask === "choice") ? `<div class="sc-qa sc-f"><span class="sc-fk">Their answer</span><span class="sc-qa"><span class="lx-seg" role="group">${x.options.map(o => `<button type="button" data-opt="${esc(o)}" aria-pressed="${x.multi ? String(x.read).split(", ").includes(o) : x.read === o}">${esc(o)}</button>`).join("")}</span>${x.multi ? `<button type="button" class="lt-btn sc-sm" data-optsave>Save</button>` : ""}${editing.has(id) ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span></div>` : "";
-    const note = s === "missing" ? `<p class="sc-note">${WARN}<span>This page wasn't in the scans.</span></p>` : ask && x.note ? `<p class="sc-note">${WARN}<span>${esc(x.note)}</span></p>` : "";
+    const by = x.typed ? `<p class="lx-help sc-by-line">Changed${x.by ? ` by ${esc(x.by)}` : ""}.</p>` : "";
+    // The typed copy: of a choice question, or of its one answer piece (several blanks have a row each, below).
+    const digi = s === "missing" ? "" : choice && node ? digiChoice(x, node, can)
+      : one ? `<div class="dz dz-one">${digiField(one.kind, one.n, x.read, can, "What they wrote")}${fieldMarks(x.score, x.points, x.answer)}</div>` : "";
+    const fix = ask === "read" ? " Fix it below, or" : ask === "choice" ? " Fill or empty the bubbles below, or" : "";
+    const note = s === "missing" ? `<p class="sc-note">${WARN}<span>This page wasn't in the scans.</span></p>`
+      : ask && x.note ? `<p class="sc-note">${WARN}<span>${esc(x.note)}${can && fix ? `${fix} <button type="button" class="lt-link" data-${ask === "choice" ? "hotok" : "yes"}>it's read right</button>.` : ""}</span></p>` : "";
     const acts = !can ? ""
-      : open && !choice ? (s === "manual" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>` : "")
-      : ask === "read" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-yes>Yes</button><button type="button" class="lt-btn sc-sm" data-no>No</button></div>`
       : ask === "working" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-yes title="Give part marks in the score box">Yes</button><button type="button" class="lt-btn sc-sm" data-keep>No</button></div>`
-      : s === "manual" ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>`
+      : s === "manual" && !one ? `<div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-full>Full Marks</button><button type="button" class="lt-btn sc-sm" data-zero>Zero</button></div>`
       : s === "done" ? `<div class="sc-qa"><button type="button" class="lt-link sc-undo" data-undo>Undo</button></div>` : "";
     return `<div class="sc-q st-${s}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
         <div class="sc-qh"><h4 class="sc-qt">${title}</h4>${pillHTML(x, esc)}
           <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" placeholder="–" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
-        ${x.picture && !blanks && hot ? `<div class="sc-picw sc-hotw"><img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">${rings}${hots}</div>
-          <p class="lx-help sc-cap sc-only-read">${x.typed ? `Changed${x.by ? ` by ${esc(x.by)}` : ""}. ` : ""}${x.multi ? "Click a box to tick or untick it" : "Click the bubble they filled"} if it wasn't read right.${ask === "choice" ? ` <button type="button" class="lt-link" data-hotok>It's read right</button>` : ""}</p>`
-        : x.picture && !blanks ? (rings ? `<div class="sc-picw"><img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">${rings}</div>` : `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">`) : ""}
-        ${blanks ? `<div class="sc-bls">${blanks.map((y, k) => blankRow(y, k, b, x, can)).join("")}</div>` : ""}
-        ${read.replace("@@ACTS@@", open && !choice ? `<span class="sc-fa"><button type="button" class="lt-btn sc-sm primary" data-readsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span>` : "")}${note}${pick}${acts}
-        ${commentsHTML(x, b, can)}
+        ${x.picture && !blanks ? `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">` : ""}
+        ${digi}${by}
+        ${blanks ? `<div class="sc-bls">${blanks.map((y, k) => blankRow(y, k, b, x, can, node)).join("")}</div>` : ""}
+        ${note}${acts}
+        ${choice ? "" : commentsHTML(x, b, can)}
       </div>`;
   }
   // A question's comments for the student: the grader's (for what it marked down), the rubric's as buttons that set the
@@ -394,17 +399,17 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     // One list, as the marking guide writes it: the marks in a column, the comment beside them.
     const row = (c, extra = "") => `<span class="sc-cm-d${c.delta > 0 ? " up" : c.delta < 0 ? " down" : ""}">${dl(c.delta)}</span><span class="sc-cm-t">${esc(c.text)}</span>${extra}`;
     const grader = auto.map(c => `<li class="sc-cm-r sc-cm-auto"><span class="sc-cm-k" aria-hidden="true"></span>${row(c, `<span class="sc-cm-by">Grader</span>`)}</li>`).join("");
-    const note = x.note || noting.has(id) ? (can ? `<label class="sc-cm-note"><span class="sc-fk">Note for the student</span><input class="sc-cnote-in" type="text" value="${esc(x.note || "")}" placeholder="Write a note…" aria-label="A note for this student" maxlength="2000"></label>`
-      : `<p class="sc-cm-note"><span class="sc-fk">Note</span><span>${esc(x.note)}</span></p>`) : "";
+    const note = x.forStudent || noting.has(id) ? (can ? `<label class="sc-cm-note"><span class="sc-fk">Note for the student</span><input class="sc-cnote-in" type="text" value="${esc(x.forStudent || "")}" placeholder="Write a note…" aria-label="A note for this student" maxlength="2000"></label>`
+      : `<p class="sc-cm-note"><span class="sc-fk">Note</span><span>${esc(x.forStudent)}</span></p>`) : "";
     if (!can) {
       const all = [...(x.comments || []).map(c => `<li class="sc-cm-r on"><span class="sc-cm-k" aria-hidden="true"></span>${row(c)}</li>`), grader].join("");
-      return all || x.note ? `<div class="sc-cm">${all ? `<ul class="sc-cm-l">${all}</ul>` : ""}${note}</div>` : "";
+      return all || x.forStudent ? `<div class="sc-cm">${all ? `<ul class="sc-cm-l">${all}</ul>` : ""}${note}</div>` : "";
     }
     const lines = rb.lines.map(l => `<li><button type="button" class="sc-cm-r${given.has(l.id) ? " on" : ""}" data-rub="${esc(l.id)}" aria-pressed="${given.has(l.id)}" title="${given.has(l.id) ? "Take this comment back" : "Give this comment"}"><span class="sc-cm-k" aria-hidden="true">${given.has(l.id) ? TICK : ""}</span>${row(l)}</button></li>`).join("");
     const form = adding.has(id) ? `<div class="sc-newc"><input class="sc-nd" type="text" inputmode="decimal" placeholder="${rb.marking === "zero" ? "+1" : "−1"}" aria-label="Marks" title="Marks off (−1) or on (+1). A number without a sign counts ${rb.marking === "zero" ? "on" : "off"}, as this question starts from ${rb.marking === "zero" ? "zero" : "full marks"}.">
         <input class="sc-nt" type="text" placeholder="The comment, as the student will read it" aria-label="The comment" maxlength="300">
         <button type="button" class="lt-btn sc-sm primary" data-csave>Add</button><button type="button" class="lt-btn sc-sm" data-ccancel>Cancel</button></div>` : "";
-    const links = `<div class="sc-cm-acts">${form ? "" : `<button type="button" class="sc-cm-a" data-addc>${PLUS}Add a Comment</button>`}${x.note || noting.has(id) ? "" : `<button type="button" class="sc-cm-a" data-addn>${PLUS}Note for the Student</button>`}</div>`;
+    const links = `<div class="sc-cm-acts">${form ? "" : `<button type="button" class="sc-cm-a" data-addc>${PLUS}Add a Comment</button>`}${x.forStudent || noting.has(id) ? "" : `<button type="button" class="sc-cm-a" data-addn>${PLUS}Note for the Student</button>`}</div>`;
     const list = lines + grader;
     return `<div class="sc-cm${list || note || form ? "" : " sc-cm-min"}">
         ${list ? `<p class="sc-fk sc-cm-h">Comments${rb.lines.length ? `<i> · tick the ones that apply; from ${rb.marking === "zero" ? "zero" : "full marks"}</i>` : ""}</p><ul class="sc-cm-l">${list}</ul>` : ""}
@@ -413,21 +418,16 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   }
   // One blank of several in a question: its picture, what was read beside its answer, and its own score; one the
   // grader wasn't sure of asks "Is this what it says?", and one with words in it waits, open, for a person to type it.
-  function blankRow(y, k, b, x, can) {
-    const id = `${b.key}|${x.label}|${y.id}`, s = y.status;
-    const open = can && (editing.has(id) || s === "manual");
-    const readV = y.read == null || y.read === "" ? "nothing" : y.read;
-    const wrong = s !== "manual" && y.score === 0 && y.points > 0;
-    const shown = open ? `<input class="sc-readin" type="text" value="${esc(y.read || "")}" placeholder="What does it say?" aria-label="What blank ${k + 1} says" spellcheck="false">`
-      : can ? `<button type="button" class="sc-readv" data-bedit title="Not what it says? Click to change it">${esc(readV)}</button>` : `<span class="sc-fv">${esc(readV)}</span>`;
-    const by = y.typed ? `<small class="sc-by">typed${y.by ? ` by ${esc(y.by)}` : ""}</small>` : "";
-    const acts = open ? `<span class="sc-fa"><button type="button" class="lt-btn sc-sm primary" data-bsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-bcancel>Cancel</button>` : ""}</span>` : "";
-    const ask = !open && s === "check" && can ? `<p class="sc-note">${WARN}<span>${esc(y.note || "Is this what it says?")}</span></p><div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-byes>Yes</button><button type="button" class="lt-btn sc-sm" data-bno>No</button></div>` : "";
+  function blankRow(y, k, b, x, can, node) {
+    const s = y.status, piece = node && node.comps ? node.comps.find(c => c.id === y.id) : null;
+    const kind = (piece && piece.kind) || y.kind || "num", n = (piece && piece.n) || 1;
+    const by = y.typed ? `<small class="sc-by">changed${y.by ? ` by ${esc(y.by)}` : ""}</small>` : "";
+    const ask = s === "check" && can ? `<p class="sc-note">${WARN}<span>${esc(y.note || "Is this what it says?")} Fix it above, or <button type="button" class="lt-link" data-byes>it's read right</button>.</span></p>` : "";
     return `<div class="sc-bl st-${s}" data-blank="${esc(y.id)}">
         <span class="sc-bn" aria-label="Blank ${k + 1}">${k + 1}</span>
         <div class="sc-bm">
           ${y.picture ? `<img class="sc-pic sc-bpic" src="${esc(y.picture)}" alt="Blank ${k + 1}, as scanned" loading="lazy">` : ""}
-          <div class="sc-facts${open ? " editing" : ""}"><div class="sc-f"><span class="sc-fk">Read</span><span class="sc-fval${wrong ? " off" : ""}">${shown}${by}</span></div><div class="sc-f"><span class="sc-fk">Answer</span><span class="sc-fv">${esc(y.answer || "")}</span></div>${acts}</div>
+          <div class="dz dz-one">${digiField(kind, n, y.read, can, `What they wrote in blank ${k + 1}`)}${fieldMarks(y.score, y.points, y.answer)}${by}</div>
           ${ask}
         </div>
         <span class="sc-score sc-bscore"><input type="number" min="0" max="${y.points}" step="0.5" value="${y.score == null ? "" : fmtN(y.score)}" placeholder="–" aria-label="Score for blank ${k + 1}"${can ? "" : " disabled"}><span>/ ${fmtN(y.points)}</span></span>
@@ -505,6 +505,13 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         const f = box.querySelector(`.sc-q[data-k="${CSS.escape(b.key)}"][data-q="${CSS.escape(x.label)}"] .sc-cnote-in`); if (f) f.focus(); });
       const ni = el.querySelector(".sc-cnote-in");
       if (ni) { ni.onchange = () => review(b, { label: x.label, note: ni.value }).then(ok => { if (ok) toast("Note saved."); }); ni.onkeydown = e => { if (e.key === "Enter") ni.blur(); }; }
+      // The typed copy: a piece's boxes saved when you leave them (or press Enter), if they changed; cells move on as you type.
+      const watch = (f, save) => { if (!f) return; const was = fieldValue(f);
+        const go = () => { const v = fieldValue(f); if (v !== was) save(v); };
+        f.addEventListener("focusout", e => { if (!f.contains(e.relatedTarget)) go(); });
+        f.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); go(); } if (e.key === "Escape") { f.querySelectorAll("input").forEach(i => { i.value = i.defaultValue; }); e.target.blur(); } });
+        if (f.classList.contains("dz-cells")) f.querySelectorAll("input").forEach((i, k, all) => { i.oninput = () => { if (i.value && all[k + 1]) all[k + 1].focus(); }; }); };
+      watch(el.querySelector(":scope > .dz-one .dz-field"), v => say(v));
       // Each blank of several: its reading, a yes to the grader's, or its own score.
       el.querySelectorAll(".sc-bl[data-blank]").forEach(row => {
         const bid = row.dataset.blank, y = (x.blanks || []).find(z => z.id === bid), bkey = `${id}|${bid}`;
@@ -512,6 +519,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         const done = ok => { if (ok) { editing.delete(bkey); const sy = window.scrollY; redraw(); window.scrollTo(0, sy); } };
         const send = what => review(b, { label: x.label, blank: bid, ...what }).then(done);
         const bon = (sel, fn) => { const k = row.querySelector(sel); if (k) k.onclick = fn; };
+        watch(row.querySelector(".dz-field"), v => send({ read: v }));
         const openIt = () => { editing.add(bkey); const sy = window.scrollY; redraw(); window.scrollTo(0, sy);
           const ri = box.querySelector(`.sc-q[data-k="${CSS.escape(b.key)}"][data-q="${CSS.escape(x.label)}"] .sc-bl[data-blank="${CSS.escape(bid)}"] .sc-readin`); if (ri) { ri.focus(); ri.select(); } };
         bon("[data-byes]", () => send({ keep: true }));
@@ -530,11 +538,11 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         bi.onkeydown = e => { if (e.key === "Enter") bi.blur(); };
       });
       // Their answer picked on the scan: a bubble (one answer), or a box ticked or unticked (multiple answers).
+      // Each click fills or empties that bubble, as on paper: a student can fill two, or none (then it's wrong).
+      const said = ks => (x.options[0] === "True" ? ks.join(", ") : ks.join(""));
       el.querySelectorAll("[data-hot]").forEach(h => { h.onclick = () => {
-        if (!x.multi) return say(h.dataset.hot);
-        const now = new Set([...el.querySelectorAll("[data-hot]")].filter(k => (k === h) !== (k.getAttribute("aria-pressed") === "true")).map(k => k.dataset.hot));
-        say([...now].join("")); }; });
-      on("[data-hotok]", () => say(x.multi ? String(x.read || "").split(", ").join("") : x.read));
+        say(said([...el.querySelectorAll("[data-hot]")].filter(k => (k === h) !== (k.getAttribute("aria-pressed") === "true")).map(k => k.dataset.hot))); }; });
+      on("[data-hotok]", () => say(said(String(x.read || "").split(", ").filter(v => v && v !== "none"))));
       const opts = [...el.querySelectorAll("[data-opt]")];
       opts.forEach(o => { o.onclick = () => {
         if (!x.multi) return say(o.dataset.opt);

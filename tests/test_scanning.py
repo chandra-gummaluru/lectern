@@ -167,7 +167,7 @@ def test_print_scan_mark_review_send(client, user, demo):
     e8 = next(x for x in rq(bs[0], rubric=[lines["Says "]]).get_json()["booklet"]["questions"] if x["label"] == "8")
     assert e8["score"] == 1 and e8["status"] == "done" and [c["delta"] for c in e8["comments"]] == [1]      # from zero, +1
     e8 = next(x for x in rq(bs[0], rubric=[lines["Says "], lines["Adds "]], note="Nicely put.").get_json()["booklet"]["questions"] if x["label"] == "8")
-    assert e8["score"] == 3 and e8["note"] == "Nicely put."
+    assert e8["score"] == 3 and e8["forStudent"] == "Nicely put."
     r = client.post("/api/scans/comment", json={"offering": demo["offering"], "exam": "midterm", "booklet": bs[0]["key"], "label": "8", "text": "Uses an example, not a proof", "delta": -1}, headers=H)
     assert r.status_code == 200, r.get_json()
     e8 = next(x for x in r.get_json()["booklet"]["questions"] if x["label"] == "8")
@@ -175,7 +175,7 @@ def test_print_scan_mark_review_send(client, user, demo):
     saved = json.loads(store.Repo(user["id"], "priv").read(f"{demo['offering']}/midterm/exam.json"))
     assert any(c["text"] == "Uses an example, not a proof" and c["delta"] == -1 for c in grade.find_node(saved, one["8"]["id"])["rubric"])
     e8 = next(x for x in rq(bs[0], rubric=[]).get_json()["booklet"]["questions"] if x["label"] == "8")
-    assert e8["status"] == "manual" and e8["score"] is None and e8["note"] == "Nicely put."                 # taken back: a note stays
+    assert e8["status"] == "manual" and e8["score"] is None and e8["forStudent"] == "Nicely put."                 # taken back: a note stays
     bs = client.get(f"/api/scans/results?{q(demo)}").get_json()["booklets"]
 
     # Review: written answers marked; anything the grader left to check confirmed at its score.

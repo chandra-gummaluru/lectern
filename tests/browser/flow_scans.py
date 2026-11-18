@@ -150,41 +150,44 @@ def main():
                 pdf = me.request.get(srv.base.rstrip("/") + me.get_attribute(".sc-book a[href*='annotated']", "href"))
                 assert pdf.ok and pdf.body()[:4] == b"%PDF"
                 open(f"{OUT}/scan-4e-marked.pdf", "wb").write(pdf.body())
-            if n == 2:          # what the grader says about what it marked down, in the same list
+            if n == 2:          # picking their answer on the scan, and the two views of it
                 q1 = lambda: me.locator(".sc-q[data-q='1']")                  # a wrong bubble; a person says they chose the right one
-                assert q1().locator("[data-hot]").count() == 4 and q1().locator("[data-hot]:not([data-right])[aria-pressed='true']").count() == 1
-                q1().locator("[data-hot][data-right]").click(); me.wait_for_timeout(700)
-                assert q1().locator("[data-hot][data-right][aria-pressed='true']").count() == 1 and q1().locator(".sc-qh .sc-score input").input_value() == "2"
+                assert q1().locator("[data-hot]").count() == 4 and q1().locator("[data-hot]:not(.right)[aria-pressed='true']").count() == 1
+                q1().locator("[data-hot].right").click(); me.wait_for_timeout(700)           # two filled: wrong
+                assert q1().locator("[data-hot][aria-pressed='true']").count() == 2 and q1().locator(".sc-qh .sc-score input").input_value() == "0"
+                q1().locator("[data-hot]:not(.right)[aria-pressed='true']").click(); me.wait_for_timeout(700)   # the wrong one emptied
+                assert q1().locator("[data-hot].right[aria-pressed='true']").count() == 1 and q1().locator(".sc-qh .sc-score input").input_value() == "2"
                 q1().screenshot(path=f"{OUT}/scan-4g-picked.png")
                 q1().locator("[data-undo]").click(); me.wait_for_timeout(700)
                 q2 = me.locator(".sc-q[data-q='2']")
-                assert "Incorrect answer selected" in q2.locator(".sc-cm-auto").inner_text()
+                assert not q2.locator(".sc-cm, .sc-cap").count(), "a choice question: no comments, no note, no instructions"
                 q2.screenshot(path=f"{OUT}/scan-4f-grader.png")
                 me.click("[data-view='marked']"); me.wait_for_timeout(200)       # as the student gets it: tick or cross, the right one in green
-                assert q2.locator(".sc-ring").is_visible() and q2.locator(".sc-pk.no").is_visible()
+                assert q2.locator(".dz-opt .sc-pk.no").is_visible()
                 q2.screenshot(path=f"{OUT}/scan-4h-marked.png")
                 me.click("[data-view='read']"); me.wait_for_timeout(200)
-                assert not q2.locator(".sc-ring").is_visible()
+                assert not q2.locator(".dz-opt .sc-pk.no").is_visible()
             for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():
                     break
                 q = left.first
                 label = q.get_attribute("data-q")
-                ans = q.locator(".sc-facts .sc-f", has_text="Answer").locator(".sc-fv")
-                answer = ans.last.inner_text() if ans.count() else ""
-                if q.locator("[data-no]").count():          # "Is this what it says?"
-                    if n == 1:                               # no: they type what it says (the right answer)
-                        q.locator("[data-no]").click(); me.wait_for_selector(".sc-readin:focus")
-                        me.keyboard.type(answer); me.keyboard.press("Enter")
+                right_ = {"4": ["84"], "5": ["0.375"], "6": list("1101"), "7": ["3", "4"], "9(c)": ["30"]}
+                if q.locator(".sc-note [data-yes]").count():   # "Is this what it says?"
+                    if n == 1 and label in right_:             # no: they type what it says (the right answer) in the copy
+                        boxes = q.locator(":scope > .dz-one .dz-field input")
+                        for k, v in enumerate(right_[label]):
+                            boxes.nth(k).fill(v)
+                        boxes.nth(len(right_[label]) - 1).press("Enter")
                     else:
-                        q.locator("[data-yes]").click()
+                        q.locator(".sc-note [data-yes]").click()
                 elif q.locator("[data-keep]").count():      # "Is there working worth part marks?" no
                     q.locator("[data-keep]").click()
                 elif q.locator("[data-hotok]").count():     # "Which is their answer?": the bubbles on the scan
                     if n == 1:                              # the first student got it right: click the right ones
                         for _ in range(6):
-                            off_ = q.locator("[data-hot][data-right][aria-pressed='false'], [data-hot]:not([data-right])[aria-pressed='true']")
+                            off_ = q.locator("[data-hot].right[aria-pressed='false'], [data-hot]:not(.right)[aria-pressed='true']")
                             if not off_.count() or not q.locator("[data-hotok]").count():
                                 break
                             off_.first.click(); me.wait_for_timeout(500)
@@ -192,16 +195,13 @@ def main():
                             q.locator("[data-hotok]").click()
                     else:
                         q.locator("[data-hotok]").click()
-                elif q.locator("[data-opt]").count():       # "Which is their answer?"
-                    q.locator(f"[data-opt='{answer}']" if n == 1 else "[data-opt]").first.click()
                 elif q.locator(".sc-bl [data-byes]").count():   # a blank of several the grader wasn't sure of: yes
                     q.locator(".sc-bl [data-byes]").first.click()
-                elif q.locator(".sc-bl .sc-readin").count():   # a blank of several with a word in it: they type just that one
-                    q.locator(".sc-bl .sc-readin").first.fill("Ottawa" if n == 1 else "Toronto"); q.locator(".sc-bl [data-bsave]").first.click()
+                elif q.locator(".sc-bl.st-manual .dz-field input").count():   # a blank of several with a word in it: they type just that one
+                    f = q.locator(".sc-bl.st-manual .dz-field input").first
+                    f.fill("Ottawa" if n == 1 else "Toronto"); f.press("Enter")
                     if n == 1:
                         me.screenshot(path=f"{OUT}/scan-4c-blanks.png", full_page=True)
-                elif q.locator(".sc-readin").count():       # a word to read: they type it
-                    q.locator(".sc-readin").fill("Ottawa" if n == 1 else "Toronto"); q.locator("[data-readsave]").click()
                 elif n == 1 or label == "8":
                     q.locator("[data-full]").click()
                 else:

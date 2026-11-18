@@ -91,7 +91,7 @@ def comments_of(q, answers):
     """A question's comments as the student sees them: (marks, text) lines, then the note. The right answer isn't
     in them: with answers on, it's drawn by the answer itself."""
     lines = [(delta(c.get("delta")), c.get("text", "")) for c in (q.get("comments") or []) + (q.get("auto") or [])]
-    return lines, (q.get("note") or "").strip()
+    return lines, (q.get("forStudent") or "").strip()
 
 
 # ── Where each answer piece is ──────────────────────────────────────────
@@ -124,7 +124,8 @@ def chosen(n, q):
     """The option indexes the student picked, from what was read ("A, C", "B", "True")."""
     r = str(q.get("read") or "")
     if n.get("type") == "tf":
-        return {0} if r.lower().startswith("t") else {1} if r.lower().startswith("f") else set()
+        words = [w.strip().lower() for w in r.split(",")]
+        return {k for k, v in ((0, "true"), (1, "false")) if v in words}
     return {LET.index(x.strip()) for x in r.split(",") if x.strip() in LET}
 
 

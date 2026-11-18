@@ -405,10 +405,11 @@ def score_typed(n, typed):
     choice, True or False, or the written answer (pieces separated by ";", cells by spaces)."""
     pts = num(n.get("points"))
     t = str(typed or "").strip()
-    if n.get("type") == "tf":
-        v = t.lower()[:1]
-        got = "true" if v == "t" else "false" if v == "f" else None
-        return (pts if got == (n.get("answer") or "true") else 0.0), {"true": "True", "false": "False"}.get(got, "none")
+    if n.get("type") == "tf":                           # True, False, both (two bubbles filled) or neither
+        words = [w for w in re.split(r"[\s,;/]+", t.lower()) if w]
+        T, F = any(w[0] == "t" for w in words), any(w[0] == "f" for w in words)
+        got = "true" if T and not F else "false" if F and not T else None
+        return (pts if got == (n.get("answer") or "true") else 0.0), "True, False" if T and F else {"true": "True", "false": "False"}.get(got, "none")
     if n.get("type") in ("mc", "ms"):
         opts = n.get("options") or []
         picked = sorted({LET.index(c) for c in t.upper() if c in LET[:len(opts)]})
@@ -439,7 +440,7 @@ def piece_right(c, x):
         cnt = max(1, int(round(num(c.get("n")))) or 1)
         want = ([y.strip() for y in str(c.get("ans") or "").split(",")] + [""] * cnt)[:cnt]
         got = (re.split(r"[\s,]+", x) if re.search(r"[\s,]", x) else list(x)) + [""] * cnt
-        return [g.strip().lower() for g in got[:cnt]] == [w.lower() for w in want]
+        return [("" if g.strip() in ("_", "?") else g.strip().lower()) for g in got[:cnt]] == [w.lower() for w in want]   # "_": an empty cell
     return bool(x) and _words(x) == _words(c.get("ans"))      # a blank line or box: the words, any case or punctuation
 
 
@@ -483,8 +484,9 @@ def auto_comments(n, q):
     lose, t = -round(pts - sc, 2), n.get("type")
     opts = n.get("options") or []
     if t in ("mc", "tf"):
-        none = q.get("read") in (None, "", "none")
-        return [{"text": "No answer selected" if none else "Incorrect answer selected", "delta": lose, "answer": q.get("answer", "")}]
+        none, many = q.get("read") in (None, "", "none"), "," in str(q.get("read") or "")
+        return [{"text": "No answer selected" if none else "More than one answer selected" if many else "Incorrect answer selected",
+                 "delta": lose, "answer": q.get("answer", "")}]
     if t == "ms":
         got = {x.strip() for x in str(q.get("read") or "").split(",")}
         pen = _own({"pts": n.get("penalty")})

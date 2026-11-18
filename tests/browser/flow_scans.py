@@ -139,6 +139,7 @@ def main():
                 for k in range(q8().locator("[data-rub]").count()):
                     q8().locator("[data-rub]").nth(k).click(); me.wait_for_timeout(500)
                 assert q8().locator("[data-rub][aria-pressed='true']").count() == 2 and q8().locator(".sc-qh .sc-score input").input_value() == "3"
+                q8().locator("[data-addn]").click(); me.wait_for_selector(".sc-q[data-q='8'] .sc-cnote-in")
                 q8().locator(".sc-cnote-in").fill("Clear and complete."); q8().locator(".sc-cnote-in").press("Enter"); me.wait_for_timeout(400)
                 q8().locator("[data-addc]").click(); me.wait_for_selector(".sc-q[data-q='8'] .sc-nd")
                 q8().locator(".sc-nd").fill("0"); q8().locator(".sc-nt").fill("Good use of algebra")
@@ -149,6 +150,10 @@ def main():
                 pdf = me.request.get(srv.base.rstrip("/") + me.get_attribute(".sc-book a[href*='annotated']", "href"))
                 assert pdf.ok and pdf.body()[:4] == b"%PDF"
                 open(f"{OUT}/scan-4e-marked.pdf", "wb").write(pdf.body())
+            if n == 2:          # what the grader says about what it marked down, in the same list
+                q2 = me.locator(".sc-q[data-q='2']")
+                assert "Incorrect answer selected" in q2.locator(".sc-cm-auto").inner_text()
+                q2.screenshot(path=f"{OUT}/scan-4f-grader.png")
             for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():

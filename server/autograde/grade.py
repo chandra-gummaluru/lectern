@@ -481,8 +481,8 @@ def auto_comments(n, q):
                 out.append({"text": f"Incorrect answer selected: {name}", "delta": -pen if pen is not None else None})
             elif L not in got and o.get("correct"):
                 out.append({"text": "Correct answer not selected", "delta": -pen if pen is not None else None, "answer": name})
-        if pen is None:
-            out.append({"text": "All the right boxes, and only those, are needed for the marks", "delta": lose})
+        if pen is None and out:                       # all or nothing: the marks go once, by the first thing wrong
+            out[0]["delta"] = lose
         elif sum(-x["delta"] for x in out if x["delta"]) > pts - sc + 1e-9:
             out.append({"text": "Not below 0", "delta": None})
         return out

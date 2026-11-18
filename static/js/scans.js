@@ -369,25 +369,24 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     if (x.status === "missing") return "";
     const id = `${b.key}|${x.label}`, rb = (R && R.rubrics && R.rubrics[x.id]) || { marking: "full", lines: [] };
     const given = new Set((x.comments || []).map(c => c.id)), auto = x.auto || [];
-    const line = c => `<li><b class="sc-d">${dl(c.delta)}</b><span>${esc(c.text)}</span></li>`;
+    // One list, as the marking guide writes it: the marks in a column, the comment beside them.
+    const row = (c, extra = "") => `<span class="sc-cm-d${c.delta > 0 ? " up" : c.delta < 0 ? " down" : ""}">${dl(c.delta)}</span><span class="sc-cm-t">${esc(c.text)}</span>${extra}`;
+    const grader = auto.map(c => `<li class="sc-cm-r sc-cm-auto"><span class="sc-cm-k" aria-hidden="true"></span>${row(c, `<span class="sc-cm-by">Grader</span>`)}</li>`).join("");
+    const note = x.note || noting.has(id) ? (can ? `<label class="sc-cm-note"><span class="sc-fk">Note for the student</span><input class="sc-cnote-in" type="text" value="${esc(x.note || "")}" placeholder="Write a note…" aria-label="A note for this student" maxlength="2000"></label>`
+      : `<p class="sc-cm-note"><span class="sc-fk">Note</span><span>${esc(x.note)}</span></p>`) : "";
     if (!can) {
-      const all = [...(x.comments || []), ...auto];
-      return all.length || x.note ? `<div class="sc-cm"><span class="sc-fk">Comments</span>${all.length ? `<ul class="sc-cl">${all.map(line).join("")}</ul>` : ""}${x.note ? `<p class="sc-cnote">${esc(x.note)}</p>` : ""}</div>` : "";
+      const all = [...(x.comments || []).map(c => `<li class="sc-cm-r on"><span class="sc-cm-k" aria-hidden="true"></span>${row(c)}</li>`), grader].join("");
+      return all || x.note ? `<div class="sc-cm">${all ? `<ul class="sc-cm-l">${all}</ul>` : ""}${note}</div>` : "";
     }
-    const from = rb.marking === "zero" ? "zero" : "full marks";
-    const chips = rb.lines.map(l => `<button type="button" class="sc-chip" data-rub="${esc(l.id)}" aria-pressed="${given.has(l.id)}"><b class="sc-d">${dl(l.delta)}</b><span>${esc(l.text)}</span></button>`).join("");
-    // Nothing yet (no rubric, comment or note): just the two ways to add one, so a card stays short.
-    if (!rb.lines.length && !auto.length && !given.size && !x.note && !adding.has(id) && !noting.has(id))
-      return `<div class="sc-cm sc-cm-min"><div class="sc-rub"><button type="button" class="sc-chip sc-addc" data-addc>${PLUS}<span>Comment</span></button><button type="button" class="sc-chip sc-addc" data-addn>${PLUS}<span>Note for the Student</span></button></div></div>`;
-    const form = adding.has(id) ? `<div class="sc-newc"><input class="sc-nd" type="text" inputmode="decimal" placeholder="${rb.marking === "zero" ? "+1" : "−1"}" aria-label="Marks" title="Marks off (−1) or on (+1). A number without a sign counts ${rb.marking === "zero" ? "on" : "off"}, as this question starts from ${from}.">
-        <input class="sc-nt" type="text" placeholder="What the student should know" aria-label="The comment" maxlength="300">
+    const lines = rb.lines.map(l => `<li><button type="button" class="sc-cm-r${given.has(l.id) ? " on" : ""}" data-rub="${esc(l.id)}" aria-pressed="${given.has(l.id)}" title="${given.has(l.id) ? "Take this comment back" : "Give this comment"}"><span class="sc-cm-k" aria-hidden="true">${given.has(l.id) ? TICK : ""}</span>${row(l)}</button></li>`).join("");
+    const form = adding.has(id) ? `<div class="sc-newc"><input class="sc-nd" type="text" inputmode="decimal" placeholder="${rb.marking === "zero" ? "+1" : "−1"}" aria-label="Marks" title="Marks off (−1) or on (+1). A number without a sign counts ${rb.marking === "zero" ? "on" : "off"}, as this question starts from ${rb.marking === "zero" ? "zero" : "full marks"}.">
+        <input class="sc-nt" type="text" placeholder="The comment, as the student will read it" aria-label="The comment" maxlength="300">
         <button type="button" class="lt-btn sc-sm primary" data-csave>Add</button><button type="button" class="lt-btn sc-sm" data-ccancel>Cancel</button></div>` : "";
-    return `<div class="sc-cm">
-        <span class="sc-fk">Comments${rb.lines.length ? ` <i>· from ${from}</i>` : ""}</span>
-        ${auto.length ? `<ul class="sc-cl sc-auto" title="The grader's: they go to the student unless you give comments of your own">${auto.map(line).join("")}</ul>` : ""}
-        <div class="sc-rub">${chips}${form ? "" : `<button type="button" class="sc-chip sc-addc" data-addc>${PLUS}<span>New Comment</span></button>`}</div>
-        ${form}
-        <input class="sc-cnote-in" type="text" value="${esc(x.note || "")}" placeholder="A note for this student (optional)" aria-label="A note for this student" maxlength="2000">
+    const links = `<div class="sc-cm-acts">${form ? "" : `<button type="button" class="sc-cm-a" data-addc>${PLUS}Add a Comment</button>`}${x.note || noting.has(id) ? "" : `<button type="button" class="sc-cm-a" data-addn>${PLUS}Note for the Student</button>`}</div>`;
+    const list = lines + grader;
+    return `<div class="sc-cm${list || note || form ? "" : " sc-cm-min"}">
+        ${list ? `<p class="sc-fk sc-cm-h">Comments${rb.lines.length ? `<i> · tick the ones that apply; from ${rb.marking === "zero" ? "zero" : "full marks"}</i>` : ""}</p><ul class="sc-cm-l">${list}</ul>` : ""}
+        ${form}${note}${links}
       </div>`;
   }
   // One blank of several in a question: its picture, what was read beside its answer, and its own score; one the

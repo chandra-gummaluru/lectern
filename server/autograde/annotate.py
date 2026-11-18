@@ -194,7 +194,7 @@ def score_boxes(t, dpi=scan.DPI):
             if w[0] == "/" and prev and abs(prev[2] - w[2]) < 4 and w[1] - prev[3] > 20 and j + 1 < len(words) and words[j + 1][0].replace(".", "").isdigit():
                 n = words[j + 1]                 # the points: their baseline, and how tall they're printed
                 x, base = px((prev[3] + w[1]) / 2 + 2, n[2])     # the middle of the box's empty part (the box starts after the label)
-                out["boxes"].append((pi + 1, x, base, float(n[0]), (n[4] - n[2]) * k))
+                out["boxes"].append((pi + 1, x, base, float(n[0]), (n[4] - n[2]) * k, (n[1] * k, n[3] * k)))
             prev = w
     doc.close()
     _PRINTED[t.path] = out
@@ -250,13 +250,13 @@ def fill_boxes(t, exam, version, shown, dpi):
         marks[1].append(("write", (x, dpi * 1.2, 0, 0), f"{fmt(tot or 0)} / {fmt(out_of)}", "rs", dpi * .19))
     want, found, i = box_order(exam, version), where["boxes"], 0
     marks["filled"] = {}
-    for page, x, y, pts, tall in found:               # in order, matched by their points; a "/ 3" in a question's text is skipped
+    for page, x, y, pts, tall, digits in found:               # in order, matched by their points; a "/ 3" in a question's text is skipped
         j = next((jj for jj in range(i, min(len(want), i + 3)) if abs(want[jj][1] - pts) < 1e-9), None)
         if j is None:
             continue
         v = score(want[j][0])
         if v is not None:
-            marks.setdefault(page, []).append(("write", (x, y, 0, 0), fmt(v), "ms", tall / .72 * 1.15))     # on the printed baseline, a little bigger than print
+            marks.setdefault(page, []).append(("write", (x, y, 0, 0), fmt(v), "ms", tall / .72 * 1.15, (digits, tall)))     # on the printed baseline, a little bigger than print
             marks["filled"][want[j][0]] = (page, y - tall)
         i = j + 1
     return marks
@@ -278,6 +278,20 @@ def ring(d, rect, colour=GREEN, pad=8, w=4):
     d.ellipse([x - pad, y - pad, x + ww + pad, y + hh + pad], outline=colour, width=w)
 
 
+def baseline(img, xs, y, tall):
+    """Where printed digits (between xs, near the baseline y) sit on the scan: the lowest row with their ink, if it's
+    close to where they were printed (a scan lands a millimetre or so off, and the score should sit on the same line)."""
+    x0, x1 = int(xs[0]) - 2, int(xs[1]) + 2
+    y0, y1 = int(y - tall * 1.4), int(y + tall * .9)
+    if x0 < 0 or y0 < 0 or x1 > img.shape[1] or y1 > img.shape[0]:
+        return None
+    rows = np.where(((img[y0:y1, x0:x1] < 120).sum(axis=1)) >= 2)[0]
+    if not len(rows):
+        return None
+    got = y0 + rows.max() + 1
+    return got if abs(got - y) <= tall * .8 else None
+
+
 def mark_page(img, dpi, marks, notes):
     """marks: [(kind, rect, ...)] to draw on the page; notes: [(y, score text, comment lines, note)] for the margin."""
     page = Image.fromarray(img).convert("RGB")
@@ -296,9 +310,12 @@ def mark_page(img, dpi, marks, notes):
         elif kind == "big":
             d.text((x, y), m[2], fill=RED, font=font("hand", int(dpi * .42)), anchor=m[3])
         elif kind == "write":                     # a score in the cover's table or a question's "[   ] / 2" box
-            d.text((x, y), m[2], fill=RED, font=font("hand", int(m[4]) if len(m) > 4 else int(dpi * .17)), anchor=m[3])
-        elif kind == "answer":                    # under the blank, so it covers nothing printed
-            d.text((x, y + h + 6), m[2], fill=GREEN, font=font("sans-bold", int(dpi * .1)), anchor="la")
+            if len(m) > 5:                        # on the printed points' baseline as scanned, not just where it was printed
+                y = baseline(img, m[5][0], y, m[5][1]) or y
+            size = int(m[4]) if len(m) > 4 else int(dpi * .17)
+            d.text((x, y + (size * .03 if m[3].endswith("s") else 0)), m[2], fill=RED, font=font("hand", size), anchor=m[3])   # Kalam's digits sit a little above the line
+        elif kind == "answer":                    # the right answer, written in green just under the blank
+            d.text((x + dpi * .08, y + h + dpi * .02), m[2], fill=GREEN, font=font("hand", int(dpi * .14)), anchor="la")
     W = page.width
     left, right = W - int(dpi * (MARGIN_IN - .1)), W - int(dpi * .12)
     width = right - left
@@ -385,7 +402,7 @@ def booklet_pdf(exam, templates, page_image, booklet, shown, answers=False, dpi=
                 y1 = max(x[3][1] + x[3][3] for x in ws)
                 pm(ws[0], "tick" if sc >= pts - 1e-9 else "cross", (x0, y0, x1 - x0, y1 - y0), "on")
                 if answers and sc < pts - 1e-9 and ans:
-                    pm(ws[0], "answer", (x0, y0, x1 - x0, y1 - y0), f"the answer: {ans}")
+                    pm(ws[0], "answer", (x0, y0, x1 - x0, y1 - y0), ans)
     pages = []
     for k in sorted(lined):
         pages.append(mark_page(lined[k], dpi, marks.get(k, []), notes.get(k, [])))

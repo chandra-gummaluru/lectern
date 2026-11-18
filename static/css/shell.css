@@ -1513,26 +1513,36 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .sc-bm .sc-qa { margin-top: 8px; }
 .sc-bl .sc-bscore { margin-left: 0; padding-top: 2px; }
 @media (max-width: 640px) { .sc-bl { grid-template-columns: 22px minmax(0, 1fr); } .sc-bl .sc-bscore { grid-column: 2; } }
-/* A question's comments for the student: the grader's, the rubric's as chips that set the score, a new one, a note. */
-.sc-cm { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--home-line-2); }
-.sc-cm .sc-fk i { font-style: normal; font-weight: 600; letter-spacing: .04em; text-transform: none; }
-.sc-cl { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--home-ink-2); }
-.sc-cl li { display: flex; gap: 10px; align-items: baseline; }
-.sc-d { flex: none; min-width: 2.2em; font: 600 13.5px var(--font-ui); font-variant-numeric: tabular-nums; color: #c0392b; }
-.sc-auto { padding: 8px 10px; border-radius: 8px; background: var(--home-strip); }
-.sc-rub { display: flex; flex-wrap: wrap; gap: 6px; }
-.sc-chip { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 5px 11px; border: 1px solid var(--home-line-2); border-radius: 999px; background: var(--home-card); color: var(--home-ink); font: 500 13.5px/1.35 var(--font-ui); text-align: left; cursor: pointer; }
-.sc-chip .sc-d { min-width: 0; font-size: 13px; }
-.sc-chip:hover { border-color: var(--home-ink-3); }
-.sc-chip[aria-pressed="true"] { border-color: #e8cf7c; background: #fbf0d2; box-shadow: inset 0 0 0 1px #e8cf7c; }
-.sc-addc { align-items: center; border-style: dashed; color: var(--home-ink-2); }
-.sc-addc svg { width: 14px; height: 14px; }
-.sc-newc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.sc-newc input, .sc-cnote-in { height: 34px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); color: var(--home-ink); font: 14px var(--font-ui); }
+/* A question's comments for the student, as the marking guide writes them: the marks in a column, the comment beside
+   them. Rubric lines tick on and off (a tick, the row in ink); the grader's are marked Grader; adding is a quiet link. */
+.sc-cm { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--home-line); }
+.sc-cm.sc-cm-min { margin-top: 8px; padding-top: 0; border-top: 0; }
+.sc-cm-h { margin: 0 0 6px; }
+.sc-cm-h i { font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.sc-cm-l { display: grid; margin: 0; padding: 0; list-style: none; }
+.sc-cm-r { display: grid; grid-template-columns: 18px 3em minmax(0, 1fr) auto; align-items: baseline; gap: 8px; width: 100%; padding: 6px 8px; margin: 0 -8px; box-sizing: content-box; border: 0; border-radius: 8px; background: transparent; color: var(--home-ink-3); font: 14.5px/1.4 var(--font-ui); text-align: left; }
+button.sc-cm-r { cursor: pointer; }
+button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); }
+.sc-cm-r.on { color: var(--home-ink); }
+.sc-cm-k { align-self: center; display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 18px; height: 18px; border-radius: 5px; box-shadow: inset 0 0 0 1.5px var(--home-line-2); color: #fff; }
+.sc-cm-r.on .sc-cm-k { background: var(--home-ink); box-shadow: none; }
+.sc-cm-k svg { width: 13px; height: 13px; stroke-width: 2.6; }
+.sc-cm-auto .sc-cm-k { visibility: hidden; }
+.sc-cm-auto { color: var(--home-ink-2); }
+.sc-cm-d { font: 600 14px var(--font-ui); font-variant-numeric: tabular-nums; text-align: right; color: var(--home-ink-3); }
+.sc-cm-r.on .sc-cm-d.down, .sc-cm-auto .sc-cm-d.down { color: #c0392b; }
+.sc-cm-r.on .sc-cm-d.up, .sc-cm-auto .sc-cm-d.up { color: #2f8f5b; }
+.sc-cm-by { font-size: 12px; color: var(--home-ink-3); }
+.sc-cm-acts { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; }
+.sc-cm-a { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: transparent; color: var(--home-ink-3); font: 600 13.5px var(--font-ui); cursor: pointer; }
+.sc-cm-a:hover { color: var(--home-ink); }
+.sc-cm-a svg { width: 15px; height: 15px; }
+.sc-newc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.sc-newc input { height: 34px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); color: var(--home-ink); font: 14px var(--font-ui); }
 .sc-newc .sc-nd { width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
-.sc-newc .sc-nt { flex: 1; min-width: 200px; }
-.sc-cnote-in { width: 100%; border-style: dashed; }
-.sc-cnote-in:focus, .sc-newc input:focus { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; border-style: solid; }
-.sc-cnote { margin: 0; font-size: 14px; color: var(--home-ink-2); white-space: pre-wrap; }
-.sc-cm.sc-cm-min { margin-top: 10px; padding-top: 0; border-top: 0; }
-.sc-cm-min .sc-addc { padding: 3px 10px; font-size: 13px; color: var(--home-ink-3); border-color: var(--home-line-2); }
+.sc-newc .sc-nt { flex: 1; min-width: 220px; }
+.sc-newc input:focus { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; }
+.sc-cm-note { display: grid; gap: 4px; margin: 10px 0 0; }
+.sc-cnote-in { width: 100%; height: 32px; box-sizing: border-box; padding: 0 2px; border: 0; border-bottom: 1px dashed var(--home-ink-3); background: transparent; color: var(--home-ink); font: italic 15px var(--font-serif); }
+.sc-cnote-in:focus { outline: 0; border-bottom: 1.5px solid var(--accent, #c99a06); }
+.sc-cm-note > span:last-child { font: italic 15px var(--font-serif); color: var(--home-ink); }

@@ -403,8 +403,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     return `<div class="sc-q st-${s}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
         <div class="sc-qh"><h4 class="sc-qt">${title}</h4>${pillHTML(x, esc)}
           <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" placeholder="–" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
-        ${x.picture && !blanks ? `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">` : ""}
-        ${digi}${by}
+        ${x.picture && !blanks ? `<div class="sc-pair"><img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">${digi}</div>` : digi}${by}
         ${blanks ? `<div class="sc-bls">${blanks.map((y, k) => blankRow(y, k, b, x, can, node)).join("")}</div>` : ""}
         ${note}${acts}
         ${choice ? "" : commentsHTML(x, b, can)}
@@ -446,9 +445,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     return `<div class="sc-bl st-${s}" data-blank="${esc(y.id)}">
         <span class="sc-bn" aria-label="Blank ${k + 1}">${k + 1}</span>
         <div class="sc-bm">
-          ${y.picture ? `<img class="sc-pic sc-bpic" src="${esc(y.picture)}" alt="Blank ${k + 1}, as scanned" loading="lazy">` : ""}
-          ${y.paper && Array.isArray(y.fields) && y.fields.length ? paperField(y, kind, y.read, can, `What they wrote in blank ${k + 1}`, fieldMarks(y.score, y.points, y.answer)) + by
-            : `<div class="dz dz-one">${digiField(kind, n, y.read, can, `What they wrote in blank ${k + 1}`)}${fieldMarks(y.score, y.points, y.answer)}${by}</div>`}
+          <div class="sc-pair">${y.picture ? `<img class="sc-pic sc-bpic" src="${esc(y.picture)}" alt="Blank ${k + 1}, as scanned" loading="lazy">` : ""}
+          ${y.paper && Array.isArray(y.fields) && y.fields.length ? paperField(y, kind, y.read, can, `What they wrote in blank ${k + 1}`, fieldMarks(y.score, y.points, y.answer))
+            : `<div class="dz dz-one">${digiField(kind, n, y.read, can, `What they wrote in blank ${k + 1}`)}${fieldMarks(y.score, y.points, y.answer)}</div>`}</div>${by}
           ${ask}
         </div>
         <span class="sc-score sc-bscore"><input type="number" min="0" max="${y.points}" step="0.5" value="${y.score == null ? "" : fmtN(y.score)}" placeholder="–" aria-label="Score for blank ${k + 1}"${can ? "" : " disabled"}><span>/ ${fmtN(y.points)}</span></span>

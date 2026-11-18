@@ -1619,3 +1619,8 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-qs.v-marked .pp-opt { pointer-events: none; }
 .sc-qs.v-marked .pp-opt.right { box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px #2f8f5b; background: rgb(47 143 91 / .18); }
 .sc-qs.v-marked .pp .pp-in { height: auto; pointer-events: none; }
+/* The scan and its clean copy side by side when both fit across the card (a fraction, a box, a row of cells), else one
+   under the other. */
+.sc-pair { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 14px; }
+.sc-pair > .sc-pic, .sc-pair > .dz-one > .pp, .sc-pair > .pp, .sc-pair > .dz { margin-top: 10px; }
+.sc-pair > .dz-one { margin-top: 0; }

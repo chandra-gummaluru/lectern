@@ -29,7 +29,8 @@ def answers(exam):
             f"{L['4']['id']}.{comp(L['4'], 'num')}": "84", f"{L['5']['id']}.{comp(L['5'], 'num')}": "0.375",
             **T.cells(f"{L['6']['id']}.{comp(L['6'], 'cells')}", "1101"),
             f"{L['7']['id']}.{comp(L['7'], 'frac')}:n": "3", f"{L['7']['id']}.{comp(L['7'], 'frac')}:d": "4",
-            f"{L['9(a)']['id']}.{right(L['9(a)'])}": "fill", f"{L['9(b)']['id']}:T": "fill", f"{L['9(c)']['id']}.{comp(L['9(c)'], 'num')}": "30"}
+            f"{L['9(a)']['id']}.{right(L['9(a)'])}": "fill", f"{L['9(b)']['id']}:T": "fill", f"{L['9(c)']['id']}.{comp(L['9(c)'], 'num')}": "30",
+            f"{L['10']['id']}.{comp(L['10'], 'num')}": "10"}
     wrong = {k: v for k, v in good.items() if not k.startswith(L["1"]["id"]) and not k.startswith(L["2"]["id"])}
     wrong[f"{L['1']['id']}.{L['1']['options'][0]['id']}"] = "fill"
     wrong[f"{L['2']['id']}:F"] = "fill"
@@ -133,6 +134,21 @@ def main():
                 me.wait_for_timeout(500)
                 print("  whose: chosen", me.inner_text(".sc-book h2"))
             assert people[n - 1]["last"] in me.inner_text(".sc-book h2")
+            if n == 1:          # Question 8 by its rubric: each comment given sets the score (from zero); a note for the student
+                q8 = lambda: me.locator(".sc-q[data-q='8']")
+                for k in range(q8().locator("[data-rub]").count()):
+                    q8().locator("[data-rub]").nth(k).click(); me.wait_for_timeout(500)
+                assert q8().locator("[data-rub][aria-pressed='true']").count() == 2 and q8().locator(".sc-qh .sc-score input").input_value() == "3"
+                q8().locator(".sc-cnote-in").fill("Clear and complete."); q8().locator(".sc-cnote-in").press("Enter"); me.wait_for_timeout(400)
+                q8().locator("[data-addc]").click(); me.wait_for_selector(".sc-q[data-q='8'] .sc-nd")
+                q8().locator(".sc-nd").fill("0"); q8().locator(".sc-nt").fill("Good use of algebra")
+                q8().locator("[data-csave]").click(); me.wait_for_timeout(900)
+                assert q8().locator("[data-rub]").count() == 3 and q8().locator(".sc-qh .sc-score input").input_value() == "3"
+                q8().scroll_into_view_if_needed()
+                me.screenshot(path=f"{OUT}/scan-4d-comments.png", full_page=True)
+                pdf = me.request.get(srv.base.rstrip("/") + me.get_attribute(".sc-book a[href*='annotated']", "href"))
+                assert pdf.ok and pdf.body()[:4] == b"%PDF"
+                open(f"{OUT}/scan-4e-marked.pdf", "wb").write(pdf.body())
             for _ in range(14):
                 left = me.locator(".sc-q:not(.st-auto):not(.st-done)")
                 if not left.count():
@@ -151,6 +167,12 @@ def main():
                     q.locator("[data-keep]").click()
                 elif q.locator("[data-opt]").count():       # "Which is their answer?"
                     q.locator(f"[data-opt='{answer}']" if n == 1 else "[data-opt]").first.click()
+                elif q.locator(".sc-bl [data-byes]").count():   # a blank of several the grader wasn't sure of: yes
+                    q.locator(".sc-bl [data-byes]").first.click()
+                elif q.locator(".sc-bl .sc-readin").count():   # a blank of several with a word in it: they type just that one
+                    q.locator(".sc-bl .sc-readin").first.fill("Ottawa" if n == 1 else "Toronto"); q.locator(".sc-bl [data-bsave]").first.click()
+                    if n == 1:
+                        me.screenshot(path=f"{OUT}/scan-4c-blanks.png", full_page=True)
                 elif q.locator(".sc-readin").count():       # a word to read: they type it
                     q.locator(".sc-readin").fill("Ottawa" if n == 1 else "Toronto"); q.locator("[data-readsave]").click()
                 elif n == 1 or label == "8":
@@ -174,8 +196,8 @@ def main():
         book = json.loads(srv.text("priv", f"{off}/grades.json"))
         got = {s["num"]: book["marks"][s["num"]]["mt"] for s in people}
         print("  in the gradebook:", got)
-        assert got[people[0]["num"]] == {"pts": 21}, got
-        assert got[people[1]["num"]]["pts"] < 21
+        assert got[people[0]["num"]] == {"pts": 22}, got
+        assert got[people[1]["num"]]["pts"] < 22
         b.close()
     assert not errors, errors
     print("flow_scans: OK")

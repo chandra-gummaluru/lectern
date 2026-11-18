@@ -1501,3 +1501,38 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 .sc-fa { display: inline-flex; gap: 8px; margin-left: auto; align-self: flex-end; }
 .sc-qa.sc-f { display: grid; margin-top: 12px; }
 @media (max-width: 640px) { .sc-ed .lx-ed-head.sc-hasmk { grid-template-columns: auto 1fr auto; } .sc-mk { grid-column: 1 / -1; grid-row: 3; justify-items: start; text-align: left; margin: 10px 0 0; padding: 0; border: 0; } .sc-mk small { position: static; margin: 0; } .sc-ed .lx-ed-head.sc-hasmk > .lx-acts { grid-column: 3; } .sc-fa { margin-left: 0; } }
+/* A question with several blanks: a row for each, numbered in the serif, with its own picture, reading, answer and score. */
+.sc-bls { display: grid; margin-top: 10px; border-top: 1px solid var(--home-line); }
+.sc-bl { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--home-line); }
+.sc-bl:last-child { border-bottom: 0; padding-bottom: 2px; }
+.sc-bn { font: 500 20px/1.1 var(--font-serif); color: var(--home-ink-3); font-variant-numeric: lining-nums; padding-top: 2px; }
+.sc-bl.st-check .sc-bn, .sc-bl.st-manual .sc-bn { color: #9a7400; }
+.sc-bm { min-width: 0; }
+.sc-bm .sc-bpic { margin: 0; max-height: 120px; }
+.sc-bm .sc-facts { margin-top: 10px; }
+.sc-bm .sc-qa { margin-top: 8px; }
+.sc-bl .sc-bscore { margin-left: 0; padding-top: 2px; }
+@media (max-width: 640px) { .sc-bl { grid-template-columns: 22px minmax(0, 1fr); } .sc-bl .sc-bscore { grid-column: 2; } }
+/* A question's comments for the student: the grader's, the rubric's as chips that set the score, a new one, a note. */
+.sc-cm { display: grid; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--home-line-2); }
+.sc-cm .sc-fk i { font-style: normal; font-weight: 600; letter-spacing: .04em; text-transform: none; }
+.sc-cl { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--home-ink-2); }
+.sc-cl li { display: flex; gap: 10px; align-items: baseline; }
+.sc-d { flex: none; min-width: 2.2em; font: 600 13.5px var(--font-ui); font-variant-numeric: tabular-nums; color: #c0392b; }
+.sc-auto { padding: 8px 10px; border-radius: 8px; background: var(--home-strip); }
+.sc-rub { display: flex; flex-wrap: wrap; gap: 6px; }
+.sc-chip { display: inline-flex; align-items: baseline; gap: 6px; max-width: 100%; padding: 5px 11px; border: 1px solid var(--home-line-2); border-radius: 999px; background: var(--home-card); color: var(--home-ink); font: 500 13.5px/1.35 var(--font-ui); text-align: left; cursor: pointer; }
+.sc-chip .sc-d { min-width: 0; font-size: 13px; }
+.sc-chip:hover { border-color: var(--home-ink-3); }
+.sc-chip[aria-pressed="true"] { border-color: #e8cf7c; background: #fbf0d2; box-shadow: inset 0 0 0 1px #e8cf7c; }
+.sc-addc { align-items: center; border-style: dashed; color: var(--home-ink-2); }
+.sc-addc svg { width: 14px; height: 14px; }
+.sc-newc { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sc-newc input, .sc-cnote-in { height: 34px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--home-line-2); border-radius: 8px; background: var(--home-card); color: var(--home-ink); font: 14px var(--font-ui); }
+.sc-newc .sc-nd { width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+.sc-newc .sc-nt { flex: 1; min-width: 200px; }
+.sc-cnote-in { width: 100%; border-style: dashed; }
+.sc-cnote-in:focus, .sc-newc input:focus { outline: 2px solid var(--accent, #c99a06); outline-offset: 1px; border-style: solid; }
+.sc-cnote { margin: 0; font-size: 14px; color: var(--home-ink-2); white-space: pre-wrap; }
+.sc-cm.sc-cm-min { margin-top: 10px; padding-top: 0; border-top: 0; }
+.sc-cm-min .sc-addc { padding: 3px 10px; font-size: 13px; color: var(--home-ink-3); border-color: var(--home-line-2); }

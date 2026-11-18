@@ -19,7 +19,9 @@ def save_pictures(results, pics, prefix="pictures/"):
     """Each picture in the results (JPEG bytes) to a file in pics; the results then name it (prefix + file name)."""
     os.makedirs(pics, exist_ok=True)
     for i, b in enumerate(results["booklets"], 1):
-        for key, item in [("student", b["student"])] + [(q["label"], q) for q in b["questions"]]:
+        items = [("student", b["student"])] + [(q["label"], q) for q in b["questions"]]
+        items += [(f"{q['label']}_{x['id']}", x) for q in b["questions"] for x in q.get("blanks") or []]   # each blank's own
+        for key, item in items:
             data = item.pop("picture", None)
             if data:
                 name = f"b{i:03d}-{'cover' if key == 'student' else key.replace('(', '').replace(')', '')}.jpg"

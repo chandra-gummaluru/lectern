@@ -45,7 +45,11 @@ const pillHTML = (x, esc) => { const m = marks(x);
 const when = s => { const d = new Date(s * 1000); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
 const size = b => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 const ui = { show: "open", q: "", by: "booklet", qShow: "", qWas: "" };
-const editing = new Set();   // answers whose reading is open to type ("<booklet>|<question>")
+const editing = new Set();
+const adding = new Set();
+const noting = new Set();    // answers with the note box opened, though it has no note yet    // answers with the New Comment form open ("<booklet>|<question>")
+// A comment's marks as the marking guide writes them: −1, +2, ±0.
+const dl = d => (d == null ? "" : d > 0 ? `+${fmtN(d)}` : d < 0 ? `−${fmtN(-d)}` : "±0");   // answers whose reading is open to type ("<booklet>|<question>")
 
 export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, renderPath, steps, owner, unsaved, openExam }, r) {
   const params = x => new URLSearchParams({ ...(owner ? { owner } : {}), offering: `${r.c}/${r.t}`, exam: r.e, ...x }).toString();
@@ -70,7 +74,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     if (!here()) return;
     r.q ? drawQuestion() : r.b ? drawBooklet() : draw();
     clearTimeout(timer);
-    if (S.job && S.job.state === "running") timer = setTimeout(load, 1500);
+    if ((S.job && S.job.state === "running") || (S.results && S.results.mail && S.results.mail.state === "running")) timer = setTimeout(load, 1500);
   }
 
   // ── The page ──
@@ -157,6 +161,15 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const gradebook = `<h3 class="lx-sec">Gradebook</h3>
       <p class="lx-help">${S.eval ? `Each finished booklet's total becomes the student's mark for ${esc(S.eval.name)}.${sent}` : "This exam isn't linked to an evaluation."}</p>
       ${S.can.mark && S.eval ? `<div class="lx-adds"><button type="button" class="lt-btn primary" id="sc-send"${res.ready ? "" : " disabled"}>Send ${res.ready} Mark${res.ready === 1 ? "" : "s"} to ${esc(S.eval.name)}</button></div>` : ""}`;
+    // Each student their own booklet, marked, by email (a PDF of their pages with the scores and comments drawn on).
+    const m = res.mail || {}, mailing = m.state === "running", ready = bs.filter(b => b.ready).length, fresh = bs.filter(b => b.ready && !b.emailed).length;
+    const mailLine = mailing ? `<p class="sc-job"><span class="sc-spin" aria-hidden="true"></span>Emailing… ${m.done || 0} of ${m.total || 0}.</p>`
+      : m.state === "failed" ? `<p class="lt-note err">${esc(m.error || "The emails stopped.")}</p>`
+      : m.state === "done" ? `<p class="lx-help">Emailed ${esc(when(m.finished))}${m.by ? ` by ${esc(m.by)}` : ""}: ${(m.total || 0) - (m.failed || []).length} of ${m.total || 0}${m.answers ? ", with the right answers" : ""}.</p>${(m.failed || []).length ? `<p class="lt-note err"><b>${m.failed.length} didn't go:</b> ${m.failed.slice(0, 6).map(f => `${esc(f.name)} (${esc(f.why)})`).join("; ")}${m.failed.length > 6 ? "; …" : ""}.</p>` : ""}` : "";
+    const students = `<h3 class="lx-sec">Marked Booklets</h3>
+      <p class="lx-help">Email each student their own booklet, marked: their pages, with each question's score and comments drawn on, as a PDF. Only finished booklets go.${res.emailed ? ` ${res.emailed} emailed so far.` : ""}</p>
+      ${S.can.print ? `<div class="lx-adds"><button type="button" class="lt-btn" id="sc-email"${ready && !mailing ? "" : " disabled"}>Email ${fresh && fresh < ready ? `${fresh} New Booklet${fresh === 1 ? "" : "s"}` : `${ready} Booklet${ready === 1 ? "" : "s"}`}</button></div>` : ""}
+      ${mailLine}`;
     const bySeg = `<span class="lx-seg sc-by" role="group" aria-label="Show">${[["booklet", "By Booklet"], ["question", "By Question"]].map(([v, l]) => `<button type="button" data-by="${v}" aria-pressed="${ui.by === v}">${l}</button>`).join("")}</span>`;
     if (ui.by === "question") {
       const qs = labels().map(l => { const a = answersTo(l); return { l, pts: a[0] ? a[0].x.points : 0, n: a.length, open: a.filter(y => isOpen(y.x)).length, missing: a.filter(y => y.x.status === "missing").length }; });
@@ -168,7 +181,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         <div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${qs.length}</span></h2></div>
         <div class="dc-threads">${qs.map(qrow).join("")}</div>
       </section></div>
-      ${gradebook}`;
+      ${gradebook}${students}`;
     }
     return `${unread}${notes}<div class="sc-bybar">${bySeg}</div>
       <div class="hb lt-dc sc-dc"><section class="dc">
@@ -177,7 +190,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
             <div class="dc-sort" role="tablist">${seg("open", "To Look At", open.length)}${seg("done", "Finished", done.length)}${seg("all", "All", null)}</div></div></div>
         ${list.length ? `<div class="dc-threads">${list.map(row).join("")}</div>` : `<p class="dc-none">${words.length ? "No booklets match your search." : ui.show === "open" ? "Nothing left to look at." : "None yet."}</p>`}
       </section></div>
-      ${gradebook}`;
+      ${gradebook}${students}`;
   }
 
   function wireResults() {
@@ -186,6 +199,25 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     box.querySelectorAll(".sc-dc [data-gq]").forEach(b => { b.onclick = () => go({ ...r, b: "", q: b.dataset.gq }); });
     const qi = $("#sc-q"); if (qi) qi.oninput = () => { ui.q = qi.value; const at = qi.selectionStart; draw(); const i = $("#sc-q"); if (i) { i.focus(); i.setSelectionRange(at, at); } };
     box.querySelectorAll("[data-b]").forEach(b => { b.onclick = () => go({ ...r, b: b.dataset.b }); });
+    const em = $("#sc-email"); if (em) em.onclick = async () => {
+      const bs = R.booklets.filter(b => b.ready), fresh = bs.filter(b => !b.emailed), again = fresh.length && fresh.length < bs.length;
+      let answers = false;
+      const watch = e => { if (e.target && e.target.id === "sc-ans") answers = e.target.checked; };
+      document.addEventListener("change", watch);
+      const n = again ? fresh.length : bs.length;
+      const ok = await confirmBox(`Email ${n} student${n === 1 ? "" : "s"} their booklet${n === 1 ? "" : "s"}?`,
+        `Each gets their own pages, marked, as a PDF, from the course's email.${again ? ` The ${bs.length - fresh.length} already emailed aren't sent again.` : ""}</p>
+         <p><label class="lt-check"><input type="checkbox" id="sc-ans"> Show the right answers <small>(by each wrong answer, in green)</small></label>`, "Email Them");
+      document.removeEventListener("change", watch);
+      if (!ok) return;
+      em.disabled = true;
+      try {
+        const d = await api("/api/scans/email", body({ answers, ...(again ? { booklets: fresh.map(b => b.key) } : {}) }));
+        toast(d.emailing ? `Emailing ${d.emailing} booklet${d.emailing === 1 ? "" : "s"}…${d.missing.length ? ` ${d.missing.length} student${d.missing.length === 1 ? " has" : "s have"} no email address: ${d.missing.slice(0, 3).join(", ")}${d.missing.length > 3 ? ", …" : ""}.` : ""}`
+          : d.missing.length ? `No one to email: ${d.missing.length} student${d.missing.length === 1 ? " has" : "s have"} no email address.` : "No finished booklets to email.");
+        load();
+      } catch (e) { em.disabled = false; toast(e.message); }
+    };
     const s = $("#sc-send"); if (s) s.onclick = async () => {
       s.disabled = true;
       try {
@@ -244,9 +276,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       <div class="lx-ed-head sc-hasmk"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
         <div class="gr-tt"><p class="gr-kind">Booklet ${i} of ${bs.length}</p><h2>${esc(name)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
         ${markHTML(b)}
-        <span class="lx-acts">${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-go="${nextOpen}">Next to Look At</button>` : ""}
+        <span class="lx-acts"><a class="lt-btn sc-sm" href="/api/scans/annotated?${params({ booklet: b.key })}" target="_blank" rel="noopener" title="Their booklet with its marking drawn on, as they'd get it by email">${DOC}Marked PDF</a>${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-go="${nextOpen}">Next to Look At</button>` : ""}
           <button type="button" class="lx-ic" data-go="${i - 1}" title="The booklet before" aria-label="The booklet before"${i > 1 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-go="${i + 1}" title="The next booklet" aria-label="The next booklet"${i < bs.length ? "" : " disabled"}>${RIGHT}</button></span></div>
-      <p class="lt-req-meta">${esc(numOf(b))} · ${b.version ? `Version ${esc(b.version)} · ` : ""}${esc(pages)} · ${b.ready ? "finished" : `${b.open || "nothing"} to look at`}</p>
+      <p class="lt-req-meta">${esc(numOf(b))} · ${b.version ? `Version ${esc(b.version)} · ` : ""}${esc(pages)} · ${b.ready ? "finished" : `${b.open || "nothing"} to look at`}${b.emailed ? ` · emailed ${esc(when(b.emailed))}` : ""}</p>
       <h3 class="lx-sec">Student</h3>
       ${b.cover ? `<img class="sc-pic sc-cover" src="${esc(b.cover)}" alt="The cover's name and number boxes, as scanned">` : ""}
       ${sure ? `<p class="lx-help">${st.status === "done" ? `Chosen${st.by ? ` by ${esc(st.by)}` : ""}.` : `Found from the student number${st.read && st.read !== st.num ? ` (read as ${esc(st.read)})` : ""}.`}</p>`
@@ -298,7 +330,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   // A question's answer, as a card: who marked it and whether it's done, its score, a picture of it, what was read.
   function qCard(x, b, title) {
     const s = x.status, can = S.can.mark && s !== "missing", id = `${b.key}|${x.label}`;
-    const choice = Array.isArray(x.options), readable = choice || x.read != null;
+    const blanks = x.blanks && x.blanks.length > 1 ? x.blanks : null;
+    const choice = Array.isArray(x.options), readable = !blanks && (choice || x.read != null);
     const open = can && readable && (editing.has(id) || (s === "manual" && x.ask === "type"));
     const ask = s === "check" ? x.ask : "";
     const readV = x.read == null || x.read === "" ? "nothing" : x.read;
@@ -324,8 +357,59 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     return `<div class="sc-q st-${s}" data-k="${esc(b.key)}" data-q="${esc(x.label)}">
         <div class="sc-qh"><h4 class="sc-qt">${title}</h4>${pillHTML(x, esc)}
           <span class="sc-score"><input type="number" min="0" max="${x.points}" step="0.5" value="${x.score == null ? "" : fmtN(x.score)}" placeholder="–" aria-label="Score"${can ? "" : " disabled"}><span>/ ${fmtN(x.points)}</span></span></div>
-        ${x.picture ? `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">` : ""}
+        ${x.picture && !blanks ? `<img class="sc-pic" src="${esc(x.picture)}" alt="The answer, as scanned" loading="lazy">` : ""}
+        ${blanks ? `<div class="sc-bls">${blanks.map((y, k) => blankRow(y, k, b, x, can)).join("")}</div>` : ""}
         ${read.replace("@@ACTS@@", open && !choice ? `<span class="sc-fa"><button type="button" class="lt-btn sc-sm primary" data-readsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-readcancel>Cancel</button>` : ""}</span>` : "")}${note}${pick}${acts}
+        ${commentsHTML(x, b, can)}
+      </div>`;
+  }
+  // A question's comments for the student: the grader's (for what it marked down), the rubric's as buttons that set the
+  // score (from full marks or zero, as the exam says), a new one (saved into the exam's rubric), and a note.
+  function commentsHTML(x, b, can) {
+    if (x.status === "missing") return "";
+    const id = `${b.key}|${x.label}`, rb = (R && R.rubrics && R.rubrics[x.id]) || { marking: "full", lines: [] };
+    const given = new Set((x.comments || []).map(c => c.id)), auto = x.auto || [];
+    const line = c => `<li><b class="sc-d">${dl(c.delta)}</b><span>${esc(c.text)}</span></li>`;
+    if (!can) {
+      const all = [...(x.comments || []), ...auto];
+      return all.length || x.note ? `<div class="sc-cm"><span class="sc-fk">Comments</span>${all.length ? `<ul class="sc-cl">${all.map(line).join("")}</ul>` : ""}${x.note ? `<p class="sc-cnote">${esc(x.note)}</p>` : ""}</div>` : "";
+    }
+    const from = rb.marking === "zero" ? "zero" : "full marks";
+    const chips = rb.lines.map(l => `<button type="button" class="sc-chip" data-rub="${esc(l.id)}" aria-pressed="${given.has(l.id)}"><b class="sc-d">${dl(l.delta)}</b><span>${esc(l.text)}</span></button>`).join("");
+    // Nothing yet (no rubric, comment or note): just the two ways to add one, so a card stays short.
+    if (!rb.lines.length && !auto.length && !given.size && !x.note && !adding.has(id) && !noting.has(id))
+      return `<div class="sc-cm sc-cm-min"><div class="sc-rub"><button type="button" class="sc-chip sc-addc" data-addc>${PLUS}<span>Comment</span></button><button type="button" class="sc-chip sc-addc" data-addn>${PLUS}<span>Note for the Student</span></button></div></div>`;
+    const form = adding.has(id) ? `<div class="sc-newc"><input class="sc-nd" type="text" inputmode="decimal" placeholder="${rb.marking === "zero" ? "+1" : "−1"}" aria-label="Marks" title="Marks off (−1) or on (+1). A number without a sign counts ${rb.marking === "zero" ? "on" : "off"}, as this question starts from ${from}.">
+        <input class="sc-nt" type="text" placeholder="What the student should know" aria-label="The comment" maxlength="300">
+        <button type="button" class="lt-btn sc-sm primary" data-csave>Add</button><button type="button" class="lt-btn sc-sm" data-ccancel>Cancel</button></div>` : "";
+    return `<div class="sc-cm">
+        <span class="sc-fk">Comments${rb.lines.length ? ` <i>· from ${from}</i>` : ""}</span>
+        ${auto.length ? `<ul class="sc-cl sc-auto" title="The grader's: they go to the student unless you give comments of your own">${auto.map(line).join("")}</ul>` : ""}
+        <div class="sc-rub">${chips}${form ? "" : `<button type="button" class="sc-chip sc-addc" data-addc>${PLUS}<span>New Comment</span></button>`}</div>
+        ${form}
+        <input class="sc-cnote-in" type="text" value="${esc(x.note || "")}" placeholder="A note for this student (optional)" aria-label="A note for this student" maxlength="2000">
+      </div>`;
+  }
+  // One blank of several in a question: its picture, what was read beside its answer, and its own score; one the
+  // grader wasn't sure of asks "Is this what it says?", and one with words in it waits, open, for a person to type it.
+  function blankRow(y, k, b, x, can) {
+    const id = `${b.key}|${x.label}|${y.id}`, s = y.status;
+    const open = can && (editing.has(id) || s === "manual");
+    const readV = y.read == null || y.read === "" ? "nothing" : y.read;
+    const wrong = s !== "manual" && y.score === 0 && y.points > 0;
+    const shown = open ? `<input class="sc-readin" type="text" value="${esc(y.read || "")}" placeholder="What does it say?" aria-label="What blank ${k + 1} says" spellcheck="false">`
+      : can ? `<button type="button" class="sc-readv" data-bedit title="Not what it says? Click to change it">${esc(readV)}</button>` : `<span class="sc-fv">${esc(readV)}</span>`;
+    const by = y.typed ? `<small class="sc-by">typed${y.by ? ` by ${esc(y.by)}` : ""}</small>` : "";
+    const acts = open ? `<span class="sc-fa"><button type="button" class="lt-btn sc-sm primary" data-bsave>Save</button>${s !== "manual" ? `<button type="button" class="lt-btn sc-sm" data-bcancel>Cancel</button>` : ""}</span>` : "";
+    const ask = !open && s === "check" && can ? `<p class="sc-note">${WARN}<span>${esc(y.note || "Is this what it says?")}</span></p><div class="sc-qa"><button type="button" class="lt-btn sc-sm" data-byes>Yes</button><button type="button" class="lt-btn sc-sm" data-bno>No</button></div>` : "";
+    return `<div class="sc-bl st-${s}" data-blank="${esc(y.id)}">
+        <span class="sc-bn" aria-label="Blank ${k + 1}">${k + 1}</span>
+        <div class="sc-bm">
+          ${y.picture ? `<img class="sc-pic sc-bpic" src="${esc(y.picture)}" alt="Blank ${k + 1}, as scanned" loading="lazy">` : ""}
+          <div class="sc-facts${open ? " editing" : ""}"><div class="sc-f"><span class="sc-fk">Read</span><span class="sc-fval${wrong ? " off" : ""}">${shown}${by}</span></div><div class="sc-f"><span class="sc-fk">Answer</span><span class="sc-fv">${esc(y.answer || "")}</span></div>${acts}</div>
+          ${ask}
+        </div>
+        <span class="sc-score sc-bscore"><input type="number" min="0" max="${y.points}" step="0.5" value="${y.score == null ? "" : fmtN(y.score)}" placeholder="–" aria-label="Score for blank ${k + 1}"${can ? "" : " disabled"}><span>/ ${fmtN(y.points)}</span></span>
       </div>`;
   }
   // A decision about a booklet (its student, or a question's score): saved, and the booklet as it is now kept.
@@ -340,7 +424,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   }
   function wireCards(redraw) {
     box.querySelectorAll(".sc-q[data-k]").forEach(el => {
-      const b = R.booklets.find(y => y.key === el.dataset.k), x = b && b.questions.find(y => y.label === el.dataset.q), inp = el.querySelector(".sc-score input");
+      const b = R.booklets.find(y => y.key === el.dataset.k), x = b && b.questions.find(y => y.label === el.dataset.q), inp = el.querySelector(".sc-qh .sc-score input");
       if (!x) return;
       const id = `${b.key}|${x.label}`;
       // After a decision, the page is drawn again where it was (on a question's To Look At, the card it was leaves the list).
@@ -365,6 +449,59 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         on("[data-readsave]", () => say(ri.value));
         ri.onkeydown = e => { if (e.key === "Enter") say(ri.value); if (e.key === "Escape") { editing.delete(id); redraw(); } };
       }
+      // Comments: a rubric comment given or taken back (the score follows), a new one, and a note.
+      el.querySelectorAll("[data-rub]").forEach(c => { c.onclick = () => {
+        const ids = [...el.querySelectorAll("[data-rub]")].filter(k => (k === c) !== (k.getAttribute("aria-pressed") === "true")).map(k => k.dataset.rub);
+        review(b, { label: x.label, rubric: ids }).then(again); }; });
+      on("[data-addc]", () => { adding.add(id); const y = window.scrollY; redraw(); window.scrollTo(0, y);
+        const f = box.querySelector(`.sc-q[data-k="${CSS.escape(b.key)}"][data-q="${CSS.escape(x.label)}"] .sc-nd`); if (f) f.focus(); });
+      on("[data-ccancel]", () => { adding.delete(id); const y = window.scrollY; redraw(); window.scrollTo(0, y); });
+      const nd = el.querySelector(".sc-nd"), nt = el.querySelector(".sc-nt");
+      if (nd && nt) {
+        const zero = ((R.rubrics || {})[x.id] || {}).marking === "zero";
+        const add = async () => {
+          const raw = nd.value.trim().replace("−", "-");
+          if (!/^[+-]?\d*\.?\d+$/.test(raw)) { toast("How many marks: −1, +2, or 0."); nd.focus(); return; }
+          const n = /^[+-]/.test(raw) ? Number(raw) : (zero ? 1 : -1) * Number(raw);
+          if (!nt.value.trim()) { toast("Write the comment."); nt.focus(); return; }
+          try {
+            const d = await api("/api/scans/comment", body({ booklet: b.key, label: x.label, text: nt.value, delta: n }));
+            const k = R.booklets.findIndex(z => z.key === b.key); if (k >= 0) R.booklets[k] = d.booklet;
+            const fresh = await api(`/api/scans/results?${params()}`); R.rubrics = fresh.rubrics;
+            adding.delete(id); const y = window.scrollY; redraw(); window.scrollTo(0, y);
+          } catch (e) { toast(e.message); }
+        };
+        on("[data-csave]", add);
+        [nd, nt].forEach(f => { f.onkeydown = e => { if (e.key === "Enter") add(); if (e.key === "Escape") { adding.delete(id); redraw(); } }; });
+      }
+      on("[data-addn]", () => { noting.add(id); const y = window.scrollY; redraw(); window.scrollTo(0, y);
+        const f = box.querySelector(`.sc-q[data-k="${CSS.escape(b.key)}"][data-q="${CSS.escape(x.label)}"] .sc-cnote-in`); if (f) f.focus(); });
+      const ni = el.querySelector(".sc-cnote-in");
+      if (ni) { ni.onchange = () => review(b, { label: x.label, note: ni.value }).then(ok => { if (ok) toast("Note saved."); }); ni.onkeydown = e => { if (e.key === "Enter") ni.blur(); }; }
+      // Each blank of several: its reading, a yes to the grader's, or its own score.
+      el.querySelectorAll(".sc-bl[data-blank]").forEach(row => {
+        const bid = row.dataset.blank, y = (x.blanks || []).find(z => z.id === bid), bkey = `${id}|${bid}`;
+        if (!y) return;
+        const done = ok => { if (ok) { editing.delete(bkey); const sy = window.scrollY; redraw(); window.scrollTo(0, sy); } };
+        const send = what => review(b, { label: x.label, blank: bid, ...what }).then(done);
+        const bon = (sel, fn) => { const k = row.querySelector(sel); if (k) k.onclick = fn; };
+        const openIt = () => { editing.add(bkey); const sy = window.scrollY; redraw(); window.scrollTo(0, sy);
+          const ri = box.querySelector(`.sc-q[data-k="${CSS.escape(b.key)}"][data-q="${CSS.escape(x.label)}"] .sc-bl[data-blank="${CSS.escape(bid)}"] .sc-readin`); if (ri) { ri.focus(); ri.select(); } };
+        bon("[data-byes]", () => send({ keep: true }));
+        bon("[data-bno]", openIt);
+        bon("[data-bedit]", openIt);
+        bon("[data-bcancel]", () => { editing.delete(bkey); const sy = window.scrollY; redraw(); window.scrollTo(0, sy); });
+        const ri = row.querySelector(".sc-readin");
+        if (ri) {
+          bon("[data-bsave]", () => send({ read: ri.value }));
+          ri.onkeydown = e => { if (e.key === "Enter") send({ read: ri.value }); if (e.key === "Escape" && y.status !== "manual") { editing.delete(bkey); redraw(); } };
+        }
+        const bi = row.querySelector(".sc-bscore input");
+        bi.onchange = () => { const v = bi.value.trim(); if (v === "") return; const n = Number(v);
+          if (!(n >= 0 && n <= y.points)) { toast(`A score from 0 to ${fmtN(y.points)}.`); bi.value = y.score == null ? "" : fmtN(y.score); return; }
+          send({ score: n }); };
+        bi.onkeydown = e => { if (e.key === "Enter") bi.blur(); };
+      });
       const opts = [...el.querySelectorAll("[data-opt]")];
       opts.forEach(o => { o.onclick = () => {
         if (!x.multi) return say(o.dataset.opt);

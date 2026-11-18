@@ -42,6 +42,7 @@ import io
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import tempfile
@@ -493,11 +494,14 @@ def _where(pages, names):
 
 def view(ex, results, review, roster):
     """The booklets as the page shows them: the grader's reading with the team's decisions on top."""
+    from .autograde.grade import nodes_of
+    nodes = nodes_of(ex.exam)
     people = {str(s.get("num")): s for s in roster}
     names = {fn: m.get("name") or fn for fn, m in ex.read_json("uploads.json", {}).items()}
     name = lambda s: f"{s.get('first', '')} {s.get('last', '')}".strip()
     out = []
     counts = {}
+    emailed = ex.read_json("mail.json", {}).get("sent") or {}
     for b in results.get("booklets") or []:
         k = _key(b)
         rv = (review.get("booklets") or {}).get(k) or {}
@@ -511,10 +515,13 @@ def view(ex, results, review, roster):
         for q in b.get("questions") or []:
             q = dict(q)
             r = (rv.get("q") or {}).get(q["label"])
-            if r is not None:
+            if q.get("blanks"):
+                _blanks(ex, results, q, (r or {}).get("blanks") or {})
+            if r is not None and "score" in r:
                 q.update(score=r.get("score"), status="done", by=r.get("by", ""), machine=q.get("score"), machineRead=q.get("read"))
                 if "read" in r:
                     q.update(read=r["read"], typed=True)
+            _comments(q, r, nodes)
             if q["status"] not in ("auto", "done"):
                 open_ += 1
             total += q.get("score") or 0
@@ -522,13 +529,52 @@ def view(ex, results, review, roster):
             qs.append(q)
         out.append({"key": k, "pages": b.get("pages"), "where": _where(b.get("pages"), names), "version": b.get("version", ""), "student": st,
                     "cover": _pic(ex, results, (b.get("student") or {}).get("picture")),
-                    "questions": qs, "total": round(total, 2), "out_of": b.get("out_of"), "open": open_})
+                    "questions": qs, "total": round(total, 2), "out_of": b.get("out_of"), "open": open_, "emailed": emailed.get(k)})
     for b in out:            # one student in two booklets: neither is finished until a person says whose each is
         st = b["student"]
         if st.get("num") and counts.get(st["num"], 0) > 1 and st.get("status") != "done":
             st.update(status="check", note="More than one booklet matched this student.")
         b["ready"] = bool(st.get("num")) and st.get("status") in ("auto", "done") and b["open"] == 0
     return out
+
+
+def _comments(q, r, nodes):
+    """A question's comments for the student: the rubric comments a person gave (which set its score), or, where no
+    person has scored it, what the grader says about what it marked down; and a person's note."""
+    from .autograde.grade import auto_comments, plain
+    node, _ = nodes.get(q.get("id"), (None, "full"))
+    rub = {c.get("id"): c for c in (node or {}).get("rubric") or [] if c.get("id")}
+    q["comments"] = [{"id": i, "text": plain(rub[i].get("text", "")), "delta": _num(rub[i].get("delta")) or 0} for i in (r or {}).get("rubric") or [] if i in rub]
+    q["note"] = (r or {}).get("note", "")
+    q["auto"] = [] if (r and "score" in r) or not node else auto_comments(node, q)
+
+
+def _blanks(ex, results, q, dec):
+    """A question with several blanks: each blank with the team's decision on top, then the question from its blanks
+    (done once every blank is, unless it has room for working and a blank is wrong: then a person says if part marks are due)."""
+    bl = []
+    for x in q["blanks"]:
+        x = dict(x)
+        y = dec.get(x["id"])
+        if y is not None:
+            x.update(score=y.get("score"), status="done", by=y.get("by", ""), machine=x.get("score"))
+            if "read" in y:
+                x.update(read=y["read"], typed=True)
+        x["picture"] = _pic(ex, results, x.get("picture"))
+        bl.append(x)
+    q["blanks"] = bl
+    if not dec:
+        return
+    t = sum(x.get("score") or 0 for x in bl)
+    t = round(t * 2) / 2 if q.get("even") else round(t, 2)
+    if any(x["status"] == "manual" for x in bl):
+        q.update(status="manual", score=None, note="", ask="")
+    elif any(x["status"] == "check" for x in bl):
+        q.update(status="check", score=t, note="", ask="")
+    elif q.get("space") and any(not x.get("score") for x in bl):
+        q.update(status="check", score=t, note="An answer is wrong. Is there working worth part marks?", ask="working")
+    else:
+        q.update(status="done", score=t, note="", ask="", by=next((x["by"] for x in reversed(bl) if x.get("by")), ""))
 
 
 def _pic(ex, results, name):
@@ -561,6 +607,9 @@ def overview():
     results = ex.read_json("results.json", {})
     review = ex.read_json("review.json", {})
     bs = view(ex, results, review, roster) if results else []
+    mail = ex.read_json("mail.json", {})
+    if mail.get("state") == "running" and time.time() - (mail.get("beat") or mail.get("started") or 0) > 600:
+        mail = {**mail, "state": "failed", "error": "The emails stopped (the server restarted?). Email the rest again."}
     total = sum(_points(_first(it)) for it in ex.exam.get("items") or [] if it.get("kind") == "question")
     return jsonify(
         exam={"title": ex.settings.get("title") or ex.e, "scan": bool(ex.settings.get("scan")), "versions": ex.versions,
@@ -571,7 +620,9 @@ def overview():
         results=None if not results else {"booklets": len(bs), "ready": sum(1 for b in bs if b["ready"]),
                              "open": sum(b["open"] for b in bs), "who": sum(1 for b in bs if b["student"].get("status") not in ("auto", "done")),
                              "unread": [{**u, "page": _where([u.get("page", "")], {fn: m.get("name") or fn for fn, m in ex.read_json("uploads.json", {}).items()})} for u in results.get("unread") or []], "notes": results.get("notes") or [], "marked": results.get("marked"),
-                             "sent": review.get("sent")})
+                             "sent": review.get("sent"),
+                             "mail": {k: v for k, v in mail.items() if k != "sent"} if mail else None,
+                             "emailed": len(mail.get("sent") or {})})
 
 
 def _points(n):
@@ -590,7 +641,10 @@ def results_():
     ex = Exam(request.args)
     _, roster = _roster(ex)
     results = ex.read_json("results.json", {})
-    return jsonify(booklets=view(ex, results, ex.read_json("review.json", {}), roster) if results else [],
+    from .autograde.grade import nodes_of, plain
+    rubrics = {nid: {"marking": mode, "lines": [{"id": c.get("id"), "text": plain(c.get("text", "")), "delta": _num(c.get("delta")) or 0} for c in n.get("rubric") or [] if c.get("id")]}
+               for nid, (n, mode) in nodes_of(ex.exam).items()} if results else {}
+    return jsonify(booklets=view(ex, results, ex.read_json("review.json", {}), roster) if results else [], rubrics=rubrics,
                    students=[{"num": str(s.get("num")), "first": s.get("first", ""), "last": s.get("last", "")} for s in roster])
 
 
@@ -613,7 +667,10 @@ def picture():
 @team_api
 def review():
     d = _args()
-    ex = Exam(d, MARKERS)
+    return review_with(Exam(d, MARKERS), d)
+
+
+def review_with(ex, d):
     results = ex.read_json("results.json", {})
     k = str(d.get("booklet") or "")
     b = next((x for x in results.get("booklets") or [] if _key(x) == k), None)
@@ -635,24 +692,232 @@ def review():
             q = next((x for x in b.get("questions") or [] if x["label"] == d.get("label")), None)
             if not q:
                 raise Refusal(404, "That question isn't in this booklet.")
-            if "read" in d:                     # what the answer says (typed, or the option picked): scored as the grader would
+            qd0 = one.setdefault("q", {}).setdefault(q["label"], {})
+            if "note" in d:                     # a note for the student
+                t = str(d.get("note") or "").strip()[:2000]
+                qd0.update(note=t) if t else qd0.pop("note", None)
+            if "rubric" in d:                   # the rubric comments given: they set the score
+                from .autograde.grade import nodes_of, rubric_score
+                node, mode = nodes_of(ex.exam).get(q.get("id"), (None, "full"))
+                if not node:
+                    raise Refusal(409, "That question has changed in the exam since it was marked.")
+                lines = {c.get("id"): c for c in node.get("rubric") or [] if c.get("id")}
+                ids = [i for i in dict.fromkeys(d.get("rubric") or []) if i in lines]
+                if ids:
+                    qd0.update(rubric=ids, score=rubric_score(node, mode, [lines[i].get("delta") for i in ids]), by=g.user["name"], at=time.time())
+                else:
+                    for k2 in ("rubric", "score", "read", "by", "at"):
+                        qd0.pop(k2, None)
+            elif d.get("blank"):                  # one blank of several: its reading, a yes to the grader's, or its own score
+                from .autograde.grade import find_node, comps_of, blank_points, piece_right
+                x = next((y for y in q.get("blanks") or [] if y["id"] == d["blank"]), None)
+                node = find_node(ex.exam, q.get("id"))
+                cs = comps_of(node) if node else []
+                at = next((i for i, (cid, _) in enumerate(cs) if cid == d["blank"]), None)
+                if not x or at is None:
+                    raise Refusal(409, "That blank has changed in the exam since it was marked.")
+                w = blank_points(node, [c for _, c in cs])[at]
+                dec = one.setdefault("q", {}).setdefault(q["label"], {}).setdefault("blanks", {})
+                mine = {"by": g.user["name"], "at": time.time()}
+                if "read" in d:
+                    text = str(d.get("read") or "")[:200].strip()
+                    dec[x["id"]] = {"score": round(w, 4) if piece_right(cs[at][1], text) else 0.0, "read": text, **mine}
+                elif d.get("keep"):
+                    dec[x["id"]] = {"score": x.get("score") or 0.0, **mine}
+                elif d.get("score") is None:
+                    dec.pop(x["id"], None)
+                else:
+                    s = _num(d.get("score"))
+                    if s is None or s < 0 or s > w + 1e-9:
+                        raise Refusal(400, f"A score from 0 to {w:g}.")
+                    dec[x["id"]] = {**{k2: v for k2, v in (dec.get(x["id"]) or {}).items() if k2 == "read"}, "score": round(s, 2), **mine}
+                for k2 in ("score", "read", "rubric", "by", "at"):     # a blank decided: the question goes by its blanks again
+                    qd0.pop(k2, None)
+                if not qd0.get("blanks"):
+                    qd0.pop("blanks", None)
+            elif "read" in d:                     # what the answer says (typed, or the option picked): scored as the grader would
                 from .autograde.grade import find_node, score_typed
                 node = find_node(ex.exam, q.get("id"))
                 if not node:
                     raise Refusal(409, "That question has changed in the exam since it was marked.")
                 text = str(d.get("read") or "")[:200]
                 s, shown = score_typed(node, text)
-                one.setdefault("q", {})[q["label"]] = {"score": s, "read": shown, "by": g.user["name"], "at": time.time()}
-            elif d.get("score") is None:
-                (one.get("q") or {}).pop(q["label"], None)
-            else:
+                one.setdefault("q", {}).setdefault(q["label"], {}).update(score=s, read=shown, by=g.user["name"], at=time.time())
+            elif "score" in d and d.get("score") is None:     # undo: back to the grader's marking (a note stays)
+                for k2 in ("score", "read", "blanks", "rubric", "by", "at"):
+                    qd0.pop(k2, None)
+            elif "score" in d:
                 s = _num(d.get("score"))
                 if s is None or s < 0 or s > (q.get("points") or 0) + 1e-9:
                     raise Refusal(400, f"A score from 0 to {q.get('points'):g}.")
-                one.setdefault("q", {})[q["label"]] = {"score": round(s, 2), "by": g.user["name"], "at": time.time()}
+                qd = one.setdefault("q", {}).setdefault(q["label"], {})
+                qd.pop("read", None)
+                qd.update(score=round(s, 2), by=g.user["name"], at=time.time())
+            if not qd0:
+                one["q"].pop(q["label"], None)
         ex.write_json("review.json", rv)
     _, roster = _roster(ex)
     return jsonify(booklet=next(x for x in view(ex, results, rv, roster) if x["key"] == k))
+
+
+def _annotated(ex, results, shown, key, answers, templates, reader):
+    """One booklet as its student gets it: PDF bytes (autograde/annotate.py)."""
+    from .autograde import annotate
+    b = next((x for x in results.get("booklets") or [] if _key(x) == key), None)
+    me = next((x for x in shown if x["key"] == key), None)
+    if not b or not me:
+        raise Refusal(404, "That booklet isn't in the results any more: reload the page.")
+    return annotate.booklet_pdf(ex.exam, templates, reader, b, me, answers=answers)
+
+
+def _marked_against(ex):
+    from .autograde import layout
+    return [layout.load_template(p) for p in _templates(ex)[0]]
+
+
+@scans_bp.get("/api/scans/annotated")
+@team_api
+def annotated():
+    """A booklet with its marking drawn on, as the student would get it (to look at before it's emailed)."""
+    ex = Exam(request.args, MARKERS)
+    from .autograde import annotate
+    results = ex.read_json("results.json", {})
+    _, roster = _roster(ex)
+    shown = view(ex, results, ex.read_json("review.json", {}), roster)
+    key = str(request.args.get("booklet") or "")
+    reader = annotate.page_reader(ex.path("uploads"))
+    try:
+        pdf = _annotated(ex, results, shown, key, request.args.get("answers") == "1", _marked_against(ex), reader)
+    finally:
+        reader.close()
+    me = next(x for x in shown if x["key"] == key)
+    name = re.sub(r"[^\w-]+", "-", f"{ex.e}-{me['student'].get('num') or 'booklet'}").strip("-")
+    return send_file(io.BytesIO(pdf), mimetype="application/pdf", download_name=f"{name}.pdf", as_attachment=request.args.get("download") == "1")
+
+
+def _mail_job(ex, jobs, answers, by, cfg, reply, results, shown):
+    """Each student their marked booklet, one email at a time, how far it's got in mail.json."""
+    from . import mailer
+    from .autograde import annotate
+    st = ex.read_json("mail.json", {})
+    st.update(state="running", started=time.time(), by=by, total=len(jobs), done=0, failed=[], answers=answers)
+    st.setdefault("sent", {})
+    ex.write_json("mail.json", st)
+    reader = annotate.page_reader(ex.path("uploads"))
+    try:
+        templates = _marked_against(ex)
+        for key, to, name, subject, body, fname in jobs:
+            err = ""
+            try:
+                pdf = _annotated(ex, results, shown, key, answers, templates, reader)
+                body.files = [(fname, pdf, "application/pdf")]
+                err = mailer.deliver(to, subject, body, reply_to=reply, cfg=cfg)
+            except Exception as x:              # one booklet that can't be drawn doesn't stop the rest
+                err = str(x) or type(x).__name__
+            if err and not (mailer.keep and err == "Email isn't set up."):
+                st["failed"].append({"name": name, "why": err})
+            else:
+                st["sent"][key] = time.time()
+            st["done"] += 1
+            st["beat"] = time.time()
+            ex.write_json("mail.json", st)
+        st.update(state="done", finished=time.time())
+    except Exception as x:
+        st.update(state="failed", error=f"The emails stopped: {x}", finished=time.time())
+    finally:
+        reader.close()
+    ex.write_json("mail.json", st)
+
+
+@scans_bp.post("/api/scans/email")
+@team_api
+def email():
+    """Email each finished booklet's student their booklet, marked (a PDF), in the background."""
+    from . import classmail, mailer
+    d = _args()
+    ex = Exam(d, LEADS)
+    results = ex.read_json("results.json", {})
+    if not results:
+        raise Refusal(409, "Mark the scans first.")
+    book, roster = _roster(ex)
+    who = {p["num"]: p for p in classmail.roster(book)["students"]}
+    shown = view(ex, results, ex.read_json("review.json", {}), roster)
+    only = set(d.get("booklets") or [])
+    cfg, pf = classmail.settings_for(ex.owner, ex.o), classmail.prefs_for(ex.owner, ex.o)
+    if not cfg.get("host") and not mailer.keep:
+        raise Refusal(409, "Email isn't set up for this offering: set it up in the course's Email settings first.")
+    head = classmail.head_for(ex.owner, ex.o)
+    title = ex.settings.get("title") or ex.e
+    code = head.get("code") or ex.o.split("/")[0].upper()
+    jobs, waiting, missing = [], 0, []
+    for b in shown:
+        if only and b["key"] not in only:
+            continue
+        if not b["ready"]:
+            waiting += 1
+            continue
+        p = who.get(b["student"]["num"])
+        if not p:
+            missing.append(b["student"].get("name") or b["student"]["num"])
+            continue
+        first = next((s.get("first") for s in roster if str(s.get("num")) == p["num"]), "") or ""
+        msg = (f"{mailer.hi(first)}\n\nYour {title}, marked, is attached: your own pages, with each question's score and the "
+               f"marker's comments. You got {b['total']:g} out of {b['out_of']:g}.\n")
+        body = classmail.signed(pf, msg, head)
+        fname = re.sub(r"[^\w-]+", "-", f"{code}-{title}-{p['num']}").strip("-") + ".pdf"
+        jobs.append((b["key"], p["email"], p["name"], f"{code}: your marked {title}", body, fname))
+    if not jobs:
+        return jsonify(ok=True, emailing=0, waiting=waiting, missing=missing)
+    key = ex.dir + "#mail"
+    with _running_lock:
+        if key in _threads and _threads[key].is_alive():
+            raise Refusal(409, "They're being emailed already.")
+        reply = pf["replyTo"] or g.user["email"]
+        args = (ex, jobs, bool(d.get("answers")), g.user["name"], cfg, reply, results, shown)
+        if mailer.keep:
+            _mail_job(*args)
+        else:
+            t = threading.Thread(target=_mail_job, args=args, daemon=True, name="lectern-mail")
+            _threads[key] = t
+            t.start()
+    return jsonify(ok=True, emailing=len(jobs), waiting=waiting, missing=missing, mail=ex.read_json("mail.json", {}))
+
+
+@scans_bp.post("/api/scans/comment")
+@team_api
+def comment():
+    """A new rubric comment, written while marking: saved into the exam (so it can be given again, and the marking guide
+    has it) and given to this answer."""
+    d = _args()
+    ex = Exam(d, MARKERS)
+    text = re.sub(r"\s+", " ", str(d.get("text") or "")).strip()[:300]
+    delta = _num(d.get("delta"))
+    if not text:
+        raise Refusal(400, "Write the comment.")
+    if delta is None:
+        raise Refusal(400, "How many marks: -1, +2, or 0.")
+    results = ex.read_json("results.json", {})
+    b = next((x for x in results.get("booklets") or [] if _key(x) == str(d.get("booklet") or "")), None)
+    q = b and next((x for x in b.get("questions") or [] if x["label"] == d.get("label")), None)
+    if not q:
+        raise Refusal(404, "That answer isn't in the results any more: reload the page.")
+    path = f"{ex.o}/{ex.e}/exam.json"
+    for _ in range(3):
+        raw, sha = ex.repo.read_text(path)
+        exam = json.loads(raw)
+        from .autograde.grade import nodes_of
+        node = (nodes_of(exam).get(q.get("id")) or (None,))[0]
+        if not node:
+            raise Refusal(409, "That question has changed in the exam since it was marked.")
+        cid = secrets.token_hex(4)
+        node.setdefault("rubric", []).append({"id": cid, "text": text, "delta": round(delta, 2)})
+        if ex.repo.write_text(path, json.dumps(exam, indent=2, ensure_ascii=False) + "\n", sha, f"Rubric comment for {ex.e}", g.user["name"]):
+            break
+    else:
+        raise Refusal(409, "The exam kept changing while the comment went in. Try again.")
+    ex.exam = exam
+    have = ((ex.read_json("review.json", {}).get("booklets") or {}).get(_key(b)) or {}).get("q", {}).get(q["label"], {}).get("rubric") or []
+    return review_with(ex, {"booklet": _key(b), "label": q["label"], "rubric": [*have, cid]})
 
 
 @scans_bp.post("/api/scans/send")

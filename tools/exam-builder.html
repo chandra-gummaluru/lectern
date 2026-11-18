@@ -1353,6 +1353,11 @@ function nodeIssues(n, mode) {
   const comps = usedComps(n);
   if (n.type === "written" && !n.solution.trim() && !comps.length) out.push("no solution");
   comps.forEach(c => { const x = n.comps[c]; if (x.kind === "frac" ? !String(x.num).trim() || !String(x.den).trim() : !String(x.ans).trim()) out.push(`a ${COMPS[x.kind].label.toLowerCase()} has no answer`); });
+  if (comps.length > 1) {        // blanks with their own marks: they should add up to the question's
+    const own = comps.map(c => String(n.comps[c].pts ?? "").trim()), set = own.filter(v => v !== "").map(num), sum = set.reduce((t, v) => t + v, 0);
+    if (set.length === comps.length && Math.abs(sum - num(n.points)) > 1e-9) out.push(`its blanks are worth ${fmtNum(sum)} marks, not ${fmtNum(n.points)}`);
+    else if (set.length && sum > num(n.points) + 1e-9) out.push(`its blanks are worth more than its ${fmtNum(n.points)} marks`);
+  }
   if (num(n.points) <= 0) out.push("worth 0 marks");
   if (num(n.points) !== Math.round(num(n.points))) out.push("uses part marks; the exam template counts whole marks only");
   rubricIssues(n.rubric, n.points, mode).forEach(t => out.push(`rubric: ${t}`));
@@ -1579,7 +1584,7 @@ function nodeTex(n, depth, marking) {
     return L;
   }
   if (n.type !== "written") L.push(...choicesTex(n));
-  L.push(...solutionTex(n.solution), ...markingTex(n.rubric, marking), ...spaceTex(n.space, n.id));
+  L.push(...solutionTex(n.solution), ...markingTex(n.type === "ms" && String(n.penalty ?? "").trim() !== "" ? [{ text: "Each box ticked that shouldn't be, or not ticked that should be (not below 0)", delta: -num(n.penalty) }, ...n.rubric] : n.rubric, marking), ...spaceTex(n.space, n.id));
   return L;
 }
 
@@ -2437,18 +2442,36 @@ function targetRich(needComps) {
 
 // ── Answer components, maths and LaTeX chips ─────────────────────────
 function compOwner(chip) { const rich = chip.closest(".ed.rich"), it = itemById(rich.dataset.item); return { rich, it, node: getP(it, fieldParent(rich.dataset.f)) }; }
+// What a blank is worth when it has no marks of its own: an even share of what the others leave of the question's.
+function blankShare(n, cid) {
+  const cs = usedComps(n), own = cs.map(c => String(n.comps[c].pts ?? "").trim()), rest = own.filter(v => v === "").length;
+  if (own[cs.indexOf(cid)] !== "") return num(own[cs.indexOf(cid)]);
+  return rest ? Math.max(0, num(n.points) - own.reduce((t, v) => t + (v === "" ? 0 : num(v)), 0)) / rest : 0;
+}
+// Once every blank in a question has its own marks, the question is worth their total.
+function blanksToMarks(rich, n) {
+  const cs = usedComps(n), own = cs.map(c => String(n.comps[c].pts ?? "").trim());
+  if (cs.length < 2 || own.some(v => v === "")) return;
+  n.points = Math.round(own.reduce((t, v) => t + num(v), 0) * 100) / 100;
+  const pf = `${fieldParent(rich.dataset.f)}.points`, inp = $$(".pt-in").find(i => i.dataset.item === rich.dataset.item && i.dataset.f === pf);
+  if (inp && document.activeElement !== inp) inp.value = fmtNum(n.points);
+}
 function editComp(chip) {
   const { rich, it, node } = compOwner(chip), id = chip.dataset.c, c = node.comps[id]; if (!c) return;
   const field = (k, label, w = "") => `<label class="pf${w}"><span>${label}</span><input data-c="${k}" value="${esc(c[k])}"></label>`;
   const size = c.kind === "blank" ? field("len", "Length", " s") : c.kind === "box" ? field("w", "Width", " s") + field("h", "Height", " s") : c.kind === "cells" ? field("n", "Cells", " s") + field("cell", "Cell size", " s") : field("w", "Width", " s");
   const ans = c.kind === "frac" ? field("num", "Top") + field("den", "Bottom") : field("ans", c.kind === "cells" ? "Answers, separated by commas" : "Answer");
-  popover(chip, `<div class="fp-h">${pic(c.kind)}${COMPS[c.kind].label}</div><div class="fp-row">${ans}</div>${guide() ? "" : `<div class="fp-row">${size}</div>`}
+  // With two or more blanks in a question, each can be worth its own marks (empty: an even share of what's left).
+  const many = usedComps(node).length > 1;
+  const marks = many ? `<label class="pf s"><span>Marks</span><input data-c="pts" value="${esc(c.pts ?? "")}" placeholder="${esc(fmtNum(blankShare(node, id)))}" inputmode="decimal" title="What this blank is worth. Leave it empty for an even share of the question's marks."></label>` : "";
+  popover(chip, `<div class="fp-h">${pic(c.kind)}${COMPS[c.kind].label}</div><div class="fp-row">${ans}${marks}</div>${guide() ? "" : `<div class="fp-row">${size}</div>`}
       <div class="fp-f">${guide() ? "" : `<button type="button" class="link danger" data-pa="rm">Remove</button>`}<span class="spacer"></span><button type="button" class="btn" data-pa="done">Done</button></div>`, pop => {
     let first = true;
     pop.addEventListener("input", e => {
       const k = e.target.dataset.c; if (!k) return;
       if (first) { pushUndo(); first = false; }
       c[k] = k === "n" ? num(e.target.value) : e.target.value; unsaved = true;
+      if (k === "pts") blanksToMarks(rich, node);
       chip.innerHTML = compHTML(c); refreshSoon();
     });
     pop.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); closePops(); } });
@@ -2532,8 +2555,10 @@ function insertMenu(anchor) {
 }
 function layoutMenu(anchor, n) {
   popover(anchor, `<div class="fp-h">Layout of the options</div>${tiles("layout", Object.entries(LAYOUTS), n.layout)}
-    <label class="tb-check" style="padding:0"><input type="checkbox" data-multi${n.type === "ms" ? " checked" : ""}> Multiple answers <span class="fp-help" style="margin:0">(students tick every right one)</span></label>`, pop => {
+    <label class="tb-check" style="padding:0"><input type="checkbox" data-multi${n.type === "ms" ? " checked" : ""}> Multiple answers <span class="fp-help" style="margin:0">(students tick every right one)</span></label>
+    ${n.type === "ms" ? `<div class="fp-row"><label class="pf"><span>Marks off for each wrong box</span><input data-penalty value="${esc(n.penalty ?? "")}" placeholder="All or nothing" inputmode="decimal" title="A box ticked that shouldn't be, or not ticked that should be, takes this many marks off (never below 0). Leave it empty for all or nothing."></label></div>` : ""}`, pop => {
     pop.addEventListener("change", e => { if (e.target.matches("[data-multi]")) setMulti(n, e.target.checked); });
+    pop.addEventListener("input", e => { if (e.target.matches("[data-penalty]")) { const v = e.target.value.trim(); if (v === "") delete n.penalty; else n.penalty = v; unsaved = true; refreshSoon(); } });
     pop.addEventListener("click", e => { const b = e.target.closest('[data-pa="layout"]'); if (b) change(() => { n.layout = b.dataset.v; }); });
   }, "wide");
 }

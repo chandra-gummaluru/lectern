@@ -12,7 +12,10 @@ Each question (or sub-question) gets one of:
 - manual:  for a person to mark (written answers, blanks and boxes with words in them); no score;
 - missing: its page wasn't in the scans.
 
-Multiple answers is all or nothing. Answer pieces in one question share its marks equally (to the half mark).
+Multiple answers is all or nothing. Answer pieces (blanks) in one question are each worth their own marks when the exam
+gives them ("pts"), and otherwise share what's left of the question's marks equally (to the half mark). A question with
+two or more blanks lists each one in "blanks" (its reading, answer, marks and status), so a person can mark just the
+ones the grader couldn't.
 The student is found from the cover's student-number boxes, matched against the class list.
 """
 import math
@@ -168,7 +171,7 @@ def mark_choice(b, n):
         unsure = any(read.TICK / 2 <= f < read.TICK for f in fills)
         right = [bool(o.get("correct")) for o in n["options"]]
         ok = marked == right
-        return {"status": "check" if unsure else "auto", "score": pts if ok else 0.0,
+        return {"status": "check" if unsure else "auto", "score": ms_score(n, marked, right),
                 "read": ", ".join(LET[i] for i, m in enumerate(marked) if m) or "none",
                 "answer": ", ".join(LET[i] for i, r in enumerate(right) if r),
                 "note": "A box is only faintly marked. Which are their answers?" if unsure else "", "ask": "choice" if unsure else "",
@@ -188,6 +191,16 @@ def mark_choice(b, n):
             "read": LET[i] if i is not None else "none", "answer": " or ".join(LET[k] for k in right),
             "note": note, "ask": "choice" if status == "check" else "", "options": [LET[k] for k in range(len(ids))],
             "fills": [round(f, 3) for f in fills], "picture": b.picture(ids, right=260)}
+
+
+def ms_score(n, ticked, right):
+    """Multiple answers: all or nothing, or, with a penalty, that many marks off for each box that's wrong (ticked
+    and shouldn't be, or not ticked and should be), never below 0."""
+    pts, pen = num(n.get("points")), _own({"pts": n.get("penalty")})
+    wrong = sum(1 for t, r in zip(ticked, right) if bool(t) != bool(r))
+    if not wrong:
+        return pts
+    return 0.0 if pen is None else max(0.0, round(pts - pen * wrong, 2))
 
 
 def _trusted(correct, sure, alt):
@@ -248,8 +261,33 @@ def mark_comp(b, nid, cid, c):
     return None, False, "", str(c.get("ans", "")), [rid]                # blank line, box: a person reads it
 
 
+def comps_of(n):
+    """(id, piece) for each answer piece in a question's text, in order."""
+    cs = n.get("comps") or {}
+    return [(m.group(1), cs[m.group(1)]) for m in TOKEN.finditer(n.get("body") or "") if m.group(1) in cs]
+
+
+def _own(c):
+    v = c.get("pts")
+    return None if v is None or str(v).strip() == "" else max(0.0, num(v))
+
+
+def blank_points(n, comps):
+    """What each answer piece is worth: its own marks, or an even share of what the others leave of the question's."""
+    pts, own = num(n.get("points")), [_own(c) for c in comps]
+    rest = [x for x in own if x is None]
+    share = max(0.0, pts - sum(x for x in own if x is not None)) / len(rest) if rest else 0.0
+    return [x if x is not None else share for x in own]
+
+
+def blank_total(n, comps, scores):
+    """A question's score from its pieces' scores: to the half mark when they share it evenly, as the grader always has."""
+    t = sum(x or 0 for x in scores)
+    return round(t * 2) / 2 if all(_own(c) is None for c in comps) else round(t, 2)
+
+
 def mark_written(b, n):
-    comps = [(m.group(1), (n.get("comps") or {})[m.group(1)]) for m in TOKEN.finditer(n.get("body") or "") if m.group(1) in (n.get("comps") or {})]
+    comps = comps_of(n)
     space = n.get("space") or {}
     has_space = space.get("mode") not in (None, "none")
     pts = num(n.get("points"))
@@ -265,6 +303,8 @@ def mark_written(b, n):
     ids = [i for r in results for i in r[4]]
     reads = "; ".join(r[2] for r in results)
     answers = "; ".join(r[3] for r in results)
+    if len(comps) > 1:
+        return _mark_blanks(b, n, comps, results, ids, has_space)
     if any(r[0] is None for r in results):
         return {"status": "manual", "ask": "type", "read": "", "answer": answers, "picture": b.picture(ids, right=40)}
     right = sum(1 for r in results if r[0])
@@ -278,6 +318,36 @@ def mark_written(b, n):
         status, note, ask = "check", "The answer is wrong. Is there working worth part marks?", "working"
     pic = b.picture(ids, right=40)
     return {"status": status, "score": score, "read": reads, "answer": answers, "note": note, "ask": ask, "picture": pic}
+
+
+def _blank_note(r):
+    return "There's a mark that isn't a digit. Is this what it says?" if "?" in r[2] else "Not sure of the handwriting. Is this what it says?"
+
+
+def _mark_blanks(b, n, comps, results, ids, has_space):
+    """A question with several blanks: each marked on its own (worth its own marks), then the question from them."""
+    ws, blanks = blank_points(n, [c for _, c in comps]), []
+    for (cid, c), r, w in zip(comps, results, ws):
+        if r[0] is None:                                  # words: a person reads them
+            st, sc, note = "manual", None, ""
+        else:
+            st, sc, note = ("auto" if r[1] else "check"), (w if r[0] else 0.0), ("" if r[1] else _blank_note(r))
+        blanks.append({"id": cid, "kind": c.get("kind"), "points": round(w, 4), "status": st, "score": sc, "read": r[2] if r[0] is not None else "",
+                       "answer": r[3], "note": note, "picture": b.picture(r[4], right=40)})
+    out = {"read": "; ".join(x["read"] for x in blanks), "answer": "; ".join(x["answer"] for x in blanks), "blanks": blanks,
+           "picture": b.picture(ids, right=40), "note": "", "ask": "", "space": has_space,
+           "even": all(_own(c) is None for _, c in comps)}
+    if any(x["status"] == "manual" for x in blanks):
+        out.update(status="manual", score=None)
+    else:
+        out["score"] = blank_total(n, [c for _, c in comps], [x["score"] for x in blanks])
+        if any(x["status"] == "check" for x in blanks):
+            out["status"] = "check"
+        elif has_space and any(not x["score"] for x in blanks):
+            out.update(status="check", note="An answer is wrong. Is there working worth part marks?", ask="working")
+        else:
+            out["status"] = "auto"
+    return out
 
 
 def mark_node(b, n):
@@ -329,27 +399,100 @@ def score_typed(n, typed):
         opts = n.get("options") or []
         picked = sorted({LET.index(c) for c in t.upper() if c in LET[:len(opts)]})
         right = [k for k, o in enumerate(opts) if o.get("correct")]
-        ok = (picked == right) if n.get("type") == "ms" else (len(picked) == 1 and picked[0] in right)
+        if n.get("type") == "ms":
+            return ms_score(n, [k in picked for k in range(len(opts))], [bool(o.get("correct")) for o in opts]), ", ".join(LET[k] for k in picked) or "none"
+        ok = len(picked) == 1 and picked[0] in right
         return (pts if ok else 0.0), ", ".join(LET[k] for k in picked) or "none"
-    comps = [(n.get("comps") or {})[m.group(1)] for m in TOKEN.finditer(n.get("body") or "") if m.group(1) in (n.get("comps") or {})]
+    comps = [c for _, c in comps_of(n)]
     parts = [x.strip() for x in t.split(";")] if len(comps) > 1 else [t]
     parts += [""] * (len(comps) - len(parts))
-    right = 0
-    for c, x in zip(comps, parts):
-        k = c.get("kind")
-        if k == "num":
-            right += same(number(_clean_number(x)), number(c.get("ans")), c.get("tol"))
-        elif k == "frac":
-            a, d = number(c.get("num")), number(c.get("den"))
-            right += bool(a is not None and d) and same(number(_clean_number(x.replace(" ", ""))) if "/" not in x else number("/".join(_clean_number(y) for y in x.split("/", 1))), a / d)
-        elif k == "cells":
-            cnt = max(1, int(round(num(c.get("n")))) or 1)
-            want = ([y.strip() for y in str(c.get("ans") or "").split(",")] + [""] * cnt)[:cnt]
-            got = (re.split(r"[\s,]+", x) if re.search(r"[\s,]", x) else list(x)) + [""] * cnt
-            right += [g.strip().lower() for g in got[:cnt]] == [w.lower() for w in want]
-        else:                                           # a blank line or box: the words, any case or punctuation
-            right += bool(x) and _words(x) == _words(c.get("ans"))
-    return (round(pts * right / max(1, len(comps)) * 2) / 2), t
+    if not comps:
+        return 0.0, t
+    ws = blank_points(n, comps)
+    return blank_total(n, comps, [w if piece_right(c, x) else 0.0 for c, x, w in zip(comps, parts, ws)]), t
+
+
+def piece_right(c, x):
+    """Whether what a person says one answer piece reads (x) is its answer."""
+    x = str(x or "").strip()
+    k = c.get("kind")
+    if k == "num":
+        return same(number(_clean_number(x)), number(c.get("ans")), c.get("tol"))
+    if k == "frac":
+        a, d = number(c.get("num")), number(c.get("den"))
+        return bool(a is not None and d) and same(number(_clean_number(x.replace(" ", ""))) if "/" not in x else number("/".join(_clean_number(y) for y in x.split("/", 1))), a / d)
+    if k == "cells":
+        cnt = max(1, int(round(num(c.get("n")))) or 1)
+        want = ([y.strip() for y in str(c.get("ans") or "").split(",")] + [""] * cnt)[:cnt]
+        got = (re.split(r"[\s,]+", x) if re.search(r"[\s,]", x) else list(x)) + [""] * cnt
+        return [g.strip().lower() for g in got[:cnt]] == [w.lower() for w in want]
+    return bool(x) and _words(x) == _words(c.get("ans"))      # a blank line or box: the words, any case or punctuation
+
+
+# ── Comments ───────────────────────────────────────────────────────────
+
+def nodes_of(exam):
+    """{node id: (node, how its question is marked: "full" or "zero")} for every question and part, in every version."""
+    out = {}
+
+    def walk(n, mode):
+        out[n.get("id")] = (n, mode)
+        for p in n.get("parts") or []:
+            walk(p, mode)
+    for it in exam.get("items") or []:
+        if it.get("kind") == "question":
+            for v in it.get("variants") or []:
+                walk(v, "zero" if it.get("marking") == "zero" else "full")
+    return out
+
+
+def rubric_score(n, mode, deltas):
+    """A score from rubric comments: from full marks (or zero) plus each comment's marks, kept from 0 to full."""
+    pts = num(n.get("points"))
+    return round(min(pts, max(0.0, (pts if mode != "zero" else 0.0) + sum(num(d) for d in deltas))), 2)
+
+
+def plain(t):
+    """An option's text without its LaTeX, for a comment: "$\\frac{3}{4}$" → "3/4"-ish, "\\$40" → "$40"."""
+    t = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", r"\1/\2", str(t or ""))
+    t = re.sub(r"\\[a-zA-Z]+\*?|[{}]|(?<!\\)\$", "", t)
+    t = re.sub(r"\\([$%&#_])", r"\1", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def auto_comments(n, q):
+    """What the grader says about an answer it marked down: [{"text", "delta", "answer"}] ("answer": the right one,
+    shown to the student only if asked for). Nothing for a full score, or for an answer a person marks."""
+    pts, sc = num(q.get("points")), q.get("score")
+    if sc is None or sc >= pts - 1e-9 or q.get("status") == "missing":
+        return []
+    lose, t = -round(pts - sc, 2), n.get("type")
+    opts = n.get("options") or []
+    if t in ("mc", "tf"):
+        none = q.get("read") in (None, "", "none")
+        return [{"text": "No answer selected" if none else "Incorrect answer selected", "delta": lose, "answer": q.get("answer", "")}]
+    if t == "ms":
+        got = {x.strip() for x in str(q.get("read") or "").split(",")}
+        pen = _own({"pts": n.get("penalty")})
+        out = []
+        for k, o in enumerate(opts):
+            L, name = LET[k], plain(o.get("text")) or LET[k]
+            if L in got and not o.get("correct"):
+                out.append({"text": f"Incorrect answer selected: {name}", "delta": -pen if pen is not None else None})
+            elif L not in got and o.get("correct"):
+                out.append({"text": "Correct answer not selected", "delta": -pen if pen is not None else None, "answer": name})
+        if pen is None:
+            out.append({"text": "All the right boxes, and only those, are needed for the marks", "delta": lose})
+        elif sum(-x["delta"] for x in out if x["delta"]) > pts - sc + 1e-9:
+            out.append({"text": "Not below 0", "delta": None})
+        return out
+    if q.get("blanks"):
+        return [{"text": f"Blank {k + 1}: incorrect" if x.get("read") not in (None, "", "blank") else f"Blank {k + 1}: left empty",
+                 "delta": -round((x.get("points") or 0) - (x.get("score") or 0), 2), "answer": x.get("answer", "")}
+                for k, x in enumerate(q["blanks"]) if x.get("score") is not None and (x.get("score") or 0) < (x.get("points") or 0) - 1e-9]
+    if comps_of(n):
+        return [{"text": "Left empty" if q.get("read") in ("", "blank", None) else "Incorrect answer", "delta": lose, "answer": q.get("answer", "")}]
+    return []
 
 
 # ── Whose exam ─────────────────────────────────────────────────────────

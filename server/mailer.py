@@ -59,11 +59,12 @@ def configured():
 class Mail(str):
     """A plain-text email body that also has an HTML version (.html), sent as its alternative, and what
     heads it (.head: {"title": "CSC258: Computer Organization", "sub": "Winter 2027 · University of Toronto"};
-    without one, Lectern's own)."""
-    def __new__(cls, text, html="", head=None):
+    without one, Lectern's own), and any files it carries (.files: [(file name, bytes, "type/subtype")])."""
+    def __new__(cls, text, html="", head=None, files=None):
         o = super().__new__(cls, text)
         o.html = html or getattr(text, "html", "")
         o.head = head or getattr(text, "head", None)
+        o.files = list(files or getattr(text, "files", None) or [])
         return o
 
 
@@ -76,8 +77,12 @@ def _message(cfg, to, subject, body, reply_to=None):
     msg.set_content(str(body))
     msg.add_alternative(page(subject, getattr(body, "html", "") or to_html(str(body)), getattr(body, "head", None),
                              preview=_preview(str(body))), subtype="html")
+    for name, data, kind in getattr(body, "files", None) or []:
+        main, _, sub = (kind or "application/octet-stream").partition("/")
+        msg.add_attachment(data, maintype=main, subtype=sub, filename=name)
     if keep:
-        sent.append({"to": to, "subject": subject, "body": str(body), "html": getattr(body, "html", ""), "from": msg["From"], "reply_to": reply_to or ""})
+        sent.append({"to": to, "subject": subject, "body": str(body), "html": getattr(body, "html", ""), "from": msg["From"], "reply_to": reply_to or "",
+                     "files": [(n, len(d)) for n, d, _ in getattr(body, "files", None) or []]})
         del sent[:-20]
     return msg
 

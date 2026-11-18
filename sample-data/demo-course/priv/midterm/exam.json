@@ -479,8 +479,8 @@
     {
      "id": "pi2eyg4g",
      "type": "written",
-     "body": "The capital of Canada is [[8d3rwyke]].",
-     "points": 1,
+     "body": "The capital of Canada is [[8d3rwyke]], and Canada has [[k3prv10n]] provinces.",
+     "points": 2,
      "solution": "",
      "rubric": [],
      "space": {
@@ -494,7 +494,14 @@
       "8d3rwyke": {
        "kind": "blank",
        "len": "4cm",
-       "ans": "Ottawa"
+       "ans": "Ottawa",
+       "pts": "1"
+      },
+      "k3prv10n": {
+       "kind": "num",
+       "w": "2cm",
+       "ans": "10",
+       "pts": "1"
       }
      },
      "parts": []
@@ -508,5 +515,5 @@
    "body": ""
   }
  ],
- "total": 21
+ "total": 22
 }

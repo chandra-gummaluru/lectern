@@ -321,3 +321,32 @@ def test_numbers():
     assert grade.number("") is None and grade.number("1/0") is None and grade.number("4-") is None
     assert grade.same(grade.number("6/8"), 0.75)
     assert not grade.same(0.749, 0.75) and grade.same(0.749, 0.75, "0.01")
+
+
+def test_blanks_worth_their_own_marks():
+    from server.autograde.grade import blank_points, score_typed
+    words = {"kind": "blank", "ans": "Ottawa"}
+    n = {"points": 3, "body": "[[a]] and [[b]] and [[c]]", "comps": {"a": {**words}, "b": {"kind": "num", "ans": "10"}, "c": {"kind": "num", "ans": "7"}}}
+    cs = [n["comps"][k] for k in "abc"]
+    assert blank_points(n, cs) == [1, 1, 1]                      # no marks of their own: an even share
+    n["comps"]["a"]["pts"] = "2"
+    assert blank_points(n, cs) == [2, 0.5, 0.5]                  # one with its own: the others share what's left
+    n["comps"]["b"]["pts"], n["comps"]["c"]["pts"], n["points"] = "1", "1", 4
+    assert blank_points(n, cs) == [2, 1, 1]
+    assert score_typed(n, "ottawa; 10; 8")[0] == 3 and score_typed(n, "Toronto; 10; 7")[0] == 2
+    even = {"points": 1, "body": "[[a]] [[b]] [[c]]", "comps": {k: {"kind": "num", "ans": "1"} for k in "abc"}}
+    assert score_typed(even, "1; 1; 0")[0] == 0.5                # an even share: to the half mark, as before
+
+
+def test_multiple_select_marks_off_per_wrong_box():
+    from server.autograde.grade import score_typed, auto_comments
+    opts = [{"id": "a", "text": "14", "correct": True}, {"id": "b", "text": "25", "correct": False},
+            {"id": "c", "text": "36", "correct": True}, {"id": "d", "text": "49", "correct": False}]
+    n = {"type": "ms", "points": 2, "options": opts}
+    assert score_typed(n, "AC")[0] == 2 and score_typed(n, "A")[0] == 0           # all or nothing
+    n["penalty"] = "1"
+    assert score_typed(n, "A")[0] == 1 and score_typed(n, "ABC")[0] == 1 and score_typed(n, "BD")[0] == 0   # never below 0
+    said = auto_comments(n, {"points": 2, "score": 1, "read": "A, B, C", "answer": "A, C"})
+    assert said == [{"text": "Incorrect answer selected: 25", "delta": -1}]
+    said = auto_comments(n, {"points": 2, "score": 1, "read": "A", "answer": "A, C"})
+    assert said[0]["text"] == "Correct answer not selected" and said[0]["answer"] == "36"

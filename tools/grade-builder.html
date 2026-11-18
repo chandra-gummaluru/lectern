@@ -895,7 +895,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ef-row input { width: 100%; box-sizing: border-box; height: 36px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--field); color: var(--ink); font: 14px var(--font-ui); }
 .ef-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(201 154 6 / .14); }
 .ef-acts { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 6px; }
-/* For the Teaching Team: its exam (and Print and Scan) as rows, then the team's own links. */
+/* Scripts: its test or handout script as a row, its PDFs (and a test's Print and Scan) as buttons under it. */
 .tf-list { display: grid; gap: 6px; margin: 0 0 8px; }
 .tf-list:empty { display: none; }
 .tf-row { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); color: var(--ink); font: 14px var(--font-ui); text-align: left; cursor: pointer; }
@@ -906,6 +906,8 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .tf-t b { font-weight: 600; }
 .tf-t small { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tf-build { width: fit-content; }
+.tf-docs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
+.tf-docs .btn svg { width: 15px; height: 15px; }
 @media (max-width: 560px) { .ef-row { grid-template-columns: 1fr 36px; } .ef-row input[data-ed="ef-url"] { grid-column: 1; } }
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
 .acm-tick input { grid-row: span 2; align-self: start; margin-top: 4px; }
@@ -3218,7 +3220,7 @@ function drawEvalEditor() {
     ${accomHTML(e)}
     ${remarkHTML(e)}
     ${filesHTML(e)}
-    ${teamFilesHTML(e)}
+    ${scriptsHTML(e)}
     <h3 class="ed-sec">Discussion</h3>
     <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
     ${HOSTED && window.Lectern.discussionEl && e.discussion !== false ? `<div data-dc-slot="eval:${esc(e.id)}"></div>` : ""}
@@ -3303,18 +3305,21 @@ function filesHTML(e) {
     ${fs.map((f, i) => `<div class="ef-row"><input type="text" data-ed="ef-label" data-i="${i}" value="${esc(f.label || "")}" placeholder="Button text, e.g. Handout" aria-label="Button text" autocomplete="off"><input type="url" data-ed="ef-url" data-i="${i}" value="${esc(f.url || "")}" placeholder="https://…" aria-label="Link" autocomplete="off"><button type="button" class="ic trash" data-ed="ef-del" data-i="${i}" title="Remove it" aria-label="Remove it">${svg("trash")}</button></div>`).join("")}
     <div class="ef-acts">${HOSTED && window.Lectern.uploadPublic ? `<button type="button" class="btn add" data-ed="ef-up">${svg("plus")}Upload a File</button><input type="file" id="ef-file" hidden>` : ""}<button type="button" class="btn add" data-ed="ef-add">${svg("plus")}Add a Link</button></div>`;
 }
-// For the teaching team, never students: its exam or handout (made in the Exam Builder; there by itself once it's
-// linked to this evaluation) and the exam's Print and Scan, then any links the team adds (e.teamFiles).
-function teamFilesHTML(e) {
-  const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout", fs = e.teamFiles || [];
-  const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}">${svg("doc")}<span class="tf-t"><b>The ${what}</b><small>${esc(d.folder)} · its questions, answer key and marking guide, in the Exam Builder</small></span>${svg("chev")}</button>
-      ${what === "exam" ? `<button type="button" class="tf-row" data-act="ev-scans" data-id="${esc(e.id)}">${svg("print")}<span class="tf-t"><b>Print and Scan</b><small>print the student copy, scan the written booklets, mark them</small></span>${svg("chev")}</button>` : ""}`
-    : `<button type="button" class="btn add tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Make a${what === "exam" ? "n Exam" : " Handout"}</button>`;
-  return `<h3 class="ed-sec">For the Teaching Team</h3>
-    <p class="ed-help">Only the teaching team sees these, never students.${HOSTED && !d ? ` Make its ${what} in the Exam Builder and it's listed here.` : ""}</p>
-    <div class="tf-list">${doc}</div>
-    ${fs.map((f, i) => `<div class="ef-row"><input type="text" data-ed="tf-label" data-i="${i}" value="${esc(f.label || "")}" placeholder="Name, e.g. Solutions draft" aria-label="Name" autocomplete="off"><input type="url" data-ed="tf-url" data-i="${i}" value="${esc(f.url || "")}" placeholder="https://…" aria-label="Link" autocomplete="off"><button type="button" class="ic trash" data-ed="tf-del" data-i="${i}" title="Remove it" aria-label="Remove it">${svg("trash")}</button></div>`).join("")}
-    <div class="ef-acts"><button type="button" class="btn add" data-ed="tf-add">${svg("plus")}Add a Link</button></div>`;
+// Scripts, for the teaching team (never students): its test or handout script (made in the Exam Builder; there by
+// itself once it's linked to this evaluation), its PDFs, and a test's Print and Scan.
+function scriptsHTML(e) {
+  const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout";
+  const name = what === "exam" ? "Test Script" : "Handout Script";
+  // Its PDFs, each opened in a new tab (one of each per version).
+  const vs = d && num(d.versions) > 1 ? "ABCDEF".slice(0, Math.min(6, num(d.versions))).split("") : [""];
+  const pdfs = d ? vs.flatMap(v => [["student", "Student Copy"], ["key", "Answer Key"], ["guide", "Marking Scheme"]].map(([k, l]) =>
+    `<button type="button" class="btn" data-act="ev-pdf" data-id="${esc(e.id)}" data-doc="${k}" data-v="${v}" title="${esc(l)}${v ? `, version ${v}` : ""}, as a PDF">${svg("doc")}${l}${v ? ` ${v}` : ""}</button>`)).join("") : "";
+  const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}" title="Open it in the Exam Builder">${svg("doc")}<span class="tf-t"><b>${name}</b><small>${esc(d.folder)}</small></span>${svg("chev")}</button>
+      <div class="tf-docs">${pdfs}${what === "exam" ? `<button type="button" class="btn" data-act="ev-scans" data-id="${esc(e.id)}" title="Print the student copy, scan the written booklets and mark them">${svg("print")}Print and Scan</button>` : ""}</div>`
+    : `<button type="button" class="btn add tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Create ${name}</button>`;
+  return !HOSTED ? "" : `<h3 class="ed-sec">Scripts</h3>
+    <p class="ed-help">Only the teaching team sees these, never students.</p>
+    <div class="tf-list">${doc}</div>`;
 }
 // Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
 // where its weight moves. It can apply only to students who ask (and you approve); students can also ask for
@@ -3440,10 +3445,6 @@ document.addEventListener("input", ev => {
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.type === "checkbox") return;   // ticks are handled on "change"
   if (t.dataset.ed === "nt-text") return;   // a note being written: added with Add note
-  if (t.dataset.ed === "tf-label" || t.dataset.ed === "tf-url") {   // a link for the teaching team, typed
-    const e = evalById(m.dataset.eval), f = e && (e.teamFiles || [])[+t.dataset.i]; if (!f) return;
-    noteTyping(); f[t.dataset.ed === "tf-label" ? "label" : "url"] = t.value.trim(); unsaved = true; refreshSoon(); return;
-  }
   if (t.dataset.ed === "ef-label" || t.dataset.ed === "ef-url") {   // an evaluation's file or link, typed
     const e = evalById(m.dataset.eval), f = e && (e.files || [])[+t.dataset.i]; if (!f) return;
     noteTyping(); f[t.dataset.ed === "ef-label" ? "label" : "url"] = t.value.trim(); unsaved = true; refreshSoon(); return;
@@ -3560,8 +3561,6 @@ document.addEventListener("click", ev => {
       err => { b.disabled = false; toast(err.message); });
   }
   if (a === "ef-add") { change(() => { e.files = [...(e.files || []), { label: (e.files || []).length ? "" : e.type === "test" ? "Practice" : "Handout", url: "" }]; }); const ins = $$('[data-ed="ef-url"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
-  if (a === "tf-add") { change(() => { e.teamFiles = [...(e.teamFiles || []), { label: "", url: "" }]; }); const ins = $$('[data-ed="tf-label"]', $(".editor[data-eval]")); if (ins.length) ins[ins.length - 1].focus(); return; }
-  if (a === "tf-del") { change(() => { e.teamFiles.splice(+b.dataset.i, 1); if (!e.teamFiles.length) delete e.teamFiles; }); return; }
   if (a === "ef-del") { change(() => { e.files.splice(+b.dataset.i, 1); if (!e.files.length) delete e.files; }); return; }
   if (a === "ef-up") {   // choose a file; it's uploaded straight away (to the public files), then listed here
     const inp = $("#ef-file", m); if (!inp) return;
@@ -4308,6 +4307,10 @@ function act(b) {
       return evalEditor(c.id);
     }
     case "ev-upload": return uploadMarks(b.dataset.id);
+    case "ev-pdf": {   // one of the linked script's PDFs (student copy, answer key, marking scheme), in a new tab
+      const d = docLinks.get(b.dataset.id); if (!d || !window.Lectern || !window.Lectern.openDoc) return;
+      return window.Lectern.openDoc(d.folder, b.dataset.doc, b.dataset.v);
+    }
     case "ev-scans": {   // the linked exam's Print and Scan, in Lectern
       const d = docLinks.get(b.dataset.id); if (!d || !window.Lectern || !window.Lectern.openScansFor) return;
       return window.Lectern.openScansFor(d.folder);
@@ -4753,7 +4756,7 @@ if (lectern) {
     // Where it is (a view, an evaluation's or student's page…), and going back there: Lectern's Back and Forward.
     where: () => ({ focus: ui.focus, view: ui.view, evalEd: ui.evalEd || "", groupEd: ui.groupEd || "", student: ui.student || "", stAcc: ui.stAcc || "", stFrom: ui.stFrom || "" }),
     goto(l) { Object.assign(ui, l); ui.cell = null; render(); },
-    // links: { evaluation id: { folder, total, layout } }. A linked document's total is the evaluation's out of.
+    // links: { evaluation id: { folder, total, layout, versions } }. A linked document's total is the evaluation's out of.
     setLinks(links) {
       docLinks = new Map(Object.entries(links || {}).filter(([id]) => evalById(id)));
       const moved = [...docLinks].filter(([id, d]) => num(d.total) > 0 && num(evalById(id).total) !== num(d.total));

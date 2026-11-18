@@ -63,13 +63,12 @@ def main():
         open_eval(page, "a1")
         print("1 A1:", page.inner_text(G + ".editor[data-eval='a1']").split("Points")[1][:80].replace("\n", " "))
         expect(page.locator(G + ".editor[data-eval='a1']")).to_contain_text("Out of 25: the total marks of its handout")
-        tf = page.locator(G + ".editor[data-eval='a1'] .tf-row[data-act='ev-build']")          # For the Teaching Team: its handout, by itself
-        expect(tf).to_contain_text("The handout"); expect(tf).to_contain_text("a1")
+        tf = page.locator(G + ".editor[data-eval='a1'] .tf-row[data-act='ev-build']")          # Scripts: its handout script, by itself
+        expect(tf).to_contain_text("Handout Script"); expect(tf).to_contain_text("a1")
+        docs = page.locator(G + ".editor[data-eval='a1'] .tf-docs [data-act='ev-pdf']").all_inner_texts()
+        assert [x.strip() for x in docs] == ["Student Copy", "Answer Key", "Marking Scheme"], docs
         assert not page.query_selector(G + ".editor[data-eval='a1'] .ed-acts [data-act='ev-build']"), "no Open button in the head any more"
         assert not page.query_selector(G + ".editor[data-eval='a1'] [data-act='ev-scans']"), "a handout isn't scanned"
-        page.click(G + ".editor[data-eval='a1'] [data-ed='tf-add']")                              # and a link only the team sees
-        page.fill(G + ".editor[data-eval='a1'] [data-ed='tf-label']", "Solutions draft")
-        page.fill(G + ".editor[data-eval='a1'] [data-ed='tf-url']", "https://example.com/a1-solutions-secret")
         shot("83-grades-build")
 
         # 2. Saving the gradebook puts its marking scheme on the course page.
@@ -79,17 +78,15 @@ def main():
         sc = json.loads(srv.text("pub", "csc258/f26/course.json"))["page"]["scheme"]
         print("2 scheme units:", [(u.get("name"), u.get("weight")) for u in sc["units"]])
         assert [u["name"] for u in sc["units"]][:2] == ["Assignment 1", "Labs"], sc["units"]
-        assert next(e for e in g["evals"] if e["id"] == "a1")["teamFiles"] == [{"label": "Solutions draft", "url": "https://example.com/a1-solutions-secret"}]
-        assert "a1-solutions-secret" not in srv.text("pub", "csc258/f26/course.json"), "the team's links never reach the course page"
         v = ctx.new_page(); v.goto(srv.base + "c/chandra/csc258/f26/#evaluations"); v.wait_for_selector(".hs-ev")
         txt = v.inner_text(".hb-main")
         print("   course page:", txt.replace("\n", " | ")[:200])
         assert "Assignment 1" in txt and "Labs" in txt and "Midterm" in txt and "15%" in txt, txt
         v.screenshot(path=f"{OUT}/80-course-scheme.png", full_page=True); v.close()
 
-        # 3. Build the Midterm: a new exam, opened in the exam builder (Make an Exam, For the Teaching Team).
+        # 3. Build the Midterm: a new exam, opened in the exam builder (Create Test Script, under Scripts).
         open_eval(page, "mt")
-        expect(page.locator(G + ".editor[data-eval='mt'] .tf-build")).to_have_text("Make an Exam")
+        expect(page.locator(G + ".editor[data-eval='mt'] .tf-build")).to_have_text("Create Test Script")
         page.click(G + ".editor[data-eval='mt'] [data-act='ev-build']")
         page.wait_for_selector("body.lt-tool-exams", timeout=15000); page.wait_for_timeout(1500)
         print("3 path:", path(), "| cover:", bool(page.query_selector(X + ".cover-blk")))

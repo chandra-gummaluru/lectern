@@ -3470,7 +3470,7 @@ if (lectern) {
     // Which of its pages it's on (student copy, marking guide, settings), and going back there.
     where: () => ({ output: ui.output }),
     goto(l) { if (l.output) { ui.output = l.output; render(); } },
-    state: () => ({ path: gh.path, unsaved, title: model.settings.title || "", total: total(0), link: model.settings.link || "", layout: model.settings.layout || "exam" }),
+    state: () => ({ path: gh.path, unsaved, title: model.settings.title || "", total: total(0), link: model.settings.link || "", layout: model.settings.layout || "exam", versions: model.settings.versions || 1 }),
   });
 } else {
   showHome();   // the builder opens on the start screen

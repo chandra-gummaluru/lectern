@@ -66,12 +66,18 @@ def main():
         t = d["term"]; off = f"demo101/{t}"
         print("1 the demo course:", off)
 
-        # From the gradebook: Test 1's exam and its Print and Scan, For the Teaching Team (no Open button in its head).
+        # From the gradebook: Test 1's Scripts: its test script, its PDFs, its Print and Scan (no Open button in its head).
         G = "[data-lt-tool='grades'] "
         me.evaluate(f"location.hash = '#/{off}/evaluations'"); me.evaluate("location.reload()")
         me.wait_for_selector(G + ".erow[data-id='mt']", timeout=20000); me.click(G + ".erow[data-id='mt']")
         me.wait_for_selector(G + ".editor[data-eval='mt'] [data-act='ev-scans']", timeout=15000)
-        assert "The exam" in me.inner_text(G + ".editor[data-eval='mt'] .tf-list") and not me.query_selector(G + ".ed-acts [data-act='ev-build']")
+        me.locator(G + ".editor[data-eval='mt'] .tf-list").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-00-scripts.png")
+        assert "Test Script" in me.inner_text(G + ".editor[data-eval='mt'] .tf-list") and not me.query_selector(G + ".ed-acts [data-act='ev-build']")
+        me.evaluate("window.__opened = []; window.open = u => { window.__opened.push(u); return null; }; 0")   # the student copy, as a PDF in a new tab
+        me.click(G + ".editor[data-eval='mt'] [data-act='ev-pdf'][data-doc='student']")
+        me.wait_for_function("window.__opened.length > 0", timeout=5000); url = me.evaluate("window.__opened[0]")
+        assert url and "/api/scans/pdf" in url and "doc=student" in url and "exam=midterm" in url, url
+        got = me.request.get(srv.base.rstrip("/") + url); assert got.ok and got.body()[:4] == b"%PDF", got.status
         me.click(G + ".editor[data-eval='mt'] [data-act='ev-scans']"); me.wait_for_selector(".sc-ed, .lx-editor", timeout=15000)
         assert "/scans/midterm" in me.evaluate("location.hash"), me.evaluate("location.hash")
 

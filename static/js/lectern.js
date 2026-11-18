@@ -1649,6 +1649,9 @@ Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;
   go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: String(id), groupEd: "", student: "", stAcc: "", stFrom: "" } });
   let n = 0; const find = () => { const s = document.querySelector(`[data-att-slot="${CSS.escape(String(id))}"]`); if (s) { const h = s.previousElementSibling || s; h.scrollIntoView({ block: "start", behavior: "smooth" }); } else if (++n < 40) setTimeout(find, 100); }; setTimeout(find, 150); };
 // The Exam Builder's Print and Scan: the open exam on paper.
+// A script's PDF (doc: student, key or guide; v: its version letter, if it has versions), made on the server, in a new tab.
+Lectern.openDoc = (folder, doc, v) => { const r = S.route, o = curOwner(); if (!r.c || !r.t || !folder) return;
+  window.open(`/api/scans/pdf?${new URLSearchParams({ ...(o ? { owner: o } : {}), offering: `${r.c}/${r.t}`, exam: folder, doc, ...(v ? { v } : {}) })}`, "_blank", "noopener"); };
 Lectern.openScansFor = folder => { const r = S.route; if (r.c && r.t && folder) go({ page: "scans", c: r.c, t: r.t, e: folder }); };   // from an evaluation in Grades
 Lectern.openScans = () => { const r = S.route; if (r.page === "tool" && r.tool === "exams" && r.e) go({ page: "scans", c: r.c, t: r.t, e: r.e }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
@@ -1707,11 +1710,11 @@ async function requestsFor(c, t) {
 // that names the evaluation it's for. → { evaluation id: { folder, total, layout } }
 async function docLinks(c, t) {
   const out = {}, x = Lectern.tools.exams, live = x && x.api ? x.api.state() : null;
-  const add = (folder, d) => { if (d.link && !out[d.link]) out[d.link] = { folder, total: num(d.total), layout: d.layout === "handout" ? "handout" : "exam" }; };
+  const add = (folder, d) => { if (d.link && !out[d.link]) out[d.link] = { folder, total: num(d.total), layout: d.layout === "handout" ? "handout" : "exam", versions: Math.max(1, num(d.versions) || 1) }; };
   if (live && live.path && live.path.startsWith(`${c}/${t}/`)) add(live.path.split("/")[2], live);
   await Promise.all(offering(c, t).exams.map(async e => {
     if (live && live.path === `${c}/${t}/${e}/exam.json`) return;
-    try { const j = JSON.parse(await readPriv(`${c}/${t}/${e}/exam.json`) || "null"); if (j && j.settings) add(e, { link: j.settings.link, total: j.total, layout: j.settings.layout }); } catch (_) {}
+    try { const j = JSON.parse(await readPriv(`${c}/${t}/${e}/exam.json`) || "null"); if (j && j.settings) add(e, { link: j.settings.link, total: j.total, layout: j.settings.layout, versions: j.settings.versions }); } catch (_) {}
   }));
   return out;
 }

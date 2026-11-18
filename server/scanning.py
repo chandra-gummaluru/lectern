@@ -659,7 +659,8 @@ def results_():
                            "right": [k for k, o in enumerate(n.get("options") or []) if o.get("correct")]}
         else:
             pieces[nid] = {"type": "written", "comps": [{"id": cid, "kind": c.get("kind"), "n": max(1, int(_num(c.get("n")) or 1)) if c.get("kind") == "cells" else 1}
-                                                        for cid, c in comps_of(n)]}
+                                                        for cid, c in comps_of(n)],
+                           "space": (n.get("space") or {}).get("mode") not in (None, "none")}   # room for working: a person judges it
     return jsonify(booklets=view(ex, results, ex.read_json("review.json", {}), roster) if results else [], rubrics=rubrics, pieces=pieces,
                    students=[{"num": str(s.get("num")), "first": s.get("first", ""), "last": s.get("last", "")} for s in roster])
 

@@ -42,7 +42,7 @@ def open_eval(page, eid):
         page.locator("#lt-path button.lt-step", has_text="Evaluations").click()
     if not page.query_selector(G + f".editor[data-eval='{eid}']"):
         page.wait_for_selector(G + f".erow[data-id='{eid}']"); page.click(G + f".erow[data-id='{eid}']")
-    page.wait_for_selector(G + f".editor[data-eval='{eid}'] [data-act='ev-build']")
+    page.wait_for_selector(G + f".editor[data-eval='{eid}'] [data-act='ev-build'], " + G + f".editor[data-eval='{eid}'] #sc-edit")
 
 
 def main():
@@ -63,8 +63,8 @@ def main():
         open_eval(page, "a1")
         print("1 A1:", page.inner_text(G + ".editor[data-eval='a1']").split("Points")[1][:80].replace("\n", " "))
         expect(page.locator(G + ".editor[data-eval='a1']")).to_contain_text("Out of 25: the total marks of its handout")
-        tf = page.locator(G + ".editor[data-eval='a1'] .tf-row[data-act='ev-build']")          # Scripts: its handout script, by itself
-        expect(tf).to_contain_text("Handout Script"); expect(tf).to_contain_text("a1")
+        tf = page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] #sc-edit")             # Scripts and Scans: Edit Handout Script, Upload Scans
+        expect(tf).to_have_text("Edit Handout Script")
         expect(page.locator(G + ".editor[data-eval='a1'] h3.ed-sec", has_text="Scripts")).to_have_text("Scripts and Scans")   # a handout is scanned too
         page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] .lt-note", timeout=15000)
         expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot]")).to_contain_text("Marking from scans is off for this handout")
@@ -92,9 +92,9 @@ def main():
         assert got.ok and got.body()[:4] == b"%PDF", ("the handout's student copy, with the scan codes, compiles", got.status, got.text()[:300])
         page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] #sc-file", state="attached", timeout=15000)
         assert json.loads(srv.text("priv", "csc258/f26/a1/exam.json"))["settings"]["scan"] is True
-        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] .sc-steps")).to_be_visible(timeout=10000)   # scanning on, saved
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] .sc-top label:not(.sc-dis)")).to_be_visible(timeout=10000)   # scanning on, saved
         sc = page.inner_text(G + ".editor[data-eval='a1'] [data-scan-slot]")
-        assert "Upload Scans" in sc and "booklets scanned" in sc, sc
+        assert "Upload Scans" in sc and "Booklets Scanned" in sc, sc
         print("1b handout scans:", sc.replace("\n", " ")[:160])
 
         # 2. Saving the gradebook puts its marking scheme on the course page.
@@ -110,9 +110,10 @@ def main():
         assert "Assignment 1" in txt and "Labs" in txt and "Midterm" in txt and "15%" in txt, txt
         v.screenshot(path=f"{OUT}/80-course-scheme.png", full_page=True); v.close()
 
-        # 3. Build the Midterm: a new exam, opened in the exam builder (Create Test Script, under Scripts).
+        # 3. Build the Midterm: a new exam, opened in the exam builder (Build Test Script, with Upload Scans greyed out).
         open_eval(page, "mt")
-        expect(page.locator(G + ".editor[data-eval='mt'] .tf-build")).to_have_text("Create Test Script")
+        expect(page.locator(G + ".editor[data-eval='mt'] .tf-build")).to_have_text("Build Test Script")
+        assert page.is_disabled(G + ".editor[data-eval='mt'] .tf-acts button:has-text('Upload Scans')"), "no script: nothing to scan"
         page.click(G + ".editor[data-eval='mt'] [data-act='ev-build']")
         page.wait_for_selector("body.lt-tool-exams", timeout=15000); page.wait_for_timeout(1500)
         print("3 path:", path(), "| cover:", bool(page.query_selector(X + ".cover-blk")))
@@ -122,7 +123,7 @@ def main():
 
         # 4. Lab 2: a handout (an assignment's document). The new exam isn't saved yet: Lectern may ask first.
         open_eval(page, "mt")
-        print("4 midterm button now:", page.inner_text(G + ".editor[data-eval='mt'] [data-act='ev-build']"))
+        print("4 midterm button now:", page.inner_text(G + ".editor[data-eval='mt'] [data-act='ev-build'], " + G + ".editor[data-eval='mt'] #sc-edit"))
         open_eval(page, "l2"); page.click(G + ".editor[data-eval='l2'] [data-act='ev-build']"); page.wait_for_timeout(1000)
         if page.query_selector(".lt-modal [data-yes]"): page.click(".lt-modal [data-yes]"); page.wait_for_timeout(1000)
         page.wait_for_selector(X + ".ho-head", timeout=15000)

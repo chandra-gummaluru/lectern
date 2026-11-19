@@ -3311,12 +3311,13 @@ function filesHTML(e) {
 function scriptsHTML(e) {
   const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout";
   const name = what === "exam" ? "Test Script" : "Handout Script";
-  const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}" title="Open it in the Exam Builder">${svg("doc")}<span class="tf-t"><b>${name}</b><small>${esc(d.folder)}</small></span>${svg("chev")}</button>`
-    : `<button type="button" class="btn add tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Create ${name}</button>`;
-  return !HOSTED ? "" : `<h3 class="ed-sec">${d ? "Scripts and Scans" : "Scripts"}</h3>
+  // Two buttons: the script (Build, until there is one; then Edit, with Upload Scans, drawn by Lectern in the slot).
+  if (!HOSTED) return "";
+  return `<h3 class="ed-sec">Scripts and Scans</h3>
     <p class="ed-help">Only the teaching team sees these, never students.</p>
-    <div class="tf-list">${doc}</div>
-    ${d && window.Lectern.fillScans ? `<div class="tf-scans" data-scan-slot="${esc(d.folder)}"></div>` : ""}`;
+    ${d && window.Lectern.fillScans ? `<div class="tf-scans" data-scan-slot="${esc(d.folder)}" data-scan-name="${name}"></div>`
+      : d ? `<div class="lx-adds tf-acts"><button type="button" class="lt-btn" data-act="ev-build" data-id="${esc(e.id)}">${svg("doc")}Edit ${name}</button></div>`
+      : `<div class="lx-adds tf-acts"><button type="button" class="lt-btn primary tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Build ${name}</button><button type="button" class="lt-btn" disabled title="Build the ${what === "exam" ? "test" : "handout"} script first">${svg("plus")}Upload Scans</button></div>`}`;
 }
 // Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
 // where its weight moves. It can apply only to students who ask (and you approve); students can also ask for

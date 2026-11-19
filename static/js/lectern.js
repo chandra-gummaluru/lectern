@@ -624,14 +624,14 @@ const gradesSending = r => ({ before: () => (unsavedTools().some(u => u.name ===
   after: async () => { const t = Lectern.tools.grades; if (!t || !t.api || !t.api.open || !t.api.state().path) return;
     const where = t.api.where ? t.api.where() : null;
     try { await t.api.open(`${r.c}/${r.t}`, true); if (t.taBase) t.taBase = noMarks(t.api.book()); if (where && t.api.goto) t.api.goto(where); } catch (e) { console.warn("[Lectern] reopen:", e); } } });
-function scansEl(folder) {
+function scansEl(folder, scriptName) {
   const r = S.route, key = `${curOwner()}/${r.c}/${r.t}/${folder}`, at = location.hash;
   let el = SC.get(key);
   if (el && el._hash === at) { if (Date.now() - el._at > 10000) { el._at = Date.now(); el._view.load(); } return el; }
   if (el) el._view.leave();
   el = document.createElement("div"); el._at = Date.now(); el._hash = at;
   hubCSS();   // its list of booklets is the requests' list (the course page's list styles)
-  el._view = scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [], owner: curOwner(), into: el,
+  el._view = scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [], owner: curOwner(), into: el, scriptName,
     openExam: () => go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: folder }),
     sending: gradesSending(r),
     unsaved: () => unsavedTools().some(u => u.name === "exams" && u.path === `${r.c}/${r.t}/${folder}/exam.json`) }, { page: "scans", c: r.c, t: r.t, e: folder });
@@ -639,7 +639,7 @@ function scansEl(folder) {
   return el;
 }
 addEventListener("hashchange", () => SC.forEach(el => { el._at = 0; }));   // back on the page after going elsewhere: read them again
-Lectern.fillScans = root => { if (!root || !S.route.c) return; root.querySelectorAll("[data-scan-slot]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanSlot)); }); };
+Lectern.fillScans = root => { if (!root || !S.route.c) return; root.querySelectorAll("[data-scan-slot]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanSlot, s.dataset.scanName)); }); };
 Lectern.fillDiscussions = fillDiscussions;
 function renderPage() {
   renderBar();

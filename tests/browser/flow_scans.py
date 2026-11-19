@@ -71,8 +71,9 @@ def main():
         me.evaluate(f"location.hash = '#/{off}/evaluations'"); me.evaluate("location.reload()")
         me.wait_for_selector(G + ".erow[data-id='mt']", timeout=20000); me.click(G + ".erow[data-id='mt']")
         me.wait_for_selector(G + ".editor[data-eval='mt'] [data-scan-slot] #sc-file", state="attached", timeout=15000)
-        me.locator(G + ".editor[data-eval='mt'] .tf-list").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-00-scripts.png")
-        assert "Test Script" in me.inner_text(G + ".editor[data-eval='mt'] .tf-list") and not me.query_selector(G + ".ed-acts [data-act='ev-build']")
+        me.locator(G + ".editor[data-eval='mt'] [data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-00-scripts.png")
+        top = [" ".join(x.split()) for x in me.locator(G + ".editor[data-eval='mt'] .sc-top > *").all_inner_texts()]
+        assert top == ["Edit Test Script", "Upload Scans"], top                        # two buttons: the script, Upload Scans
         sc = me.inner_text(G + ".editor[data-eval='mt'] [data-scan-slot]")
         assert "Upload whole booklets" not in sc and "printed" not in sc, sc              # no text above the card
         assert not me.query_selector(G + ".editor[data-eval='mt'] [data-doc]"), "its PDFs are in the Exam Builder"
@@ -133,18 +134,19 @@ def main():
         assert not me.evaluate("window.Lectern.tools.grades.api.state().unsaved"), "uploading a scan doesn't change the gradebook"
         print("2 uploaded:", me.inner_text(G + "[data-scan-slot] .sc-filelist summary"))
         assert not me.query_selector(G + "[data-scan-slot] #sc-mark")
-        me.wait_for_selector(G + "[data-scan-slot] .sc-step .sc-spin", timeout=10000)
+        me.wait_for_selector(G + "[data-scan-slot] .sc-scan-row .sc-spin", timeout=10000)
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2-marking.png")
         me.wait_for_selector(G + "[data-scan-slot] .sc-qlist:not(.off) [data-gq]", timeout=180000)       # read: its questions open
-        me.wait_for_selector(G + "[data-scan-slot] .sc-step .sc-spin", state="detached", timeout=180000)
-        card = me.inner_text(G + "[data-scan-slot] .sc-steps")
+        me.wait_for_selector(G + "[data-scan-slot] .sc-scan-row .sc-spin", state="detached", timeout=180000)
+        card = " ".join(me.inner_text(G + "[data-scan-slot] .sc-scan-row").split())
         n = len([s_ for s_ in book["students"] if not s_.get("dropped")])
-        assert card.split("\n")[0].startswith(f"2 / {n}") and "students in the class" not in card, card
-        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-st-h >> nth=0", "title")
+        assert card == f"Booklets Scanned 2 / {n} scanned", card                     # the list's first row
+        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-scan-row .dc-t-meta", "title")
         print("  meter:", card.replace("\n", " | "))
-        steps = [" ".join(x.split()) for x in me.locator(G + "[data-scan-slot] .sc-step").all_inner_texts()]   # each: a count and its button
-        assert steps == [f"2 / {n} booklets scanned Upload Scans"], steps
         assert me.is_disabled(G + "[data-scan-slot] #sc-email"), "emailed once every booklet is graded"
+        top = [" ".join(x.split()) for x in me.locator(G + "[data-scan-slot] .sc-top > *").all_inner_texts()]
+        assert top == ["Edit Test Script", "Upload Scans", "Email Booklets"], top
+        assert me.inner_text(G + "[data-scan-slot] .sc-qlist .dc-title").strip().lower() == "grading"   # not just questions
         mrow = " ".join(me.inner_text(G + "[data-scan-slot] .sc-qlist [data-match]").split())
         assert mrow == "Booklet Matching 0 / 2 matched", mrow                         # first in the list, like a question
         me.click(G + "[data-scan-slot] [data-match]"); me.wait_for_selector(".sc-book .sc-mcard")   # one booklet at a time
@@ -154,9 +156,8 @@ def main():
         me.select_option("#sc-mwho", people[0]["num"]); me.click("[data-mok]")                 # Okay: the next one
         me.wait_for_selector(".sc-book h2:has-text('Booklet 2')", timeout=10000)
         assert me.evaluate(f"document.querySelector('#sc-mwho option[value=\"{people[0]['num']}\"]').disabled"), "taken: greyed out"
-        me.click("[data-mdone]"); me.wait_for_selector(G + "[data-scan-slot] .sc-step")
-        mrow = " ".join(me.inner_text(G + "[data-scan-slot] .sc-qlist [data-match]").split())
-        assert mrow == "Booklet Matching 1 / 2 matched", mrow
+        me.click("[data-mdone]"); me.wait_for_selector(G + "[data-scan-slot] .sc-scan-row")
+        me.wait_for_selector(G + "[data-scan-slot] .sc-qlist [data-match]:has-text('1 / 2 matched')", timeout=10000)
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2b-marked.png")
         rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-slot] .sc-qlist [data-gq]").all()}
         print("  questions:", list(rows.values())[:4])

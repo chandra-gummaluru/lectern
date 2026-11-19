@@ -1714,3 +1714,8 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 /* Booklet Matching: Skip beside Okay; a student who has a booklet already, greyed out in the list. */
 .sc-okbar .lt-link { margin-right: 14px; align-self: center; }
 option.sc-taken { color: var(--ink-3); }
+
+/* Scripts and Scans: its two buttons (the script, Upload Scans), on the left; the scanned row first in the list. */
+.sc-top, .tf-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; margin: 6px 0 4px; }
+.tf-acts .lt-btn svg, .sc-top .lt-btn svg { width: 16px; height: 16px; }
+.sc-scan-row .dc-t-meta .sc-spin { width: 11px; height: 11px; display: inline-block; vertical-align: -1px; }

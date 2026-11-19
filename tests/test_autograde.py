@@ -22,12 +22,12 @@ pytest.importorskip("pypdfium2")
 if not shutil.which("pdflatex") or not shutil.which("node"):
     pytest.skip("needs pdflatex and node", allow_module_level=True)
 
-from server.autograde import grade, layout, report  # noqa: E402
+from server.autograde import grade, layout, report, scan  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILDER = os.path.join(ROOT, "tools", "exam-builder.html")
 NAMES = ["LET", "num", "fmtNum", "TOKEN", "isQ", "nodePoints", "variantFor", "numbering", "handout", "texEsc", "ptsTex", "cm",
-         "examSlug", "pts", "scanning", "scanId", "scanCode", "spaceTex", "solutionTex", "markingTex", "itemize", "widestRow",
+         "examSlug", "pts", "scanning", "spaced", "scanId", "scanCode", "spaceTex", "solutionTex", "markingTex", "itemize", "widestRow",
          "boxSizeTex", "studentInfoTex", "compTex", "bodyTex", "choicesTex", "nodeTex", "genTex"]
 
 
@@ -130,6 +130,18 @@ def test_without_scanning_nothing_changes():
     exam["settings"]["scan"] = False
     p = subprocess.run(["node", "-e", builder_js()], input=json.dumps({"exam": exam, "version": 0}), capture_output=True, text=True, timeout=60)
     assert "\\ScanID" not in p.stdout and "\\ScanCode" not in p.stdout
+
+
+def test_a_handout_can_be_scanned_too():
+    # Marked from scans, a handout gets the codes and its answer spaces; without, it has neither (as before).
+    exam = make_exam()
+    exam["settings"]["layout"] = "handout"
+    run = lambda: subprocess.run(["node", "-e", builder_js()], input=json.dumps({"exam": exam, "version": 0}), capture_output=True, text=True, timeout=60).stdout
+    on = run()
+    assert "\\ScanCode{" in on and "\\ScanID{n6.space}" in on and "\\answerspace{3cm}" in on
+    exam["settings"]["scan"] = False
+    off = run()
+    assert "\\ScanCode" not in off and "\\answerspace" not in off
 
 
 def test_layout_has_every_piece(built):
@@ -280,6 +292,10 @@ def test_marks_scans(built, tmp_path):
     unsure = []
     assert res["unread"] == []
     assert len(res["booklets"]) == len(cases)
+    assert all(b["missing"] == [] for b in res["booklets"]), "every booklet is whole"
+    short = tmp_path / "short.pdf"                       # the first booklet without its last page: page 3 is missing
+    ims[0].save(short, save_all=True, append_images=ims[1:2], resolution=200)
+    assert [b["missing"] for b in grade.run(exam, pdfs, [str(short)], ROSTER)["booklets"]] == [[3]]
     for b, (st, t, _, want) in zip(res["booklets"], cases):
         assert b["student"]["num"] == st["num"], b["student"]
         assert b["student"]["status"] == "auto", b["student"]
@@ -304,6 +320,36 @@ def test_marks_scans(built, tmp_path):
     assert b2["7(b)"]["status"] == "check"                     # wrong (or unsure), with room for working: a person looks
     report.write(res, str(tmp_path / "out"))
     assert (tmp_path / "out" / "review.html").exists() and (tmp_path / "out" / "marks.csv").read_text().count("\n") == len(cases) + 1
+
+
+def test_numbered_booklets_find_their_pages(built, tmp_path):
+    # Numbered copies (each booklet's number in its QR codes): pages in any order, split over uploads, come together.
+    from server.autograde import numbered
+    from PIL import Image
+    exam, pdfs, _ = built
+    t = layout.load_template(pdfs[0])
+    data = numbered.numbered(open(pdfs[0], "rb").read(), t.code, 7, 3)          # booklets 7, 8 and 9
+    src = tmp_path / "numbered.pdf"
+    src.write_bytes(data)
+    pages = [img for _, img in scan.load_pages(str(src))]
+    P = len(t.pages)
+    assert len(pages) == 3 * P
+    assert scan.find_qr(pages[P + 1])[0] == (t.code, 2, 8)
+    rng = np.random.default_rng(5)
+    pg = lambda b, p: scanned(pages[(b - 7) * P + p - 1], rng, upside_down=(b == 8 and p == 2))
+    first = [pg(7, 1), pg(9, 3), pg(8, 3), pg(8, 1), pg(8, 2), pg(7, 2)]          # mixed up, and some left for later
+    later = [pg(9, 1), pg(7, 3), pg(9, 2)]
+    files = []
+    for name, ims in (("first.pdf", first), ("later.pdf", later)):
+        f = tmp_path / name
+        Image.fromarray(ims[0]).save(f, save_all=True, append_images=[Image.fromarray(x) for x in ims[1:]], resolution=200)
+        files.append(str(f))
+    only_first = grade.run(exam, pdfs, files[:1], ROSTER)
+    assert [(b["booklet"], b["missing"]) for b in only_first["booklets"]] == [(7, [3]), (8, []), (9, [1, 2])]
+    res = grade.run(exam, pdfs, files, ROSTER)
+    assert res["unread"] == []
+    assert [(b["booklet"], b["missing"], b["twins"]) for b in res["booklets"]] == [(7, [], 0), (8, [], 0), (9, [], 0)]
+    assert numbered.numbered(open(pdfs[0], "rb").read(), t.code, 1, 1)[:4] == b"%PDF"
 
 
 def test_unknown_pages_are_reported(built, tmp_path):

@@ -3307,16 +3307,16 @@ function filesHTML(e) {
     <div class="ef-acts">${HOSTED && window.Lectern.uploadPublic ? `<button type="button" class="btn add" data-ed="ef-up">${svg("plus")}Upload a File</button><input type="file" id="ef-file" hidden>` : ""}<button type="button" class="btn add" data-ed="ef-add">${svg("plus")}Add a Link</button></div>`;
 }
 // Scripts, for the teaching team (never students), with a test's Scans in it: its test or handout script (made in the Exam Builder; there by
-// itself once it's linked to this evaluation; its PDFs are in the Exam Builder); then a test's Scans (in data-scan-slot).
+// itself once it's linked to this evaluation; its PDFs are in the Exam Builder); then its Scans (in data-scan-slot).
 function scriptsHTML(e) {
   const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout";
   const name = what === "exam" ? "Test Script" : "Handout Script";
   const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}" title="Open it in the Exam Builder">${svg("doc")}<span class="tf-t"><b>${name}</b><small>${esc(d.folder)}</small></span>${svg("chev")}</button>`
     : `<button type="button" class="btn add tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Create ${name}</button>`;
-  return !HOSTED ? "" : `<h3 class="ed-sec">${d && what === "exam" ? "Scripts and Scans" : "Scripts"}</h3>
+  return !HOSTED ? "" : `<h3 class="ed-sec">${d ? "Scripts and Scans" : "Scripts"}</h3>
     <p class="ed-help">Only the teaching team sees these, never students.</p>
     <div class="tf-list">${doc}</div>
-    ${d && what === "exam" && window.Lectern.fillScans ? `<div class="tf-scans" data-scan-slot="${esc(d.folder)}"></div>` : ""}`;
+    ${d && window.Lectern.fillScans ? `<div class="tf-scans" data-scan-slot="${esc(d.folder)}"></div>` : ""}`;
 }
 // Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
 // where its weight moves. It can apply only to students who ask (and you approve); students can also ask for

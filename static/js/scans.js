@@ -79,17 +79,17 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   function draw() {
     pathTo();
     ui.fixing = false;
-    const X = S.exam, can = S.can, N = X.versions;
+    const X = S.exam, can = S.can, N = X.versions, what = X.layout === "handout" ? "handout" : "exam";   // what it is, in words
     const notes = [
       !S.latex ? `<p class="lt-note"><b>This Lectern can't make PDFs:</b> its server doesn't have LaTeX. Ask whoever runs it to install TeX Live (see the README).</p>` : "",
-      !X.scan ? `<p class="lt-note"><b>Marking from scans is off for this exam.</b> Turn it on in the exam's <button type="button" class="lt-link" data-open>Settings</button> (Pages), save, then print it ${into ? "from the Exam Builder (Student Copy)" : "here"}: the student copy then has the corner squares and codes the grader needs.</p>` : "",
+      !X.scan ? `<p class="lt-note"><b>Marking from scans is off for this ${what}.</b> Tick Marking from Scans in the <button type="button" class="lt-link" data-open>Exam Builder</button> (with nothing selected), save, then print it ${into ? "from the Exam Builder (Student Copy)" : "here"}: the student copy then has the corner squares and codes the grader needs.</p>` : "",
       unsaved() ? `<p class="lt-note"><b>The exam has changes that aren't saved.</b> The PDFs are made from the saved exam: save it first.</p>` : "",
       !S.eval && !into ? `<p class="lt-note">This exam isn't linked to an evaluation in the gradebook, so its marks have nowhere to go. Open it from its evaluation's <b>Build</b> button in Evaluations.</p>` : "",
     ].join("");
     const pdfURL = (doc, v, print) => `/api/scans/pdf?${params({ doc, ...(v ? { v } : {}), ...(print ? { print: 1 } : {}) })}`;
     const copy = c => {
       const p = c.printed;
-      const state = p ? `Printed ${esc(when(p.at))}${p.by ? ` by ${esc(p.by)}` : ""}${p.changed ? ` <span class="sc-warn">· the exam has changed since, so print it again before the test</span>` : ""}`
+      const state = p ? `Printed ${esc(when(p.at))}${p.by ? ` by ${esc(p.by)}` : ""}${p.changed ? ` <span class="sc-warn">· the ${what} has changed since, so print it again before handing it out</span>` : ""}`
         : X.scan ? "Not printed from here yet." : "";
       return `<div class="sc-copy">${N > 1 ? `<b class="sc-v">Version ${esc(c.version)}</b>` : ""}
         <div class="sc-docs">
@@ -107,29 +107,58 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       : job.state === "done" ? `<p class="lx-help">Marked ${esc(when(job.finished))}${job.by ? ` by ${esc(job.by)}` : ""}: ${job.booklets} booklet${job.booklets === 1 ? "" : "s"}${job.unread ? `, ${job.unread} page${job.unread === 1 ? "" : "s"} not placed` : ""}.</p>` : "";
     const res = S.results;
     if (into) {
-      // Its buttons: Upload Scans; then, once marked, Fix Scans and Grading (its booklets and questions, sending
-      // marks and emailing booklets, on a page of its own). Scans uploaded since the marking: Mark New Scans.
+      // As Crowdmark: how many booklets are in, fully scanned, of how many wrote it (its attendance, else the class),
+      // as scans are uploaded (each upload is marked by itself); then what needs a look; then Upload Scans, Fix
+      // Scans and Grading (its booklets and questions, sending marks and emailing booklets, on a page of its own).
+      const bs = (R && R.booklets) || [], want = (S.wrote && S.wrote.n) || 0;
+      const whole = bs.filter(b => !(b.missing || []).length).length, part = bs.length - whole;
+      const partNum = bs.filter(b => (b.missing || []).length && b.booklet != null).length, twins = bs.filter(b => b.twins).length;
+      const loose = bs.filter(b => !matched(b)).length, unread = res ? res.unread.length : 0;
       const unsureN = res ? labels().reduce((t, l) => t + unsureIn(l).length, 0) : 0;
-      const fresh = res && S.uploads.some(u => u.at > (job.finished || 0));
-      const ok = X.scan && !running;
-      const acts = `<div class="lx-adds">
-          ${can.upload ? `<label class="lt-btn add${ok ? "" : " sc-dis"}">${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${ok ? "" : " disabled"}></label>` : ""}
-          ${can.upload && (!res || fresh) && S.uploads.length ? `<button type="button" class="lt-btn${res ? "" : " primary"}" id="sc-mark"${ok ? "" : " disabled"}>${res ? "Mark New Scans" : "Mark the Scans"}</button>` : ""}
-          ${res && can.mark ? `<button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN && !running ? "" : " disabled"} title="${unsureN ? "Go through the answers the computer wasn't sure how to read, question by question" : "Every answer the computer marks was read with confidence, or has been checked"}">Fix Scans</button>` : ""}
-          ${res ? `<button type="button" class="lt-btn${unsureN ? "" : " primary"}" id="sc-grade"${running ? " disabled" : ""}>Grading</button>` : ""}
-          ${can.upload && (S.uploads.length || res) ? `<button type="button" class="lt-btn" id="sc-wipe" title="Delete the scans and results"${running ? " disabled" : ""}>${TRASH}Delete All</button>` : ""}</div>`;
+      const fresh = S.uploads.some(u => u.at > (job.finished || 0));   // not read yet (it couldn't start, or stopped)
+      const ok = X.scan && !running, pct = want ? Math.min(100, Math.round(100 * whole / want)) : 0;
+      const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+      const looks = [
+        // A numbered booklet's missing pages join it, uploaded on their own; one not numbered is scanned again, whole.
+        partNum ? `${pl(partNum, "booklet is", "booklets are")} missing pages: upload the missing pages` : "",
+        part - partNum ? `${pl(part - partNum, "booklet is", "booklets are")} missing pages: scan ${part - partNum === 1 ? "it" : "them"} again, whole` : "",
+        twins ? `${pl(twins, "booklet has", "booklets have")} the same number as another (photocopied?)` : "",
+        loose ? `${pl(loose, "booklet isn't", "booklets aren't")} matched` : "",
+        unread ? `${pl(unread, "page", "pages")} couldn't be placed` : "",
+        bs.length > want && want ? `${bs.length - want} more booklet${bs.length - want === 1 ? "" : "s"} than students ${S.wrote.from === "attendance" ? "at the test" : "in the class"}` : "",
+      ].filter(Boolean);
+      const meter = `<div class="sc-meter-card">
+          <div class="sc-mc-top"><span class="sc-mc-n" title="${want ? `Booklets with every page scanned, of the ${want} ${S.wrote.from === "attendance" ? "students at the test (its attendance)" : "students in the class"}` : "No students in the class yet"}"><b>${whole}</b> / ${want || "?"}</span><span class="sc-mc-l">booklets scanned</span>
+            ${running ? `<span class="sc-mc-job"><span class="sc-spin" aria-hidden="true"></span>Reading the scans…${job.booklets ? ` ${pl(job.booklets, "booklet", "booklets")} so far` : ""}</span>` : ""}</div>
+          <div class="sc-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${want}" aria-valuenow="${whole}"><i style="width:${pct}%"></i></div>
+          ${looks.length ? `<ul class="sc-looks">${looks.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}
+          ${job.state === "failed" ? `<p class="lt-note err">${esc(job.error || "The marking stopped.")}</p>` : ""}
+        </div>`;
+      const acts = `<div class="lx-adds sc-acts">
+          ${can.upload ? `<label class="lt-btn${res ? " add" : " primary"}${X.scan ? "" : " sc-dis"}">${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${X.scan ? "" : " disabled"}></label>` : ""}
+          ${can.upload && fresh && !running ? `<button type="button" class="lt-btn" id="sc-mark"${ok ? "" : " disabled"}>Read the New Scans</button>` : ""}
+          ${res && can.mark ? `<button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN && !running ? "" : " disabled"} title="${unsureN ? "Go through the answers the computer wasn't sure how to read, question by question" : "Every answer the computer marks was read with confidence, or has been checked"}">Fix Scans${unsureN ? ` · ${unsureN}` : ""}</button>` : ""}
+          ${res ? `<button type="button" class="lt-btn${unsureN ? "" : " primary"}" id="sc-grade"${running && !bs.length ? " disabled" : ""}>Grading</button>` : ""}</div>`;
       // What was printed, in a line (the student copy is printed from the Exam Builder).
       const pr = S.copies.filter(c => c.printed), changed = pr.some(c => c.printed.changed), v = c => (N > 1 ? ` ${esc(c.version)}` : "");
+      // Numbered booklets (each its number in its QR codes): their pages go together by themselves.
+      const nb = pr.some(c => (c.printed.booklets || []).length), one = pr.some(c => c.printed.single);   // one: a copy to photocopy
+      const ranges = pr.flatMap(c => (c.printed.booklets || []).map(([a, z]) => `${a === z ? a : `${a}–${z}`}${N > 1 ? ` (${esc(c.version)})` : ""}`)).join(", ");
       const printed = !X.scan ? "" : !pr.length ? "Print the student copy at actual size from the Exam Builder (Student Copy): scans are marked against the copy printed from there."
-        : `Student copy${pr.length < S.copies.length ? pr.map(v).join(",") : N > 1 ? "s" : ""} printed ${esc(when(Math.max(...pr.map(c => c.printed.at))))}${pr[0].printed.by ? ` by ${esc(pr[0].printed.by)}` : ""}.${changed ? ` <span class="sc-warn">The test has changed since: print it again before the test.</span>` : ""}`;
-      // Part of the evaluation's Scripts and Scans (no heading of its own): the scans, under the script and its PDFs.
+        : `${nb ? `Booklets ${ranges}${one ? " and a copy to photocopy" : ""}` : `Student copy${pr.length < S.copies.length ? pr.map(v).join(",") : N > 1 ? "s" : ""}`} printed ${esc(when(Math.max(...pr.map(c => c.printed.at))))}${pr[0].printed.by ? ` by ${esc(pr[0].printed.by)}` : ""}.${changed ? ` <span class="sc-warn">The ${what === "handout" ? "handout" : "test"} has changed since: print it again before handing it out.</span>` : ""}`;
+      const pages = S.uploads.reduce((t, u) => t + (u.pages || 0), 0);
+      // Part of the evaluation's Scripts and Scans (no heading of its own): the scans, under the script.
       box.innerHTML = `${notes}
-        <p class="ed-help sc-lead"><b>Scans</b> · Whole booklets, one after another, as PDFs of 200 dpi or more. Pages can be in any order, either way up.${printed ? ` ${printed}` : ""}</p>
-        ${files ? `<div class="sc-files">${files}</div>` : ""}
+        <p class="ed-help sc-lead"><b>Scans</b> · ${nb && !one ? "Upload the scans as PDFs of 200 dpi or more: pages in any order, either way up, in as many uploads as you like (each numbered booklet's pages find it)."
+          : nb ? "Upload the scans as PDFs of 200 dpi or more, either way up. A numbered booklet's pages can come in any order and any upload; a photocopied one's go together, in one upload."
+          : "Upload whole booklets as PDFs of 200 dpi or more, each booklet's pages together (in any order, either way up)."} Each upload is read as it comes in.${printed ? ` ${printed}` : ""}</p>
+        ${X.scan ? meter : ""}
         <div class="sc-up" id="sc-up"></div>
         ${acts}
-        ${jobLine}${res && unsureN ? `<p class="lx-help">${unsureN} answer${unsureN === 1 ? "" : "s"} the computer wasn't sure how to read: see Fix Scans.</p>` : ""}
-        ${res ? [...res.unread.length ? [`<p class="lt-note"><b>${res.unread.length} page${res.unread.length === 1 ? "" : "s"} couldn't be placed.</b> See Grading.</p>`] : []].join("") : ""}`;
+        ${S.uploads.length ? `<details class="sc-filelist"${ui.files ? " open" : ""}><summary>${pl(S.uploads.length, "file", "files")} uploaded${pages ? ` · ${pl(pages, "page", "pages")}` : ""}</summary>
+          <div class="sc-files">${files}</div>
+          ${can.upload ? `<div class="sc-fl-acts"><button type="button" class="lt-link danger" id="sc-wipe"${running ? " disabled" : ""}>Delete all the scans and results</button></div>` : ""}</details>` : ""}`;
+      const fl = box.querySelector(".sc-filelist"); if (fl) fl.ontoggle = () => { ui.files = fl.open; };
     } else if (S.eval && openEval) {
       // Grading (from the evaluation's Scans): its booklets or questions, sending the marks, emailing the booklets.
       box.innerHTML = `<div class="lx-editor sc-ed">
@@ -190,7 +219,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const left = b => b.open ? `${b.open} to look at` : matched(b) ? "finished" : "student to match";
     const row = b => `<div class="dc-t lt-rq-row sc-r"><span class="lt-rq-st"><span class="sc-done${b.ready ? " on" : ""}" title="${b.ready ? "Finished" : "Not finished"}">${b.ready ? TICK : ""}</span></span>
         <button type="button" class="dc-t-b" data-b="${bs.indexOf(b) + 1}"><b class="dc-t-title">${nameOf(b)}${b.version ? `<span class="lt-dc-of"> / Version ${esc(b.version)}</span>` : ""}</b>
-          <span class="dc-t-meta">${esc(numOf(b))} · ${fmtN(b.total)} / ${fmtN(b.out_of)} · ${left(b)}</span></button></div>`;
+          <span class="dc-t-meta">${b.booklet != null ? `Booklet ${b.booklet} · ` : ""}${esc(numOf(b))} · ${fmtN(b.total)} / ${fmtN(b.out_of)} · ${left(b)}${(b.missing || []).length ? ` · page${b.missing.length === 1 ? "" : "s"} ${b.missing.join(", ")} missing` : ""}</span></button></div>`;
     const unread = res.unread.length ? `<p class="lt-note"><b>${res.unread.length} page${res.unread.length === 1 ? "" : "s"} couldn't be placed:</b> ${res.unread.slice(0, 8).map(u => `${esc(u.page)} (${esc(u.why)})`).join("; ")}${res.unread.length > 8 ? "; …" : ""}.</p>` : "";
     const notes = res.notes.map(n => `<p class="lt-note">${esc(n)}</p>`).join("");
     const sent = res.sent ? ` Sent ${res.sent.n} ${esc(when(res.sent.at))}${res.sent.by ? ` by ${esc(res.sent.by)}` : ""}.` : "";
@@ -331,7 +360,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         ${markHTML(b)}
         <span class="lx-acts"><a class="lt-btn sc-sm" href="/api/scans/annotated?${params({ booklet: b.key })}" target="_blank" rel="noopener" title="Their booklet with its marking drawn on, as they'd get it by email">${DOC}Marked PDF</a>${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-go="${nextOpen}">Next to Look At</button>` : ""}
           <button type="button" class="lx-ic" data-go="${i - 1}" title="The booklet before" aria-label="The booklet before"${i > 1 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-go="${i + 1}" title="The next booklet" aria-label="The next booklet"${i < bs.length ? "" : " disabled"}>${RIGHT}</button></span></div>
-      <p class="lt-req-meta">${esc(numOf(b))} · ${b.version ? `Version ${esc(b.version)} · ` : ""}${esc(pages)} · ${b.ready ? "finished" : `${b.open || "nothing"} to look at`}${b.emailed ? ` · emailed ${esc(when(b.emailed))}` : ""}</p>
+      <p class="lt-req-meta">${b.booklet != null ? `Booklet ${b.booklet} · ` : ""}${esc(numOf(b))} · ${b.version ? `Version ${esc(b.version)} · ` : ""}${esc(pages)} · ${b.ready ? "finished" : `${b.open || "nothing"} to look at`}${b.emailed ? ` · emailed ${esc(when(b.emailed))}` : ""}</p>
       <h3 class="lx-sec">Student</h3>
       ${b.cover ? `<img class="sc-pic sc-cover" src="${esc(b.cover)}" alt="The cover's name and number boxes, as scanned">` : ""}
       ${sure ? (st.status === "done" && (b.studentHistory || []).length ? historyHTML(b.studentHistory) : `<p class="lx-help">${st.status === "done" ? `Chosen${st.by ? ` by ${esc(st.by)}` : ""}.` : `Found from the student number${st.read && st.read !== st.num ? ` (read as ${esc(st.read)})` : ""}.`}</p>`)

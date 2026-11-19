@@ -1654,3 +1654,24 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 /* Scans, in an evaluation's Scripts (Grades): under the script's PDFs, led by a word, not a heading of its own. */
 .sc-embed .sc-lead { margin-top: 18px; }
 .sc-embed .sc-lead b { color: var(--ink, inherit); font-weight: 600; }
+
+/* Scans on an evaluation, as Crowdmark: how many booklets are in of how many wrote it, a meter, what needs a look. */
+.sc-meter-card { margin: 12px 0 12px; padding: 16px 18px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--field, #fff); }
+.sc-mc-top { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; row-gap: 4px; }
+.sc-mc-n { font-family: var(--font-serif, Georgia, serif); font-size: 30px; line-height: 1; color: var(--ink-3); }
+.sc-mc-n b { font-weight: 400; color: var(--ink); }
+.sc-mc-l { grid-column: 1; grid-row: 2; font-size: 13.5px; color: var(--ink-3); }   /* under the count */
+.sc-mc-job { grid-column: 2; grid-row: 1 / 3; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
+.sc-meter { height: 8px; margin: 12px 0 2px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.sc-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--home-ok, #2f8f5b); transition: width .4s ease; }
+.sc-mc-sub { margin: 0; font-size: 13px; color: var(--ink-3); }
+.sc-looks { margin: 10px 0 0; padding: 10px 0 0; border-top: 1px solid var(--line); list-style: none; display: grid; gap: 4px; font-size: 13.5px; color: var(--ink-2, var(--ink)); }
+.sc-looks li { position: relative; padding-left: 16px; }
+.sc-looks li::before { content: ""; position: absolute; left: 2px; top: .55em; width: 6px; height: 6px; border-radius: 50%; background: var(--warn, #c99a06); }
+.sc-acts { justify-content: flex-start; }
+.sc-filelist { margin-top: 12px; font-size: 13.5px; }
+.sc-filelist > summary { cursor: pointer; color: var(--ink-3); width: fit-content; }
+.sc-filelist > summary:hover { color: var(--ink); }
+.sc-filelist .sc-files { margin-top: 8px; }
+.sc-fl-acts { margin-top: 8px; }
+.lt-link.danger { color: var(--danger, #b42318); }

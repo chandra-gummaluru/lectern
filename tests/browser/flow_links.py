@@ -65,11 +65,37 @@ def main():
         expect(page.locator(G + ".editor[data-eval='a1']")).to_contain_text("Out of 25: the total marks of its handout")
         tf = page.locator(G + ".editor[data-eval='a1'] .tf-row[data-act='ev-build']")          # Scripts: its handout script, by itself
         expect(tf).to_contain_text("Handout Script"); expect(tf).to_contain_text("a1")
-        expect(page.locator(G + ".editor[data-eval='a1'] h3.ed-sec", has_text="Scripts")).to_have_text("Scripts")   # a handout: no scans
+        expect(page.locator(G + ".editor[data-eval='a1'] h3.ed-sec", has_text="Scripts")).to_have_text("Scripts and Scans")   # a handout is scanned too
+        page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] .lt-note", timeout=15000)
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot]")).to_contain_text("Marking from scans is off for this handout")
         assert not page.query_selector(G + ".editor[data-eval='a1'] [data-doc]"), "its PDFs are in the Exam Builder"
         assert not page.query_selector(G + ".editor[data-eval='a1'] .ed-acts [data-act='ev-build']"), "no Open button in the head any more"
-        assert not page.query_selector(G + ".editor[data-eval='a1'] [data-act='ev-scans']"), "a handout isn't scanned"
         shot("83-grades-build")
+
+        # 1b. The handout, marked from scans: turned on in its settings (answer spaces and all), saved, its student copy
+        # printed, and Print and Scan comes back to A1's Scans.
+        X = "[data-lt-tool='exams'] "
+        tf.click(); page.wait_for_selector("#tb-scans", timeout=20000)
+        tbb = [x.strip() for x in page.locator(X + "#tb-right button").all_inner_texts()]
+        assert tbb == ["Student Copy", "Answer Key", "Marking Scheme", "Print and Scan"], tbb
+        page.mouse.click(5, 880); page.wait_for_timeout(200)                     # nothing selected: the document's bar
+        page.check(X + "#set-scan"); page.wait_for_timeout(400)
+        assert page.is_checked(X + "#set-scan")
+        page.keyboard.press("Control+s"); page.wait_for_timeout(2500)
+        tex = srv.text("priv", "csc258/f26/a1/a1.tex")
+        assert "\\ScanCode{" in tex, "the handout's student copy has the codes the grader needs"
+        page.evaluate("window.__opened = []; window.open = u => { window.__opened.push(u); return null; }; 0")
+        page.click("#tb-right [data-doc='student']")                               # marked from scans: numbered booklets
+        page.wait_for_selector("#nb-go:not([disabled])", timeout=10000); page.fill("#nb-n", "2"); page.click("#nb-go")
+        page.wait_for_function("window.__opened.length > 0", timeout=5000)
+        got = ctx.request.get(srv.base.rstrip("/") + page.evaluate("window.__opened[0]"))
+        assert got.ok and got.body()[:4] == b"%PDF", ("the handout's student copy, with the scan codes, compiles", got.status, got.text()[:300])
+        page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] #sc-file", state="attached", timeout=15000)
+        assert json.loads(srv.text("priv", "csc258/f26/a1/exam.json"))["settings"]["scan"] is True
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot]")).to_contain_text("Booklets 1–2 printed", timeout=10000)
+        sc = page.inner_text(G + ".editor[data-eval='a1'] [data-scan-slot]")
+        assert "Upload Scans" in sc and "Booklets 1–2 printed" in sc, sc
+        print("1b handout scans:", sc.replace("\n", " ")[:160])
 
         # 2. Saving the gradebook puts its marking scheme on the course page.
         page.keyboard.press("Control+s"); page.wait_for_timeout(2500)

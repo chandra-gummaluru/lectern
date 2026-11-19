@@ -277,20 +277,52 @@ def pdf():
     if d.get("print") and (doc != "student" or ex.role not in LEADS):
         raise Refusal(403, "Only the offering's owner and coordinators print the copy that's marked.")
     base = ex.base(d.get("v"))
+    count = _int(d.get("booklets"))
+    if count is not None and not (d.get("print") and ex.settings.get("scan")):
+        raise Refusal(400, "Numbered booklets are printed copies of a student copy marked from scans.")
+    if count is not None and not 1 <= count <= MAX_BOOKLETS:
+        raise Refusal(400, f"From 1 to {MAX_BOOKLETS} booklets at a time.")
     data = build_pdf(ex.src, f"{base}{DOCS[doc]}.tex")
+    title = re.sub(r"[^\w.-]+", "-", f"{ex.o.replace('/', '-')}-{base}{DOCS[doc]}")
     if d.get("print"):
         os.makedirs(ex.path("printed"), exist_ok=True)
         with open(ex.path("printed", base + ".pdf"), "wb") as f:
             f.write(data)
         meta = ex.read_json("printed.json", {})
-        meta[base] = {"at": time.time(), "by": g.user["name"], "tex": _sha_file(os.path.join(ex.src, base + ".tex"))}
+        old = meta.get(base) or {}
+        meta[base] = {"at": time.time(), "by": g.user["name"], "tex": _sha_file(os.path.join(ex.src, base + ".tex")),
+                      "booklets": old.get("booklets") or [], "single": time.time() if count is None else old.get("single")}
+        if count is not None:
+            # Numbered copies (numbered.py): each booklet's number in its QR codes, carrying on from the last printed.
+            if not _can_mark():
+                raise Refusal(503, "This Lectern can't number booklets yet: its server needs the scan packages (pip install -r requirements-scan.txt).")
+            from .autograde import layout, numbered
+            first = _int(d.get("from")) or _next_booklet(meta)
+            code = layout.load_template(ex.path("printed", base + ".pdf")).code
+            data = numbered.numbered(data, code, first, count)
+            meta[base]["booklets"] = meta[base]["booklets"] + [[first, first + count - 1]]
+            title += f"-booklets-{first}-{first + count - 1}"
         ex.write_json("printed.json", meta)
-    title = re.sub(r"[^\w.-]+", "-", f"{ex.o.replace('/', '-')}-{base}{DOCS[doc]}")
     return send_file(io.BytesIO(data), mimetype="application/pdf", as_attachment=bool(d.get("download")),
                      download_name=f"{title}.pdf", max_age=0)
 
 
 # ── Scans ────────────────────────────────────────────────────────────
+
+MAX_BOOKLETS = 1000
+
+
+def _int(v):
+    try:
+        return int(v) if v not in (None, "") else None
+    except (TypeError, ValueError):
+        raise Refusal(400, "That isn't a whole number.")
+
+
+def _next_booklet(meta):
+    """The next booklet number not printed yet, over every version (numbers never repeat in an exam)."""
+    return 1 + max([r[1] for p in meta.values() if isinstance(p, dict) for r in p.get("booklets") or []] or [0])
+
 
 def _uploads(ex):
     p = ex.path("uploads")
@@ -344,6 +376,12 @@ def upload():
     meta = ex.read_json("uploads.json", {})
     meta[fn] = {"name": os.path.basename(f.filename)[:120], "pages": _pages(full), "at": time.time(), "by": g.user["name"]}
     ex.write_json("uploads.json", meta)
+    # Marked as they come in (as Crowdmark does): a job already marking picks this one up when it's done.
+    if ex.settings.get("scan") and _can_mark() and request.args.get("auto") != "0":
+        try:
+            _start_mark(ex)
+        except Refusal:
+            pass
     return jsonify(ok=True, files=_uploads(ex))
 
 
@@ -381,6 +419,17 @@ def _running(ex):
     return time.time() - job.get("beat", 0) < 180          # a server restart leaves a job that stopped beating
 
 
+def _wrote(ex, ev, roster):
+    """How many booklets to expect: those at the test (its attendance, if it was taken), else the class."""
+    att = 0
+    if ev:
+        try:
+            att = db.one("SELECT COUNT(*) AS n FROM attendance WHERE owner_id = ? AND offering = ? AND eval = ?", (ex.owner, ex.o, ev.get("id")))["n"]
+        except Exception:
+            att = 0
+    return {"n": att or len(roster), "from": "attendance" if att else "class"}
+
+
 def _roster(ex):
     raw = ex.repo.read(f"{ex.o}/grades.json")
     try:
@@ -405,7 +454,17 @@ def _templates(ex):
     return paths, notes
 
 
-def _mark_job(ex, files, by):
+def _mark_job(ex, by):
+    # Again while scans came in during the marking: the last pass marks them all.
+    while True:
+        started = time.time()
+        _mark_once(ex, [ex.path("uploads", u["file"]) for u in _uploads(ex)], by)
+        job = ex.read_json("job.json", {})
+        if job.get("state") != "done" or not any((u.get("at") or 0) > started for u in _uploads(ex)):
+            return
+
+
+def _mark_once(ex, files, by):
     from .autograde import grade, report
     job = {"state": "running", "started": time.time(), "beat": time.time(), "by": by, "booklets": 0,
            "pages": sum((u.get("pages") or 0) for u in _uploads(ex))}
@@ -444,23 +503,40 @@ def mark():
         import numpy, cv2, pypdfium2, PIL  # noqa: F401
     except ImportError:
         raise Refusal(503, "This Lectern can't mark scans yet: its server needs the scan packages (pip install -r requirements-scan.txt).")
-    files = [ex.path("uploads", u["file"]) for u in _uploads(ex)]
-    if not files:
+    if not _running(ex):          # marking already (an upload started it): it marks every scan, this one too
+        _start_mark(ex)
+    return jsonify(ok=True, job=ex.read_json("job.json", {}))
+
+
+def _start_mark(ex):
+    """Marks every uploaded scan, in the background. Already marking: nothing (that job marks the new ones after)."""
+    if not _uploads(ex):
         raise Refusal(409, "Upload the scans first.")
     key = ex.dir
     with _running_lock:
         if _running(ex) or (key in _threads and _threads[key].is_alive()):
             raise Refusal(409, "They're being marked already.")
-        t = threading.Thread(target=_mark_job, args=(ex, files, g.user["name"]), daemon=True, name="lectern-mark")
+        t = threading.Thread(target=_mark_job, args=(ex, g.user["name"]), daemon=True, name="lectern-mark")
         _threads[key] = t
         ex.write_json("job.json", {"state": "running", "started": time.time(), "beat": time.time(), "by": g.user["name"], "booklets": 0})
         t.start()
-    return jsonify(ok=True, job=ex.read_json("job.json", {}))
+
+
+def _can_mark():
+    try:
+        import numpy, cv2, pypdfium2, PIL  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 # ── Results and review ───────────────────────────────────────────────
 
 def _key(b):
+    """A booklet's name in review.json: a numbered copy's code and number (so its pages can come in later uploads),
+    else its pages."""
+    if b.get("booklet") is not None and not b.get("twins"):
+        return f"{b.get('code', '')}#{b['booklet']}"
     return "|".join(b.get("pages") or [])
 
 
@@ -529,7 +605,7 @@ def view(ex, results, review, roster):
             q["picture"] = _pic(ex, results, q.get("picture"))
             q["paper"] = _pic(ex, results, q.get("paper"))
             qs.append(q)
-        out.append({"key": k, "pages": b.get("pages"), "where": _where(b.get("pages"), names), "version": b.get("version", ""), "student": st,
+        out.append({"key": k, "pages": b.get("pages"), "missing": b.get("missing") or [], "booklet": b.get("booklet"), "twins": b.get("twins") or 0, "where": _where(b.get("pages"), names), "version": b.get("version", ""), "student": st,
                     "cover": _pic(ex, results, (b.get("student") or {}).get("picture")),
                     "studentHistory": (rv.get("log") or {}).get("student") or [],
                     "questions": qs, "total": round(total, 2), "out_of": b.get("out_of"), "open": open_, "emailed": emailed.get(k)})
@@ -603,7 +679,7 @@ def overview():
         p = printed.get(base)
         if p and not os.path.isfile(ex.path("printed", base + ".pdf")):
             p = None
-        copies.append({"version": letter, "base": base, "printed": p and {"at": p["at"], "by": p.get("by", ""),
+        copies.append({"version": letter, "base": base, "printed": p and {"at": p["at"], "by": p.get("by", ""), "booklets": p.get("booklets") or [], "single": bool(p.get("single", not p.get("booklets"))),
                        "changed": p.get("tex") != _sha_file(os.path.join(ex.src, base + ".tex"))}})
     job = ex.read_json("job.json", {})
     if job.get("state") == "running" and not _running(ex):
@@ -620,6 +696,7 @@ def overview():
               "layout": ex.settings.get("layout") or "exam", "total": total},
         eval=ev and {"id": ev.get("id"), "name": ev.get("name") or ev.get("id"), "total": ev.get("total")},
         copies=copies, uploads=_uploads(ex), job=job, latex=latex_ok(), role=ex.role,
+        wrote=_wrote(ex, ev, roster), nextBooklet=_next_booklet(printed),
         can={"print": ex.role in LEADS, "upload": ex.role in LEADS, "mark": ex.role in MARKERS},
         results=None if not results else {"booklets": len(bs), "ready": sum(1 for b in bs if b["ready"]),
                              "open": sum(b["open"] for b in bs), "who": sum(1 for b in bs if b["student"].get("status") not in ("auto", "done")),

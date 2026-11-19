@@ -124,8 +124,8 @@ def choose_one(fills):
 
 
 class Booklet:
-    def __init__(self, template, version):
-        self.template, self.version = template, version
+    def __init__(self, template, version, number=None):
+        self.template, self.version, self.number = template, version, number   # number: a numbered copy's
         self.pages = {}        # page number -> (label, lined-up scan, student ink)
 
     @property
@@ -600,11 +600,16 @@ def identify_student(b, exam, roster):
 # ── The whole pile ─────────────────────────────────────────────────────
 
 def booklets(scan_paths, templates, exam, unread):
-    """Booklets, one at a time, from the scans in order. Pages that can't be placed go into unread."""
+    """Booklets, one at a time, from the scans in order. Pages that can't be placed go into unread.
+
+    A numbered copy's pages (numbered.py: the booklet's number in each QR code) go to their booklet wherever they
+    are in the scans, in any upload: they're found on the way through (only where each is, not its picture, is
+    kept) and put together after, a booklet at a time, in the order of their numbers. Others go together as they
+    come: a new booklet starts at another exam or version, or at a page this one already has."""
     by_code = {t.code: t for t in templates}
-    cur = None
+    cur, numbered = None, {}
     for path in scan_paths:
-        for label, img in scan.load_pages(path):
+        for i, (label, img) in enumerate(scan.load_pages(path)):
             ident = scan.identify(img)
             if not ident:
                 unread.append({"page": label, "why": "no QR code or corner squares found"})
@@ -614,6 +619,9 @@ def booklets(scan_paths, templates, exam, unread):
             if tp is None:
                 unread.append({"page": label, "why": f"from another exam ({ident['code']} p.{ident['page']})"})
                 continue
+            if ident.get("booklet") is not None:
+                numbered.setdefault((ident["booklet"], t.code), []).append((path, i, label, ident))
+                continue
             if cur is None or cur.template is not t or ident["page"] in cur.pages:
                 if cur is not None:
                     yield cur
@@ -622,6 +630,17 @@ def booklets(scan_paths, templates, exam, unread):
             cur.pages[ident["page"]] = (label, lined, read.student_ink(lined, tp))
     if cur is not None:
         yield cur
+    for (n, code), found in sorted(numbered.items(), key=lambda x: (x[0][0], x[0][1])):
+        t = by_code[code]
+        b = Booklet(t, version_of(code, exam), n)
+        for path, i, label, ident in found:
+            if ident["page"] in b.pages:        # the same page twice: two copies with one number (photocopied?)
+                yield b
+                b = Booklet(t, version_of(code, exam), n)
+            tp = t.page(ident["page"])
+            lined = scan.align(scan.load_page(path, i), ident, tp)
+            b.pages[ident["page"]] = (label, lined, read.student_ink(lined, tp))
+        yield b
 
 
 def mark_booklet(b, exam, roster):
@@ -634,6 +653,8 @@ def mark_booklet(b, exam, roster):
     out_of = sum(q["points"] for q in qs)
     return {
         "pages": [b.pages[k][0] for k in sorted(b.pages)],
+        "missing": [n for n in range(1, len(b.template.pages) + 1) if n not in b.pages],   # its pages not in the scans
+        "booklet": b.number,                                                                 # a numbered copy's number
         "code": b.code,
         "version": LET[b.version] if int(num(exam.get("settings", {}).get("versions")) or 1) > 1 else "",
         "student": identify_student(b, exam, roster),
@@ -652,6 +673,13 @@ def run(exam, template_paths, scan_paths, roster=None, progress=None):
         done.append(mark_booklet(b, exam, roster))
         if progress:
             progress(len(done))
+    nums = {}
+    for r in done:                                       # one number, two booklets (a copy photocopied?): say so
+        if r.get("booklet") is not None:
+            nums.setdefault(r["booklet"], []).append(r)
+    for rs in nums.values():
+        for r in rs:
+            r["twins"] = len(rs) if len(rs) > 1 else 0
     seen = {}
     for r in done:                                       # one student, two booklets: both need a look
         k = r["student"].get("num")

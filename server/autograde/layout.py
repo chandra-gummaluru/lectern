@@ -84,7 +84,7 @@ def load_template(path):
         if not qr or corners is None:
             raise ValueError(f"{path}: page {i + 1} has no QR code or corner squares. Turn on Marking from scans "
                              "in the Exam Builder's settings, save, and compile the student copy again.")
-        c, n = qr[0]
+        c, n, _ = qr[0]
         if int(n) != i + 1:
             raise ValueError(f"{path}: page {i + 1}'s QR code says page {n}")
         code = code or c

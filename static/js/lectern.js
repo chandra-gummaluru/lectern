@@ -638,6 +638,7 @@ function scansEl(folder) {
   SC.set(key, el);
   return el;
 }
+addEventListener("hashchange", () => SC.forEach(el => { el._at = 0; }));   // back on the page after going elsewhere: read them again
 Lectern.fillScans = root => { if (!root || !S.route.c) return; root.querySelectorAll("[data-scan-slot]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanSlot)); }); };
 Lectern.fillDiscussions = fillDiscussions;
 function renderPage() {
@@ -1676,17 +1677,22 @@ Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;
   let n = 0; const find = () => { const s = document.querySelector(`[data-att-slot="${CSS.escape(String(id))}"]`); if (s) { const h = s.previousElementSibling || s; h.scrollIntoView({ block: "start", behavior: "smooth" }); } else if (++n < 40) setTimeout(find, 100); }; setTimeout(find, 150); };
 // The Exam Builder's Print and Scan: the open exam on paper.
 // A script's PDF (doc: student, key or guide; v: its version letter, if it has versions), made on the server, in a new tab.
-// print: a test's student copy, kept as the copy its scans are marked against (only the owner and coordinators keep one).
-Lectern.openDoc = (folder, doc, v, print) => { const r = S.route, o = curOwner(); if (!r.c || !r.t || !folder) return;
+// print: a student copy, kept as the copy its scans are marked against (only the owner and coordinators keep one).
+// more: { booklets, from }: numbered copies (each booklet's number in its QR codes), from the next number by default.
+Lectern.openDoc = (folder, doc, v, print, more) => { const r = S.route, o = curOwner(); if (!r.c || !r.t || !folder) return;
   const keep = print && doc === "student" && canEdit(r.c, r.t);
-  window.open(`/api/scans/pdf?${new URLSearchParams({ ...(o ? { owner: o } : {}), offering: `${r.c}/${r.t}`, exam: folder, doc, ...(v ? { v } : {}), ...(keep ? { print: 1 } : {}) })}`, "_blank", "noopener");
+  window.open(`/api/scans/pdf?${new URLSearchParams({ ...(o ? { owner: o } : {}), offering: `${r.c}/${r.t}`, exam: folder, doc, ...(v ? { v } : {}), ...(keep ? { print: 1, ...(more || {}) } : {}) })}`, "_blank", "noopener");
   if (keep) setTimeout(() => { const el = SC.get(`${o}/${r.c}/${r.t}/${folder}`); if (el && el._view) el._view.load(); }, 4000); };
 Lectern.openScansFor = folder => { const r = S.route; if (r.c && r.t && folder) go({ page: "scans", c: r.c, t: r.t, e: folder }); };   // from an evaluation in Grades
-// The Exam Builder's Print and Scan: a test linked to an evaluation has its Scans on the evaluation's page, in Grades;
-// one that isn't, its own Print and Scan page.
+// The Exam Builder's Print and Scan: a script linked to an evaluation has its Scans on the evaluation's page, in
+// Grades; one that isn't, its own Print and Scan page.
+// A script's scanning, for printing it: { scan, wrote: {n, from}, nextBooklet, canPrint }, or null.
+Lectern.scanInfo = async folder => { const r = S.route, o = curOwner(); if (!r.c || !r.t || !folder) return null;
+  try { const x = await Auth.api(`/api/scans?${new URLSearchParams({ ...(o ? { owner: o } : {}), offering: `${r.c}/${r.t}`, exam: folder })}`);
+    return { scan: !!(x.exam && x.exam.scan), wrote: x.wrote, nextBooklet: x.nextBooklet || 1, canPrint: !!(x.can && x.can.print) }; } catch (_) { return null; } };
 Lectern.openScans = () => { const r = S.route; if (!(r.page === "tool" && r.tool === "exams" && r.e)) return;
   const t = Lectern.tools.exams, st = t && t.api ? t.api.state() : {};
-  if (st.link && st.layout !== "handout") return go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: st.link, groupEd: "", student: "", stAcc: "", stFrom: "" } });
+  if (st.link) return go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: st.link, groupEd: "", student: "", stAcc: "", stFrom: "" } });
   go({ page: "scans", c: r.c, t: r.t, e: r.e }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).

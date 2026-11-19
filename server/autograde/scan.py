@@ -34,6 +34,20 @@ def load_pages(path, dpi=DPI):
         raise ValueError(f"{path}: not a PDF or an image")
 
 
+def load_page(path, i, dpi=DPI):
+    """One page (from 0) of a scanned PDF, or the image file: a grey image."""
+    if path.lower().endswith(".pdf"):
+        doc = pdfium.PdfDocument(path)
+        try:
+            return np.array(doc[i].render(scale=dpi / 72, grayscale=True).to_pil().convert("L"))
+        finally:
+            doc.close()
+    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        raise ValueError(f"can't read {path}")
+    return img
+
+
 def _decode(img):
     for det in (cv2.QRCodeDetector(), getattr(cv2, "QRCodeDetectorAruco", None)):
         if det is None:
@@ -50,7 +64,7 @@ def _decode(img):
 
 
 def find_qr(img):
-    """((code, page), QR centre (x, y)) or None. Tries the whole page, then each corner larger."""
+    """((code, page, booklet or None), QR centre (x, y)) or None. Tries the whole page, then each corner larger."""
     found = _decode(img)
     if not found:
         h, w = img.shape
@@ -65,10 +79,10 @@ def find_qr(img):
                 break
     if not found:
         return None
-    parts = found[0].split("|")
-    if len(parts) != 3 or not parts[2].isdigit():
+    parts = found[0].split("|")     # LECTERN|<code>|<page>, and |<booklet> on a numbered copy (numbered.py)
+    if len(parts) not in (3, 4) or not parts[2].isdigit() or (len(parts) == 4 and not parts[3].isdigit()):
         return None
-    return (parts[1], int(parts[2])), tuple(found[1].mean(axis=0))
+    return (parts[1], int(parts[2]), int(parts[3]) if len(parts) == 4 else None), tuple(found[1].mean(axis=0))
 
 
 def find_corners(img):
@@ -109,13 +123,14 @@ def order_corners(corners, qr_centre):
 
 
 def identify(img):
-    """What a scanned page is: {"code", "page", "corners" (ordered as printed)}, or None if its QR code or
+    """What a scanned page is: {"code", "page", "booklet" (a numbered copy's, else None), "corners" (ordered as
+    printed)}, or None if its QR code or
     corner squares can't be found."""
     qr = find_qr(img)
     corners = find_corners(img) if qr else None
     if corners is None:
         return None
-    return {"code": qr[0][0], "page": qr[0][1], "corners": order_corners(corners, qr[1])}
+    return {"code": qr[0][0], "page": qr[0][1], "booklet": qr[0][2], "corners": order_corners(corners, qr[1])}
 
 
 def align(img, ident, tpage):

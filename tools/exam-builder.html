@@ -1503,12 +1503,14 @@ function texFiles(slug = examSlug()) {
 const pts = n => fmtNum(Math.round(num(n)));
 // Marking from scans: \ScanCode names the exam and version in each page's QR code, and \ScanID{<node>.<piece>}
 // before an answer piece tags it in the PDF, so the grader (server/autograde) can find it on a scan.
-const scanning = () => !!model.settings.scan && !handout();
+const scanning = () => !!model.settings.scan;
+// Answer spaces and a cover page (for the student number): an exam's; a handout's only when it's marked from scans.
+const spaced = () => !handout() || scanning();
 const scanId = id => (scanning() ? `\\ScanID{${id}}` : "");
 const scanCode = vi => [model.settings.courseCode, model.settings.term, examSlug(), model.settings.versions > 1 ? LET(vi) : ""]
   .map(x => String(x || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")).filter(Boolean).join("-") || "exam";
 function spaceTex(sp, id) {
-  if (!sp || sp.mode === "none" || handout()) return [];
+  if (!sp || sp.mode === "none" || !spaced()) return [];
   if (sp.mode === "fill") return ["\\vfill", "\\clearpage"];
   return [`${id ? scanId(`${id}.space`) : ""}\\answerspace{${cm(sp.h)}}`];
 }
@@ -1831,14 +1833,15 @@ function render() {
   // The top bar has no view switch or zoom: the gear and Fit float over the page, the marking guide is a tick in the edit bar.
   $("#tb-view").innerHTML = ""; $("#tb-right").innerHTML = "";
   // In Lectern, a saved script's PDFs (made on the server, from what's saved): Student Copy, Answer Key, Marking
-  // Scheme, each in a new tab (with versions, it asks which); and a test's Print and Scan (its scans, in Grades).
+  // Scheme, each in a new tab (with versions, it asks which); and Print and Scan (its scans, with its evaluation).
   if (window.Lectern && window.Lectern.openDoc && gh.path) {
-    const folder = gh.path.split("/").slice(-2, -1)[0], test = S.layout !== "handout";
+    const folder = gh.path.split("/").slice(-2, -1)[0];
     const docs = [["student", "Student Copy"], ["key", "Answer Key"], ["guide", "Marking Scheme"]];
     $("#tb-right").innerHTML = docs.map(([k, l]) => `<button type="button" class="tb-doc" data-doc="${k}" title="${l}, as a PDF${N > 1 ? ": which version?" : ""}">${l}</button>`).join("")
-      + (test && window.Lectern.openScans ? `<button type="button" id="tb-scans" title="Its scans: uploading, marking and grading them, with its evaluation">Print and Scan</button>` : "");
-    const open = (doc, v) => { if (unsaved) return toast("Save first: the PDF is made from the saved exam."); window.Lectern.openDoc(folder, doc, v, test); };
+      + (window.Lectern.openScans ? `<button type="button" id="tb-scans" title="Its scans: uploading, marking and grading them, with its evaluation">Print and Scan</button>` : "");
+    const open = (doc, v, more) => { if (unsaved) return toast("Save first: the PDF is made from the saved exam."); window.Lectern.openDoc(folder, doc, v, true, more); };
     $$("#tb-right .tb-doc").forEach(b => b.onclick = () => {
+      if (b.dataset.doc === "student" && scanning() && window.Lectern.scanInfo) return numberedPop(b, folder, N, open);
       if (N <= 1) return open(b.dataset.doc, "");
       popover(b, `<div class="menu-list">${"ABCDEF".slice(0, N).split("").map(v => `<button type="button" data-v="${v}">Version ${v}</button>`).join("")}</div>`,
         el => el.querySelectorAll("[data-v]").forEach(x => x.onclick = () => { closePops(); open(b.dataset.doc, x.dataset.v); }), "menu");
@@ -1897,7 +1900,7 @@ function sheetHTML() {
   if (mode === "edit") parts.push(preHTML(S));
   else if (num(S.topSpace) > 0) parts.push(`<div class="top-space-pv" style="height:${esc(cm(num(S.topSpace)))}"></div>`);
   if (C.on) parts.push(`<div class="blk cover-blk${ui.sel === "cover" ? " sel" : ""}" data-sel="cover" data-path="">${coverHTML(vi, mode)}</div>`, pageLine("New page"));
-  else if (!guide() && !handout()) parts.push(`<button type="button" class="add-cover" data-act="cover-on">Add a cover page</button>`);
+  else if (!guide() && spaced()) parts.push(`<button type="button" class="add-cover" data-act="cover-on">Add a cover page</button>`);
   const title = (S.title || "") + (mode === "guide" ? " — Marking Guide" : "");
   parts.push(`<div class="sheet-head ed-head">${plainEd("settings", "courseCode", S.courseCode, "Course code")}<span>${mode !== "guide" ? plainEd("settings", "title", S.title, "Exam title") : esc(title)}</span>${plainEd("settings", "term", S.term, "Term")}</div>`);
   if (handout() && !C.on) parts.push(`<div class="ho-head">${S.date ? `<p class="ho-due">Due ${esc(S.date)}</p>` : ""}<div class="ho-ins"><b>Instructions</b>${linesEd("settings", "instructions", S.instructions, "Instructions for the assignment, one per line")}</div></div>`);
@@ -1988,7 +1991,7 @@ function nodeHTML(n, ctx) {
   // other settings are on the edit bar. With none, a link adds one.
   const sp = n.space;
   if (sp.mode === "fill") h.push(`<div class="pq-fill-ed"><span>Rest of the page</span></div>${pageLine("New page")}`);
-  else if (handout()) {}
+  else if (!spaced()) {}
   else if (sp.mode === "height" && mode !== "guide") h.push(`<div class="pq-space ed" style="height:${esc(cm(sp.h))}" data-item="${esc(id)}" data-f="${f("space.h")}"><i class="sp-h" title="Drag to resize"></i></div>`);
   else if (sp.mode === "none" && mode !== "guide") h.push(`<button type="button" class="add-space" data-act="sp" data-v="height" data-item="${esc(id)}" data-p="${path}">+ Answer space</button>`);
   return h.join("");
@@ -2070,7 +2073,7 @@ function settingsPageHTML() {
     <h1>Settings</h1>
     <p class="sp-lede">The title, course, term, instructors, date and duration are printed on the cover, so you edit them there.</p>
     <section><h2>Layout</h2>
-      ${row("Exam or handout", "An exam has a cover page and answer spaces. A handout (an assignment worked on in students' own time) has instructions at the top and no answer spaces.",
+      ${row("Exam or handout", "An exam has a cover page and answer spaces. A handout (an assignment worked on in students' own time) has instructions at the top and no answer spaces, unless it's marked from scans.",
         `<div class="seg2 sp-seg">${[["exam", "Exam"], ["handout", "Handout"]].map(([v, l]) => `<button type="button" data-act="set-layout" data-v="${v}" aria-pressed="${(S.layout || "exam") === v}">${l}</button>`).join("")}</div>`)}
     </section>
     <section><h2>Versions</h2>
@@ -2084,7 +2087,7 @@ function settingsPageHTML() {
     <section><h2>Pages</h2>
       ${row("Blank space at the top", "Room on every page for a scanner's codes. 0 for none.", `<input class="sp-num" type="number" min="0" max="5" step="0.5" data-set="topSpace" value="${esc(num(S.topSpace))}"><span class="sp-unit">cm</span>`)}
       ${row("Page numbers", "“Page 2 of 9” at the bottom of each page.", `<label class="sp-switch"><input type="checkbox" data-set="pageNumbers"${S.pageNumbers ? " checked" : ""}><span></span></label>`)}
-      ${(S.layout || "exam") === "exam" ? row("Marking from scans", "Prints a black square in each corner and a QR code at the top left of every page of the student copy, so scanned exams can be marked automatically. Keep the corners and the top 2.5 cm clear.", `<label class="sp-switch"><input type="checkbox" data-set="scan"${S.scan ? " checked" : ""}><span></span></label>`) : ""}
+      ${row("Marking from scans", `Prints a black square in each corner and a QR code at the top left of every page of the student copy, so scanned ${handout() ? "handouts" : "exams"} can be marked automatically. Keep the corners and the top 2.5 cm clear.${handout() ? " A handout marked from scans has answer spaces, and can have a cover page for the student number." : ""}`, `<label class="sp-switch"><input type="checkbox" data-set="scan"${S.scan ? " checked" : ""}><span></span></label>`)}
     </section>
     <section><h2>LaTeX</h2>
       ${row("Macros", "\\newcommand lines, added to every .tex file. The page understands them in maths too.", `<textarea class="sp-code" rows="4" spellcheck="false" data-set="macros">${esc(S.macros)}</textarea>`)}
@@ -2279,7 +2282,7 @@ function placeToolbar() {
         choice ? `<button type="button" class="tb-w" data-act="m-layout" title="Layout of the options, and multiple answers">${pic(n.layout)}${pic("caret")}</button>` : "",
         `<i></i>${fmtButtons(true)}<i></i>`,
         `<button type="button" class="tb-w" data-act="subadd-sel" title="Add a sub-question: (a), (b)… or (i), (ii)…">${pic("sub")}Sub-question</button><i></i>`,
-        !has && n.space.mode !== "none" && !handout() ? spaceBar(it, n) : "",
+        !has && n.space.mode !== "none" && spaced() ? spaceBar(it, n) : "",
         depth === 0 ? `<label class="tb-check"><input type="checkbox" class="cx-newpage"${it.newPage ? " checked" : ""}> New page</label>` : "",
         depth === 0 && N > 1 ? (nv === 1 ? `<button type="button" class="tb-w" data-act="ownvar">Own variant for version ${LET(vi === 0 ? 1 : vi)}</button>` : `<button type="button" class="tb-w danger" data-act="delvar">Remove variant ${LET(Math.min(vi, nv - 1))}</button>`) : "",
         depth > 0 ? `<i></i>${tb("pmove", "up", "Move up", 'data-v="-1"')}${tb("pmove", "down", "Move down", 'data-v="1"')}<button type="button" class="tb-w danger" data-act="pdel">Delete part</button>` : "");
@@ -2311,7 +2314,8 @@ function clearBar() {
   ctx.innerHTML = ui.output === "preview" ? `<div class="cx-in"><span class="cx-name">Student Preview</span><span class="cx-hint">The exam as students see it. Click the eye again to go back to editing.</span>${viewCtl()}</div>`
     : `<div class="cx-in"><div class="seg cx-seg" role="group" aria-label="Exam or handout">${[["exam", "Exam"], ["handout", "Handout"]].map(([v, l]) => `<button type="button" data-act="set-layout" data-v="${v}" aria-pressed="${lay === v}">${l}</button>`).join("")}</div><i></i>
       <label class="cx-sel"><span>Versions</span><select id="set-ver-n">${[1, 2, 3, 4, 5, 6].map(k => `<option value="${k}"${S.versions === k ? " selected" : ""}>${k}</option>`).join("")}</select></label><i></i>
-      <label class="tb-check"><input type="checkbox" id="set-pnum"${S.pageNumbers ? " checked" : ""}> Page Numbers</label>
+      <label class="tb-check"><input type="checkbox" id="set-pnum"${S.pageNumbers ? " checked" : ""}> Page Numbers</label><i></i>
+      <label class="tb-check" title="A black square in each corner and a QR code at the top left of every page of the student copy, so scanned copies can be marked automatically (keep the corners and the top 2.5 cm clear)${lay === "handout" ? ". A handout marked from scans has answer spaces, and can have a cover page for the student number" : ""}."><input type="checkbox" id="set-scan"${S.scan ? " checked" : ""}> Marking from Scans</label>
 ${viewCtl()}</div>`;
 }
 const partPath = path => { let s = ""; (path ? path.split(".") : []).forEach((x, k) => { if (k % 2) s += partLabel((k + 1) / 2, +x); }); return s ? ` ${s}` : ""; };
@@ -2325,6 +2329,7 @@ ctx.addEventListener("change", e => {
   if (t.id === "ver-sel") { ui.version = +t.value; return render(); }
   if (t.id === "set-ver-n") return change(() => { model.settings.versions = +t.value; });
   if (t.id === "set-pnum") return change(() => { model.settings.pageNumbers = t.checked; });
+  if (t.id === "set-scan") return change(() => { model.settings.scan = t.checked; });
   if (t.dataset.cover) return change(() => { model.cover[t.dataset.cover] = t.checked; });
   if (t.matches(".cx-fcount") && f) return change(() => { f.count = Math.min(40, Math.max(1, Math.round(num(t.value)) || 1)); });
   if (t.matches(".cx-fbeside") && f) return change(() => { f.beside = t.checked; });
@@ -2346,6 +2351,30 @@ stage.addEventListener("mousedown", e => { if (e.target.closest(".tb-b, .tb-w"))
 // edge. One opened from a bar that stays put (top, edit or bottom bar) stays put too
 // and closes if the page scrolls; one opened from something on the page moves with
 // it. Its own button again, Esc, or a click elsewhere closes it.
+// Marked from scans, the student copy is printed as numbered booklets: each its own number in its QR codes, so a
+// booklet's pages can be scanned in any order and its missing pages uploaded later. How many (the class, or the
+// test's attendance, at first), from the next number not printed yet; or one copy, not numbered, to photocopy.
+function numberedPop(anchor, folder, N, open) {
+  if (unsaved) return toast("Save first: the PDF is made from the saved exam.");
+  const pop = popover(anchor, `<div class="fp-h">Student Copy</div>
+      <p class="fp-help" style="margin:-2px 0 0">Every booklet gets its own number, in the QR code on each page: its pages can be scanned in any order, and any missing ones uploaded later.</p>
+      <div class="fp-row">${N > 1 ? `<label class="pf"><span>Version</span><select id="nb-v">${"ABCDEF".slice(0, N).split("").map(v => `<option>${v}</option>`).join("")}</select></label>` : ""}
+        <label class="pf"><span>Booklets</span><input type="number" id="nb-n" min="1" max="1000" step="1" value=""></label></div>
+      <p class="fp-help" id="nb-range" style="margin:0">…</p>
+      <div class="fp-f"><button type="button" class="link" id="nb-one" title="The same copy for everyone, to photocopy: its pages must then be scanned a booklet at a time, in order">One copy, not numbered</button><span class="spacer"></span><button type="button" class="btn primary" id="nb-go" disabled>Make the PDF</button></div>`, null, "wide");
+  if (!pop) return;
+  const n = $("#nb-n", pop), range = $("#nb-range", pop), go = $("#nb-go", pop);
+  let first = 1;
+  const say = () => { const k = Math.floor(num(n.value)); go.disabled = !(k >= 1 && k <= 1000);
+    range.textContent = k >= 1 ? `Booklets ${first} to ${first + k - 1}.` : "How many booklets?"; };
+  n.oninput = say;
+  window.Lectern.scanInfo(folder).then(x => { if (!pop.isConnected) return;
+    first = (x && x.nextBooklet) || 1; if (!n.value) n.value = (x && x.wrote && x.wrote.n) || 30; say(); n.select(); });
+  const v = () => (N > 1 ? $("#nb-v", pop).value : "");
+  go.onclick = () => { const k = Math.floor(num(n.value)); closePops(); open("student", v(), { booklets: k }); };
+  $("#nb-one", pop).onclick = () => { closePops(); open("student", v()); };
+  n.onkeydown = e => { if (e.key === "Enter" && !go.disabled) go.click(); };
+}
 function popover(anchor, html, bind, cls = "") {
   const open = $(".fpop");
   if (open && open._anchor === anchor) { closePops(); return null; }

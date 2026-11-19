@@ -87,7 +87,7 @@ def main():
         me.wait_for_timeout(800)
         assert "Which of these numbers is prime" in me.inner_text("[data-lt-tool='exams']"), "the demo's midterm is open"
         me.screenshot(path=f"{OUT}/scan-0-builder.png")
-        tb = [x.strip() for x in me.locator("#tb-right button").all_inner_texts()]
+        tb = [x.strip() for x in me.locator("[data-lt-tool='exams'] #tb-right button").all_inner_texts()]
         assert tb == ["Student Copy", "Answer Key", "Marking Scheme", "Print and Scan"], tb
 
         # 2. The student copy, from the Exam Builder (kept as printed), written on by two students, scanned and uploaded.
@@ -95,6 +95,19 @@ def main():
         for doc in ("student", "key", "guide"):
             me.evaluate("window.__opened = []; window.open = u => { window.__opened.push(u); return null; }; 0")
             me.click(f"#tb-right [data-doc='{doc}']")
+            if doc == "student":          # marked from scans: numbered booklets, or one copy to photocopy
+                me.wait_for_selector("#nb-go:not([disabled])", timeout=10000)
+                n = len([s_ for s_ in json.loads(srv.text("priv", f"{off}/grades.json"))["students"] if not s_.get("dropped")])
+                assert me.input_value("#nb-n") == str(n) and me.inner_text("#nb-range") == f"Booklets 1 to {n}.", me.inner_text("#nb-range")
+                me.screenshot(path=f"{OUT}/scan-0b-numbered.png")
+                me.fill("#nb-n", "2"); assert me.inner_text("#nb-range") == "Booklets 1 to 2."
+                me.click("#nb-go"); me.wait_for_function("window.__opened.length > 0", timeout=5000)
+                url = me.evaluate("window.__opened[0]"); assert "booklets=2" in url and "print=1" in url, url
+                nb = ctx.request.get(srv.base.rstrip("/") + url); assert nb.ok and nb.body()[:4] == b"%PDF"
+                me.evaluate("window.__opened = []; 0")
+                me.click(f"#tb-right [data-doc='{doc}']"); me.wait_for_selector("#nb-go:not([disabled])", timeout=10000)
+                assert me.inner_text("#nb-range") == f"Booklets 3 to {n + 2}.", "carries on from the last printed"
+                me.click("#nb-one")                                    # the rest of this walkthrough: one copy
             me.wait_for_function("window.__opened.length > 0", timeout=5000); opened.append(me.evaluate("window.__opened[0]"))
         assert all("/api/scans/pdf" in u and "exam=midterm" in u for u in opened), opened
         me.click("#tb-scans")
@@ -112,17 +125,23 @@ def main():
         scan_pdf(r.body(), people, answers(exam), scan)
         me.evaluate("location.reload()"); me.wait_for_selector(G + ".erow[data-id='mt']", timeout=20000); me.click(G + ".erow[data-id='mt']")
         me.wait_for_selector(G + "[data-scan-slot] #sc-file", state="attached", timeout=20000)
-        assert "Student copy printed" in me.inner_text(G + "[data-scan-slot]"), me.inner_text(G + "[data-scan-slot]")
-        me.set_input_files(G + "[data-scan-slot] #sc-file", scan)
-        me.wait_for_selector(".sc-files .sc-file", timeout=30000)
+        assert "Booklets 1–2 and a copy to photocopy printed" in me.inner_text(G + "[data-scan-slot]"), me.inner_text(G + "[data-scan-slot]")
+        me.set_input_files(G + "[data-scan-slot] #sc-file", scan)             # read as it comes in: no Mark button
+        me.wait_for_selector(G + "[data-scan-slot] .sc-filelist", timeout=30000)
         assert not me.evaluate("window.Lectern.tools.grades.api.state().unsaved"), "uploading a scan doesn't change the gradebook"
-        print("2 uploaded:", me.inner_text(".sc-files .sc-file").replace("\n", " "))
-        me.click(G + "[data-scan-slot] #sc-mark")
-        me.wait_for_selector(".sc-job", timeout=10000)
-        me.screenshot(path=f"{OUT}/scan-2-marking.png")
-        me.wait_for_selector(G + "[data-scan-slot] #sc-grade", timeout=180000)       # marked: Fix Scans and Grading, side by side
-        acts = [x.strip() for x in me.locator(G + "[data-scan-slot] .lx-adds > *").all_inner_texts()]
-        assert acts == ["Upload Scans", "Fix Scans", "Grading", "Delete All"], acts
+        print("2 uploaded:", me.inner_text(G + "[data-scan-slot] .sc-filelist summary"))
+        assert not me.query_selector(G + "[data-scan-slot] #sc-mark")
+        me.wait_for_selector(G + "[data-scan-slot] .sc-mc-job", timeout=10000)
+        me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2-marking.png")
+        me.wait_for_selector(G + "[data-scan-slot] #sc-grade", timeout=180000)       # read: Fix Scans and Grading, side by side
+        me.wait_for_selector(G + "[data-scan-slot] .sc-mc-job", state="detached", timeout=180000)
+        card = me.inner_text(G + "[data-scan-slot] .sc-meter-card")
+        n = len([s_ for s_ in book["students"] if not s_.get("dropped")])
+        assert card.split("\n")[0].startswith(f"2 / {n}") and "students in the class" not in card, card
+        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-mc-n", "title")
+        print("  meter:", card.replace("\n", " | "))
+        acts = [x.strip() for x in me.locator(G + "[data-scan-slot] .sc-acts > *").all_inner_texts()]
+        assert acts[0] == "Upload Scans" and acts[1].startswith("Fix Scans · ") and acts[2:] == ["Grading"], acts
         assert not me.query_selector(G + "[data-scan-slot] .sc-dc, " + G + "[data-scan-slot] [data-by]"), "no booklets or questions on the evaluation"
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2b-marked.png")
         me.click(G + "[data-scan-slot] #sc-grade"); me.wait_for_selector(".sc-ed .sc-dc")                 # Grading: the booklets, the questions

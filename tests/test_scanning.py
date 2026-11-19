@@ -111,14 +111,17 @@ def test_print_scan_mark_review_send(client, user, demo):
     assert up.status_code == 200, up.get_json()
     assert up.get_json()["files"][0]["pages"] == 8 and up.get_json()["files"][0]["name"] == "class scan.pdf"
 
+    # Read as it comes in (the upload starts the marking); Mark, while it's marking, is fine and changes nothing.
     r = client.post("/api/scans/mark", json={"offering": demo["offering"], "exam": "midterm"}, headers=H)
     assert r.status_code == 200, r.get_json()
     j = wait_marked(client, demo)
+    assert j["wrote"]["from"] == "class" and j["wrote"]["n"] >= 2, j["wrote"]   # no attendance taken: the class
     assert j["job"]["state"] == "done", j["job"]
     assert j["results"]["booklets"] == 2 and j["results"]["ready"] == 0 and j["results"]["notes"] == []
 
     res = client.get(f"/api/scans/results?{q(demo)}").get_json()
     bs = res["booklets"]
+    assert bs[0]["missing"] == [] and all(len(b["pages"]) + len(b["missing"]) == 4 for b in bs), [b["missing"] for b in bs]   # its pages: read, or missing
     for b, who in zip(bs, people):        # never the wrong student without a person; an unsure one, a person picks
         if b["student"]["status"] == "auto":
             assert b["student"]["num"] == who["num"], b["student"]
@@ -250,6 +253,23 @@ def test_who_may_do_what(client, user, demo):
     assert stranger.get(f"/api/scans?{qq}").status_code == 404
     assert stranger.get(f"/api/scans/pdf?{qq}").status_code == 404
     assert client.get(f"/api/scans/picture?offering={off}&exam=midterm&name=../../grades.json").status_code == 404
+
+
+def test_numbered_booklets(client, user, demo):
+    """Printed as numbered booklets: each number once, carrying on from the last printed."""
+    import pypdfium2
+    one = client.get(f"/api/scans/pdf?{q(demo, doc='student', print=1)}")
+    assert one.status_code == 200
+    pages = len(pypdfium2.PdfDocument(one.data))
+    assert client.get(f"/api/scans?{q(demo)}").get_json()["nextBooklet"] == 1
+    r = client.get(f"/api/scans/pdf?{q(demo, doc='student', print=1, booklets=3)}")
+    assert r.status_code == 200 and r.data[:4] == b"%PDF", r.get_json()
+    assert len(pypdfium2.PdfDocument(r.data)) == 3 * pages
+    r = client.get(f"/api/scans/pdf?{q(demo, doc='student', print=1, booklets=2)}")
+    j = client.get(f"/api/scans?{q(demo)}").get_json()
+    assert j["copies"][0]["printed"]["booklets"] == [[1, 3], [4, 5]] and j["nextBooklet"] == 6
+    assert client.get(f"/api/scans/pdf?{q(demo, doc='student', booklets=2)}").status_code == 400      # only printed
+    assert client.get(f"/api/scans/pdf?{q(demo, doc='student', print=1, booklets=0)}").status_code == 400
 
 
 def test_latex_stays_in_its_folder(client, user, demo):

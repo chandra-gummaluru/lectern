@@ -1710,3 +1710,7 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-st-b { display: flex; gap: 8px; flex: none; }
 .sc-step .sc-st-b .lt-btn { height: 32px !important; min-height: 32px; padding: 0 12px !important; font-size: 13px !important; }
 .sc-steps + .sc-looks { margin: 0 0 8px; padding: 0; border: 0; }
+
+/* Booklet Matching: Skip beside Okay; a student who has a booklet already, greyed out in the list. */
+.sc-okbar .lt-link { margin-right: 14px; align-self: center; }
+option.sc-taken { color: var(--ink-3); }

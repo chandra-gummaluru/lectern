@@ -38,7 +38,9 @@ const markHTML = b => { const pc = b.out_of ? Math.round(b.total / b.out_of * 10
   return `<div class="sc-mk"><b>${pc != null ? `${fmtN(pc)}%` : fmtN(b.total)}</b><small>${fmtN(b.total)} / ${fmtN(b.out_of)}${b.ready ? "" : " so far"}</small></div>`; };
 const when = s => { const d = new Date(s * 1000); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
 const size = b => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
-const ui = { show: "open", q: "", by: "question", allFor: "", sentKey: "", differ: [], qShow: "", qWas: "", sure: false, keep: new Set(), keepFor: "", fixing: false, fixWas: "", fixCur: "", fixDone: 0, pending: null };
+// Booklet Matching's page (whose each booklet is), in the questions' place in the address: #/…/scans/<exam>/questions/students.
+const MATCH = "students";
+const ui = { mSkip: [], show: "open", q: "", by: "question", allFor: "", sentKey: "", differ: [], qShow: "", qWas: "", sure: false, keep: new Set(), keepFor: "", fixing: false, fixWas: "", fixCur: "", fixDone: 0, pending: null };
 const editing = new Set();   // answers whose reading is open to type ("<booklet>|<question>")
 const adding = new Set();    // answers with the New Comment form open
 const noting = new Set();    // answers with the note box opened, though it has no note yet
@@ -74,7 +76,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       if (S.results) R = await api(`/api/scans/results?${params()}`);
     } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">Couldn't open it. ${esc(e.message)}</p>`; return; }
     if (!here()) return;
-    into ? draw() : r.q ? drawQuestion() : r.b ? drawBooklet() : draw();
+    into ? draw() : r.q === MATCH ? drawMatching() : r.q ? drawQuestion() : r.b ? drawBooklet() : draw();
     clearTimeout(timer);
     if ((S.job && S.job.state === "running") || (S.results && S.results.mail && S.results.mail.state === "running")) timer = setTimeout(load, 1500);
   }
@@ -145,10 +147,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       const reading = running ? `<span class="sc-spin" aria-hidden="true"></span>Reading the scans…${job.booklets ? ` ${pl(job.booklets, "booklet", "booklets")} so far` : ""}` : "";
       const meter = `<div class="sc-steps">
           ${step(whole, want, "booklets scanned", want ? `Booklets with every page scanned, of the ${want} ${S.wrote.from === "attendance" ? "students at the test (its attendance)" : "students in the class"}` : "No students in the class yet", upload, PAGES, reading)}
-          ${bs.length ? step(nMatched, bs.length, "booklets matched", "Booklets whose student is known: read from the cover, or picked by a person",
-            can.mark ? `<button type="button" class="lt-btn${loose ? " primary" : ""}" id="sc-match"${loose ? "" : " disabled"}>Match Booklets</button>` : "", PERSON) : ""}
-          ${bs.length ? step(ready, bs.length, "booklets graded", "Booklets with every question marked and their student known",
-            S.can.print ? `<button type="button" class="lt-btn" id="sc-email"${allDone && !mailing ? "" : " disabled"} title="${allDone ? "Email each student their own booklet, marked: their pages with each question's score and comments drawn on, as a PDF" : "Once every booklet is graded"}">Email ${allDone ? (freshMail && freshMail < ready ? `${freshMail} New Booklet${freshMail === 1 ? "" : "s"}` : `${ready} Booklet${ready === 1 ? "" : "s"}`) : "Booklets"}</button>` : "", GRADED) : ""}
         </div>
         ${looks.length ? `<ul class="sc-looks">${looks.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}
         ${job.state === "failed" ? `<p class="lt-note err">${esc(job.error || "The marking stopped.")}</p>` : ""}`;
@@ -163,10 +161,11 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         ${changed ? `<p class="lt-note">The ${what === "handout" ? "handout" : "test"} has changed since it was printed: print it again before handing it out.</p>` : ""}
         ${X.scan ? meter : can.upload ? `<div class="lx-adds">${upload}</div>` : ""}
         <div class="sc-up" id="sc-up"></div>
-        ${sentLine ? `<p class="lx-help sc-sent">${sentLine}</p>` : ""}${m.state === "failed" ? `<p class="lt-note err">${esc(m.error || "The emails stopped.")}</p>` : ""}
         ${X.scan ? `<div class="sc-qlist${res ? "" : " off"}">${res ? resultsHTML(res) : (S.questions || []).length ? `<div class="hb lt-dc sc-dc"><section class="dc">
           <div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${S.questions.length}</span></h2></div>
-          <div class="dc-threads">${questionRows(S.questions.map(l => ({ l })), true)}</div></section></div>` : ""}</div>` : ""}
+          <div class="dc-threads">${matchRow(null, true)}${questionRows(S.questions.map(l => ({ l })), true)}</div></section></div>` : ""}</div>` : ""}
+        ${res && S.can.print ? `<div class="lx-adds sc-mail"><button type="button" class="lt-btn" id="sc-email"${allDone && !mailing ? "" : " disabled"} title="${allDone ? "Email each student their own booklet, marked: their pages with each question's score and comments drawn on, as a PDF" : "Once every booklet is graded"}">Email ${allDone ? (freshMail && freshMail < ready ? `${freshMail} New Booklet${freshMail === 1 ? "" : "s"}` : `${ready} Booklet${ready === 1 ? "" : "s"}`) : "Booklets"}</button></div>` : ""}
+        ${sentLine ? `<p class="lx-help sc-sent">${sentLine}</p>` : ""}${m.state === "failed" ? `<p class="lt-note err">${esc(m.error || "The emails stopped.")}</p>` : ""}
         ${S.uploads.length ? `<details class="sc-filelist"${ui.files ? " open" : ""}><summary>${pl(S.uploads.length, "file", "files")} uploaded${pages ? ` · ${pl(pages, "page", "pages")}` : ""}</summary>
           <div class="sc-files">${files}</div>
           ${can.upload ? `<div class="sc-fl-acts"><button type="button" class="lt-link danger" id="sc-wipe"${running ? " disabled" : ""}>Delete all the scans and results</button></div>` : ""}</details>` : ""}`;
@@ -208,8 +207,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     if (into && res) {
       wireResults();       // its questions (or booklets), and Email Booklets
       const rp = box.querySelector("#sc-replace"); if (rp) rp.onclick = () => autoSend(true);
-      const mt = box.querySelector("#sc-match"); if (mt) mt.onclick = () => {   // the first booklet whose student isn't known
-        const k = R.booklets.findIndex(b => !matched(b)); if (k >= 0) go({ ...r, q: "", b: String(k + 1) }); };
       autoSend(false);
     } else if (res) wireResults();
   }
@@ -254,7 +251,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       return `${unread}${notes}${fixBar}${into ? "" : `<div class="sc-bybar">${bySeg}</div>`}
       <div class="hb lt-dc sc-dc"><section class="dc">
         <div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${qs.length}</span></h2></div>
-        <div class="dc-threads">${questionRows(qs)}</div>
+        <div class="dc-threads">${into ? matchRow(bs) : ""}${questionRows(qs)}</div>
       </section></div>
       ${linked ? "" : `${gradebook}${students}`}`;
     }
@@ -272,6 +269,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     box.querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { ui.show = b.dataset.show; draw(); }; });
     box.querySelectorAll("[data-by]").forEach(b => { b.onclick = () => { ui.by = b.dataset.by; draw(); }; });
     box.querySelectorAll(".sc-dc [data-gq]").forEach(b => { b.onclick = () => openQ(b.dataset.gq); });
+    box.querySelectorAll(".sc-dc [data-match]").forEach(b => { b.onclick = () => { ui.mSkip = []; window.scrollTo(0, 0); go({ ...r, b: "", q: MATCH }); }; });
     const qi = box.querySelector("#sc-q"); if (qi) qi.oninput = () => { ui.q = qi.value; const at = qi.selectionStart; draw(); const i = box.querySelector("#sc-q"); if (i) { i.focus(); i.setSelectionRange(at, at); } };
     box.querySelectorAll("[data-b]").forEach(b => { b.onclick = () => go({ ...r, b: b.dataset.b }); });
     const fx = box.querySelector("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) openQ(first); };
@@ -365,6 +363,47 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     if (here()) load();
   }
 
+  // ── Booklet Matching: every booklet's cover, and whose it is ──
+  function drawMatching() {
+    // One booklet at a time, as checking a question: its cover, whose the computer thinks it is (chosen already in the
+    // list, if it read a number), and Okay; Skip leaves it for later. Students who have a booklet are greyed out.
+    const bs = (R && R.booklets) || [], can = S.can.mark;
+    pathTo("Booklet Matching");
+    const open = bs.filter(b => !matched(b)), n = bs.length - open.length;
+    ui.mSkip = (ui.mSkip || []).filter(k => open.some(b => b.key === k));
+    const cur = open.find(b => !ui.mSkip.includes(b.key)) || open[0];
+    const people = (R.students || []).slice().sort((a, c) => `${a.last} ${a.first}`.localeCompare(`${c.last} ${c.first}`));
+    const taken = new Set(bs.filter(matched).map(b => b.student.num));
+    let body = `<p class="lx-help sc-fixnext">Every booklet is matched. <button type="button" class="lt-link" data-mdone>Back to ${esc(S.eval ? S.eval.name : "the scans")}</button>.</p>`;
+    if (cur) {
+      const st = cur.student, i = bs.indexOf(cur) + 1, guess = st.num && !taken.has(st.num) ? st.num : "";
+      body = `<div class="sc-qs"><div class="sc-q st-manual sc-mcard" data-k="${esc(cur.key)}">
+          <p class="sc-note">${WARN}<span>${esc(st.note || "Not sure whose booklet this is. Check the cover.")}${st.read ? ` The number reads as ${esc(st.read)}.` : ""}</span></p>
+          ${cur.cover ? `<img class="sc-pic sc-cover" src="${esc(cur.cover)}" alt="The cover's name and number boxes, as scanned">` : `<p class="lx-help">The cover isn't in the scans: <button type="button" class="lt-link" data-open-b="${i}">open the booklet</button> to see whose it is.</p>`}
+          ${can ? `<div class="sc-pick"><select id="sc-mwho" aria-label="Whose booklet"><option value="">Choose the student…</option>${people.map(p => {
+            const other = taken.has(p.num);
+            return `<option value="${esc(p.num)}"${p.num === guess ? " selected" : ""}${other ? ` disabled class="sc-taken"` : ""}>${esc(`${p.last}, ${p.first}`)} · ${esc(p.num)}${other ? " · has a booklet" : ""}</option>`; }).join("")}</select></div>` : ""}
+        </div></div>
+        <div class="sc-okbar">${open.length > 1 ? `<button type="button" class="lt-link" data-mskip>Skip</button>` : ""}<button type="button" class="lt-btn primary" data-mok${guess ? "" : " disabled"}>Okay</button></div>`;
+    }
+    box.innerHTML = `<div class="lx-editor sc-ed sc-book">
+      <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${PERSON}</span>
+        <div class="gr-tt"><p class="gr-kind">Booklet Matching</p><h2>${cur ? (cur.booklet != null ? `Booklet ${cur.booklet}` : `Booklet ${bs.indexOf(cur) + 1}`) : esc(S.eval ? S.eval.name : S.exam.title)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
+        <span class="lx-acts">${cur ? `<button type="button" class="lt-btn sc-sm" data-open-b="${bs.indexOf(cur) + 1}">Open the Booklet</button>` : ""}<button type="button" class="lt-btn sc-sm" data-mdone>${open.length ? "Stop" : "Done"}</button></span></div>
+      <p class="lt-req-meta">${n} / ${bs.length} matched${open.length ? ` · ${open.length} to match` : ""}</p>
+      ${body}
+    </div>`;
+    box.querySelectorAll("[data-mdone]").forEach(x => { x.onclick = home; });
+    box.querySelectorAll("[data-open-b]").forEach(x => { x.onclick = () => go({ ...r, q: "", b: x.dataset.openB }); });
+    const sel = box.querySelector("#sc-mwho"), ok = box.querySelector("[data-mok]");
+    if (sel && ok) sel.onchange = () => { ok.disabled = !sel.value; };
+    const sk = box.querySelector("[data-mskip]"); if (sk) sk.onclick = () => { ui.mSkip.push(cur.key); if (ui.mSkip.length >= open.length) ui.mSkip = []; drawMatching(); };
+    if (ok) { ok.focus(); ok.onclick = async () => {
+      if (!sel || !sel.value) return;
+      ok.disabled = true;
+      if (await review(cur, { student: sel.value })) { window.scrollTo(0, 0); drawMatching(); } else ok.disabled = false; }; }
+  }
+
   // ── One booklet ──
   function drawBooklet() {
         const bs = (R && R.booklets) || [], i = Math.max(1, Math.min(bs.length, Number(r.b) || 1)), b = bs[i - 1];
@@ -425,6 +464,13 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   const toDo = () => labels().filter(l => answersTo(l).some(a => isOpen(a.x)));
   // The questions as rows (qs: {l, hand, n, open, missing}; off: no scans yet, so none opens), each sub-question,
   // 9(a), 9(b)…, under its question as its parts.
+  // Booklet Matching, as a row like a question's: whose each booklet is (read from the cover, or picked).
+  function matchRow(bs, off) {
+    const n = bs ? bs.filter(matched).length : 0, all = bs ? bs.length : 0, done = !off && n === all;
+    return `<div class="dc-t lt-rq-row sc-r sc-match-row"><span class="lt-rq-st">${off ? `<span class="sc-done"></span>` : `<span class="sc-done${done ? " on" : ""}" title="${done ? "Finished" : "Not finished"}">${done ? TICK : ""}</span>`}</span>
+      <button type="button" class="dc-t-b" data-match${off ? " disabled" : ""}><b class="dc-t-title">Booklet Matching</b>
+        <span class="dc-t-meta"${off ? "" : ` title="Booklets whose student is known: read from the cover, or picked by a person"`}>${off ? "No scans yet" : `${n} / ${all} matched`}</span></button></div>`;
+  }
   function questionRows(qs, off) {
     const groups = [];
     qs.forEach(q => { const m = /^(.+?)\((.+)\)$/.exec(q.l), last = groups[groups.length - 1];

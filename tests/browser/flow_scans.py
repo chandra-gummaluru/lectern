@@ -143,11 +143,20 @@ def main():
         assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-st-h >> nth=0", "title")
         print("  meter:", card.replace("\n", " | "))
         steps = [" ".join(x.split()) for x in me.locator(G + "[data-scan-slot] .sc-step").all_inner_texts()]   # each: a count and its button
-        assert steps == [f"2 / {n} booklets scanned Upload Scans", "0 / 2 booklets matched Match Booklets", "0 / 2 booklets graded Email Booklets"], steps
+        assert steps == [f"2 / {n} booklets scanned Upload Scans"], steps
         assert me.is_disabled(G + "[data-scan-slot] #sc-email"), "emailed once every booklet is graded"
-        me.click(G + "[data-scan-slot] #sc-match"); me.wait_for_selector(".sc-book #sc-who")   # Match Booklets: the first one not matched
-        assert me.evaluate("location.hash").endswith("/scans/midterm/1"), me.evaluate("location.hash")
-        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] .sc-step")
+        mrow = " ".join(me.inner_text(G + "[data-scan-slot] .sc-qlist [data-match]").split())
+        assert mrow == "Booklet Matching 0 / 2 matched", mrow                         # first in the list, like a question
+        me.click(G + "[data-scan-slot] [data-match]"); me.wait_for_selector(".sc-book .sc-mcard")   # one booklet at a time
+        assert me.inner_text(".sc-book .gr-kind").lower() == "booklet matching" and me.locator(".sc-mcard").count() == 1
+        assert me.inner_text(".sc-book h2").startswith("Booklet 1") and "To Match" not in me.inner_text(".sc-book")
+        me.screenshot(path=f"{OUT}/scan-2c-matching.png", full_page=True)
+        me.select_option("#sc-mwho", people[0]["num"]); me.click("[data-mok]")                 # Okay: the next one
+        me.wait_for_selector(".sc-book h2:has-text('Booklet 2')", timeout=10000)
+        assert me.evaluate(f"document.querySelector('#sc-mwho option[value=\"{people[0]['num']}\"]').disabled"), "taken: greyed out"
+        me.click("[data-mdone]"); me.wait_for_selector(G + "[data-scan-slot] .sc-step")
+        mrow = " ".join(me.inner_text(G + "[data-scan-slot] .sc-qlist [data-match]").split())
+        assert mrow == "Booklet Matching 1 / 2 matched", mrow
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2b-marked.png")
         rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-slot] .sc-qlist [data-gq]").all()}
         print("  questions:", list(rows.values())[:4])

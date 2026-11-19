@@ -23,6 +23,7 @@ const LEFT = SVG('<path d="m15 18-6-6 6-6"/>');
 const PLUS = SVG('<path d="M12 5v14M5 12h14"/>');
 const SEARCH = SVG('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>');
 const RIGHT = SVG('<path d="m9 18 6-6-6-6"/>');
+const READ_AS = '<svg viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h41M36 5l8 7-8 7"/></svg>';
 const LET = "ABCDEF";
 // The grader's warning, short: its first sentence ("Not sure of the handwriting.").
 // A little pie for "x / y": how much of it is done (full, and green, when it all is).
@@ -405,10 +406,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       ${can.upload && fresh && !running ? `<div class="lx-adds"><button type="button" class="lt-btn" id="sc-mark"${X.scan ? "" : " disabled"}>Read the New Scans</button></div>` : ""}
       <div class="sc-up" id="sc-up"></div>
       ${files ? `<div class="sc-files">${files}</div>` : `<p class="lx-empty">No scans yet.</p>`}
-      <div class="sc-okbar sc-ubar"><span class="spacer"></span>
-        ${can.upload ? `<label class="lt-btn${X.scan ? "" : " sc-dis"}"${X.scan ? "" : ` title="Tick Marking from Scans in the Exam Builder first"`}>${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${X.scan ? "" : " disabled"}></label>` : ""}<button type="button" class="lt-btn primary" data-udone>Done</button></div>
+      ${can.upload ? `<div class="sc-okbar sc-ubar"><span class="spacer"></span>
+        <label class="lt-btn${X.scan ? "" : " sc-dis"}"${X.scan ? "" : ` title="Tick Marking from Scans in the Exam Builder first"`}>${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${X.scan ? "" : " disabled"}></label></div>` : ""}
     </div>`;
-    box.querySelectorAll("[data-udone]").forEach(x => { x.onclick = home; });
     wireFiles();
   }
 
@@ -436,7 +436,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     }
     box.innerHTML = `<div class="lx-editor sc-ed sc-book">
       <div class="lx-ed-head">
-        <div class="gr-tt"><h2>${cur ? (cur.booklet != null ? `Booklet ${cur.booklet}` : `Booklet ${bs.indexOf(cur) + 1}`) : esc(S.eval ? S.eval.name : S.exam.title)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
+        <div class="gr-tt"><h2>${cur ? `Booklet ${bookNo(cur)}` : esc(S.eval ? S.eval.name : S.exam.title)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
 </div>
       <p class="lt-req-meta">${pie(n, bs.length)}${n} / ${bs.length} matched</p>
       ${body}
@@ -564,29 +564,59 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         ${g.parts.map(q => qrow(q, true)).join("")}` : qrow(g.q)).join("");
   }
   const openQ = l => { if (!l) return; ui.allFor = ""; ui.fixWas = ""; ui.qWas = ""; window.scrollTo(0, 0); go({ ...r, b: "", q: l }); };
+  // A booklet's number, to refer back to it: a numbered copy's own, else where it is in the scans (1, 2, …).
+  const bookNo = b => (b.booklet != null ? b.booklet : ((R && R.booklets) || []).findIndex(z => z.key === b.key) + 1);
+  // A question the computer marks, as Crowdmark grades: one booklet at a time (its number, to refer back to), the
+  // answers it wasn't sure how to read first; every booklet in a strip under it, to go to any of them.
   function drawFix() {
-    const L = labels(), all = answersTo(r.q), key = a => `${a.b.key}|${a.x.label}`;
-    if (ui.fixWas !== r.q) { ui.fixWas = r.q; ui.fixCur = ""; ui.fixDone = 0; }
-    // One answer at a time: the one being checked stays until Okay (a fix saves it, but you see it first).
-    const unsure = unsureIn(r.q), cur = (ui.fixCur && all.find(a => key(a) === ui.fixCur)) || unsure[0];
-    ui.fixCur = cur ? key(cur) : "";
-    const left = unsure.filter(a => !cur || key(a) !== key(cur)).length + (cur ? 1 : 0), n = ui.fixDone + left;
-    const todo = toDo(), after = L.slice(L.indexOf(r.q) + 1).find(l => todo.includes(l)), back = !after && todo.find(l => l !== r.q);
+    const L = labels(), all = answersTo(r.q).sort((a, c) => bookNo(a.b) - bookNo(c.b));
+    const unsure = a => isOpen(a.x) && !isJudged(a.x);
+    if (ui.fixWas !== r.q) { ui.fixWas = r.q; ui.fixCur = ""; }
+    const cur = (ui.fixCur && all.find(a => a.b.key === ui.fixCur)) || all.find(unsure) || all[0];
+    if (!cur) return home();
+    ui.fixCur = cur.b.key;
+    const k = all.indexOf(cur), read = all.filter(a => !isOpen(a.x) && a.x.status !== "missing").length;
+    const nextUnsure = all.slice(k + 1).concat(all.slice(0, k)).find(unsure);
+    const x = cur.x, st = x.status === "missing" ? "missing" : unsure(cur) ? "check" : "done";
+    const chip = a => { const t = a.x.status === "missing" ? "missing" : unsure(a) ? "check" : "done";
+      return `<button type="button" class="sc-chip ${t}${a === cur ? " on" : ""}" data-bk="${esc(a.b.key)}" title="Booklet ${bookNo(a.b)}: ${t === "check" ? "to check" : t === "missing" ? "page missing" : "read"}">${bookNo(a.b)}</button>`; };
+    const how = st === "check" ? esc(firstSentence(x.note || "Not sure how to read it.")) : st === "missing" ? "This page wasn't in the scans."
+      : x.history && x.history.length ? "" : "Read with confidence.";       // (a person's check: its history says who)
     pathTo(`Question ${r.q}`);
     box.innerHTML = `<div class="lx-editor sc-ed sc-book sc-fixing">
       <div class="lx-ed-head">
         <div class="gr-tt"><h2>Question ${esc(r.q)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
-        <span class="lx-acts">${after ? `<button type="button" class="lt-btn sc-sm" data-fixgo="${esc(after)}">Next Question${RIGHT}</button>` : ""}<button type="button" class="lt-btn sc-sm" data-fixall>See Every Answer</button><button type="button" class="lt-btn sc-sm" data-fixdone>${after ? "Stop" : "Done"}</button></span></div>
-      <p class="lt-req-meta">${cur ? `${ui.fixDone + 1} of ${n} the computer wasn't sure how to read` : "Every answer matches its scan"} · ${todo.length ? `${todo.length} question${todo.length === 1 ? "" : "s"} still to grade` : "every question graded"}</p>
-      ${cur ? `<div class="sc-qs">${qCard(cur.x, cur.b, "")}</div>
-        <div class="sc-okbar"><button type="button" class="lt-btn primary" data-fixok>Okay</button></div>`
-      : `<p class="lx-help sc-fixnext">${after ? `Question ${esc(r.q)} is checked. <button type="button" class="lt-link" data-fixgo="${esc(after)}">On to Question ${esc(after)}</button>.`
-        : back ? `Question ${esc(r.q)} is checked, but <button type="button" class="lt-link" data-fixgo="${esc(back)}">Question ${esc(back)}</button> still has answers to grade.`
-        : "Question " + esc(r.q) + " is checked, and that's every question graded."}</p>`}
+      </div>
+      <p class="lt-req-meta sc-gr-meta">${pie(read, all.length)}${read} / ${all.length} read</p>
+      <div class="sc-gr">
+        <div class="sc-gr-main sc-stage st-${st}">
+          <div class="sc-gr-bk"><div class="sc-gr-no"><h3>Booklet ${bookNo(cur.b)}${cur.b.version ? ` <span>Version ${esc(cur.b.version)}</span>` : ""}</h3>${how ? `<p class="sc-gr-how">${st === "done" ? TICK : WARN}${how}</p>` : ""}</div>
+            <span class="sc-gr-arrows"><button type="button" class="lx-ic" data-bkgo="${k - 1}" title="The booklet before (←)" aria-label="The booklet before"${k > 0 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-bkgo="${k + 1}" title="The next booklet (→)" aria-label="The next booklet"${k < all.length - 1 ? "" : " disabled"}>${RIGHT}</button>${st === "check" && S.can.mark ? `${nextUnsure ? `<button type="button" class="lt-btn sc-sm" data-bk="${esc(nextUnsure.b.key)}" title="Leave this one for now: the next booklet the computer wasn't sure of">Skip</button>` : ""}<button type="button" class="lt-btn sc-sm primary" data-fixok title="It's read right (Enter)">Okay</button>`
+              : nextUnsure ? `<button type="button" class="lt-btn sc-sm" data-bk="${esc(nextUnsure.b.key)}">Next Unsure</button>` : ""}</span></div>
+          <div class="sc-qs">${qCard(x, cur.b, "")}</div>
+</div>
+        <div class="sc-chips" aria-label="Every booklet">${all.map(chip).join("")}</div>
+      </div>
     </div>`;
-    box.querySelectorAll("[data-fixgo]").forEach(x => { x.onclick = () => openQ(x.dataset.fixgo); });
-    box.querySelectorAll("[data-fixdone]").forEach(x => { x.onclick = home; });
-    box.querySelectorAll("[data-fixall]").forEach(x => { x.onclick = () => { ui.allFor = r.q; ui.qWas = ""; drawQuestion(); }; });
+    const show = key => { ui.fixCur = key; drawFix(); };
+    box.querySelectorAll("[data-bk]").forEach(b => { b.onclick = () => show(b.dataset.bk); });
+    box.querySelectorAll("[data-bkgo]").forEach(b => { b.onclick = () => { const a = all[Number(b.dataset.bkgo)]; if (a) show(a.b.key); }; });
+    box.querySelector(".sc-chip.on")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    // Their answer → what it was read as: side by side, or one over the other when they don't fit across.
+    const pair = box.querySelector(".sc-stage .sc-pair"), readAs = pair && pair.querySelector(":scope > :not(.sc-pic)");
+    if (readAs) {
+      readAs.insertAdjacentHTML("beforebegin", `<span class="sc-arrow" aria-hidden="true">${READ_AS}</span>`);
+      const natural = el => { const im = el.matches("img") ? el : el.querySelector("img"); return im && im.naturalWidth ? im.naturalWidth + 2 : el.offsetWidth; };
+      const fit = () => pair.classList.toggle("stack", natural(pair.querySelector(".sc-pic") || pair) + natural(readAs) + 80 > pair.parentElement.clientWidth);
+      fit(); pair.querySelectorAll("img").forEach(im => { if (!im.complete) im.addEventListener("load", fit, { once: true }); });
+    }
+    if (!ui.keys) { ui.keys = true; document.addEventListener("keydown", e => { if (ui.onKey) ui.onKey(e); }); }
+    ui.onKey = e => {                                     // ← → between booklets (not while typing)
+      if (!box.isConnected || !box.querySelector(".sc-gr") || e.target.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "Enter" && !e.target.closest("button, a")) { const o = box.querySelector("[data-fixok]"); if (o && !o.disabled) { e.preventDefault(); o.click(); } }
+      else if (e.key === "ArrowLeft" && all[k - 1]) show(all[k - 1].b.key);
+      else if (e.key === "ArrowRight" && all[k + 1]) show(all[k + 1].b.key);
+    };
     const ok = box.querySelector("[data-fixok]");
     if (ok) {
       ok.focus();
@@ -605,11 +635,14 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
           fine = await reviewNow(b, x.ask === "choice" ? { label: x.label, read: said } : { label: x.label, score: x.score });
         }
         if (!fine) { ok.disabled = false; return; }
-        ui.fixCur = ""; ui.fixDone += 1; drawFix();
+        const now = answersTo(r.q).sort((a, c) => bookNo(a.b) - bookNo(c.b)), at = now.findIndex(a => a.b.key === cur.b.key);
+        const nx = now.slice(at + 1).concat(now.slice(0, at)).find(unsure);
+        ui.fixCur = nx ? nx.b.key : cur.b.key; drawFix();   // on to the next one to check (none: this one, checked)
       };
     }
     wireCards(drawFix);
   }
+
   function drawQuestion() {
     const L = labels(), k = L.indexOf(r.q), all = answersTo(r.q);
     if (k >= 0 && !byHand(r.q) && ui.allFor !== r.q) return drawFix();    // marked by the computer: check it
@@ -628,7 +661,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         <span class="lx-acts">${!byHand(r.q) ? `<button type="button" class="lt-btn sc-sm" data-gback>Check the Unsure Ones</button>` : ""}${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-gq="${esc(nextOpen)}">Next to Look At</button>` : ""}
           <button type="button" class="lx-ic" data-gq="${esc(L[k - 1] || "")}" title="The question before" aria-label="The question before"${k > 0 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-gq="${esc(L[k + 1] || "")}" title="The next question" aria-label="The next question"${k < L.length - 1 ? "" : " disabled"}>${RIGHT}</button></span></div>
       <p class="lt-req-meta">${fmtN(pts)} mark${pts === 1 ? "" : "s"}${answers.length ? ` · answer ${answers.map(esc).join(" or ")}` : ""} · ${pie(all.length - open.length, all.length)}${all.length - open.length} / ${all.length} ${byHand(r.q) ? "marked" : "read"}</p>
-      <div class="sc-qs">${list.map(a => qCard(a.x, a.b, a.b.version ? `<span class="sc-qv">Version ${esc(a.b.version)}</span>` : "")).join("")}</div>
+      <div class="sc-qs">${list.map(a => qCard(a.x, a.b, `Booklet ${bookNo(a.b)}${a.b.version ? ` <span class="sc-qv">Version ${esc(a.b.version)}</span>` : ""}`)).join("")}</div>
     </div>`;
     box.querySelectorAll("[data-gq]").forEach(x => { x.onclick = () => openQ(x.dataset.gq); });
     box.querySelectorAll("[data-gback]").forEach(x => { x.onclick = () => { ui.allFor = ""; drawFix(); }; });

@@ -1637,6 +1637,7 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-okbar .lx-help { margin: 0; }
 .sc-q > .sc-note:first-of-type, .sc-bm > .sc-note { margin: 0 0 8px; }   /* the grader's warning, at the top */
 .sc-fixing .sc-q > .sc-note { margin-top: 0; }
+.sc-fixing .sc-q { padding: 0; border: 0; background: transparent; }   /* one answer at a time: no box around it */
 /* An answer's edit history (who changed what, when), folded under its last change. */
 .sc-hist { margin: 8px 0 0; font-size: 13px; color: var(--home-ink-3); }
 .sc-hist summary { cursor: pointer; width: fit-content; list-style: none; }
@@ -1757,3 +1758,62 @@ option.sc-taken { color: var(--ink-3); }
 .sc-listslot .dc-head { margin-top: 14px; padding-top: 0; border-top: 0; }
 .sc-listslot .sc-ahead { justify-content: flex-end; margin: 6px 0 6px; }   /* just Assign Graders, on the right */
 .sc-listslot .sc-qlist { margin-top: 10px; }
+/* A question the computer marks, a booklet at a time (as Crowdmark): the answer on a soft panel, headed by its booklet
+   (number, how it was read, arrows), Okay under it; every booklet's number under that, to go to any of them. */
+.sc-gr { display: grid; gap: 22px; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--home-line); }
+.sc-stage { display: flex; flex-direction: column; min-width: 0; }   /* no box: the booklet, left-aligned on the page */
+.sc-stage .sc-qs { flex: 1; display: flex; }
+.sc-stage .sc-q { flex: 1; display: flex; flex-direction: column; }
+.sc-stage .sc-q > .sc-note { align-self: flex-start; margin: 0 0 16px; }
+/* The scan and what it was read as: the same piece of the page at the same size, one over the other, each with
+   its caption (the captions are the pair's own ::before and ::after, so nothing moves inside the answers). */
+.sc-stage .sc-pair { display: grid; grid-template-columns: auto auto auto; grid-template-rows: auto auto; column-gap: 18px; row-gap: 6px; align-items: center; justify-content: start; width: fit-content; max-width: 100%; margin: 0; }
+.sc-stage .sc-pair::before, .sc-stage .sc-pair::after { font-size: 12.5px; color: var(--home-ink-3); align-self: end; }
+.sc-stage .sc-pair::before { content: "Their answer"; grid-area: 1 / 1; }
+.sc-stage .sc-pair > .sc-pic { grid-area: 2 / 1; }
+.sc-stage .sc-pair > .sc-arrow { grid-area: 2 / 2; }
+.sc-stage .sc-pair::after { content: "Read as"; grid-area: 1 / 3; }
+.sc-stage .sc-pair > :not(.sc-pic):not(.sc-arrow) { grid-area: 2 / 3; margin: 0; }
+.sc-arrow { display: grid; place-items: center; color: var(--home-ink-3); }
+.sc-arrow svg { width: 44px; height: 22px; }
+/* Too wide across: one over the other, the arrow pointing down between them. */
+.sc-stage .sc-pair.stack { grid-template-columns: auto; grid-template-rows: none; }
+.sc-stage .sc-pair.stack::before { grid-area: auto; }
+.sc-stage .sc-pair.stack > * , .sc-stage .sc-pair.stack::after { grid-area: auto !important; }
+.sc-stage .sc-pair.stack::before { order: 0; } .sc-stage .sc-pair.stack > .sc-pic { order: 1; } .sc-stage .sc-pair.stack > .sc-arrow { order: 2; justify-self: start; margin-left: 24px; }
+.sc-stage .sc-pair.stack::after { order: 3; } .sc-stage .sc-pair.stack > :not(.sc-pic):not(.sc-arrow) { order: 4; }
+.sc-stage .sc-pair.stack > .sc-arrow svg { transform: rotate(90deg); width: 30px; height: 30px; }
+.sc-stage .sc-pic { width: 100%; max-height: none; border: 1px solid var(--home-line); border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
+.sc-stage .pp { margin: 0; border-color: var(--home-line); border-radius: 10px; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
+.sc-stage .sc-hist, .sc-stage .sc-qa, .sc-stage .sc-bls { width: min(100%, 600px); }
+.sc-gr-how { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 13px; color: var(--home-ink-3); }
+.sc-gr-how svg { width: 15px; height: 15px; }
+.sc-stage.st-done .sc-gr-how svg { color: #2f8f5b; }
+.sc-stage.st-check .sc-gr-how { color: #9a5b00; }
+.sc-stage.st-missing .sc-gr-how { color: var(--danger); }
+.sc-gr-bk { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.sc-gr-no h3 { margin: 0; font: 400 24px/1.15 var(--font-serif); color: var(--home-ink); }
+.sc-gr-no h3 span { font: 400 14px var(--font-ui); color: var(--home-ink-3); }
+.sc-gr-no .sc-gr-how { margin: 4px 0 0; }
+.sc-gr-arrows { display: flex; align-items: center; gap: 4px; }
+.sc-gr-arrows .lt-btn { margin-left: 6px; }
+.sc-gr-arrows .lt-btn + .lt-btn { margin-left: 2px; }
+.sc-gr-arrows .lt-btn.primary { min-width: 80px; justify-content: center; }
+.sc-gr-arrows .lx-ic { width: 32px; height: 32px; border-color: var(--home-line-2); background: var(--home-card); color: var(--home-ink-2); }
+.sc-gr-arrows .lx-ic:hover:not(:disabled) { border-color: var(--home-ink-3); background: var(--home-card); color: var(--home-ink); }
+.sc-gr-arrows .lx-ic:disabled { opacity: .35; cursor: default; }
+.sc-stage .sc-q > .sc-note { display: none; }   /* the grader's warning: under the booklet's number instead */
+.sc-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 112px; overflow-y: auto; padding: 3px; margin: 0 -3px; }
+.sc-chip { min-width: 34px; }
+.sc-chip { height: 30px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: var(--home-strip); font: 500 12.5px var(--font-ui); font-variant-numeric: tabular-nums; color: var(--home-ink-2); cursor: pointer; }
+.sc-chip.done { background: #eaf5ee; color: #2f6b49; }
+.sc-chip.check { background: #fbf1d3; color: #7a5a00; }
+.sc-chip.missing { background: #fbe9e6; color: #9b2c1f; }
+.sc-chip.on { border-color: var(--home-ink); box-shadow: 0 0 0 1px var(--home-ink); }
+.sc-chip:hover:not(.on) { border-color: var(--home-line-2); }
+.sc-fixing .sc-okbar { display: none; }
+.sc-fixing > .lt-req-meta { margin-top: 2px; }
+.sc-gr-meta { display: flex; align-items: center; gap: 7px; }
+.sc-gr-act { display: flex; margin-top: 18px; }
+.sc-gr-act .lt-btn { min-width: 120px; justify-content: center; }
+@media (max-width: 760px) { .sc-gr { grid-template-columns: 1fr; } 

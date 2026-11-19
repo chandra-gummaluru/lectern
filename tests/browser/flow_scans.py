@@ -196,15 +196,24 @@ def main():
         # A question the computer marks: check it against the scans, the answers it wasn't sure how to read, one at a time.
         me.click(G + "[data-scan-list] [data-gq='4']"); me.wait_for_selector(".sc-book h2")
         assert not me.query_selector(".sc-book .gr-kind"), "no gray caps line above the title"
-        assert me.inner_text(".sc-book h2").startswith("Question 4") and me.locator(".sc-q").count() == 1, "one answer at a time"
+        assert me.inner_text(".sc-book h2").startswith("Question 4") and me.locator(".sc-q").count() == 1, "one booklet at a time"
+        assert me.locator(".sc-chip.on.check").count() == 1 and me.inner_text(".sc-gr-no h3").startswith("Booklet "), "its number, to refer back to"
+        assert me.locator(".sc-gr-arrows [data-fixok]").count() == 1 and not me.locator(".sc-gr-arrows [data-bk]").count(), "Okay beside the arrows; Skip only when there's another unsure booklet"
         assert not me.locator(".sc-q .sc-qt:visible").count(), "no name: just the reading"
         me.screenshot(path=f"{OUT}/scan-3a-fix.png", full_page=True)
+        assert me.evaluate("getComputedStyle(document.querySelector('.sc-fixing .sc-q')).borderTopWidth") == "0px", "no box around the answer"
         copy = me.locator(".sc-q .dz-field input").first                  # it read 64: fix it to 84, then Okay
         copy.fill("84"); me.click("[data-fixok]"); me.wait_for_timeout(900)
-        assert not me.locator(".sc-q").count() and me.locator(".sc-fixnext [data-fixgo]").count(), me.inner_text(".sc-book")
-        print("  question 4 checked:", me.inner_text(".sc-fixnext"))
-        me.click("[data-fixall]"); me.wait_for_timeout(300)                # every answer, if you ask
-        assert me.locator(".sc-q").count() == 2, "every booklet's answer to question 4"
+        side = " ".join(me.inner_text(".sc-gr-main").split())
+        print("  question 4 checked:", side, "| booklets:", me.locator(".sc-chip").all_inner_texts())
+        assert "Booklet " in me.inner_text(".sc-gr-no h3") and "2 / 2 read" in me.inner_text(".sc-gr-meta") and not me.locator(".sc-gr [data-fixok], .sc-gr-arrows .lt-btn").count(), side   # every one checked: no Okay, no Next Unsure
+        assert me.locator(".sc-chip").count() == 2 and me.locator(".sc-chip.check").count() == 0
+        assert "84" in me.evaluate("[...document.querySelectorAll('.sc-gr-main input')].map(i => i.value)"), "the fix is kept"
+        me.screenshot(path=f"{OUT}/scan-3a-fixed.png", full_page=True)
+        other = me.locator(".sc-chip:not(.on)").first.inner_text()
+        me.keyboard.press("ArrowRight" if int(other) > int(me.locator(".sc-chip.on").inner_text()) else "ArrowLeft"); me.wait_for_timeout(200)
+        assert me.locator(".sc-chip.on").inner_text() == other and "Read with confidence." in me.inner_text(".sc-gr-main"), "the arrow keys go between booklets"
+        assert not me.query_selector(".sc-book .lx-ed-head .lt-btn"), "no Next Question, See Every Answer or Stop"
         me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-list] [data-gq='10']")
         me.click(G + "[data-scan-list] [data-gq='10']"); me.wait_for_selector(".sc-book [data-fixok]")
         me.click("[data-fixok]"); me.wait_for_timeout(300)                # a word nobody has typed yet: Okay says so

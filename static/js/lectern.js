@@ -871,7 +871,7 @@ function importDialog() {
         const d = await send("/api/offerings/import", { course: c, term: t, title: $m("#im-title").value.trim(), moveDates: $m("#im-move").checked ? "1" : "0" });
         close();
         toast(`Imported ${d.course}/${d.term}.${d.weeks ? ` Its dates moved ${Math.abs(d.weeks)} weeks ${d.weeks > 0 ? "later" : "earlier"}.` : ""}`);
-        aboutCache.delete(`/${d.course}/${d.term}`);
+        forgetOffering(d.course, d.term, "");
         await listAll().catch(() => null);
         go({ page: "offering", c: d.course, t: d.term, o: "" });
       } catch (e) { ok.disabled = false; ok.textContent = "Import"; err.textContent = e.message; }
@@ -883,6 +883,7 @@ async function loadDemo(btn) {
   if (btn) btn.disabled = true;
   try {
     const d = await Auth.api("/api/offerings/demo", {});
+    forgetOffering(d.course, d.term, "");
     toast("The demo course is ready. Delete it from its page when you're done.");
     await listAll().catch(() => null);
     go({ page: "offering", c: d.course, t: d.term, o: "" });
@@ -944,7 +945,7 @@ function newOfferingDialog() {
         }
       } catch (e) { err.textContent = `Couldn't make it. ${e.message}`; m.querySelector("[data-ok]").disabled = false; return; }
       close();
-      aboutCache.delete(`/${c}/${t}`);
+      forgetOffering(c, t, "");
       await listAll().catch(() => null);
       go({ page: "offering", c, t, o: "" });
     };
@@ -957,6 +958,12 @@ function newOfferingDialog() {
 // made, and both are changed on its page, under its code. An older offering without one starts from its
 // course page's (course.json), and has one from the first change.
 const aboutCache = new Map();   // "<owner>/<c>/<t>" → { data, sha }
+// An offering deleted, or loaded again (the demo, an import, a new one): nothing kept of the one before (its title
+// and description with the version they were read at, its evaluations' attendance, discussions and scans).
+function forgetOffering(c, t, o = curOwner()) {
+  const pre = `${o || ""}/${c}/${t}`;
+  for (const m of [aboutCache, DC, SC, ATT]) for (const k of [...m.keys()]) if (k === pre || k.startsWith(pre + "/")) m.delete(k);
+}
 async function readAbout(c, t, o = curOwner()) {
   const k = `${o}/${c}/${t}`;
   if (aboutCache.has(k)) return aboutCache.get(k);
@@ -1259,6 +1266,7 @@ function deleteOfferingDialog(c, t) {
         const msg = `Delete ${name}`;
         await Store.deleteFolder(area(Store.PUB), name, msg);
         await Store.deleteFolder(area(Store.PRIV), name, msg);
+        forgetOffering(c, t);
         close();
         toast(`Deleted ${name}.`);
         S.offerings && S.offerings.delete(okey(c, t));

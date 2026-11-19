@@ -427,7 +427,7 @@ def load_demo():
 # upload is, and a TA on the team to assign questions to. (Off in tests, which upload their own.)
 DEMO_SCANS = True
 DEMO_SCAN_DIR = os.path.join(ROOT, "sample-data", "demo-course", "scans", "midterm")
-DEMO_TA = {"email": "demo-ta@example.invalid", "handle": "demo-ta", "name": "Sam Okafor"}
+DEMO_TA = {"email": "demo-ta@example.invalid", "handle": "demo-ta", "name": "Belle Curve"}
 
 
 # What Lectern keeps about an offering apart from its files (deleting an offering deletes only its files): a demo
@@ -470,6 +470,7 @@ def _demo_ta(uid, off):
         u = db.one("SELECT id, disabled FROM users WHERE email = ?", (DEMO_TA["email"],))
     if not u or not u["disabled"]:       # someone turned it on: it's not ours to put on a team
         return None
+    db.run("UPDATE users SET name = ? WHERE id = ? AND name != ?", (DEMO_TA["name"], u["id"], DEMO_TA["name"]))
     db.run("INSERT OR IGNORE INTO members (owner_id, offering, user_id, role, added_by, added) VALUES (?, ?, ?, 'ta', ?, ?)",
            (uid, off, u["id"], uid, _t.time()))
     return u["id"]

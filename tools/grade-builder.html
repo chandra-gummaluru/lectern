@@ -3217,11 +3217,11 @@ function drawEvalEditor() {
     <h4 class="ed-sub">If a Student Doesn't Submit It</h4>
     ${g ? `<p class="ed-help">It counts as zero, so it's usually one of the lowest, which ${esc(g.name)} doesn't count.</p>` : `
     ${policyHTML(e, p, num(e.weight), "")}`}`}
+    ${scriptsHTML(e)}
     ${releaseHTML(e)}
     ${accomHTML(e)}
     ${remarkHTML(e)}
     ${filesHTML(e)}
-    ${scriptsHTML(e)}
     <h3 class="ed-sec">Discussion</h3>
     <label class="acm-tick"><input type="checkbox" data-disc="1"${e.discussion === false ? "" : " checked"}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
     ${HOSTED && window.Lectern.discussionEl && e.discussion !== false ? `<div data-dc-slot="eval:${esc(e.id)}"></div>` : ""}

@@ -157,7 +157,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         ${meter}
         <div class="sc-up" id="sc-up"></div>
         ${X.scan ? `<div class="sc-qlist${res ? "" : " off"}">${res ? resultsHTML(res) : `<div class="hb lt-dc sc-dc"><section class="dc">
-          ${assignLink() ? `<div class="dc-head sc-ahead">${assignLink()}</div>` : ""}
           <div class="dc-threads">${scanRow(true)}${matchRow(null, true)}${questionRows((S.questions || []).map(l => ({ l })), true)}</div></section></div>`}</div>` : ""}
 
         ${sentLine ? `<p class="lx-help sc-sent">${sentLine}</p>` : ""}${m.state === "failed" ? `<p class="lt-note err">${esc(m.error || "The emails stopped.")}</p>` : ""}
@@ -190,9 +189,12 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     wireFiles();
     box.querySelectorAll("[data-scans]").forEach(b => { b.onclick = () => { window.scrollTo(0, 0); go({ ...r, b: "", q: UPLOADS }); }; });
     if (into) {          // Assign Graders, on and off (before the scans too); its dropdowns
-      box.querySelectorAll("[data-assign]").forEach(b => { b.onclick = () => { ui.assign = !ui.assign; draw(); }; });
-      if (ui.assign) mountGraders();
-      box.querySelector(".sc-qlist")?.classList.toggle("assigning", !!ui.assign);
+      if (into && canAssign()) {
+        mountGraders();
+        // A dropdown opened in the scrolling list: its list scrolled into view (the list has room under it while open).
+        box.querySelector(".sc-qlist")?.addEventListener("click", e => { const h = e.target.closest("[data-gpk]");
+          if (h) requestAnimationFrame(() => h.querySelector(".pk-pop")?.scrollIntoView({ block: "nearest" })); });
+      }
     }
     if (into && res) {
       wireResults();       // its questions (or booklets), and Email Booklets
@@ -242,7 +244,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       const qs = labels().map(l => { const a = answersTo(l); return { l, hand: byHand(l), pts: a[0] ? a[0].x.points : 0, n: a.length, open: a.filter(y => isOpen(y.x)).length, missing: a.filter(y => y.x.status === "missing").length }; });
       return `${unread}${notes}${fixBar}${into ? "" : `<div class="sc-bybar">${bySeg}</div>`}
       <div class="hb lt-dc sc-dc"><section class="dc">
-        ${into ? (assignLink() ? `<div class="dc-head sc-ahead">${assignLink()}</div>` : "") : `<div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${qs.length}</span></h2></div>`}
+        ${into ? "" : `<div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${qs.length}</span></h2></div>`}
         <div class="dc-threads">${into ? scanRow() + matchRow(bs) : ""}${questionRows(qs)}</div>
       </section></div>
       ${linked ? "" : `${gradebook}${students}`}`;
@@ -528,7 +530,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   const gradersOf = l => (S.graders && S.graders[l]) || [];
   const isMine = l => S.can.print || !gradersOf(l).length || gradersOf(l).includes(S.me);
   const initials = n => String(n || "?").split(/\s+/).filter(Boolean).map(w => w[0]).slice(0, 2).join("").toUpperCase();
-  const assignLink = () => (S.can.print && (S.markers || []).length > 1 ? `<button type="button" class="lt-link sc-assign" data-assign>${ui.assign ? "Done Assigning" : "Assign Graders"}</button>` : "");
+  // Who marks each question: a dropdown on each question's row, for the owner and coordinators, once there's someone else to mark.
+  const canAssign = () => S.can.print && (S.markers || []).length > 1;
   const gradersNames = l => gradersOf(l).map(id => ((S.markers || []).find(m => m.id === id) || {}).name).filter(Boolean);
   const ROLE = { owner: "Instructor", coordinator: "Coordinator", ta: "TA" };
   // Assign Graders (the owner and coordinators): each question row gets Lectern's tick-box dropdown of the team.
@@ -553,7 +556,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const tick = done => off ? `<span class="sc-done"></span>` : `<span class="sc-done${done ? " on" : ""}" title="${done ? "Finished" : "Not finished"}">${done ? TICK : ""}</span>`;
     const qrow = (q, sub) => `<div class="dc-t lt-rq-row sc-r sc-graded${sub ? " sc-sub" : ""}"><span class="lt-rq-st">${tick(!q.open)}</span>
         <button type="button" class="dc-t-b" data-gq="${esc(q.l)}"${off ? " disabled" : ""}><b class="dc-t-title">${sub ? `<span class="sc-part">(${esc(q.part)})</span>` : `Question ${esc(q.l)}`}</b>
-          <span class="dc-t-meta"${off ? "" : ` title="${q.hand ? "Marked by hand: the booklets whose answer is marked" : "Marked by the computer: the booklets whose answer it read with confidence, or a person has checked against the scan"}"`}>${off ? "No scans yet" : `${pie(q.n - q.open - q.missing, q.n)}${q.n - q.open - q.missing} / ${q.n} ${q.hand ? "marked" : "read"}`}${into && !ui.assign && gradersNames(q.l).length ? ` · ${esc(gradersNames(q.l).join(", "))}` : ""}</span></button>${into && ui.assign ? `<div class="sc-gpk" data-gpk="${esc(q.l)}"></div>` : ""}</div>`;
+          <span class="dc-t-meta"${off ? "" : ` title="${q.hand ? "Marked by hand: the booklets whose answer is marked" : "Marked by the computer: the booklets whose answer it read with confidence, or a person has checked against the scan"}"`}>${off ? "No scans yet" : `${pie(q.n - q.open - q.missing, q.n)}${q.n - q.open - q.missing} / ${q.n} ${q.hand ? "marked" : "read"}`}${into && !canAssign() && gradersNames(q.l).length ? ` · ${esc(gradersNames(q.l).join(", "))}` : ""}</span></button>${into && canAssign() ? `<div class="sc-gpk" data-gpk="${esc(q.l)}"></div>` : ""}</div>`;
     return groups.map(g => g.parts ? `<div class="dc-t sc-qgroup"><span class="lt-rq-st">${tick(!g.open)}</span>
         <div class="dc-t-b sc-qg-h"><b class="dc-t-title">Question ${esc(g.n)}</b><span class="dc-t-meta">${g.parts.length} parts</span></div></div>
         ${g.parts.map(q => qrow(q, true)).join("")}` : qrow(g.q)).join("");

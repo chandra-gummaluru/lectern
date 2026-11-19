@@ -27,14 +27,23 @@ def main():
         me.wait_for_selector(L + ".sc-qlist:not(.off) [data-gq]", timeout=180000)
         me.wait_for_selector(L + ".sc-scan-row .sc-spin", state="detached", timeout=180000)
         me.wait_for_timeout(500)
+        slot = G + ".editor[data-eval='mt'] [data-scan-slot]"
+        print("scripts:", me.locator(G + ".editor[data-eval='mt'] h3.ed-sec").all_inner_texts(), "| slot:", me.locator(slot).count() and " ".join(me.inner_text(slot).split()))
+        me.locator(slot).first.scroll_into_view_if_needed() if me.locator(slot).count() else None
+        me.screenshot(path=f"{OUT}/demo-scans-0-scripts.png")
         scanned = " ".join(me.inner_text(L + ".sc-scan-row").split())
         print("scanned:", scanned)
         assert "10 / 30 scanned" in scanned, scanned
-        assert me.locator(L + "[data-assign]").count() == 1, "Assign Graders: the demo has a TA"
+        secs = [x.strip().title() for x in me.locator(G + ".editor[data-eval='mt'] h3.ed-sec").all_inner_texts()]
+        assert secs.index("Scripts And Scans") + 1 == secs.index("Marks"), secs        # its script, then its marks
+        assert "Edit Test Script" in me.inner_text(slot)
+        assert not me.query_selector(L + "[data-assign]"), "no Assign Graders button: the dropdowns are there"
+        assert me.locator(L + "[data-gpk]").count() >= 10, "a graders dropdown on each question (the demo has a TA)"
         me.locator(L).scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/demo-scans-1.png")
-        me.click(L + "[data-assign]"); me.wait_for_timeout(600)
-        me.locator(L).scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/demo-scans-2-assign.png")
-        assert "Sam Okafor" in me.inner_text(L), "the TA is a grader of questions 8 and 10"
+        assert "Belle Curve" in me.inner_text(L), "the TA is a grader of questions 8 and 10"
+        last = me.locator(L + "[data-gpk]").last
+        last.scroll_into_view_if_needed(); last.locator("button").first.click(); me.wait_for_timeout(400)
+        me.screenshot(path=f"{OUT}/demo-scans-2-pick.png")
         b.close()
     assert not errors, errors
     print("flow_demo_scans: OK")

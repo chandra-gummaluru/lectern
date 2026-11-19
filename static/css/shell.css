@@ -1746,7 +1746,7 @@ option.sc-taken { color: var(--ink-3); }
    tick-box dropdown of the team on its right. */
 .sc-graded { display: flex; align-items: center; }
 .sc-graded > .dc-t-b { flex: 1; min-width: 0; }
-.sc-qlist.assigning .dc-threads { max-height: none; overflow: visible; }
+.sc-qlist .dc-threads:has(.pk-pop) { padding-bottom: 300px; }   /* a graders dropdown open: room for its list */
 .sc-gpk { flex: none; width: 250px; margin: 0 12px 0 8px; }
 .sc-qlist .dc-head .sc-assign { margin-left: auto; font-size: 13px; }
 .sc-qlist .dc-head { display: flex; align-items: baseline; }

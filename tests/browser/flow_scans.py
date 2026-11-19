@@ -179,13 +179,15 @@ def main():
         rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-list] .sc-qlist [data-gq]").all()}
         print("  questions:", list(rows.values())[:4])
         assert rows["4"].endswith("1 / 2 read") and rows["8"].endswith("0 / 2 marked") and rows["1"].endswith("2 / 2 read"), rows
-        me.click(G + "[data-scan-list] [data-assign]"); me.wait_for_selector(G + "[data-scan-list] [data-gpk='8'] .pk-btn")   # Assign Graders
+        assert not me.query_selector(G + "[data-scan-list] [data-assign]"), "no Assign Graders button: each question has its dropdown"
+        me.wait_for_selector(G + "[data-scan-list] [data-gpk='8'] .pk-btn")
         me.click(G + "[data-scan-list] [data-gpk='8'] .pk-btn"); me.wait_for_selector(G + "[data-scan-list] [data-gpk='8'] .pk-pop")
         me.locator(G + "[data-scan-list] [data-gpk='8'] .pk-chk", has_text="Tia Marks").locator("input").check(); me.wait_for_timeout(500)
         me.screenshot(path=f"{OUT}/scan-2d-graders.png")
-        me.keyboard.press("Escape"); me.click(G + "[data-scan-list] [data-assign]")               # Done Assigning: the names, in its line
-        me.wait_for_selector(G + "[data-scan-list] [data-gq='8']:has-text('Tia Marks')", timeout=5000)
-        assert not me.query_selector(G + "[data-scan-list] [data-gpk]")
+        me.keyboard.press("Escape"); me.wait_for_timeout(300)
+        saved = me.evaluate(f"fetch('/api/scans?offering={off}&exam=midterm').then(r => r.json()).then(j => j.graders)")
+        assert saved.get("8") and "Tia Marks" in me.inner_text(G + "[data-scan-list] [data-gpk='8']"), saved   # kept, and shown in its dropdown
+        assert "Tia Marks" not in me.inner_text(G + "[data-scan-list] [data-gq='8']"), "the name is in the dropdown, not again in its line"
         assert me.locator(G + "[data-scan-list] [data-gq='1'] .sc-pie.full").count() == 1 and me.locator(G + "[data-scan-list] [data-gq='8'] .sc-pie:not(.full)").count() == 1
         assert not me.query_selector(G + "[data-scan-slot] #sc-fix, " + G + "[data-scan-slot] .lx-sec, " + G + "[data-scan-slot] [data-by]"), "no Fix Scans bar, Gradebook, Marked Booklets or By Booklet in it"
         h = me.evaluate(f"document.querySelector(`{G}[data-scan-list] .sc-qlist .dc-threads`).clientHeight")

@@ -409,6 +409,7 @@ def load_demo():
         raise Refusal(409, f"You already have the demo course ({off}). Delete it from its page to load a fresh one.", "have")
     days = 7 * weeks_between(DEMO_TERM, t)
     files = demo_files()
+    _demo_fresh(uid, off)
     scans = DEMO_SCANS and _demo_scanned()
     book = demo_book(_json(files["priv"]["grades.json"]), days, today)
     if scans:      # the scanned students' midterm marks come from their booklets, as they're marked
@@ -427,6 +428,25 @@ def load_demo():
 DEMO_SCANS = True
 DEMO_SCAN_DIR = os.path.join(ROOT, "sample-data", "demo-course", "scans", "midterm")
 DEMO_TA = {"email": "demo-ta@example.invalid", "handle": "demo-ta", "name": "Sam Okafor"}
+
+
+# What Lectern keeps about an offering apart from its files (deleting an offering deletes only its files): a demo
+# loaded again starts with none of the last one's.
+OFFERING_TABLES = ("members", "team_invites", "offering_mail", "offering_mail_prefs", "grade_notices", "mail_sends",
+                   "announcements_seen", "hub_seen", "discussion_aliases", "course_students", "student_codes",
+                   "student_code_log", "student_sessions", "attendance_sessions", "attendance")
+
+
+def _demo_fresh(uid, off):
+    import shutil
+    with db.transaction() as c:
+        c.execute("DELETE FROM discussion_votes WHERE post_id IN (SELECT id FROM discussion_posts WHERE owner_id = ? AND offering = ?)", (uid, off))
+        c.execute("DELETE FROM discussion_posts WHERE owner_id = ? AND offering = ?", (uid, off))
+        for t in OFFERING_TABLES:
+            c.execute(f"DELETE FROM {t} WHERE owner_id = ? AND offering = ?", (uid, off))
+    shutil.rmtree(os.path.join(db.data_dir(), "scans", str(uid), *off.split("/")), ignore_errors=True)
+    from .accommodations import _books
+    _books.clear()
 
 
 def _demo_scanned():
@@ -462,7 +482,6 @@ def _demo_scans(uid, off, ta):
     from . import scanning
     try:
         ex = scanning.Exam.of(uid, off, "midterm")
-        shutil.rmtree(ex.dir, ignore_errors=True)        # an earlier demo's (this one is new)
         os.makedirs(ex.path("printed"), exist_ok=True)
         os.makedirs(ex.path("uploads"), exist_ok=True)
         shutil.copy(os.path.join(DEMO_SCAN_DIR, "midterm.pdf"), ex.path("printed", "midterm.pdf"))

@@ -421,3 +421,37 @@ def test_the_demo_comes_with_scans(client, user, monkeypatch):
     assert j["graders"] == {"8": [ta["id"]], "10": [ta["id"]]}
     r = app.test_client().post("/api/auth/login", json={"email": transfer.DEMO_TA["email"], "password": "!"}, headers=H)
     assert r.status_code >= 400
+
+
+def test_the_demo_loaded_again_starts_fresh(client, user, monkeypatch):
+    """Deleting the demo deletes its files; loading it again leaves nothing of the last one: its scans and their
+    review, attendance, discussions, team."""
+    import shutil
+    from server import db, transfer
+    monkeypatch.setattr(transfer, "DEMO_SCANS", True)
+    r = client.post("/api/offerings/demo", headers=H)
+    off = f"demo101/{r.get_json()['term']}"
+    d = {"offering": off, "exam": "midterm"}
+    j = wait_marked(client, d)
+    b = client.get(f"/api/scans/results?{q(d)}").get_json()["booklets"][0]
+    q1 = b["questions"][0]
+    assert client.post("/api/scans/review", json={**d, "booklet": b["key"], "label": q1["label"], "score": 0}, headers=H).status_code == 200
+    now = time.time()
+    db.run("INSERT INTO attendance (owner_id, offering, eval, student, session_id, at) VALUES (?, ?, 'mt', '1000000001', 1, ?)", (user["id"], off, now))
+    db.run("INSERT INTO discussion_posts (owner_id, offering, target, author_kind, author, title, body, created) VALUES (?, ?, 'eval:mt', 'staff', 'x', 'Old', 'old', ?)", (user["id"], off, now))
+    other = make_user(app.test_client(), email="ana@utoronto.ca", name="Ana Lee", handle="ana")
+    db.run("INSERT INTO members (owner_id, offering, user_id, role, added) VALUES (?, ?, ?, 'ta', ?)", (user["id"], off, other["id"], now))
+
+    for area in ("pub", "priv"):                                      # deleted (as Delete on its page does: its files)
+        shutil.rmtree(os.path.join(os.environ["LECTERN_DATA_DIR"], "files", str(user["id"]), area, "demo101"), ignore_errors=True)
+    r = client.post("/api/offerings/demo", headers=H)
+    assert r.status_code == 200, r.get_json()
+    j = wait_marked(client, d)
+    assert j["results"]["booklets"] == 10 and j["job"]["state"] == "done"
+    again = client.get(f"/api/scans/results?{q(d)}").get_json()["booklets"]
+    assert not any(x["history"] for bk in again for x in bk["questions"])                # none of the old review
+    for t in ("attendance", "discussion_posts"):
+        assert db.one(f"SELECT COUNT(*) AS n FROM {t} WHERE owner_id = ? AND offering = ?", (user["id"], off))["n"] == 0, t
+    team = {m["user_id"] for m in db.all_("SELECT user_id FROM members WHERE owner_id = ? AND offering = ?", (user["id"], off))}
+    ta = db.one("SELECT id FROM users WHERE email = ?", (transfer.DEMO_TA["email"],))["id"]
+    assert team == {ta}, team                                         # only the demo's TA

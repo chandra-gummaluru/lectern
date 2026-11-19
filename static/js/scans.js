@@ -157,7 +157,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         ${meter}
         <div class="sc-up" id="sc-up"></div>
         ${X.scan ? `<div class="sc-qlist${res ? "" : " off"}">${res ? resultsHTML(res) : `<div class="hb lt-dc sc-dc"><section class="dc">
-          <div class="dc-head"><h2 class="ec-sec dc-title">Grading</h2>${assignLink()}</div>
+          ${assignLink() ? `<div class="dc-head sc-ahead">${assignLink()}</div>` : ""}
           <div class="dc-threads">${scanRow(true)}${matchRow(null, true)}${questionRows((S.questions || []).map(l => ({ l })), true)}</div></section></div>`}</div>` : ""}
 
         ${sentLine ? `<p class="lx-help sc-sent">${sentLine}</p>` : ""}${m.state === "failed" ? `<p class="lt-note err">${esc(m.error || "The emails stopped.")}</p>` : ""}
@@ -242,7 +242,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       const qs = labels().map(l => { const a = answersTo(l); return { l, hand: byHand(l), pts: a[0] ? a[0].x.points : 0, n: a.length, open: a.filter(y => isOpen(y.x)).length, missing: a.filter(y => y.x.status === "missing").length }; });
       return `${unread}${notes}${fixBar}${into ? "" : `<div class="sc-bybar">${bySeg}</div>`}
       <div class="hb lt-dc sc-dc"><section class="dc">
-        <div class="dc-head"><h2 class="ec-sec dc-title">${into ? "Grading" : `Questions <span>· ${qs.length}</span>`}</h2>${into ? assignLink() : ""}</div>
+        ${into ? (assignLink() ? `<div class="dc-head sc-ahead">${assignLink()}</div>` : "") : `<div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${qs.length}</span></h2></div>`}
         <div class="dc-threads">${into ? scanRow() + matchRow(bs) : ""}${questionRows(qs)}</div>
       </section></div>
       ${linked ? "" : `${gradebook}${students}`}`;

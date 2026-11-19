@@ -83,6 +83,10 @@ def main():
         assert "Scans" not in [x.strip().title() for x in me.locator(G + ".editor[data-eval='mt'] h3.ed-sec").all_inner_texts()], "no Scans section of its own"
         assert me.locator(G + ".editor[data-eval='mt'] h3.ed-sec", has_text="Scripts and Scans").count() == 1
         assert "Booklets Scanned" in me.inner_text(G + ".editor[data-eval='mt'] [data-scan-list]")   # the Grading list, in Marks
+        # Marks: its Grading list, then whether students see their marks, and get their marked booklets.
+        y = lambda sel: me.locator(G + ".editor[data-eval='mt'] " + sel).first.bounding_box()["y"]
+        assert y("[data-scan-list]") < y("[data-rel]") < y("[data-relb]"), "Marks: the list, then the two tick boxes"
+        assert "Students can get their marked booklet" in me.inner_text(G + ".editor[data-eval='mt'] label:has([data-relb])")
         assert not me.query_selector(G + "[data-act='ev-scans']"), "no Print and Scan button: the Scans are right there"
 
         # The Exam Builder's Print and Scan: the test is linked to Test 1, so it opens Test 1's page, at its Scans.
@@ -155,7 +159,7 @@ def main():
         assert me.is_disabled(G + "[data-scan-slot] #sc-email"), "emailed once every booklet is graded"
         top = [" ".join(x.split()) for x in me.locator(G + "[data-scan-slot] .sc-top > *").all_inner_texts()]
         assert top == ["Edit Test Script", "Email Booklets"], top
-        assert me.inner_text(G + "[data-scan-list] .sc-qlist .dc-title").strip().lower() == "grading"   # not just questions
+        assert not me.query_selector(G + "[data-scan-list] .sc-qlist .dc-title"), "no GRADING label: it's part of Marks"
         mrow = " ".join(me.inner_text(G + "[data-scan-list] .sc-qlist [data-match]").split())
         assert mrow == "Booklet Matching 0 / 2 matched", mrow                         # first in the list, like a question
         me.click(G + "[data-scan-list] [data-match]"); me.wait_for_selector(".sc-book .sc-mcard")   # one booklet at a time
@@ -319,6 +323,7 @@ def main():
         me.click(".lt-modal [data-yes]")
         me.wait_for_timeout(1500)
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-6-sent.png")
+        me.locator(G + ".editor[data-eval='mt'] [data-relb]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-6b-marks.png")
         book = json.loads(srv.text("priv", f"{off}/grades.json"))
         got = {s["num"]: book["marks"][s["num"]]["mt"] for s in people}
         print("  in the gradebook:", got)
@@ -326,6 +331,45 @@ def main():
         assert got[people[1]["num"]]["pts"] < 22
         shown = me.evaluate(f"window.Lectern.tools.grades.api.book().marks[{json.dumps(people[0]['num'])}].mt")
         assert shown == {"pts": 22}, ("the gradebook open here shows the marks just sent", shown)
+
+        # Students can get their marked booklet: ticked and saved in the gradebook, then a student, signed in to the
+        # course page, has theirs emailed to them (email recorded instead of sent).
+        import re
+        from server import mailer
+        os.environ["LECTERN_SMTP_HOST"] = "smtp.example.org"
+        outbox = []
+        real_deliver = mailer.deliver
+        mailer.deliver = lambda to, subject, body, reply_to=None, cfg=None: (outbox.append({"to": to, "subject": subject, "files": [f[0] for f in getattr(body, "files", None) or []], "body": str(body)}), "")[1]
+        try:
+            me.check(G + ".editor[data-eval='mt'] [data-relb]")
+            me.keyboard.press("Control+s"); me.wait_for_timeout(2500)
+            ev = next(e for e in json.loads(srv.text("priv", f"{off}/grades.json"))["evals"] if e["id"] == "mt")
+            assert ev.get("booklets") is True and ev.get("released") is True, ev
+            st = people[0]; email = st["f"]["email"].lower() if st.get("f", {}).get("email") else st["email"].lower()
+            sc = b.new_context(viewport={"width": 1360, "height": 900}); block_cdns(sc)
+            H = {"X-Lectern": "1", "Origin": srv.base.rstrip("/")}
+            hub = srv.base + f"api/hub/chandra/demo101/{t}"
+            assert sc.request.post(hub + "/code", data={"email": email}, headers=H).ok
+            code = re.search(r"\b(\d{8})\b", [m for m in outbox if m["to"] == email and "code" in m["subject"]][-1]["body"]).group(1)
+            assert sc.request.post(hub + "/verify", data={"email": email, "code": code}, headers=H).ok
+            outbox.clear()
+            sp = sc.new_page(); sp.on("pageerror", lambda e: errors.append(f"student: {e}"))
+            sp.goto(srv.base + f"c/chandra/demo101/{t}/#evaluation/mt")
+            try:
+                sp.wait_for_selector("[data-booklet]", timeout=20000)
+            except Exception:
+                sp.screenshot(path=f"{OUT}/scan-7-fail.png"); print("  page:", sp.url, sp.inner_text("body")[:600]); raise
+            sp.locator("[data-booklet]").scroll_into_view_if_needed(); sp.screenshot(path=f"{OUT}/scan-7-student.png")
+            sp.click("[data-booklet]")
+            sp.wait_for_selector(".ec-bk-st:not([hidden])", timeout=60000)
+            said = sp.inner_text(".ec-bk-st")
+            print("  student:", said)
+            assert said.startswith(f"Sent to {email}") and sp.inner_text("[data-booklet]") == "Emailed", said
+            assert len(outbox) == 1 and outbox[0]["to"] == email and outbox[0]["files"][0].endswith(".pdf"), outbox
+            sp.screenshot(path=f"{OUT}/scan-7b-student-sent.png")
+            sc.close()
+        finally:
+            mailer.deliver = real_deliver
         b.close()
     assert not errors, errors
     print("flow_scans: OK")

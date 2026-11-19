@@ -143,6 +143,23 @@ const dcLink = (t, href) => (D.viewer.signedIn && !dcOff(t) ? `<a class="hs-file
 const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (link ? f.replace(/<\/div>$/, `${link}</div>`) : f) : `${soon ? `<p class="hs-soon">Files coming soon</p>` : ""}${link ? `<div class="hs-files">${link}</div>` : ""}`; };
 // Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked), or for the whole
 // course (its Sign in button hidden: D.discussion false).
+const PAGE_IC = svg('<path d="M6 3.5h8l4 4V20.5H6z"/><path d="M14 3.5v4h4"/><path d="m9 14 2 2 4-4"/>');
+// Email Me My Booklet: the server sends it to the address the class list has for them (server/scanning.py).
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-booklet]"); if (!b || b.disabled) return;
+  const st = b.closest(".ec-accrow").querySelector(".ec-bk-st");
+  b.disabled = true; b.textContent = "Emailing…";
+  try {
+    const r = await fetch(`${root.dataset.api}/booklet`, { method: "POST", credentials: "same-origin", headers: { "X-Lectern": "1", "Content-Type": "application/json" }, body: JSON.stringify({ e: b.dataset.booklet }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || "Something went wrong. Try again in a moment.");
+    b.textContent = "Emailed"; st.textContent = `Sent to ${d.email}. It can take a few minutes to arrive.`;
+  } catch (x) {
+    b.disabled = false; b.textContent = "Email Me My Booklet";
+    st.textContent = x instanceof TypeError ? "Couldn't reach the course page. Check your connection and try again." : x.message;
+  }
+  st.hidden = false;
+});
 const REDO = svg('<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>');
 const HEART = svg('<path d="M12 21s-7.5-4.4-7.5-10.2A4.3 4.3 0 0 1 12 8.1a4.3 4.3 0 0 1 7.5 2.7C19.5 16.6 12 21 12 21z"/>');
 const dcOff = t => D.discussion === false || (D.closed || []).includes(t);
@@ -426,6 +443,8 @@ function evalCard(u, group, E) {
     : me && m && !(rkFrom && rkFrom > new Date()) ? `<a class="hb-btn" href="#remark/${encodeURIComponent(u.id)}">Request Remark</a>` : "";
   const rkText = !rk ? "" : me && !m ? "Once your mark is out, you can ask for it to be looked at again." : rkFrom && rkFrom > new Date() ? `You can ask for your mark to be looked at again from ${rk.from ? `${day(rk.from, true)}${rk.fromTime ? `, ${rk.fromTime}` : ""}` : ""}.` : "You can ask for your mark to be looked at again.";
   const rmk = rk ? `<div class="ec-accrow"><span class="hs-ic sm">${REDO}</span><div class="ec-acct"><b>Remarks</b><span>${esc(rkText)}</span>${rk.by ? `<small>${rkBy && !isNaN(rkBy) && rkBy < new Date() ? `Requests are closed because the deadline (${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}) has passed.` : `Requests close ${esc(`${day(rk.by, true)}, ${rk.byTime || "23:59"}`)}.`}</small>` : ""}</div>${rkBtn ? `<span class="ec-accbtn">${rkBtn}</span>` : ""}</div>` : "";
+  // Their marked booklet (the gradebook's "Students can get their marked booklet"): emailed to them, never downloaded.
+  const bk = me && m && m.booklet ? `<div class="ec-accrow"><span class="hs-ic sm">${PAGE_IC}</span><div class="ec-acct"><b>Marked Booklet</b><span>Your own pages, with each question's score and the marker's comments, emailed to you.</span><small class="ec-bk-st" hidden></small></div><span class="ec-accbtn"><button type="button" class="hb-btn" data-booklet="${esc(u.id)}">Email Me My Booklet</button></span></div>` : "";
   return `${path([["Evaluations", "#evaluations"], ...(group ? [[group.name, `#evaluation/${encodeURIComponent(group.id)}`]] : []), [u.name]])}
     <article class="ec-card">
       <header class="ec-head"><span class="hs-ic ec-ic">${EV_ICON[t]}</span><div class="ec-tt"><p class="hs-kick">${esc(u.name)}</p><h1>${esc(u.title || u.name)}</h1>${subline ? `<p class="ec-subline">${esc(subline)}</p>` : ""}</div>${grading}</header>
@@ -433,6 +452,7 @@ function evalCard(u, group, E) {
       ${policy ? `<div class="ec-part">${policy}</div>` : ""}
       ${acc ? `<div class="ec-part">${acc.replace("@@REQ@@", req ? `<span class="ec-accbtn">${req}</span>` : "")}</div>` : req ? `<div class="ec-part ec-req">${req}</div>` : ""}
       ${rmk ? `<div class="ec-part">${rmk}</div>` : ""}
+      ${bk ? `<div class="ec-part">${bk}</div>` : ""}
       ${files ? `${sec("Files and Links")}${files}` : ""}
       ${A.length ? `${sec("Announcements")}<div class="hs-stack">${A.map(annCard).join("")}</div>` : ""}
       ${dcHere(`eval:${u.id}`)}

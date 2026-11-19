@@ -907,6 +907,7 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .tf-t small { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tf-build { width: fit-content; }
 @media (max-width: 560px) { .ef-row { grid-template-columns: 1fr 36px; } .ef-row input[data-ed="ef-url"] { grid-column: 1; } }
+[data-scan-list]:not(:empty) + .acm-tick { margin-top: 18px; }   /* Marks: its Grading list, then the tick boxes */
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
 .acm-tick input { grid-row: span 2; align-self: start; margin-top: 4px; }
 .acm-tick b { font-weight: 600; }
@@ -2768,7 +2769,7 @@ function lockDown() {
     root.querySelectorAll("[contenteditable=true]").forEach(x => { if (!x.closest("[data-dc-slot]")) x.setAttribute("contenteditable", "false"); });
     root.querySelectorAll("[data-ed]").forEach(b => { if (!ED_OK.has(b.dataset.ed)) b.disabled = true; });
     root.querySelectorAll("[data-act]").forEach(b => { if (!ACT_OK[mode].has(b.dataset.act)) b.disabled = true; });
-    root.querySelectorAll("[data-f], [data-disc], [data-rel], [data-acm], [data-rmk]").forEach(x => { x.disabled = true; });
+    root.querySelectorAll("[data-f], [data-disc], [data-rel], [data-relb], [data-acm], [data-rmk]").forEach(x => { x.disabled = true; });
   });
 }
 let lockQueued = false;
@@ -3236,10 +3237,12 @@ function drawEvalEditor() {
 // students whose mark is out; a mark changed after that waits for Email Them (Lectern's grade notices).
 let NOTICES = null;
 function releaseHTML(e) {
+  // Marks: its Grading list (Lectern's, for a script marked from scans) first; then whether students see them.
   return `<h3 class="ed-sec">Marks</h3>
+    ${HOSTED && docLinks.has(e.id) && window.Lectern.fillScans ? `<div data-scan-list="${esc(docLinks.get(e.id).folder)}"></div>` : ""}
     <label class="acm-tick"><input type="checkbox" data-rel="1"${e.released ? " checked" : ""}><b>Students can see their marks</b><span>On the course page, each student sees their own. Off, only the teaching team sees them.${HOSTED ? " Once it's on and the gradebook is saved, the students with a mark are emailed that it's out." : ""}</span></label>
-    <div class="rel-note" id="rel-note"></div>
-    ${HOSTED && docLinks.has(e.id) && window.Lectern.fillScans ? `<div data-scan-list="${esc(docLinks.get(e.id).folder)}"></div>` : ""}`;   // its Grading list (Lectern's)
+    ${HOSTED && docLinks.has(e.id) ? `<label class="acm-tick"><input type="checkbox" data-relb="1"${e.booklets ? " checked" : ""}><b>Students can get their marked booklet</b><span>Once their marks are out, a button on the course page emails each student their own pages, marked, to the address on the class list.</span></label>` : ""}
+    <div class="rel-note" id="rel-note"></div>`;
 }
 async function drawNotices(e, fresh) {
   const el = $("#rel-note"); if (!el || !HOSTED || !window.Lectern.gradeNotices) return;
@@ -3618,6 +3621,7 @@ document.addEventListener("change", ev => {
     if (acc) return drawStudentEditor();
   }
   else if (t.dataset.rmk && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => setRemark(e, "on", t.checked)); return drawEvalEditor(); }
+  else if (t.dataset.relb && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) e.booklets = true; else delete e.booklets; }); }
   else if (t.dataset.rel && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) e.released = true; else delete e.released; }); drawNotices(e); }
   else if (t.dataset.disc && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => { if (t.checked) delete e.discussion; else e.discussion = false; }); }
   else if (t.dataset.acm && t.type === "checkbox") { const e = evalById(m.dataset.eval); if (!e) return; change(() => setAccom(e, t.dataset.acm, t.checked)); }

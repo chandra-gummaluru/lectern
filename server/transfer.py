@@ -140,7 +140,7 @@ def scrub_book(b, course=None, term=None):
     if not isinstance(b, dict):
         return b
     b = dict(b, students=[], marks={}, overrides={}, finals={})
-    b["evals"] = [{k: v for k, v in e.items() if k != "released"} if isinstance(e, dict) else e for e in (b.get("evals") or [])]
+    b["evals"] = [{k: v for k, v in e.items() if k not in ("released", "booklets")} if isinstance(e, dict) else e for e in (b.get("evals") or [])]
     if course and term:
         b["course"] = dict(b.get("course") if isinstance(b.get("course"), dict) else {}, code=course.upper(), term=term_name(term))
     return b

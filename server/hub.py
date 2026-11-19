@@ -733,6 +733,7 @@ def hub_api(handle, course, term):
         mine_m = ((book.get("marks") or {}) if isinstance(book, dict) else {}).get(str(num)) if num else None
         # Only the evaluations whose marks are out (the gradebook's "released"; until then, only the team sees them).
         out = {e.get("id") for e in _list(book.get("evals") if isinstance(book, dict) else None) if isinstance(e, dict) and e.get("released") is True}
+        booklets = {e.get("id") for e in _list(book.get("evals") if isinstance(book, dict) else None) if isinstance(e, dict) and e.get("released") is True and e.get("booklets") is True}
         for eid, m in (mine_m.items() if isinstance(mine_m, dict) else []):
             if not isinstance(m, dict) or eid not in out:
                 continue
@@ -740,7 +741,8 @@ def hub_api(handle, course, term):
             if st in ("missed", "aiv", "excused", "deferred"):
                 marks[str(eid)[:64]] = {"status": st}
             elif isinstance(m.get("pts"), (int, float)):
-                marks[str(eid)[:64]] = {"pts": m["pts"]}
+                # With "Students can get their marked booklet": a button for it (scanning.py's my_booklet decides).
+                marks[str(eid)[:64]] = {"pts": m["pts"], **({"booklet": True} if eid in booklets else {})}
         # Their grade so far (My Marks), when the gradebook's Settings show it: worked out as the gradebook
         # does, from the released marks only (an unreleased one is not marked yet).
         if num and shows_sofar(o["id"], offering, book):

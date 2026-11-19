@@ -1755,3 +1755,5 @@ option.sc-taken { color: var(--ink-3); }
 .sc-gpk.pk:has(.pk-pop) { z-index: 40; }
 /* The Grading list in the evaluation's Marks section: part of it, so no rule of its own above it. */
 .sc-listslot .dc-head { margin-top: 14px; padding-top: 0; border-top: 0; }
+.sc-listslot .sc-ahead { justify-content: flex-end; margin: 6px 0 6px; }   /* just Assign Graders, on the right */
+.sc-listslot .sc-qlist { margin-top: 10px; }

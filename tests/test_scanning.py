@@ -227,6 +227,9 @@ def test_print_scan_mark_review_send(client, user, demo):
     assert j["results"]["emailed"] == 2 and j["results"]["mail"]["state"] == "done" and j["results"]["mail"]["answers"]
     assert all(b["emailed"] for b in client.get(f"/api/scans/results?{q(demo)}").get_json()["booklets"])
 
+    # A student's own marked booklet, from the course page: only theirs, only to them, only when it's out.
+    my_booklet_from_the_course_page(client, user, demo, people, totals)
+
     # Delete everything: the scans, results and printed copy go.
     assert client.post("/api/scans/delete", json={"offering": demo["offering"], "exam": "midterm", "all": True}, headers=H).status_code == 200
     j = client.get(f"/api/scans?{q(demo)}").get_json()
@@ -311,3 +314,81 @@ def test_without_latex(client, user, demo, monkeypatch):
     r = client.get(f"/api/scans/pdf?offering={demo['offering']}&exam=midterm&doc=key")
     assert r.status_code == 503 and "LaTeX" in r.get_json()["error"]
     assert client.get(f"/api/scans?offering={demo['offering']}&exam=midterm").get_json()["latex"] is False
+
+
+def my_booklet_from_the_course_page(client, user, demo, people, totals):
+    from server import mailer, scanning as S
+    from test_students import code_for
+    course, term = demo["offering"].split("/")
+    hub = f"/api/hub/chandra/{course}/{term}"
+    repo = store.Repo(user["id"], "priv")
+
+    def edit(fn):
+        text, sha = repo.read_text(f"{demo['offering']}/grades.json")
+        b = json.loads(text)
+        fn(b)
+        repo.write_text(f"{demo['offering']}/grades.json", json.dumps(b), sha, "test")
+
+    book = json.loads(repo.read(f"{demo['offering']}/grades.json"))
+    email = lambda s: (s.get("f") or {}).get("email") or s.get("email")
+    edit(lambda b: [s.setdefault("f", {}).__setitem__("email", f"s{s['num']}@mail.utoronto.ca") for s in b["students"] if not email(s)])
+    book = json.loads(repo.read(f"{demo['offering']}/grades.json"))
+    nums = {p["num"] for p in people}
+    a, b2 = (next(s for s in book["students"] if s["num"] == p["num"]) for p in people)
+    other = next(s for s in book["students"] if s["num"] not in nums and not s.get("dropped"))
+
+    def student(s):
+        c = app.test_client()
+        assert c.post(f"{hub}/code", json={"email": email(s)}, headers=H).status_code == 200
+        r = c.post(f"{hub}/verify", json={"email": email(s), "code": code_for(email(s))}, headers=H)
+        assert r.status_code == 200, r.get_json()
+        return c
+
+    def ask(c, **d):
+        mailer.sent.clear()
+        return c.post(f"{hub}/booklet", json={"e": "mt", **d}, headers=H)
+
+    sa, sb, so = student(a), student(b2), student(other)
+    assert app.test_client().post(f"{hub}/booklet", json={"e": "mt"}, headers=H).status_code == 401      # not signed in
+    assert sa.post(f"{hub}/booklet", json={"e": "mt"}).status_code == 403                                  # not from Lectern's page
+    assert ask(sa, e="../mt").status_code == 400
+
+    def refused(c):
+        r = ask(c)
+        assert r.status_code == 403 and r.get_json()["error"] == S._NOT_HERE, r.get_json()
+        assert not mailer.sent
+
+    edit(lambda b: next(e for e in b["evals"] if e["id"] == "mt").pop("released", None))
+    refused(sa)                                                         # marks not out, booklets off
+    edit(lambda b: next(e for e in b["evals"] if e["id"] == "mt").update(booklets=True))
+    refused(sa)                                                         # booklets on, marks not out
+    edit(lambda b: next(e for e in b["evals"] if e["id"] == "mt").update(released=True, booklets=False))
+    refused(sa)                                                         # marks out, booklets off
+    assert "booklet" not in (sa.get(hub).get_json()["viewer"]["marks"].get("mt") or {})
+    edit(lambda b: next(e for e in b["evals"] if e["id"] == "mt").update(booklets=True))
+    assert sa.get(hub).get_json()["viewer"]["marks"]["mt"] == {"pts": totals[a["num"]], "booklet": True}
+
+    # Theirs, to the class list's address, whatever else the request says.
+    r = ask(sa, num=b2["num"], email="someone@else.com", to="someone@else.com", booklet="x", answers=True)
+    assert r.status_code == 200 and r.get_json()["email"] == email(a).lower(), r.get_json()
+    got = [m for m in mailer.sent if m["files"]]
+    assert len(got) == 1 and got[0]["to"] == email(a).lower() and a["num"] in got[0]["files"][0][0], mailer.sent
+    assert f"out of" in got[0]["body"] and f"You got {totals[a['num']]:g}" in got[0]["body"]
+    assert ask(sb).get_json()["email"] == email(b2).lower() and b2["num"] in mailer.sent[-1]["files"][0][0]
+
+    refused(so)                                                         # on the class list, with no booklet
+    edit(lambda b: b["marks"].setdefault(other["num"], {}).update(mt={"pts": 5}))
+    refused(so)                                                         # a mark, but no booklet of theirs
+
+    # Their mark isn't this booklet's total (changed in the gradebook): not sent.
+    edit(lambda b: b["marks"][a["num"]].update(mt={"pts": totals[a["num"]] - 1}))
+    refused(sa)
+    edit(lambda b: b["marks"][a["num"]].update(mt={"pts": totals[a["num"]]}))
+
+    # A few a day each.
+    assert ask(sa).status_code == 200 and ask(sa).status_code == 200      # 3 today with the one above
+    r = ask(sa)
+    assert r.status_code == 429 and not mailer.sent
+    edit(lambda b: next(s for s in b["students"] if s["num"] == b2["num"]).update(dropped=True))
+    r = ask(sb)
+    assert r.status_code == 401 and not mailer.sent                   # dropped from the class: signed out

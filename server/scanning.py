@@ -97,7 +97,18 @@ class Exam:
         if self.role not in need:
             raise Refusal(403, {LEADS: "Only the offering's owner and coordinators can do that.",
                                 MARKERS: "Only the offering's owner, coordinators and TAs can mark."}.get(need, "You can't do that here."))
-        self.e = str(d.get("exam") or "")
+        self._load(d.get("exam"))
+
+    @classmethod
+    def of(cls, owner, o, e):
+        """The exam, for the server's own use: no one's role is checked (the caller has decided who may see what)."""
+        ex = cls.__new__(cls)
+        ex.owner, ex.o, ex.role = owner, o, None
+        ex._load(e)
+        return ex
+
+    def _load(self, e):
+        self.e = str(e or "")
         if not _SLUG.match(self.e) or self.e[0] in "._":
             raise Refusal(400, "Which exam?")
         self.repo = Repo(self.owner, "priv")
@@ -690,7 +701,8 @@ def _pic(ex, results, name):
         return None
     from urllib.parse import urlencode
     q = {"offering": ex.o, "exam": ex.e, "name": f"{results.get('pictures', '')}/{name}"}
-    if ex.owner != g.user["id"]:
+    u = g.get("user")       # (none: a student's own booklet, from the course page, which sends no links)
+    if not u or ex.owner != u["id"]:
         q["owner"] = db.one("SELECT handle FROM users WHERE id = ?", (ex.owner,))["handle"]
     return "/api/scans/picture?" + urlencode(q)
 
@@ -1058,6 +1070,131 @@ def email():
             _threads[key] = t
             t.start()
     return jsonify(ok=True, emailing=len(jobs), waiting=waiting, missing=missing, mail=ex.read_json("mail.json", {}))
+
+
+# ── A student's own marked booklet, from the course page ──────────────
+# With the gradebook's "Students can get their marked booklet" on (an evaluation's "booklets"), a student signed in
+# to the course page can have their own booklet, marked, emailed to them:
+#   POST /api/hub/<handle>/<course>/<term>/booklet    { e: evaluation id }
+# They name nothing but the evaluation. Who they are is their course-page sign-in; where it goes is the address the
+# class list has for them (the one they signed in with); which booklet is the one booklet matched to their number,
+# and only when its total is the mark the gradebook shows them (so it's the booklet their released mark came from).
+# Anything else, and they're told only that it isn't available. Never a download: it goes only to their inbox.
+BOOKLET_ASKS = (3, 86400)          # emails of one booklet a student can ask for, a day
+_ask_lock = threading.Lock()
+_NOT_HERE = "Your marked booklet isn't available. If you think it should be, contact your instructor."
+
+
+def _linked_exam(owner, o, eid):
+    """The one exam (its folder) linked to evaluation eid, or None (none, or more than one)."""
+    root = os.path.join(Repo(owner, "priv").root, *o.split("/"))
+    found = []
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return None
+    for n in names:
+        if not _SLUG.match(n) or n[0] in "._" or not os.path.isfile(os.path.join(root, n, "exam.json")):
+            continue
+        try:
+            with open(os.path.join(root, n, "exam.json"), encoding="utf-8") as f:
+                st = (json.load(f) or {}).get("settings") or {}
+        except (OSError, ValueError, AttributeError):
+            continue
+        if isinstance(st, dict) and st.get("link") == eid:
+            found.append(n)
+    return found[0] if len(found) == 1 else None
+
+
+def booklets_out(book, eid):
+    """Whether students can get their marked booklets for evaluation eid: its marks are out, and it says so."""
+    ev = next((e for e in (book.get("evals") or []) if isinstance(e, dict) and e.get("id") == eid), None)
+    return bool(ev) and ev.get("released") is True and ev.get("booklets") is True
+
+
+@scans_bp.post("/api/hub/<handle>/<course>/<term>/booklet")
+def my_booklet(handle, course, term):
+    from . import classmail, mailer
+    from .accommodations import limiter, _client_ip
+    from .auth import Refusal as AuthRefusal
+    from .students import _offering as hub_offering, student_of, roster as class_list, norm
+    try:
+        if not limiter.ok(f"booklet-ip:{_client_ip()}", 30, 3600):
+            raise Refusal(429, "Too many tries. Wait a while, then try again.")
+        try:
+            u, o = hub_offering(handle, course, term)
+        except AuthRefusal as x:
+            raise Refusal(404, str(x))
+        owner = u["id"]
+        email = student_of(owner, o)
+        if not email:
+            raise Refusal(401, "Sign in to the course page first.", "signed-out")
+        email = norm(email)
+        d = request.get_json(silent=True) or {}
+        eid = d.get("e")
+        if not isinstance(eid, str) or not re.match(r"^[\w.-]{1,64}$", eid):
+            raise Refusal(400, "Which evaluation?")
+        if not limiter.ok(f"booklet:{owner}:{o}:{email}", 10, 3600):
+            raise Refusal(429, "Too many tries. Wait a while, then try again.")
+        me = class_list(owner, o).get(email)
+        num = str((me or {}).get("num") or "")
+        if not num:
+            raise Refusal(403, _NOT_HERE)
+        raw = Repo(owner, "priv").read(f"{o}/grades.json")
+        try:
+            book = json.loads(raw) if raw else {}
+        except ValueError:
+            book = {}
+        if not isinstance(book, dict) or not booklets_out(book, eid):
+            raise Refusal(403, _NOT_HERE)
+        mark = ((book.get("marks") or {}).get(num) or {}).get(eid) or {}
+        pts = _num(mark.get("pts")) if isinstance(mark, dict) and not mark.get("status") else None
+        folder = _linked_exam(owner, o, eid)
+        if pts is None or not folder:
+            raise Refusal(403, _NOT_HERE)
+        ex = Exam.of(owner, o, folder)
+        if ex.settings.get("link") != eid:
+            raise Refusal(403, _NOT_HERE)
+        results = ex.read_json("results.json", {})
+        roster = [s for s in book.get("students") or [] if isinstance(s, dict) and not s.get("dropped")]
+        shown = view(ex, results, ex.read_json("review.json", {}), roster) if results else []
+        theirs = [b for b in shown if str(b["student"].get("num") or "") == num]
+        # Exactly one booklet is theirs, it's finished, and it's the mark they were given.
+        if len(theirs) != 1 or not theirs[0]["ready"] or abs(theirs[0]["total"] - pts) > 1e-6:
+            raise Refusal(403, _NOT_HERE)
+        b = theirs[0]
+        cfg, pf = classmail.settings_for(owner, o), classmail.prefs_for(owner, o)
+        if not cfg.get("host") and not mailer.keep:
+            raise Refusal(503, "Email isn't working for this course right now. Contact your instructor.")
+        with _ask_lock:
+            asks = ex.read_json("asked.json", {})
+            asks = asks if isinstance(asks, dict) else {}
+            now = time.time()
+            mine = [t for t in asks.get(num) or [] if isinstance(t, (int, float)) and now - t < BOOKLET_ASKS[1]]
+            if len(mine) >= BOOKLET_ASKS[0]:
+                raise Refusal(429, "It's been emailed to you a few times today already. Check your inbox (and junk mail), or try again tomorrow.")
+            asks[num] = mine + [now]
+            ex.write_json("asked.json", asks)      # who asked in the last day, and when
+        from .autograde import annotate
+        reader = annotate.page_reader(ex.path("uploads"))
+        try:
+            pdf = _annotated(ex, results, shown, b["key"], False, _marked_against(ex), reader)
+        finally:
+            reader.close()
+        head = classmail.head_for(owner, o)
+        title = ex.settings.get("title") or ex.e
+        code = head.get("code") or o.split("/")[0].upper()
+        body = classmail.signed(pf, f"{mailer.hi((me or {}).get('first') or '')}\n\nYour {title}, marked, is attached: your own pages, "
+                                    f"with each question's score and the marker's comments. You got {b['total']:g} out of {b['out_of']:g}.\n", head)
+        body.files = [(re.sub(r"[^\w-]+", "-", f"{code}-{title}-{num}").strip("-") + ".pdf", pdf, "application/pdf")]
+        err = mailer.deliver(email, f"{code}: your marked {title}", body, reply_to=pf["replyTo"] or None, cfg=cfg)
+        if err and not (mailer.keep and err == "Email isn't set up."):
+            raise Refusal(502, "It couldn't be emailed just now. Try again later.")
+        return jsonify(ok=True, email=email)
+    except Refusal as x:
+        return _err(x)
+    except StoreError as x:
+        return _err(Refusal(x.status, str(x)))
 
 
 @scans_bp.post("/api/scans/comment")

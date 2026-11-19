@@ -1675,3 +1675,38 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-filelist .sc-files { margin-top: 8px; }
 .sc-fl-acts { margin-top: 8px; }
 .lt-link.danger { color: var(--danger, #b42318); }
+
+/* Grade's questions: a question's parts, (a), (b)…, under it, indented, joined to it by a line. */
+.sc-qgroup .sc-qg-h { cursor: default; }
+.sc-dc .sc-sub { padding-left: 34px; }
+.sc-dc .sc-sub .lt-rq-st { position: relative; }
+.sc-dc .sc-sub::before { content: ""; position: absolute; left: 31px; top: 0; bottom: 0; border-left: 2px solid var(--line); }
+.sc-dc .sc-r.sc-sub, .sc-dc .sc-qgroup { position: relative; }
+.sc-qgroup + .sc-sub, .sc-sub + .sc-sub { border-top-style: dashed; }
+.sc-part { font-family: var(--font-serif, Georgia, serif); }
+
+/* An evaluation's Scans: its questions (or booklets) under the buttons, scrolling in their own box; greyed out, and
+   not opening, until there are scans. */
+.sc-qlist { margin-top: 14px; }
+.sc-qlist .sc-bybar { margin: 0 0 8px; }
+.sc-qlist .dc-threads { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+.sc-qlist.off { opacity: .55; }
+.sc-qlist.off .dc-t-b { cursor: default; }
+.sc-qlist.off .dc-t-b:hover .dc-t-title { text-decoration: none; }
+.sc-qlist .hb.lt-dc { border: 0; padding: 0; margin: 0; background: none; box-shadow: none; }
+.sc-qlist .sc-dc .dc-head { margin-top: 0; }
+
+/* The Scans steps: rows like the script's row above them (an icon, a bold line, a gray line under it), each with a
+   thin bar under its text and its button on the right; the icon goes green once the step is all done. */
+.sc-steps { display: grid; gap: 6px; margin: 6px 0 8px; }
+.sc-step { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--field); font: 14px var(--font-ui); color: var(--ink); }
+.sc-step > svg { flex: none; width: 18px; height: 18px; color: var(--ink-3); }
+.sc-step.done > svg { color: var(--home-ok, #2f8f5b); }
+.sc-st-t { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.sc-st-h b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.sc-st-t small { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-3); }
+.sc-st-t small .sc-spin { width: 12px; height: 12px; }
+.sc-st-t .sc-meter { height: 4px; margin: 5px 0 1px; max-width: 320px; }
+.sc-st-b { display: flex; gap: 8px; flex: none; }
+.sc-step .sc-st-b .lt-btn { height: 32px !important; min-height: 32px; padding: 0 12px !important; font-size: 13px !important; }
+.sc-steps + .sc-looks { margin: 0 0 8px; padding: 0; border: 0; }

@@ -419,6 +419,15 @@ def _running(ex):
     return time.time() - job.get("beat", 0) < 180          # a server restart leaves a job that stopped beating
 
 
+def _questions(ex):
+    """The exam's questions and sub-questions, as the grader labels them (1, 2, 9(a)…): listed before any scans."""
+    try:
+        from .autograde.grade import leaves
+        return [label for label, _ in leaves(ex.exam, 0)]
+    except Exception:            # without the scan packages: none listed until there are results
+        return []
+
+
 def _wrote(ex, ev, roster):
     """How many booklets to expect: those at the test (its attendance, if it was taken), else the class."""
     att = 0
@@ -696,7 +705,7 @@ def overview():
               "layout": ex.settings.get("layout") or "exam", "total": total},
         eval=ev and {"id": ev.get("id"), "name": ev.get("name") or ev.get("id"), "total": ev.get("total")},
         copies=copies, uploads=_uploads(ex), job=job, latex=latex_ok(), role=ex.role,
-        wrote=_wrote(ex, ev, roster), nextBooklet=_next_booklet(printed),
+        wrote=_wrote(ex, ev, roster), nextBooklet=_next_booklet(printed), questions=_questions(ex),
         can={"print": ex.role in LEADS, "upload": ex.role in LEADS, "mark": ex.role in MARKERS},
         results=None if not results else {"booklets": len(bs), "ready": sum(1 for b in bs if b["ready"]),
                              "open": sum(b["open"] for b in bs), "who": sum(1 for b in bs if b["student"].get("status") not in ("auto", "done")),

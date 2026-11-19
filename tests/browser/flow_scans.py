@@ -74,11 +74,11 @@ def main():
         me.locator(G + ".editor[data-eval='mt'] .tf-list").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-00-scripts.png")
         assert "Test Script" in me.inner_text(G + ".editor[data-eval='mt'] .tf-list") and not me.query_selector(G + ".ed-acts [data-act='ev-build']")
         sc = me.inner_text(G + ".editor[data-eval='mt'] [data-scan-slot]")
-        assert sc.startswith("Scans ·"), sc
+        assert "Upload whole booklets" not in sc and "printed" not in sc, sc              # no text above the card
         assert not me.query_selector(G + ".editor[data-eval='mt'] [data-doc]"), "its PDFs are in the Exam Builder"
         assert "Scans" not in [x.strip().title() for x in me.locator(G + ".editor[data-eval='mt'] h3.ed-sec").all_inner_texts()], "no Scans section of its own"
         assert me.locator(G + ".editor[data-eval='mt'] h3.ed-sec", has_text="Scripts and Scans").count() == 1
-        assert "Upload Scans" in sc and "from the Exam Builder (Student Copy)" in sc, sc
+        assert "Upload Scans" in sc, sc
         assert not me.query_selector(G + "[data-act='ev-scans']"), "no Print and Scan button: the Scans are right there"
 
         # The Exam Builder's Print and Scan: the test is linked to Test 1, so it opens Test 1's page, at its Scans.
@@ -125,56 +125,59 @@ def main():
         scan_pdf(r.body(), people, answers(exam), scan)
         me.evaluate("location.reload()"); me.wait_for_selector(G + ".erow[data-id='mt']", timeout=20000); me.click(G + ".erow[data-id='mt']")
         me.wait_for_selector(G + "[data-scan-slot] #sc-file", state="attached", timeout=20000)
-        assert "Booklets 1–2 and a copy to photocopy printed" in me.inner_text(G + "[data-scan-slot]"), me.inner_text(G + "[data-scan-slot]")
+        assert json.loads(srv.text("priv", f"{off}/grades.json")) and "printed" not in me.inner_text(G + "[data-scan-slot]")
+        greyed = me.locator(G + "[data-scan-slot] .sc-qlist.off [data-gq]")              # before any scans: listed, greyed out
+        assert greyed.count() == 12 and greyed.first.is_disabled() and "No scans yet" in greyed.first.inner_text()
         me.set_input_files(G + "[data-scan-slot] #sc-file", scan)             # read as it comes in: no Mark button
         me.wait_for_selector(G + "[data-scan-slot] .sc-filelist", timeout=30000)
         assert not me.evaluate("window.Lectern.tools.grades.api.state().unsaved"), "uploading a scan doesn't change the gradebook"
         print("2 uploaded:", me.inner_text(G + "[data-scan-slot] .sc-filelist summary"))
         assert not me.query_selector(G + "[data-scan-slot] #sc-mark")
-        me.wait_for_selector(G + "[data-scan-slot] .sc-mc-job", timeout=10000)
+        me.wait_for_selector(G + "[data-scan-slot] .sc-step .sc-spin", timeout=10000)
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2-marking.png")
-        me.wait_for_selector(G + "[data-scan-slot] #sc-grade", timeout=180000)       # read: Fix Scans and Grading, side by side
-        me.wait_for_selector(G + "[data-scan-slot] .sc-mc-job", state="detached", timeout=180000)
-        card = me.inner_text(G + "[data-scan-slot] .sc-meter-card")
+        me.wait_for_selector(G + "[data-scan-slot] .sc-qlist:not(.off) [data-gq]", timeout=180000)       # read: its questions open
+        me.wait_for_selector(G + "[data-scan-slot] .sc-step .sc-spin", state="detached", timeout=180000)
+        card = me.inner_text(G + "[data-scan-slot] .sc-steps")
         n = len([s_ for s_ in book["students"] if not s_.get("dropped")])
         assert card.split("\n")[0].startswith(f"2 / {n}") and "students in the class" not in card, card
-        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-mc-n", "title")
+        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-st-h >> nth=0", "title")
         print("  meter:", card.replace("\n", " | "))
-        acts = [x.strip() for x in me.locator(G + "[data-scan-slot] .sc-acts > *").all_inner_texts()]
-        assert acts[0] == "Upload Scans" and acts[1].startswith("Fix Scans · ") and acts[2:] == ["Grading"], acts
-        assert not me.query_selector(G + "[data-scan-slot] .sc-dc, " + G + "[data-scan-slot] [data-by]"), "no booklets or questions on the evaluation"
+        steps = [" ".join(x.split()) for x in me.locator(G + "[data-scan-slot] .sc-step").all_inner_texts()]   # each: a count and its button
+        assert steps == [f"2 / {n} booklets scanned Upload Scans", "0 / 2 booklets matched Match Booklets", "0 / 2 booklets graded Email Booklets"], steps
+        assert me.is_disabled(G + "[data-scan-slot] #sc-email"), "emailed once every booklet is graded"
+        me.click(G + "[data-scan-slot] #sc-match"); me.wait_for_selector(".sc-book #sc-who")   # Match Booklets: the first one not matched
+        assert me.evaluate("location.hash").endswith("/scans/midterm/1"), me.evaluate("location.hash")
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] .sc-step")
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2b-marked.png")
-        me.click(G + "[data-scan-slot] #sc-grade"); me.wait_for_selector(".sc-ed .sc-dc")                 # Grading: the booklets, the questions
-        assert "/scans/midterm" in me.evaluate("location.hash") and me.inner_text(".sc-ed .gr-kind").lower() == "grading"
-        assert not me.query_selector(".sc-ed #sc-file"), "no uploads in Grading"
-        me.screenshot(path=f"{OUT}/scan-3-results.png", full_page=True)
-        print("  results:", me.inner_text(".sc-dc .dc-title"))
-        rows = me.locator(".sc-dc .dc-t")
-        print("  to look at:", [rows.nth(i).inner_text().replace("\n", " ") for i in range(rows.count())])
-        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] #sc-fix")
+        rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-slot] .sc-qlist [data-gq]").all()}
+        print("  questions:", list(rows.values())[:4])
+        assert rows["4"].endswith("1 / 2 read") and rows["8"].endswith("0 / 2 marked") and rows["1"].endswith("2 / 2 read"), rows
+        assert not me.query_selector(G + "[data-scan-slot] #sc-fix, " + G + "[data-scan-slot] .lx-sec, " + G + "[data-scan-slot] [data-by]"), "no Fix Scans bar, Gradebook, Marked Booklets or By Booklet in it"
+        h = me.evaluate(f"document.querySelector(`{G}[data-scan-slot] .sc-qlist .dc-threads`).clientHeight")
+        assert h <= 340, ("the list scrolls in its own box", h)
 
-        # Fix Scans: question by question, only the answers the grader wasn't sure how to read (not the written ones).
-        me.click(G + "[data-scan-slot] #sc-fix"); me.wait_for_selector(".sc-book .gr-kind")
-        assert me.inner_text(".sc-book .gr-kind").lower() == "fix scans", me.inner_text(".sc-book .gr-kind")
+        # A question the computer marks: check it against the scans, the answers it wasn't sure how to read, one at a time.
+        me.click(G + "[data-scan-slot] [data-gq='4']"); me.wait_for_selector(".sc-book .gr-kind")
+        assert me.inner_text(".sc-book .gr-kind").lower().startswith("marked by the computer"), me.inner_text(".sc-book .gr-kind")
         assert me.inner_text(".sc-book h2").startswith("Question 4") and me.locator(".sc-q").count() == 1, "one answer at a time"
         assert not me.locator(".sc-q .sc-qt:visible").count(), "no name: just the reading"
         me.screenshot(path=f"{OUT}/scan-3a-fix.png", full_page=True)
         copy = me.locator(".sc-q .dz-field input").first                  # it read 64: fix it to 84, then Okay
         copy.fill("84"); me.click("[data-fixok]"); me.wait_for_timeout(900)
         assert not me.locator(".sc-q").count() and me.locator(".sc-fixnext [data-fixgo]").count(), me.inner_text(".sc-book")
-        me.locator(".sc-fixnext [data-fixgo]").click(); me.wait_for_timeout(400)
-        assert me.inner_text(".sc-book h2").startswith("Question 10")
+        print("  question 4 checked:", me.inner_text(".sc-fixnext"))
+        me.click("[data-fixall]"); me.wait_for_timeout(300)                # every answer, if you ask
+        assert me.locator(".sc-q").count() == 2, "every booklet's answer to question 4"
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] [data-gq='10']")
+        me.click(G + "[data-scan-slot] [data-gq='10']"); me.wait_for_selector(".sc-book [data-fixok]")
         me.click("[data-fixok]"); me.wait_for_timeout(300)                # a word nobody has typed yet: Okay says so
         assert me.locator(".sc-q").count() == 1
-        print("  fix scans: question 4 fixed, question 10 waits for the word")
-        me.click("[data-fixdone]"); me.wait_for_selector(G + "[data-scan-slot] #sc-fix")     # Stop: back to Test 1
+        print("  question 10 waits for the word")
 
-        # By Question (in Grading): question 8 (written) in every booklet; the first student's gets full marks there.
-        me.click(G + "[data-scan-slot] #sc-grade"); me.wait_for_selector(".sc-ed .sc-dc")
-        me.click(".sc-ed [data-by='question']"); me.wait_for_selector(".sc-dc [data-gq]")
-        print("  by question:", [x.replace("\n", " ") for x in me.locator(".sc-dc .dc-t").all_inner_texts()][:4])
-        me.locator(".sc-dc [data-gq='8']").click(); me.wait_for_selector(".sc-book .sc-q")
-        assert "/questions/8" in me.evaluate("location.hash")
+        # A question marked by hand: the grader, every booklet's answer; the first student's gets full marks there.
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] [data-gq='8']")
+        me.locator(G + "[data-scan-slot] [data-gq='8']").click(); me.wait_for_selector(".sc-book .sc-q")
+        assert "/questions/8" in me.evaluate("location.hash") and me.inner_text(".sc-book .gr-kind").lower() == "marked by hand"
         me.screenshot(path=f"{OUT}/scan-3b-question.png", full_page=True)
         print("  question 8:", me.inner_text(".sc-book .lt-req-meta"), "|", me.locator(".sc-q").count(), "answers to look at")
         assert me.locator(".sc-q").count() == 2
@@ -280,15 +283,16 @@ def main():
         typed = me.locator(".sc-q", has_text="typed")
         print("  typed readings:", typed.count())
         me.screenshot(path=f"{OUT}/scan-5-finished.png", full_page=True)
-        me.locator("#lt-path button", has_text="Grading").first.click()          # back to Grading: send the marks
-        me.wait_for_selector(".sc-ed #sc-send:not([disabled])")
-        print("  send:", me.inner_text(".sc-ed #sc-send"))
-        me.click(".sc-ed #sc-send")
+        me.locator("#lt-path button", has_text="Test 1").first.click()         # back to Test 1: the marks go in by themselves,
+        me.wait_for_selector(G + "[data-scan-slot] #sc-replace", timeout=15000)   # but not over the different ones there
+        print("  differ:", me.inner_text(G + "[data-scan-slot] .sc-looks"))
+        assert me.inner_text(G + "[data-scan-slot] #sc-email") == "Email 2 Booklets" and not me.is_disabled(G + "[data-scan-slot] #sc-email")
+        me.click(G + "[data-scan-slot] #sc-replace")
         me.wait_for_selector(".lt-modal [data-yes]")
         print("  asks:", me.inner_text(".lt-modal h2"))
         me.click(".lt-modal [data-yes]")
         me.wait_for_timeout(1500)
-        me.screenshot(path=f"{OUT}/scan-6-sent.png", full_page=True)
+        me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-6-sent.png")
         book = json.loads(srv.text("priv", f"{off}/grades.json"))
         got = {s["num"]: book["marks"][s["num"]]["mt"] for s in people}
         print("  in the gradebook:", got)

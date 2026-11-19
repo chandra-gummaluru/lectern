@@ -92,9 +92,9 @@ def main():
         assert got.ok and got.body()[:4] == b"%PDF", ("the handout's student copy, with the scan codes, compiles", got.status, got.text()[:300])
         page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] #sc-file", state="attached", timeout=15000)
         assert json.loads(srv.text("priv", "csc258/f26/a1/exam.json"))["settings"]["scan"] is True
-        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot]")).to_contain_text("Booklets 1–2 printed", timeout=10000)
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] .sc-steps")).to_be_visible(timeout=10000)   # scanning on, saved
         sc = page.inner_text(G + ".editor[data-eval='a1'] [data-scan-slot]")
-        assert "Upload Scans" in sc and "Booklets 1–2 printed" in sc, sc
+        assert "Upload Scans" in sc and "booklets scanned" in sc, sc
         print("1b handout scans:", sc.replace("\n", " ")[:160])
 
         # 2. Saving the gradebook puts its marking scheme on the course page.

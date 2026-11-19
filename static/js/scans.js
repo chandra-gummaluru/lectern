@@ -26,6 +26,10 @@ const LET = "ABCDEF";
 // The grader's warning, short: its first sentence ("Not sure of the handwriting.").
 const firstSentence = t => (String(t || "").match(/^.*?[.?!](\s|$)/) || [String(t || "")])[0].trim();
 const TICK = SVG('<path d="m6 12.5 4 4L18 8"/>');
+// The Scans steps' icons: pages scanned, a student matched, a booklet graded.
+const PAGES = SVG('<path d="M8 3h7l4 4v11a1.5 1.5 0 0 1-1.5 1.5H8A1.5 1.5 0 0 1 6.5 18V4.5A1.5 1.5 0 0 1 8 3z"/><path d="M15 3v4h4"/><path d="M3.5 7v12.5A1.5 1.5 0 0 0 5 21h9.5"/>');
+const PERSON = SVG('<circle cx="12" cy="8" r="3.6"/><path d="M5 20.2c.9-3.7 3.7-5.7 7-5.7s6.1 2 7 5.7"/>');
+const GRADED = SVG('<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="m8.5 12.3 2.4 2.4 4.7-5.1"/>');
 const CROSS = SVG('<path d="M7 7l10 10M17 7 7 17"/>');
 const WARN = SVG('<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2h.01"/>');
 const fmtN = x => (x == null ? "–" : String(Math.round(x * 100) / 100));
@@ -34,7 +38,7 @@ const markHTML = b => { const pc = b.out_of ? Math.round(b.total / b.out_of * 10
   return `<div class="sc-mk"><b>${pc != null ? `${fmtN(pc)}%` : fmtN(b.total)}</b><small>${fmtN(b.total)} / ${fmtN(b.out_of)}${b.ready ? "" : " so far"}</small></div>`; };
 const when = s => { const d = new Date(s * 1000); return isNaN(d) ? "" : d.toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); };
 const size = b => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
-const ui = { show: "open", q: "", by: "booklet", qShow: "", qWas: "", sure: false, keep: new Set(), keepFor: "", fixing: false, fixWas: "", fixCur: "", fixDone: 0, pending: null };
+const ui = { show: "open", q: "", by: "question", allFor: "", sentKey: "", differ: [], qShow: "", qWas: "", sure: false, keep: new Set(), keepFor: "", fixing: false, fixWas: "", fixCur: "", fixDone: 0, pending: null };
 const editing = new Set();   // answers whose reading is open to type ("<booklet>|<question>")
 const adding = new Set();    // answers with the New Comment form open
 const noting = new Set();    // answers with the note box opened, though it has no note yet
@@ -59,9 +63,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   const numOf = b => (matched(b) ? b.student.num : "X".repeat(((R && R.students && R.students[0] && R.students[0].num) || "0000000000").length));
   // Back from a booklet, a question or Fix Scans: to the evaluation the exam is linked to (its Scans are there), or
   // else to this exam's own Print and Scan page.
-  const home = () => go({ ...r, b: "", q: "" });
+  const home = () => (S && S.eval && openEval ? openEval(S.eval.id) : go({ ...r, b: "", q: "" }));
   const pathTo = extra => { if (into) return;
-    renderPath(S && S.eval && openEval ? [...steps, { label: "Evaluations", go: () => openEval("") }, { label: S.eval.name, go: () => openEval(S.eval.id) }, ...(extra ? [{ label: "Grading", go: () => go({ ...r, b: "", q: "" }) }, { label: extra }] : [{ label: "Grading" }])]
+    renderPath(S && S.eval && openEval ? [...steps, { label: "Evaluations", go: () => openEval("") }, { label: S.eval.name, go: () => openEval(S.eval.id) }, { label: extra || "Scans" }]
       : [...steps, { label: S ? S.exam.title : "Exam", go: openExam }, ...(extra ? [{ label: "Print and Scan", go: home }, { label: extra }] : [{ label: "Print and Scan" }])]); };
 
   async function load() {
@@ -78,8 +82,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   // ── The page ──
   function draw() {
     pathTo();
-    ui.fixing = false;
-    const X = S.exam, can = S.can, N = X.versions, what = X.layout === "handout" ? "handout" : "exam";   // what it is, in words
+        const X = S.exam, can = S.can, N = X.versions, what = X.layout === "handout" ? "handout" : "exam";   // what it is, in words
     const notes = [
       !S.latex ? `<p class="lt-note"><b>This Lectern can't make PDFs:</b> its server doesn't have LaTeX. Ask whoever runs it to install TeX Live (see the README).</p>` : "",
       !X.scan ? `<p class="lt-note"><b>Marking from scans is off for this ${what}.</b> Tick Marking from Scans in the <button type="button" class="lt-link" data-open>Exam Builder</button> (with nothing selected), save, then print it ${into ? "from the Exam Builder (Student Copy)" : "here"}: the student copy then has the corner squares and codes the grader needs.</p>` : "",
@@ -114,7 +117,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       const whole = bs.filter(b => !(b.missing || []).length).length, part = bs.length - whole;
       const partNum = bs.filter(b => (b.missing || []).length && b.booklet != null).length, twins = bs.filter(b => b.twins).length;
       const loose = bs.filter(b => !matched(b)).length, unread = res ? res.unread.length : 0;
-      const unsureN = res ? labels().reduce((t, l) => t + unsureIn(l).length, 0) : 0;
       const fresh = S.uploads.some(u => u.at > (job.finished || 0));   // not read yet (it couldn't start, or stopped)
       const ok = X.scan && !running, pct = want ? Math.min(100, Math.round(100 * whole / want)) : 0;
       const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -123,52 +125,54 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         partNum ? `${pl(partNum, "booklet is", "booklets are")} missing pages: upload the missing pages` : "",
         part - partNum ? `${pl(part - partNum, "booklet is", "booklets are")} missing pages: scan ${part - partNum === 1 ? "it" : "them"} again, whole` : "",
         twins ? `${pl(twins, "booklet has", "booklets have")} the same number as another (photocopied?)` : "",
-        loose ? `${pl(loose, "booklet isn't", "booklets aren't")} matched` : "",
+        ui.differ && ui.differ.length ? `${pl(ui.differ.length, "student already has", "students already have")} a different mark in the gradebook: <button type="button" class="lt-link" id="sc-replace">use the scanned ${ui.differ.length === 1 ? "mark" : "marks"}</button>` : "",
         unread ? `${pl(unread, "page", "pages")} couldn't be placed` : "",
         bs.length > want && want ? `${bs.length - want} more booklet${bs.length - want === 1 ? "" : "s"} than students ${S.wrote.from === "attendance" ? "at the test" : "in the class"}` : "",
       ].filter(Boolean);
-      const meter = `<div class="sc-meter-card">
-          <div class="sc-mc-top"><span class="sc-mc-n" title="${want ? `Booklets with every page scanned, of the ${want} ${S.wrote.from === "attendance" ? "students at the test (its attendance)" : "students in the class"}` : "No students in the class yet"}"><b>${whole}</b> / ${want || "?"}</span><span class="sc-mc-l">booklets scanned</span>
-            ${running ? `<span class="sc-mc-job"><span class="sc-spin" aria-hidden="true"></span>Reading the scans…${job.booklets ? ` ${pl(job.booklets, "booklet", "booklets")} so far` : ""}</span>` : ""}</div>
-          <div class="sc-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${want}" aria-valuenow="${whole}"><i style="width:${pct}%"></i></div>
-          ${looks.length ? `<ul class="sc-looks">${looks.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}
-          ${job.state === "failed" ? `<p class="lt-note err">${esc(job.error || "The marking stopped.")}</p>` : ""}
-        </div>`;
-      const acts = `<div class="lx-adds sc-acts">
-          ${can.upload ? `<label class="lt-btn${res ? " add" : " primary"}${X.scan ? "" : " sc-dis"}">${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${X.scan ? "" : " disabled"}></label>` : ""}
-          ${can.upload && fresh && !running ? `<button type="button" class="lt-btn" id="sc-mark"${ok ? "" : " disabled"}>Read the New Scans</button>` : ""}
-          ${res && can.mark ? `<button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN && !running ? "" : " disabled"} title="${unsureN ? "Go through the answers the computer wasn't sure how to read, question by question" : "Every answer the computer marks was read with confidence, or has been checked"}">Fix Scans${unsureN ? ` · ${unsureN}` : ""}</button>` : ""}
-          ${res ? `<button type="button" class="lt-btn${unsureN ? "" : " primary"}" id="sc-grade"${running && !bs.length ? " disabled" : ""}>Grading</button>` : ""}</div>`;
-      // What was printed, in a line (the student copy is printed from the Exam Builder).
-      const pr = S.copies.filter(c => c.printed), changed = pr.some(c => c.printed.changed), v = c => (N > 1 ? ` ${esc(c.version)}` : "");
-      // Numbered booklets (each its number in its QR codes): their pages go together by themselves.
-      const nb = pr.some(c => (c.printed.booklets || []).length), one = pr.some(c => c.printed.single);   // one: a copy to photocopy
-      const ranges = pr.flatMap(c => (c.printed.booklets || []).map(([a, z]) => `${a === z ? a : `${a}–${z}`}${N > 1 ? ` (${esc(c.version)})` : ""}`)).join(", ");
-      const printed = !X.scan ? "" : !pr.length ? "Print the student copy at actual size from the Exam Builder (Student Copy): scans are marked against the copy printed from there."
-        : `${nb ? `Booklets ${ranges}${one ? " and a copy to photocopy" : ""}` : `Student copy${pr.length < S.copies.length ? pr.map(v).join(",") : N > 1 ? "s" : ""}`} printed ${esc(when(Math.max(...pr.map(c => c.printed.at))))}${pr[0].printed.by ? ` by ${esc(pr[0].printed.by)}` : ""}.${changed ? ` <span class="sc-warn">The ${what === "handout" ? "handout" : "test"} has changed since: print it again before handing it out.</span>` : ""}`;
+      const ready = bs.filter(b => b.ready).length, freshMail = bs.filter(b => b.ready && !b.emailed).length;
+      const m = (res && res.mail) || {}, mailing = m.state === "running";
+      const allDone = bs.length > 0 && ready === bs.length, nMatched = bs.length - loose;
+      // The card, as steps: each a count of booklets, its bar, and its button. Scanned (of how many wrote it) with
+      // Upload Scans; matched to students (of the booklets in) with Match Booklets; graded with Email Booklets.
+      const bar = (n, of) => `<div class="sc-meter" role="progressbar" aria-valuemin="0" aria-valuemax="${of}" aria-valuenow="${n}"><i style="width:${of ? Math.min(100, Math.round(100 * n / of)) : 0}%"></i></div>`;
+      // Each step a row, as the script's row above it: its icon (green once it's all done), "2 / 30 booklets
+      // scanned", what's going on under it, a thin bar, and its button on the right.
+      const step = (n, of, what, title, btn, icon, extra = "") => `<div class="sc-step${of && n >= of ? " done" : ""}">${icon}
+          <span class="sc-st-t"><span class="sc-st-h"${title ? ` title="${esc(title)}"` : ""}><b>${n} / ${of || "?"}</b> ${what}</span>${extra ? `<small>${extra}</small>` : ""}${bar(n, of)}</span>
+          <span class="sc-st-b">${btn}</span></div>`;
+      const upload = can.upload ? `<label class="lt-btn${res ? "" : " primary"}${X.scan ? "" : " sc-dis"}">${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${X.scan ? "" : " disabled"}></label>`
+        + (fresh && !running ? `<button type="button" class="lt-btn" id="sc-mark"${ok ? "" : " disabled"}>Read the New Scans</button>` : "") : "";
+      const reading = running ? `<span class="sc-spin" aria-hidden="true"></span>Reading the scans…${job.booklets ? ` ${pl(job.booklets, "booklet", "booklets")} so far` : ""}` : "";
+      const meter = `<div class="sc-steps">
+          ${step(whole, want, "booklets scanned", want ? `Booklets with every page scanned, of the ${want} ${S.wrote.from === "attendance" ? "students at the test (its attendance)" : "students in the class"}` : "No students in the class yet", upload, PAGES, reading)}
+          ${bs.length ? step(nMatched, bs.length, "booklets matched", "Booklets whose student is known: read from the cover, or picked by a person",
+            can.mark ? `<button type="button" class="lt-btn${loose ? " primary" : ""}" id="sc-match"${loose ? "" : " disabled"}>Match Booklets</button>` : "", PERSON) : ""}
+          ${bs.length ? step(ready, bs.length, "booklets graded", "Booklets with every question marked and their student known",
+            S.can.print ? `<button type="button" class="lt-btn" id="sc-email"${allDone && !mailing ? "" : " disabled"} title="${allDone ? "Email each student their own booklet, marked: their pages with each question's score and comments drawn on, as a PDF" : "Once every booklet is graded"}">Email ${allDone ? (freshMail && freshMail < ready ? `${freshMail} New Booklet${freshMail === 1 ? "" : "s"}` : `${ready} Booklet${ready === 1 ? "" : "s"}`) : "Booklets"}</button>` : "", GRADED) : ""}
+        </div>
+        ${looks.length ? `<ul class="sc-looks">${looks.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}
+        ${job.state === "failed" ? `<p class="lt-note err">${esc(job.error || "The marking stopped.")}</p>` : ""}`;
+      const sentLine = !res ? "" : [res.sent ? `Marks last put in the gradebook ${esc(when(res.sent.at)).replace(/\.$/, "")}.` : "",
+        mailing ? `Emailing… ${m.done || 0} of ${m.total || 0}.` : m.state === "done" ? `Emailed ${(m.total || 0) - (m.failed || []).length} of ${m.total || 0} booklets ${esc(when(m.finished))}.` : ""].filter(Boolean).join(" ");
+      const acts = "";
+      // Printed, and the test changed since: say so (nothing else about the printing here).
+      const changed = S.copies.some(c => c.printed && c.printed.changed);
       const pages = S.uploads.reduce((t, u) => t + (u.pages || 0), 0);
       // Part of the evaluation's Scripts and Scans (no heading of its own): the scans, under the script.
       box.innerHTML = `${notes}
-        <p class="ed-help sc-lead"><b>Scans</b> · ${nb && !one ? "Upload the scans as PDFs of 200 dpi or more: pages in any order, either way up, in as many uploads as you like (each numbered booklet's pages find it)."
-          : nb ? "Upload the scans as PDFs of 200 dpi or more, either way up. A numbered booklet's pages can come in any order and any upload; a photocopied one's go together, in one upload."
-          : "Upload whole booklets as PDFs of 200 dpi or more, each booklet's pages together (in any order, either way up)."} Each upload is read as it comes in.${printed ? ` ${printed}` : ""}</p>
-        ${X.scan ? meter : ""}
+        ${changed ? `<p class="lt-note">The ${what === "handout" ? "handout" : "test"} has changed since it was printed: print it again before handing it out.</p>` : ""}
+        ${X.scan ? meter : can.upload ? `<div class="lx-adds">${upload}</div>` : ""}
         <div class="sc-up" id="sc-up"></div>
-        ${acts}
+        ${sentLine ? `<p class="lx-help sc-sent">${sentLine}</p>` : ""}${m.state === "failed" ? `<p class="lt-note err">${esc(m.error || "The emails stopped.")}</p>` : ""}
+        ${X.scan ? `<div class="sc-qlist${res ? "" : " off"}">${res ? resultsHTML(res) : (S.questions || []).length ? `<div class="hb lt-dc sc-dc"><section class="dc">
+          <div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${S.questions.length}</span></h2></div>
+          <div class="dc-threads">${questionRows(S.questions.map(l => ({ l })), true)}</div></section></div>` : ""}</div>` : ""}
         ${S.uploads.length ? `<details class="sc-filelist"${ui.files ? " open" : ""}><summary>${pl(S.uploads.length, "file", "files")} uploaded${pages ? ` · ${pl(pages, "page", "pages")}` : ""}</summary>
           <div class="sc-files">${files}</div>
           ${can.upload ? `<div class="sc-fl-acts"><button type="button" class="lt-link danger" id="sc-wipe"${running ? " disabled" : ""}>Delete all the scans and results</button></div>` : ""}</details>` : ""}`;
       const fl = box.querySelector(".sc-filelist"); if (fl) fl.ontoggle = () => { ui.files = fl.open; };
     } else if (S.eval && openEval) {
-      // Grading (from the evaluation's Scans): its booklets or questions, sending the marks, emailing the booklets.
-      box.innerHTML = `<div class="lx-editor sc-ed">
-        <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
-          <div class="gr-tt"><p class="gr-kind">Grading</p><h2>${esc(S.eval.name)}<span class="lt-req-of"> / ${esc(X.title)}</span></h2></div></div>
-        <p class="lt-req-meta">${fmtN(X.total)} marks${N > 1 ? ` · ${N} versions` : ""}${job.state === "done" ? ` · ${job.booklets} booklet${job.booklets === 1 ? "" : "s"}` : ""}</p>
-        ${jobLine.includes("sc-job") || job.state === "failed" ? jobLine : ""}
-        ${res ? resultsHTML(res) : `<p class="lx-empty">Nothing marked yet. Upload the scans and mark them in <button type="button" class="lt-link" id="sc-back">${esc(S.eval.name)}</button>.</p>`}
-      </div>`;
-      const bk = box.querySelector("#sc-back"); if (bk) bk.onclick = () => openEval(S.eval.id);
+      return openEval(S.eval.id);     // its questions and booklets are on the evaluation's page now
     } else
     box.innerHTML = `<div class="lx-editor sc-ed">
       <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
@@ -202,8 +206,11 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       if (!await confirmBox("Delete the scans and results?", "The scanned pages, what was read from them, every score given here and the printed copy go. Marks already sent to the gradebook stay.", "Delete Everything")) return;
       try { await api("/api/scans/delete", body({ all: true })); R = null; load(); } catch (e) { toast(e.message); } };
     if (into && res) {
-      const fx = box.querySelector("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) { ui.fixing = true; ui.fixWas = ""; go({ ...r, b: "", q: first }); } };
-      const gr = box.querySelector("#sc-grade"); if (gr) gr.onclick = () => go({ ...r, b: "", q: "" });
+      wireResults();       // its questions (or booklets), and Email Booklets
+      const rp = box.querySelector("#sc-replace"); if (rp) rp.onclick = () => autoSend(true);
+      const mt = box.querySelector("#sc-match"); if (mt) mt.onclick = () => {   // the first booklet whose student isn't known
+        const k = R.booklets.findIndex(b => !matched(b)); if (k >= 0) go({ ...r, q: "", b: String(k + 1) }); };
+      autoSend(false);
     } else if (res) wireResults();
   }
 
@@ -220,7 +227,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const row = b => `<div class="dc-t lt-rq-row sc-r"><span class="lt-rq-st"><span class="sc-done${b.ready ? " on" : ""}" title="${b.ready ? "Finished" : "Not finished"}">${b.ready ? TICK : ""}</span></span>
         <button type="button" class="dc-t-b" data-b="${bs.indexOf(b) + 1}"><b class="dc-t-title">${nameOf(b)}${b.version ? `<span class="lt-dc-of"> / Version ${esc(b.version)}</span>` : ""}</b>
           <span class="dc-t-meta">${b.booklet != null ? `Booklet ${b.booklet} · ` : ""}${esc(numOf(b))} · ${fmtN(b.total)} / ${fmtN(b.out_of)} · ${left(b)}${(b.missing || []).length ? ` · page${b.missing.length === 1 ? "" : "s"} ${b.missing.join(", ")} missing` : ""}</span></button></div>`;
-    const unread = res.unread.length ? `<p class="lt-note"><b>${res.unread.length} page${res.unread.length === 1 ? "" : "s"} couldn't be placed:</b> ${res.unread.slice(0, 8).map(u => `${esc(u.page)} (${esc(u.why)})`).join("; ")}${res.unread.length > 8 ? "; …" : ""}.</p>` : "";
+    const unread = into ? "" : res.unread.length ? `<p class="lt-note"><b>${res.unread.length} page${res.unread.length === 1 ? "" : "s"} couldn't be placed:</b> ${res.unread.slice(0, 8).map(u => `${esc(u.page)} (${esc(u.why)})`).join("; ")}${res.unread.length > 8 ? "; …" : ""}.</p>` : "";
     const notes = res.notes.map(n => `<p class="lt-note">${esc(n)}</p>`).join("");
     const sent = res.sent ? ` Sent ${res.sent.n} ${esc(when(res.sent.at))}${res.sent.by ? ` by ${esc(res.sent.by)}` : ""}.` : "";
     const title = ui.show === "open" ? "To Look At" : ui.show === "done" ? "Finished" : "All";
@@ -238,20 +245,18 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       ${mailLine}`;
     // Fix Scans: once marked, go through what the grader wasn't sure of, question by question.
     const unsureN = labels().reduce((t, l) => t + unsureIn(l).length, 0);
-    const fixBar = S.can.mark && !(S.eval && openEval) ? `<div class="sc-fixbar"><button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN ? "" : " disabled"}>Fix Scans</button>
+    const fixBar = S.can.mark && !into && !(S.eval && openEval) ? `<div class="sc-fixbar"><button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN ? "" : " disabled"}>Fix Scans</button>
       <span class="lx-help">${unsureN ? `${unsureN} answer${unsureN === 1 ? "" : "s"} the computer wasn't sure how to read, in ${fixLabels().length} question${fixLabels().length === 1 ? "" : "s"}.` : "Every answer the computer marks was read with confidence, or has been checked."}</span></div>` : "";
+    const linked = into || (S.eval && openEval);   // on the evaluation's page: Send Marks and Email Booklets are its buttons
     const bySeg = `<span class="lx-seg sc-by" role="group" aria-label="Show">${[["booklet", "By Booklet"], ["question", "By Question"]].map(([v, l]) => `<button type="button" data-by="${v}" aria-pressed="${ui.by === v}">${l}</button>`).join("")}</span>`;
-    if (ui.by === "question") {
-      const qs = labels().map(l => { const a = answersTo(l); return { l, pts: a[0] ? a[0].x.points : 0, n: a.length, open: a.filter(y => isOpen(y.x)).length, missing: a.filter(y => y.x.status === "missing").length }; });
-      const qrow = q => `<div class="dc-t lt-rq-row sc-r"><span class="lt-rq-st"><span class="sc-done${q.open ? "" : " on"}" title="${q.open ? "Not finished" : "Finished"}">${q.open ? "" : TICK}</span></span>
-          <button type="button" class="dc-t-b" data-gq="${esc(q.l)}"><b class="dc-t-title">Question ${esc(q.l)}</b>
-            <span class="dc-t-meta">${fmtN(q.pts)} mark${q.pts === 1 ? "" : "s"} · ${q.n - q.open - q.missing} of ${q.n} done${q.open ? ` · ${q.open} to look at` : ""}</span></button></div>`;
-      return `${unread}${notes}${fixBar}<div class="sc-bybar">${bySeg}</div>
+    if (into || ui.by === "question") {          // on the evaluation's page: always by question (Match Booklets finds the booklets)
+      const qs = labels().map(l => { const a = answersTo(l); return { l, hand: byHand(l), pts: a[0] ? a[0].x.points : 0, n: a.length, open: a.filter(y => isOpen(y.x)).length, missing: a.filter(y => y.x.status === "missing").length }; });
+      return `${unread}${notes}${fixBar}${into ? "" : `<div class="sc-bybar">${bySeg}</div>`}
       <div class="hb lt-dc sc-dc"><section class="dc">
         <div class="dc-head"><h2 class="ec-sec dc-title">Questions <span>· ${qs.length}</span></h2></div>
-        <div class="dc-threads">${qs.map(qrow).join("")}</div>
+        <div class="dc-threads">${questionRows(qs)}</div>
       </section></div>
-      ${gradebook}${students}`;
+      ${linked ? "" : `${gradebook}${students}`}`;
     }
     return `${unread}${notes}${fixBar}<div class="sc-bybar">${bySeg}</div>
       <div class="hb lt-dc sc-dc"><section class="dc">
@@ -260,16 +265,44 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
             <div class="dc-sort" role="tablist">${seg("open", "To Look At", open.length)}${seg("done", "Finished", done.length)}${seg("all", "All", null)}</div></div></div>
         ${list.length ? `<div class="dc-threads">${list.map(row).join("")}</div>` : `<p class="dc-none">${words.length ? "No booklets match your search." : ui.show === "open" ? "Nothing left to look at." : "None yet."}</p>`}
       </section></div>
-      ${gradebook}${students}`;
+      ${linked ? "" : `${gradebook}${students}`}`;
   }
 
   function wireResults() {
     box.querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { ui.show = b.dataset.show; draw(); }; });
     box.querySelectorAll("[data-by]").forEach(b => { b.onclick = () => { ui.by = b.dataset.by; draw(); }; });
-    box.querySelectorAll(".sc-dc [data-gq]").forEach(b => { b.onclick = () => go({ ...r, b: "", q: b.dataset.gq }); });
+    box.querySelectorAll(".sc-dc [data-gq]").forEach(b => { b.onclick = () => openQ(b.dataset.gq); });
     const qi = box.querySelector("#sc-q"); if (qi) qi.oninput = () => { ui.q = qi.value; const at = qi.selectionStart; draw(); const i = box.querySelector("#sc-q"); if (i) { i.focus(); i.setSelectionRange(at, at); } };
     box.querySelectorAll("[data-b]").forEach(b => { b.onclick = () => go({ ...r, b: b.dataset.b }); });
-    const fx = box.querySelector("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) { ui.fixing = true; ui.fixWas = ""; go({ ...r, b: "", q: first }); } };
+    const fx = box.querySelector("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) openQ(first); };
+    wireSend();
+  }
+
+  // Each finished booklet's total goes into the gradebook by itself (students see it once the evaluation's marks are
+  // shown): on the evaluation's page, whenever the finished booklets' totals change. Not over a different mark already
+  // there (the card says so; replace: use the scanned ones, after asking), nor while the gradebook has changes not saved.
+  let sendingNow = false;
+  async function autoSend(replace) {
+    if (!S.eval || !S.can.mark || sendingNow || !R) return;
+    const key = R.booklets.filter(b => b.ready).map(b => `${b.key}:${b.total}`).join("|");
+    if (!key || (!replace && ui.sentKey === key)) return;
+    if (sending && sending.before()) return replace && toast(sending.before());
+    if (replace) {
+      const list = ui.differ.slice(0, 6).map(x => `${x.name || x.num}: ${fmtN(x.was)} → ${fmtN(x.now)}`).join(", ");
+      if (!await confirmBox(`Replace ${ui.differ.length} mark${ui.differ.length === 1 ? "" : "s"}?`, esc(`In the gradebook now: ${list}${ui.differ.length > 6 ? ", …" : ""}.`), "Replace")) return;
+    }
+    sendingNow = true;
+    try {
+      const d = await api("/api/scans/send", body(replace ? { replace: true } : {}));
+      ui.sentKey = key; ui.differ = replace ? [] : d.differ;
+      if (d.sent && sending) await sending.after();
+      if (d.sent || replace || d.differ.length) load();
+    } catch (e) { console.warn("[Lectern] marks to the gradebook:", e); }
+    sendingNow = false;
+  }
+
+  // Email Booklets (each student their own, marked); Send Marks on an exam's own page.
+  function wireSend() {
     const em = box.querySelector("#sc-email"); if (em) em.onclick = async () => {
       const bs = R.booklets.filter(b => b.ready), fresh = bs.filter(b => !b.emailed), again = fresh.length && fresh.length < bs.length;
       let answers = false;
@@ -334,8 +367,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
 
   // ── One booklet ──
   function drawBooklet() {
-    ui.fixing = false;
-    const bs = (R && R.booklets) || [], i = Math.max(1, Math.min(bs.length, Number(r.b) || 1)), b = bs[i - 1];
+        const bs = (R && R.booklets) || [], i = Math.max(1, Math.min(bs.length, Number(r.b) || 1)), b = bs[i - 1];
     if (!b) { pathTo("Booklet"); box.innerHTML = `<p class="lx-empty">That booklet isn't there any more. <button type="button" class="lt-link" id="sc-back">See all of them</button></p>`; box.querySelector("#sc-back").onclick = home; return; }
     const st = b.student, can = S.can.mark;
     const name = whoOf(b);
@@ -387,6 +419,28 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   // Fix Scans: question by question, the answers whose reading the grader wasn't sure of (not the ones a person marks).
   const unsureIn = l => answersTo(l).filter(a => isOpen(a.x) && !isJudged(a.x));
   const fixLabels = () => labels().filter(l => unsureIn(l).length);
+  // Grade, a question at a time: one the computer marks is checked against its scans (the answers it wasn't sure
+  // how to read, one at a time; every answer, if you ask); one marked by hand is the grader (every booklet's answer).
+  const byHand = l => answersTo(l).some(a => isJudged(a.x));
+  const toDo = () => labels().filter(l => answersTo(l).some(a => isOpen(a.x)));
+  // The questions as rows (qs: {l, hand, n, open, missing}; off: no scans yet, so none opens), each sub-question,
+  // 9(a), 9(b)…, under its question as its parts.
+  function questionRows(qs, off) {
+    const groups = [];
+    qs.forEach(q => { const m = /^(.+?)\((.+)\)$/.exec(q.l), last = groups[groups.length - 1];
+      if (!m) return groups.push({ q });
+      q = { ...q, part: m[2] };
+      if (last && last.parts && last.n === m[1]) { last.parts.push(q); last.open += q.open || 0; }
+      else groups.push({ n: m[1], parts: [q], open: q.open || 0 }); });
+    const tick = done => off ? `<span class="sc-done"></span>` : `<span class="sc-done${done ? " on" : ""}" title="${done ? "Finished" : "Not finished"}">${done ? TICK : ""}</span>`;
+    const qrow = (q, sub) => `<div class="dc-t lt-rq-row sc-r${sub ? " sc-sub" : ""}"><span class="lt-rq-st">${tick(!q.open)}</span>
+        <button type="button" class="dc-t-b" data-gq="${esc(q.l)}"${off ? " disabled" : ""}><b class="dc-t-title">${sub ? `<span class="sc-part">(${esc(q.part)})</span>` : `Question ${esc(q.l)}`}</b>
+          <span class="dc-t-meta"${off ? "" : ` title="${q.hand ? "Marked by hand: the booklets whose answer is marked" : "Marked by the computer: the booklets whose answer it read with confidence, or a person has checked against the scan"}"`}>${off ? "No scans yet" : `${q.n - q.open - q.missing} / ${q.n} ${q.hand ? "marked" : "read"}`}</span></button></div>`;
+    return groups.map(g => g.parts ? `<div class="dc-t sc-qgroup"><span class="lt-rq-st">${tick(!g.open)}</span>
+        <div class="dc-t-b sc-qg-h"><b class="dc-t-title">Question ${esc(g.n)}</b><span class="dc-t-meta">${g.parts.length} parts</span></div></div>
+        ${g.parts.map(q => qrow(q, true)).join("")}` : qrow(g.q)).join("");
+  }
+  const openQ = l => { if (!l) return; ui.allFor = ""; ui.fixWas = ""; ui.qShow = ""; window.scrollTo(0, 0); go({ ...r, b: "", q: l }); };
   function drawFix() {
     const L = labels(), all = answersTo(r.q), key = a => `${a.b.key}|${a.x.label}`;
     if (ui.fixWas !== r.q) { ui.fixWas = r.q; ui.fixCur = ""; ui.fixDone = 0; }
@@ -394,21 +448,22 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const unsure = unsureIn(r.q), cur = (ui.fixCur && all.find(a => key(a) === ui.fixCur)) || unsure[0];
     ui.fixCur = cur ? key(cur) : "";
     const left = unsure.filter(a => !cur || key(a) !== key(cur)).length + (cur ? 1 : 0), n = ui.fixDone + left;
-    const todo = fixLabels(), after = L.slice(L.indexOf(r.q) + 1).find(l => todo.includes(l)), back = !after && todo.find(l => l !== r.q);
-    pathTo(`Fix Scans: Question ${r.q}`);
+    const todo = toDo(), after = L.slice(L.indexOf(r.q) + 1).find(l => todo.includes(l)), back = !after && todo.find(l => l !== r.q);
+    pathTo(`Question ${r.q}`);
     box.innerHTML = `<div class="lx-editor sc-ed sc-book sc-fixing">
       <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
-        <div class="gr-tt"><p class="gr-kind">Fix Scans</p><h2>Question ${esc(r.q)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
-        <span class="lx-acts">${after ? `<button type="button" class="lt-btn sc-sm" data-fixgo="${esc(after)}">Next Question${RIGHT}</button>` : ""}<button type="button" class="lt-btn sc-sm" data-fixdone>${after ? "Stop" : "Done"}</button></span></div>
-      <p class="lt-req-meta">${cur ? `${ui.fixDone + 1} of ${n} the computer wasn't sure of` : "Every answer read or checked"} · ${todo.length ? `${todo.length} question${todo.length === 1 ? "" : "s"} still to check` : "no questions left to check"}</p>
+        <div class="gr-tt"><p class="gr-kind">Marked by the Computer: Check It Against the Scan</p><h2>Question ${esc(r.q)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
+        <span class="lx-acts">${after ? `<button type="button" class="lt-btn sc-sm" data-fixgo="${esc(after)}">Next Question${RIGHT}</button>` : ""}<button type="button" class="lt-btn sc-sm" data-fixall>See Every Answer</button><button type="button" class="lt-btn sc-sm" data-fixdone>${after ? "Stop" : "Done"}</button></span></div>
+      <p class="lt-req-meta">${cur ? `${ui.fixDone + 1} of ${n} the computer wasn't sure how to read` : "Every answer matches its scan"} · ${todo.length ? `${todo.length} question${todo.length === 1 ? "" : "s"} still to grade` : "every question graded"}</p>
       ${cur ? `<div class="sc-qs">${qCard(cur.x, cur.b, "")}</div>
         <div class="sc-okbar"><button type="button" class="lt-btn primary" data-fixok>Okay</button></div>`
       : `<p class="lx-help sc-fixnext">${after ? `Question ${esc(r.q)} is checked. <button type="button" class="lt-link" data-fixgo="${esc(after)}">On to Question ${esc(after)}</button>.`
-        : back ? `That's the last question with readings to check, but <button type="button" class="lt-link" data-fixgo="${esc(back)}">Question ${esc(back)}</button> still has some.`
-        : "That's every reading checked. Next: the questions marked by hand, booklet by booklet."}</p>`}
+        : back ? `Question ${esc(r.q)} is checked, but <button type="button" class="lt-link" data-fixgo="${esc(back)}">Question ${esc(back)}</button> still has answers to grade.`
+        : "Question " + esc(r.q) + " is checked, and that's every question graded."}</p>`}
     </div>`;
-    box.querySelectorAll("[data-fixgo]").forEach(x => { x.onclick = () => { window.scrollTo(0, 0); go({ ...r, b: "", q: x.dataset.fixgo }); }; });
-    box.querySelectorAll("[data-fixdone]").forEach(x => { x.onclick = () => { ui.fixing = false; S.eval && openEval ? openEval(S.eval.id) : home(); }; });
+    box.querySelectorAll("[data-fixgo]").forEach(x => { x.onclick = () => openQ(x.dataset.fixgo); });
+    box.querySelectorAll("[data-fixdone]").forEach(x => { x.onclick = home; });
+    box.querySelectorAll("[data-fixall]").forEach(x => { x.onclick = () => { ui.allFor = r.q; ui.qShow = "all"; drawQuestion(); }; });
     const ok = box.querySelector("[data-fixok]");
     if (ok) {
       ok.focus();
@@ -433,8 +488,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     wireCards(drawFix);
   }
   function drawQuestion() {
-    if (ui.fixing) return drawFix();
     const L = labels(), k = L.indexOf(r.q), all = answersTo(r.q);
+    if (k >= 0 && !byHand(r.q) && ui.allFor !== r.q) return drawFix();    // marked by the computer: check it
     if (k < 0) { pathTo("Question"); box.innerHTML = `<p class="lx-empty">That question isn't in the results. <button type="button" class="lt-link" id="sc-back">See all of them</button></p>`; box.querySelector("#sc-back").onclick = home; return; }
     pathTo(`Question ${r.q}`);
     const open = all.filter(a => isOpen(a.x)), pts = all[0] ? all[0].x.points : 0;
@@ -447,8 +502,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const seg = (v, l, n) => `<button type="button" data-qshow="${v}" aria-pressed="${ui.qShow === v}">${l}${n != null ? ` ${n}` : ""}</button>`;
     box.innerHTML = `<div class="lx-editor sc-ed sc-book">
       <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
-        <div class="gr-tt"><p class="gr-kind">Every Booklet's Answer</p><h2>Question ${esc(r.q)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
-        <span class="lx-acts">${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-gq="${esc(nextOpen)}">Next to Look At</button>` : ""}
+        <div class="gr-tt"><p class="gr-kind">${byHand(r.q) ? "Marked by Hand" : "Marked by the Computer: Every Answer"}</p><h2>Question ${esc(r.q)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
+        <span class="lx-acts">${!byHand(r.q) ? `<button type="button" class="lt-btn sc-sm" data-gback>Check the Unsure Ones</button>` : ""}${nextOpen ? `<button type="button" class="lt-btn sc-sm" data-gq="${esc(nextOpen)}">Next to Look At</button>` : ""}
           <button type="button" class="lx-ic" data-gq="${esc(L[k - 1] || "")}" title="The question before" aria-label="The question before"${k > 0 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-gq="${esc(L[k + 1] || "")}" title="The next question" aria-label="The next question"${k < L.length - 1 ? "" : " disabled"}>${RIGHT}</button></span></div>
       <p class="lt-req-meta">${fmtN(pts)} mark${pts === 1 ? "" : "s"}${answers.length ? ` · answer ${answers.map(esc).join(" or ")}` : ""} · ${all.length - open.length} of ${all.length} done</p>
       <div class="hb lt-dc sc-dc"><section class="dc"><div class="dc-head"><h2 class="ec-sec dc-title">${ui.qShow === "open" ? "To Look At" : "Every Answer"} <span>· ${list.length}</span></h2>
@@ -456,7 +511,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         ${list.length ? "" : `<p class="dc-none">Nothing left to look at in this question.${nextOpen ? ` <button type="button" class="lt-link" data-gq="${esc(nextOpen)}">Question ${esc(nextOpen)}</button> has some.` : ""}</p>`}</section></div>
       <div class="sc-qs">${list.map(a => qCard(a.x, a.b, `<button type="button" class="lt-link sc-qwho" data-book="${(R.booklets.indexOf(a.b)) + 1}" title="Open their booklet">${who(a)}</button>${a.b.version ? `<span class="sc-qv">Version ${esc(a.b.version)}</span>` : ""}`)).join("")}</div>
     </div>`;
-    box.querySelectorAll("[data-gq]").forEach(x => { x.onclick = () => x.dataset.gq && go({ ...r, b: "", q: x.dataset.gq }); });
+    box.querySelectorAll("[data-gq]").forEach(x => { x.onclick = () => openQ(x.dataset.gq); });
+    box.querySelectorAll("[data-gback]").forEach(x => { x.onclick = () => { ui.allFor = ""; drawFix(); }; });
     box.querySelectorAll("[data-qshow]").forEach(x => { x.onclick = () => { ui.qShow = x.dataset.qshow; drawQuestion(); }; });
     box.querySelectorAll("[data-book]").forEach(x => { x.onclick = () => go({ ...r, q: "", b: x.dataset.book }); });
     wireCards(drawQuestion);

@@ -1690,7 +1690,7 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-qlist { margin-top: 14px; }
 .sc-qlist .sc-bybar { margin: 0 0 8px; }
 .sc-qlist .dc-threads { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
-.sc-qlist.off .dc-t:not(.sc-scan-row) { opacity: .55; }   /* Booklets Scanned opens before any scans: it's where they're uploaded */
+.sc-qlist.off .dc-t:not(.sc-scan-row) > :not(.sc-graders) { opacity: .55; }   /* Booklets Scanned opens before any scans: it's where they're uploaded */
 .sc-qlist.off .dc-t-b { cursor: default; }
 .sc-qlist.off .dc-t-b:hover .dc-t-title { text-decoration: none; }
 .sc-qlist .hb.lt-dc { border: 0; padding: 0; margin: 0; background: none; box-shadow: none; }
@@ -1730,3 +1730,26 @@ option.sc-taken { color: var(--ink-3); }
 .sc-ubar { align-items: center; gap: 8px; }
 .sc-ubar .spacer { flex: 1; }
 .sc-ubar .lt-link { margin-right: 0; }
+/* Booklet Matching: the note and the cover, on the page (no card around them). */
+.sc-mcard { display: grid; gap: 10px; margin-top: 12px; }
+.sc-mcard .sc-pic { margin: 0; }
+.sc-reading { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2, var(--ink)); }
+.sc-reading .sc-spin { width: 11px; height: 11px; }
+/* The little pie by an "x / y": how much is done; green and full when it all is. */
+.sc-pie { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; flex: none; color: var(--ink-3); }
+.sc-pie .o { fill: none; stroke: currentColor; stroke-width: 1.2; opacity: .55; }
+.sc-pie path, .sc-pie circle:not(.o) { fill: currentColor; }
+.sc-pie.full { color: var(--home-ok, #2f8f5b); }
+.sc-pie.full .o { opacity: 1; }
+
+/* Assign Graders: the list stops scrolling (so the dropdowns aren't cut off), and each question row has Lectern's
+   tick-box dropdown of the team on its right. */
+.sc-graded { display: flex; align-items: center; }
+.sc-graded > .dc-t-b { flex: 1; min-width: 0; }
+.sc-qlist.assigning .dc-threads { max-height: none; overflow: visible; }
+.sc-gpk { flex: none; width: 250px; margin: 0 12px 0 8px; }
+.sc-qlist .dc-head .sc-assign { margin-left: auto; font-size: 13px; }
+.sc-qlist .dc-head { display: flex; align-items: baseline; }
+.sc-gpk { align-self: center; }
+.sc-gpk.pk { z-index: 1; }
+.sc-gpk.pk:has(.pk-pop) { z-index: 40; }

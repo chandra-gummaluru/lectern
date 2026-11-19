@@ -35,6 +35,7 @@ marked against, upload, mark and delete; they and TAs review and send marks (a T
   GET  /api/scans/picture?owner&offering&exam&name
   POST /api/scans/review  {owner, offering, exam, booklet, student? | label + score}
   POST /api/scans/send    {owner, offering, exam, replace}
+  POST /api/scans/graders {owner, offering, exam, label, users}  who marks a question (owner, coordinators)
 """
 import functools
 import hashlib
@@ -428,6 +429,24 @@ def _questions(ex):
         return []
 
 
+def _markers(ex):
+    """Who can mark: the owner, coordinators and TAs, as {id, name, role}."""
+    o = db.one("SELECT id, name FROM users WHERE id = ?", (ex.owner,))
+    rows = [{"id": o["id"], "name": o["name"], "role": "owner"}] if o else []
+    rows += [{"id": r["id"], "name": r["name"], "role": r["role"]} for r in db.all_(
+        "SELECT u.id, u.name, m.role FROM members m JOIN users u ON u.id = m.user_id WHERE m.owner_id = ? AND m.offering = ? AND m.role IN ('coordinator', 'ta') ORDER BY u.name",
+        (ex.owner, ex.o))]
+    return rows
+
+
+def _mine(ex, label):
+    """A TA marks only the questions they're graders of (or that nobody is); the owner and coordinators, any."""
+    if ex.role in LEADS:
+        return True
+    who = ex.read_json("graders.json", {}).get(label) or []
+    return not who or g.user["id"] in who
+
+
 def _wrote(ex, ev, roster):
     """How many booklets to expect: those at the test (its attendance, if it was taken), else the class."""
     att = 0
@@ -706,6 +725,7 @@ def overview():
         eval=ev and {"id": ev.get("id"), "name": ev.get("name") or ev.get("id"), "total": ev.get("total")},
         copies=copies, uploads=_uploads(ex), job=job, latex=latex_ok(), role=ex.role,
         wrote=_wrote(ex, ev, roster), nextBooklet=_next_booklet(printed), questions=_questions(ex),
+        markers=_markers(ex), graders=ex.read_json("graders.json", {}), me=g.user["id"],
         can={"print": ex.role in LEADS, "upload": ex.role in LEADS, "mark": ex.role in MARKERS},
         results=None if not results else {"booklets": len(bs), "ready": sum(1 for b in bs if b["ready"]),
                              "open": sum(b["open"] for b in bs), "who": sum(1 for b in bs if b["student"].get("status") not in ("auto", "done")),
@@ -775,6 +795,27 @@ def review():
     return review_with(Exam(d, MARKERS), d)
 
 
+@scans_bp.post("/api/scans/graders")
+@team_api
+def graders():
+    """{ label, users: [user id] }: who marks a question (none: anyone on the team). The owner and coordinators."""
+    d = request.get_json(silent=True) or {}
+    ex = Exam(d, LEADS)
+    label = str(d.get("label") or "")
+    if not label or label not in _questions(ex):
+        raise Refusal(400, "Which question?")
+    can = {m["id"] for m in _markers(ex)}
+    users = [u for u in d.get("users") or [] if isinstance(u, int) and u in can]
+    with _running_lock:
+        gr = ex.read_json("graders.json", {})
+        if users:
+            gr[label] = sorted(set(users))
+        else:
+            gr.pop(label, None)
+        ex.write_json("graders.json", gr)
+    return jsonify(ok=True, graders=gr)
+
+
 def review_with(ex, d):
     results = ex.read_json("results.json", {})
     k = str(d.get("booklet") or "")
@@ -803,6 +844,8 @@ def review_with(ex, d):
             q = next((x for x in b.get("questions") or [] if x["label"] == d.get("label")), None)
             if not q:
                 raise Refusal(404, "That question isn't in this booklet.")
+            if not _mine(ex, q["label"]):
+                raise Refusal(403, f"Question {q['label']} is marked by other graders.")
             qd0 = one.setdefault("q", {}).setdefault(q["label"], {})
             if "note" in d:                     # a note for the student
                 t = str(d.get("note") or "").strip()[:2000]

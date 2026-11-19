@@ -9,7 +9,7 @@
     python tests/browser/flow_scans.py
 Asserts as it goes; screenshots in shots/.
 """
-import io, json, os, sys, tempfile
+import io, json, os, sys, tempfile, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE); sys.path.insert(0, ROOT); sys.path.insert(0, os.path.join(ROOT, "tests"))
@@ -65,6 +65,9 @@ def main():
         d = me.evaluate("""() => fetch('/api/offerings/demo', {method: 'POST', headers: {'X-Lectern': '1'}}).then(r => r.json())""")
         t = d["term"]; off = f"demo101/{t}"
         print("1 the demo course:", off)
+        from server import db as _db                                         # a TA on the team, to be a grader
+        me_user = srv.user; tia = srv.account(email="tia@utoronto.ca", name="Tia Marks", handle="tia", admin=False); srv.user = me_user
+        _db.run("INSERT INTO members (owner_id, offering, user_id, role, added_by, added) VALUES (?, ?, ?, 'ta', ?, ?)", (me_user["id"], off, tia["id"], me_user["id"], time.time()))
 
         # From the gradebook: Test 1's Scripts and Scans (its test script, then its scans) (no Open button in its head).
         G = "[data-lt-tool='grades'] "
@@ -136,6 +139,8 @@ def main():
         me.wait_for_selector(".sc-book .sc-files .sc-file", timeout=30000)
         print("2 uploaded:", " ".join(me.inner_text(".sc-book .sc-files .sc-file").split()))
         assert not me.query_selector(".sc-book #sc-mark")
+        me.wait_for_selector(".sc-book .sc-file .sc-reading", timeout=15000)      # being read: said on the file itself
+        assert me.query_selector(".sc-book .lx-ed-head #sc-wipe") and "Each upload is read" not in me.inner_text(".sc-book")
         me.screenshot(path=f"{OUT}/scan-2a-uploads.png", full_page=True)
         me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] [data-scans]")
         assert not me.evaluate("window.Lectern.tools.grades.api.state().unsaved"), "uploading a scan doesn't change the gradebook"
@@ -168,6 +173,14 @@ def main():
         rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-slot] .sc-qlist [data-gq]").all()}
         print("  questions:", list(rows.values())[:4])
         assert rows["4"].endswith("1 / 2 read") and rows["8"].endswith("0 / 2 marked") and rows["1"].endswith("2 / 2 read"), rows
+        me.click(G + "[data-scan-slot] [data-assign]"); me.wait_for_selector(G + "[data-scan-slot] [data-gpk='8'] .pk-btn")   # Assign Graders
+        me.click(G + "[data-scan-slot] [data-gpk='8'] .pk-btn"); me.wait_for_selector(G + "[data-scan-slot] [data-gpk='8'] .pk-pop")
+        me.locator(G + "[data-scan-slot] [data-gpk='8'] .pk-chk", has_text="Tia Marks").locator("input").check(); me.wait_for_timeout(500)
+        me.screenshot(path=f"{OUT}/scan-2d-graders.png")
+        me.keyboard.press("Escape"); me.click(G + "[data-scan-slot] [data-assign]")               # Done Assigning: the names, in its line
+        me.wait_for_selector(G + "[data-scan-slot] [data-gq='8']:has-text('Tia Marks')", timeout=5000)
+        assert not me.query_selector(G + "[data-scan-slot] [data-gpk]")
+        assert me.locator(G + "[data-scan-slot] [data-gq='1'] .sc-pie.full").count() == 1 and me.locator(G + "[data-scan-slot] [data-gq='8'] .sc-pie:not(.full)").count() == 1
         assert not me.query_selector(G + "[data-scan-slot] #sc-fix, " + G + "[data-scan-slot] .lx-sec, " + G + "[data-scan-slot] [data-by]"), "no Fix Scans bar, Gradebook, Marked Booklets or By Booklet in it"
         h = me.evaluate(f"document.querySelector(`{G}[data-scan-slot] .sc-qlist .dc-threads`).clientHeight")
         assert h <= 340, ("the list scrolls in its own box", h)

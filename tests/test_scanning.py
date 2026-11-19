@@ -254,6 +254,26 @@ def test_who_may_do_what(client, user, demo):
     assert stranger.get(f"/api/scans/pdf?{qq}").status_code == 404
     assert client.get(f"/api/scans/picture?offering={off}&exam=midterm&name=../../grades.json").status_code == 404
 
+    # Graders: who marks a question. The owner chooses (a TA can't); a TA then can't mark one that's someone else's.
+    marks = {m["name"]: m for m in j["markers"]}
+    assert marks["Tia"]["role"] == "ta" and j["graders"] == {}
+    me = client.get(f"/api/scans?{qq}").get_json()["me"]
+    body = lambda **kw: {"owner": "chandra", "offering": off, "exam": "midterm", **kw}
+    assert ta.post("/api/scans/graders", json=body(label="8", users=[marks["Tia"]["id"]]), headers=H).status_code == 403
+    assert client.post("/api/scans/graders", json=body(label="99", users=[me]), headers=H).status_code == 400
+    r = client.post("/api/scans/graders", json=body(label="8", users=[me, 12345]), headers=H)
+    assert r.status_code == 200 and r.get_json()["graders"] == {"8": [me]}, r.get_json()      # only people on the team
+    assert ta.get(f"/api/scans?{qq}").get_json()["graders"] == {"8": [me]}
+    import json as _json
+    d = os.path.join(os.environ["LECTERN_DATA_DIR"], "scans", str(me), *off.split("/"), "midterm")
+    os.makedirs(d, exist_ok=True)
+    with open(os.path.join(d, "results.json"), "w") as f:     # one booklet, so there's something to mark
+        _json.dump({"booklets": [{"pages": ["a.pdf p.1"], "questions": [{"label": "8", "points": 3, "status": "manual", "score": None}, {"label": "9(a)", "points": 1, "status": "manual", "score": None}]}]}, f)
+    no = ta.post("/api/scans/review", json=body(booklet="a.pdf p.1", label="8", score=1), headers=H)
+    assert no.status_code == 403 and "other graders" in no.get_json()["error"], no.get_json()
+    assert ta.post("/api/scans/review", json=body(booklet="a.pdf p.1", label="9(a)", score=1), headers=H).status_code != 403   # nobody's on it: anyone
+    assert client.post("/api/scans/graders", json=body(label="8", users=[]), headers=H).get_json()["graders"] == {}
+
 
 def test_numbered_booklets(client, user, demo):
     """Printed as numbered booklets: each number once, carrying on from the last printed."""

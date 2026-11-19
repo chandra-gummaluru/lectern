@@ -23,7 +23,7 @@ Lectern is one place to run a course. For each course offering (a course in one 
 
 1. **Get an invitation.** Lectern is invite-only. Your institution's Lectern administrator sends you an email invitation (or an instructor does, if you're joining their teaching team).
 2. **Create your account.** Open the link, then choose your name, a password and the address for your course pages. We recommend turning on two-factor sign-in under **Your account**.
-3. **Add a course offering** from Home, then fill in its course page, evaluations and class list. To look around first, **Load the demo course** on Home: a made-up sample course with students, marks and a midterm, which you can delete when you're done.
+3. **Add a course offering** from Home, then fill in its course page, evaluations and class list. To look around first, **Load the demo course** on Home: a made-up sample course with students, marks and a midterm (ten of its booklets already scanned, and a made-up TA to assign questions to), which you can delete when you're done.
 4. **Share your course page** with students: send them its link from the Students card, or embed it in Quercus.
 
 Your work is saved on Lectern's server, and earlier versions are kept, so a mistake can be undone.

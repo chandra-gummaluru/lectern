@@ -392,3 +392,32 @@ def my_booklet_from_the_course_page(client, user, demo, people, totals):
     edit(lambda b: next(s for s in b["students"] if s["num"] == b2["num"]).update(dropped=True))
     r = ask(sb)
     assert r.status_code == 401 and not mailer.sent                   # dropped from the class: signed out
+
+
+def test_the_demo_comes_with_scans(client, user, monkeypatch):
+    """The demo's midterm: ten booklets scanned and read when it's loaded, and a TA (an account that's turned off)
+    on the team, a grader of two questions."""
+    from server import db, transfer
+    monkeypatch.setattr(transfer, "DEMO_SCANS", True)
+    r = client.post("/api/offerings/demo", headers=H)
+    assert r.status_code == 200, r.get_json()
+    d = {"offering": f"demo101/{r.get_json()['term']}", "exam": "midterm"}
+    j = wait_marked(client, d)
+    assert j["job"]["state"] == "done", j["job"]
+    assert j["results"]["booklets"] == 10 and j["wrote"]["n"] == 30, (j["results"], j["wrote"])
+    assert not j["copies"][0]["printed"]["changed"]
+    nums = json.load(open(os.path.join(transfer.DEMO_SCAN_DIR, "students.json")))
+    bs = client.get(f"/api/scans/results?{q(d)}").get_json()["booklets"]
+    assert sorted(b["student"].get("num") for b in bs) == sorted(nums)          # every booklet found its student
+    assert all(b["student"]["status"] in ("auto", "check") for b in bs)
+    assert j["results"]["unread"] == [] and any(b["student"]["status"] == "auto" for b in bs)    # (their numbers are a digit apart: some are checked)
+    # Their midterm marks wait for their booklets; everyone else's are as they were.
+    book = json.loads(store.Repo(user["id"], "priv").read(f"{d['offering']}/grades.json"))
+    assert all("mt" not in (book["marks"].get(n) or {}) for n in nums)
+    # The TA: on the team, a grader, and can't be signed in to.
+    ta = db.one("SELECT * FROM users WHERE email = ?", (transfer.DEMO_TA["email"],))
+    assert ta["disabled"] == 1 and ta["pw_hash"] == "!"
+    assert any(m["id"] == ta["id"] and m["role"] == "ta" for m in j["markers"])
+    assert j["graders"] == {"8": [ta["id"]], "10": [ta["id"]]}
+    r = app.test_client().post("/api/auth/login", json={"email": transfer.DEMO_TA["email"], "password": "!"}, headers=H)
+    assert r.status_code >= 400

@@ -57,6 +57,8 @@ def main():
     errors = []
     tmp = tempfile.mkdtemp(prefix="lectern-scans-")
     with Server() as srv, sync_playwright() as p:
+        from server import transfer
+        transfer.DEMO_SCANS = False          # this walkthrough prints and scans its own
         owner = srv.account()
         b = p.chromium.launch()
         ctx = b.new_context(viewport={"width": 1360, "height": 900}); block_cdns(ctx)

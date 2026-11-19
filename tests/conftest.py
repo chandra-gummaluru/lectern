@@ -24,6 +24,8 @@ def fresh_data(tmp_path, monkeypatch):
     accommodations._books.clear()
     mailer.sent.clear()
     mailer.keep = True
+    from server import transfer
+    monkeypatch.setattr(transfer, "DEMO_SCANS", False)   # the demo's own scans: only in the test of them
     app.config["TESTING"] = True
     yield
     db.reset_for_tests()

@@ -409,6 +409,72 @@ def load_demo():
         raise Refusal(409, f"You already have the demo course ({off}). Delete it from its page to load a fresh one.", "have")
     days = 7 * weeks_between(DEMO_TERM, t)
     files = demo_files()
-    files["priv"]["grades.json"] = _dump(demo_book(_json(files["priv"]["grades.json"]), days, today))
+    scans = DEMO_SCANS and _demo_scanned()
+    book = demo_book(_json(files["priv"]["grades.json"]), days, today)
+    if scans:      # the scanned students' midterm marks come from their booklets, as they're marked
+        for n in scans:
+            (book.get("marks") or {}).get(n, {}).pop("mt", None)
+    files["priv"]["grades.json"] = _dump(book)
     _put(uid, off, files, DEMO_COURSE, t, DEMO_TERM, days, "The demo course", keep_people=True)
+    ta = _demo_ta(uid, off)
+    if scans:
+        _demo_scans(uid, off, ta)
     return jsonify(ok=True, course=DEMO_COURSE, term=t)
+
+
+# The demo's midterm comes with ten students' booklets scanned (tools/make_demo_scans.py makes them), read as an
+# upload is, and a TA on the team to assign questions to. (Off in tests, which upload their own.)
+DEMO_SCANS = True
+DEMO_SCAN_DIR = os.path.join(ROOT, "sample-data", "demo-course", "scans", "midterm")
+DEMO_TA = {"email": "demo-ta@example.invalid", "handle": "demo-ta", "name": "Sam Okafor"}
+
+
+def _demo_scanned():
+    try:
+        with open(os.path.join(DEMO_SCAN_DIR, "students.json"), encoding="utf-8") as f:
+            return [str(n) for n in json.load(f)]
+    except (OSError, ValueError):
+        return []
+
+
+def _demo_ta(uid, off):
+    """The demo's TA: one made-up account for every demo, turned off (it can't sign in, reset its password or be
+    emailed: its address is .invalid), on the demo's team as a TA. Its id, or None."""
+    import time as _t
+    u = db.one("SELECT id, disabled FROM users WHERE email = ?", (DEMO_TA["email"],))
+    if not u:
+        if db.one("SELECT id FROM users WHERE handle = ?", (DEMO_TA["handle"],)):
+            return None
+        db.run("INSERT INTO users (email, handle, name, pw_hash, pw_changed, disabled, created) VALUES (?, ?, ?, '!', ?, 1, ?)",
+               (DEMO_TA["email"], DEMO_TA["handle"], DEMO_TA["name"], _t.time(), _t.time()))
+        u = db.one("SELECT id, disabled FROM users WHERE email = ?", (DEMO_TA["email"],))
+    if not u or not u["disabled"]:       # someone turned it on: it's not ours to put on a team
+        return None
+    db.run("INSERT OR IGNORE INTO members (owner_id, offering, user_id, role, added_by, added) VALUES (?, ?, ?, 'ta', ?, ?)",
+           (uid, off, u["id"], uid, _t.time()))
+    return u["id"]
+
+
+def _demo_scans(uid, off, ta):
+    """The demo midterm's scans: its printed copy, the booklets as an upload, the TA on a few questions; then read."""
+    import shutil
+    import time as _t
+    from . import scanning
+    try:
+        ex = scanning.Exam.of(uid, off, "midterm")
+        shutil.rmtree(ex.dir, ignore_errors=True)        # an earlier demo's (this one is new)
+        os.makedirs(ex.path("printed"), exist_ok=True)
+        os.makedirs(ex.path("uploads"), exist_ok=True)
+        shutil.copy(os.path.join(DEMO_SCAN_DIR, "midterm.pdf"), ex.path("printed", "midterm.pdf"))
+        now = _t.time()
+        ex.write_json("printed.json", {"midterm": {"at": now, "by": g.user["name"], "tex": scanning._sha_file(os.path.join(ex.src, "midterm.tex")),
+                                                    "booklets": [], "single": now}})
+        fn = f"{_t.strftime('%Y%m%d-%H%M%S')}-{os.urandom(3).hex()}-midterm-scans.pdf"
+        shutil.copy(os.path.join(DEMO_SCAN_DIR, "booklets.pdf"), ex.path("uploads", fn))
+        ex.write_json("uploads.json", {fn: {"name": "Midterm scans.pdf", "pages": scanning._pages(ex.path("uploads", fn)), "at": now, "by": g.user["name"]}})
+        if ta:
+            ex.write_json("graders.json", {"8": [ta], "10": [ta]})
+        if scanning._can_mark():
+            scanning._start_mark(ex)
+    except Exception as x:          # the demo is still the demo without its scans
+        print(f"[lectern] the demo's scans weren't added: {x}", flush=True)

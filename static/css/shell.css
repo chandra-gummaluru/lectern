@@ -1690,7 +1690,7 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-qlist { margin-top: 14px; }
 .sc-qlist .sc-bybar { margin: 0 0 8px; }
 .sc-qlist .dc-threads { max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
-.sc-qlist.off { opacity: .55; }
+.sc-qlist.off .dc-t:not(.sc-scan-row) { opacity: .55; }   /* Booklets Scanned opens before any scans: it's where they're uploaded */
 .sc-qlist.off .dc-t-b { cursor: default; }
 .sc-qlist.off .dc-t-b:hover .dc-t-title { text-decoration: none; }
 .sc-qlist .hb.lt-dc { border: 0; padding: 0; margin: 0; background: none; box-shadow: none; }
@@ -1719,3 +1719,14 @@ option.sc-taken { color: var(--ink-3); }
 .sc-top, .tf-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; margin: 6px 0 4px; }
 .tf-acts .lt-btn svg, .sc-top .lt-btn svg { width: 16px; height: 16px; }
 .sc-scan-row .dc-t-meta .sc-spin { width: 11px; height: 11px; display: inline-block; vertical-align: -1px; }
+
+/* Booklet Matching: the student list on the left of Okay's row. */
+.sc-mbar { align-items: center; gap: 8px; }
+.sc-mbar select { height: 38px; max-width: 60%; padding: 0 10px; border-radius: 9px; border: 1px solid var(--home-line-2, var(--line)); background: var(--field); font: 14px var(--font-ui); color: var(--ink); }
+.sc-mbar .spacer { flex: 1; }
+.lt-req-meta .sc-spin { width: 11px; height: 11px; display: inline-block; vertical-align: -1px; }
+.sc-book .sc-fl-acts { margin-top: 10px; }
+.sc-qt:empty { display: none; }
+.sc-ubar { align-items: center; gap: 8px; }
+.sc-ubar .spacer { flex: 1; }
+.sc-ubar .lt-link { margin-right: 0; }

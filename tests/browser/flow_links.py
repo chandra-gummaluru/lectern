@@ -90,11 +90,11 @@ def main():
         page.wait_for_function("window.__opened.length > 0", timeout=5000)
         got = ctx.request.get(srv.base.rstrip("/") + page.evaluate("window.__opened[0]"))
         assert got.ok and got.body()[:4] == b"%PDF", ("the handout's student copy, with the scan codes, compiles", got.status, got.text()[:300])
-        page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] #sc-file", state="attached", timeout=15000)
+        page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] [data-scans]", timeout=15000)
         assert json.loads(srv.text("priv", "csc258/f26/a1/exam.json"))["settings"]["scan"] is True
-        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] .sc-top label:not(.sc-dis)")).to_be_visible(timeout=10000)   # scanning on, saved
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] .sc-qlist")).to_be_visible(timeout=10000)   # scanning on, saved
         sc = page.inner_text(G + ".editor[data-eval='a1'] [data-scan-slot]")
-        assert "Upload Scans" in sc and "Booklets Scanned" in sc, sc
+        assert "Booklets Scanned" in sc and "Marking from scans is off" not in sc, sc
         print("1b handout scans:", sc.replace("\n", " ")[:160])
 
         # 2. Saving the gradebook puts its marking scheme on the course page.
@@ -113,7 +113,7 @@ def main():
         # 3. Build the Midterm: a new exam, opened in the exam builder (Build Test Script, with Upload Scans greyed out).
         open_eval(page, "mt")
         expect(page.locator(G + ".editor[data-eval='mt'] .tf-build")).to_have_text("Build Test Script")
-        assert page.is_disabled(G + ".editor[data-eval='mt'] .tf-acts button:has-text('Upload Scans')"), "no script: nothing to scan"
+        assert not page.query_selector(G + ".editor[data-eval='mt'] [data-scan-slot]"), "no script: nothing to scan"
         page.click(G + ".editor[data-eval='mt'] [data-act='ev-build']")
         page.wait_for_selector("body.lt-tool-exams", timeout=15000); page.wait_for_timeout(1500)
         print("3 path:", path(), "| cover:", bool(page.query_selector(X + ".cover-blk")))

@@ -1767,22 +1767,22 @@ option.sc-taken { color: var(--ink-3); }
 .sc-stage .sc-q > .sc-note { align-self: flex-start; margin: 0 0 16px; }
 /* The scan and what it was read as: the same piece of the page at the same size, one over the other, each with
    its caption (the captions are the pair's own ::before and ::after, so nothing moves inside the answers). */
-.sc-stage .sc-pair { display: grid; grid-template-columns: auto auto auto; grid-template-rows: auto auto; column-gap: 18px; row-gap: 6px; align-items: center; justify-content: start; width: fit-content; max-width: 100%; margin: 0; }
+.sc-stage .sc-pair { display: grid; grid-template-columns: auto auto auto; grid-template-rows: auto auto; column-gap: 18px; row-gap: 5px; align-items: center; justify-content: start; width: fit-content; max-width: 100%; margin: 0; }
 .sc-stage .sc-pair::before, .sc-stage .sc-pair::after { font-size: 12.5px; color: var(--home-ink-3); align-self: end; }
 .sc-stage .sc-pair::before { content: "Their answer"; grid-area: 1 / 1; }
 .sc-stage .sc-pair > .sc-pic { grid-area: 2 / 1; }
 .sc-stage .sc-pair > .sc-arrow { grid-area: 2 / 2; }
 .sc-stage .sc-pair::after { content: "Read as"; grid-area: 1 / 3; }
 .sc-stage .sc-pair > :not(.sc-pic):not(.sc-arrow) { grid-area: 2 / 3; margin: 0; }
+.sc-stage .sc-pair > .sc-pic, .sc-stage .sc-pair > .dz-one > .pp, .sc-stage .sc-pair > .pp, .sc-stage .sc-pair > .dz { margin-top: 0; }   /* the caption, just over its box */
 .sc-arrow { display: grid; place-items: center; color: var(--home-ink-3); }
 .sc-arrow svg { width: 44px; height: 22px; }
-/* Too wide across: one over the other, the arrow pointing down between them. */
+/* Too wide across: one over the other (no arrow). */
 .sc-stage .sc-pair.stack { grid-template-columns: auto; grid-template-rows: none; }
 .sc-stage .sc-pair.stack::before { grid-area: auto; }
 .sc-stage .sc-pair.stack > * , .sc-stage .sc-pair.stack::after { grid-area: auto !important; }
-.sc-stage .sc-pair.stack::before { order: 0; } .sc-stage .sc-pair.stack > .sc-pic { order: 1; } .sc-stage .sc-pair.stack > .sc-arrow { order: 2; justify-self: start; margin-left: 24px; }
-.sc-stage .sc-pair.stack::after { order: 3; } .sc-stage .sc-pair.stack > :not(.sc-pic):not(.sc-arrow) { order: 4; }
-.sc-stage .sc-pair.stack > .sc-arrow svg { transform: rotate(90deg); width: 30px; height: 30px; }
+.sc-stage .sc-pair.stack::before { order: 0; } .sc-stage .sc-pair.stack > .sc-pic { order: 1; } .sc-stage .sc-pair.stack > .sc-arrow { display: none; }
+.sc-stage .sc-pair.stack::after { order: 3; margin-top: 14px; } .sc-stage .sc-pair.stack > :not(.sc-pic):not(.sc-arrow) { order: 4; }
 .sc-stage .sc-pic { width: 100%; max-height: none; border: 1px solid var(--home-line); border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
 .sc-stage .pp { margin: 0; border-color: var(--home-line); border-radius: 10px; box-shadow: 0 1px 3px rgb(0 0 0 / .06); }
 .sc-stage .sc-hist, .sc-stage .sc-qa, .sc-stage .sc-bls { width: min(100%, 600px); }
@@ -1796,8 +1796,8 @@ option.sc-taken { color: var(--ink-3); }
 .sc-gr-no h3 span { font: 400 14px var(--font-ui); color: var(--home-ink-3); }
 .sc-gr-no .sc-gr-how { margin: 4px 0 0; }
 .sc-gr-arrows { display: flex; align-items: center; gap: 4px; }
-.sc-gr-arrows .lt-btn { margin-left: 6px; }
-.sc-gr-arrows .lt-btn + .lt-btn { margin-left: 2px; }
+.sc-gr-arrows .lt-btn { margin-right: 2px; }
+.sc-gr-arrows .lt-btn + .lx-ic { margin-left: 8px; }   /* the arrows, always in the same place at the right */
 .sc-gr-arrows .lt-btn.primary { min-width: 80px; justify-content: center; }
 .sc-gr-arrows .lx-ic { width: 32px; height: 32px; border-color: var(--home-line-2); background: var(--home-card); color: var(--home-ink-2); }
 .sc-gr-arrows .lx-ic:hover:not(:disabled) { border-color: var(--home-ink-3); background: var(--home-card); color: var(--home-ink); }

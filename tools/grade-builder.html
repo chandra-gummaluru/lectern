@@ -2764,7 +2764,7 @@ function lockDown() {
   const mode = ACCESS(); if (mode === "all") return;
   document.body.classList.add("gb-limited");
   document.querySelectorAll("#view, .modal, #tb-right").forEach(root => {
-    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind, [data-att-slot] *, [data-dc-slot] *, [data-scan-slot] *") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
+    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind, [data-att-slot] *, [data-dc-slot] *, [data-scan-slot] *, [data-scan-list] *") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
     root.querySelectorAll("[contenteditable=true]").forEach(x => { if (!x.closest("[data-dc-slot]")) x.setAttribute("contenteditable", "false"); });
     root.querySelectorAll("[data-ed]").forEach(b => { if (!ED_OK.has(b.dataset.ed)) b.disabled = true; });
     root.querySelectorAll("[data-act]").forEach(b => { if (!ACT_OK[mode].has(b.dataset.act)) b.disabled = true; });
@@ -3036,7 +3036,7 @@ function parseCell(v) {   // a number, or a status in words: missing / unsubmitt
 const STATUS_ICON = { missed: "ban", aiv: "shield", excused: "dashcircle", deferred: "clock" };
 const statusIco = st => `<span class="ns-ico st-${st}" title="${STATUSES[st]}">${svg(STATUS_ICON[st])}</span>`;
 stage.addEventListener("input", e => {
-  if (e.target.closest && e.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
+  if (e.target.closest && e.target.closest("[data-scan-slot], [data-scan-list], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   const t = e.target;
   if (t.matches(".mk")) {
     const p = parseCell(t.value); t.classList.toggle("bad-input", !p); if (!p) return;
@@ -3057,7 +3057,7 @@ stage.addEventListener("input", e => {
 
 });
 stage.addEventListener("change", e => {
-  if (e.target.closest && e.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
+  if (e.target.closest && e.target.closest("[data-scan-slot], [data-scan-list], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   if (e.target.dataset && e.target.dataset.fl === "emailDomain") { e.target.value = emailDomain(); return; }   // shown tidied: mail.utoronto.ca
   const t = e.target;
   if (t.dataset.pol && t.tagName === "SELECT") { const row = t.closest("[data-fail]"), x = model.policies.autofail.find(y => y.id === row.dataset.fail); if (x) change(() => { x[t.dataset.pol] = t.value; }); return; }
@@ -3238,7 +3238,8 @@ let NOTICES = null;
 function releaseHTML(e) {
   return `<h3 class="ed-sec">Marks</h3>
     <label class="acm-tick"><input type="checkbox" data-rel="1"${e.released ? " checked" : ""}><b>Students can see their marks</b><span>On the course page, each student sees their own. Off, only the teaching team sees them.${HOSTED ? " Once it's on and the gradebook is saved, the students with a mark are emailed that it's out." : ""}</span></label>
-    <div class="rel-note" id="rel-note"></div>`;
+    <div class="rel-note" id="rel-note"></div>
+    ${HOSTED && docLinks.has(e.id) && window.Lectern.fillScans ? `<div data-scan-list="${esc(docLinks.get(e.id).folder)}"></div>` : ""}`;   // its Grading list (Lectern's)
 }
 async function drawNotices(e, fresh) {
   const el = $("#rel-note"); if (!el || !HOSTED || !window.Lectern.gradeNotices) return;
@@ -3440,7 +3441,7 @@ function drawGroupEditor() {
 // Editing in the windows: typing updates as you go; choices redraw the window.
 const redrawEditor = () => { drawEvalEditor(); drawGroupEditor(); drawStudentEditor(); };
 document.addEventListener("input", ev => {
-  if (ev.target.closest && ev.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
+  if (ev.target.closest && ev.target.closest("[data-scan-slot], [data-scan-list], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.type === "checkbox") return;   // ticks are handled on "change"
   if (t.dataset.ed === "nt-text") return;   // a note being written: added with Add note
@@ -3594,7 +3595,7 @@ document.addEventListener("click", ev => {
   redrawEditor();
 });
 document.addEventListener("change", ev => {
-  if (ev.target.closest && ev.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
+  if (ev.target.closest && ev.target.closest("[data-scan-slot], [data-scan-list], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.dataset.ed === "fg-grade") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box
   if (t.dataset.ed === "acc-mark") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box (a status shows by its name)

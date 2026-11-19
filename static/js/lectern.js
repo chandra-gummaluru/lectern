@@ -630,8 +630,9 @@ function scansEl(folder, scriptName) {
   if (el && el._hash === at) { if (Date.now() - el._at > 10000) { el._at = Date.now(); el._view.load(); } return el; }
   if (el) el._view.leave();
   el = document.createElement("div"); el._at = Date.now(); el._hash = at;
+  el._list = document.createElement("div"); el._list.className = "sc-listslot";   // its Grading list, for the Marks section
   hubCSS();   // its list of booklets is the requests' list (the course page's list styles)
-  el._view = scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [], owner: curOwner(), into: el, scriptName,
+  el._view = scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [], owner: curOwner(), into: el, scriptName, listInto: el._list,
     openExam: () => go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: folder }),
     sending: gradesSending(r),
     unsaved: () => unsavedTools().some(u => u.name === "exams" && u.path === `${r.c}/${r.t}/${folder}/exam.json`) }, { page: "scans", c: r.c, t: r.t, e: folder });
@@ -639,7 +640,9 @@ function scansEl(folder, scriptName) {
   return el;
 }
 addEventListener("hashchange", () => SC.forEach(el => { el._at = 0; }));   // back on the page after going elsewhere: read them again
-Lectern.fillScans = root => { if (!root || !S.route.c) return; root.querySelectorAll("[data-scan-slot]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanSlot, s.dataset.scanName)); }); };
+Lectern.fillScans = root => { if (!root || !S.route.c) return;
+  root.querySelectorAll("[data-scan-slot]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanSlot, s.dataset.scanName)); });
+  root.querySelectorAll("[data-scan-list]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanList)._list); }); };
 Lectern.fillDiscussions = fillDiscussions;
 function renderPage() {
   renderBar();

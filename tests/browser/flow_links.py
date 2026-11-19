@@ -90,10 +90,10 @@ def main():
         page.wait_for_function("window.__opened.length > 0", timeout=5000)
         got = ctx.request.get(srv.base.rstrip("/") + page.evaluate("window.__opened[0]"))
         assert got.ok and got.body()[:4] == b"%PDF", ("the handout's student copy, with the scan codes, compiles", got.status, got.text()[:300])
-        page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-slot] [data-scans]", timeout=15000)
+        page.click("#tb-scans"); page.wait_for_selector(G + ".editor[data-eval='a1'] [data-scan-list] [data-scans]", timeout=15000)
         assert json.loads(srv.text("priv", "csc258/f26/a1/exam.json"))["settings"]["scan"] is True
-        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-slot] .sc-qlist")).to_be_visible(timeout=10000)   # scanning on, saved
-        sc = page.inner_text(G + ".editor[data-eval='a1'] [data-scan-slot]")
+        expect(page.locator(G + ".editor[data-eval='a1'] [data-scan-list] .sc-qlist")).to_be_visible(timeout=10000)   # scanning on, saved
+        sc = page.inner_text(G + ".editor[data-eval='a1'] [data-scan-list]")
         assert "Booklets Scanned" in sc and "Marking from scans is off" not in sc, sc
         print("1b handout scans:", sc.replace("\n", " ")[:160])
 

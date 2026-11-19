@@ -82,7 +82,7 @@ def main():
         assert not me.query_selector(G + ".editor[data-eval='mt'] [data-doc]"), "its PDFs are in the Exam Builder"
         assert "Scans" not in [x.strip().title() for x in me.locator(G + ".editor[data-eval='mt'] h3.ed-sec").all_inner_texts()], "no Scans section of its own"
         assert me.locator(G + ".editor[data-eval='mt'] h3.ed-sec", has_text="Scripts and Scans").count() == 1
-        assert "Booklets Scanned" in sc, sc
+        assert "Booklets Scanned" in me.inner_text(G + ".editor[data-eval='mt'] [data-scan-list]")   # the Grading list, in Marks
         assert not me.query_selector(G + "[data-act='ev-scans']"), "no Print and Scan button: the Scans are right there"
 
         # The Exam Builder's Print and Scan: the test is linked to Test 1, so it opens Test 1's page, at its Scans.
@@ -128,12 +128,12 @@ def main():
         scan = os.path.join(tmp, "Class scan.pdf")
         scan_pdf(r.body(), people, answers(exam), scan)
         me.evaluate("location.reload()"); me.wait_for_selector(G + ".erow[data-id='mt']", timeout=20000); me.click(G + ".erow[data-id='mt']")
-        me.wait_for_selector(G + "[data-scan-slot] [data-scans]", timeout=20000)
+        me.wait_for_selector(G + "[data-scan-list] [data-scans]", timeout=20000)
         assert json.loads(srv.text("priv", f"{off}/grades.json")) and "printed" not in me.inner_text(G + "[data-scan-slot]")
-        greyed = me.locator(G + "[data-scan-slot] .sc-qlist.off [data-gq]")              # before any scans: listed, greyed out
+        greyed = me.locator(G + "[data-scan-list] .sc-qlist.off [data-gq]")              # before any scans: listed, greyed out
         assert greyed.count() == 12 and greyed.first.is_disabled() and "No scans yet" in greyed.first.inner_text()
-        assert not me.is_disabled(G + "[data-scan-slot] [data-scans]"), "Booklets Scanned opens before any scans"
-        me.click(G + "[data-scan-slot] [data-scans]"); me.wait_for_selector(".sc-book #sc-file", state="attached")   # its page: Upload Scans
+        assert not me.is_disabled(G + "[data-scan-list] [data-scans]"), "Booklets Scanned opens before any scans"
+        me.click(G + "[data-scan-list] [data-scans]"); me.wait_for_selector(".sc-book #sc-file", state="attached")   # its page: Upload Scans
         assert not me.query_selector(".sc-book .gr-kind") and me.inner_text(".sc-book h2").startswith("Test 1") and "No scans yet" in me.inner_text(".sc-book")
         me.set_input_files(".sc-book #sc-file", scan)                          # read as it comes in: no Mark button
         me.wait_for_selector(".sc-book .sc-files .sc-file", timeout=30000)
@@ -142,23 +142,23 @@ def main():
         me.wait_for_selector(".sc-book .sc-file .sc-reading", timeout=15000)      # being read: said on the file itself
         assert me.query_selector(".sc-book .lx-ed-head #sc-wipe") and "Each upload is read" not in me.inner_text(".sc-book")
         me.screenshot(path=f"{OUT}/scan-2a-uploads.png", full_page=True)
-        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] [data-scans]")
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-list] [data-scans]")
         assert not me.evaluate("window.Lectern.tools.grades.api.state().unsaved"), "uploading a scan doesn't change the gradebook"
         me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2-marking.png")
-        me.wait_for_selector(G + "[data-scan-slot] .sc-qlist:not(.off) [data-gq]", timeout=180000)       # read: its questions open
-        me.wait_for_selector(G + "[data-scan-slot] .sc-scan-row .sc-spin", state="detached", timeout=180000)
-        card = " ".join(me.inner_text(G + "[data-scan-slot] .sc-scan-row").split())
+        me.wait_for_selector(G + "[data-scan-list] .sc-qlist:not(.off) [data-gq]", timeout=180000)       # read: its questions open
+        me.wait_for_selector(G + "[data-scan-list] .sc-scan-row .sc-spin", state="detached", timeout=180000)
+        card = " ".join(me.inner_text(G + "[data-scan-list] .sc-scan-row").split())
         n = len([s_ for s_ in book["students"] if not s_.get("dropped")])
         assert card == f"Booklets Scanned 2 / {n} scanned", card                     # the list's first row
-        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-slot] .sc-scan-row .dc-t-meta", "title")
+        assert f"of the {n} students in the class" in me.get_attribute(G + "[data-scan-list] .sc-scan-row .dc-t-meta", "title")
         print("  meter:", card.replace("\n", " | "))
         assert me.is_disabled(G + "[data-scan-slot] #sc-email"), "emailed once every booklet is graded"
         top = [" ".join(x.split()) for x in me.locator(G + "[data-scan-slot] .sc-top > *").all_inner_texts()]
         assert top == ["Edit Test Script", "Email Booklets"], top
-        assert me.inner_text(G + "[data-scan-slot] .sc-qlist .dc-title").strip().lower() == "grading"   # not just questions
-        mrow = " ".join(me.inner_text(G + "[data-scan-slot] .sc-qlist [data-match]").split())
+        assert me.inner_text(G + "[data-scan-list] .sc-qlist .dc-title").strip().lower() == "grading"   # not just questions
+        mrow = " ".join(me.inner_text(G + "[data-scan-list] .sc-qlist [data-match]").split())
         assert mrow == "Booklet Matching 0 / 2 matched", mrow                         # first in the list, like a question
-        me.click(G + "[data-scan-slot] [data-match]"); me.wait_for_selector(".sc-book .sc-mcard")   # one booklet at a time
+        me.click(G + "[data-scan-list] [data-match]"); me.wait_for_selector(".sc-book .sc-mcard")   # one booklet at a time
         assert not me.query_selector(".sc-book .gr-kind") and me.locator(".sc-mcard").count() == 1
         assert me.inner_text(".sc-book h2").startswith("Booklet 1") and "To Match" not in me.inner_text(".sc-book")
         assert me.inner_text(".sc-book .lt-req-meta") == "0 / 2 matched", me.inner_text(".sc-book .lt-req-meta")   # said once
@@ -167,26 +167,26 @@ def main():
         me.wait_for_selector(".sc-book h2:has-text('Booklet 2')", timeout=10000)
         assert me.evaluate(f"document.querySelector('#sc-mwho option[value=\"{people[0]['num']}\"]').disabled"), "taken: greyed out"
         assert not me.query_selector(".sc-book .lx-acts"), "no Open the Booklet or Stop: the path goes back"
-        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] .sc-scan-row")
-        me.wait_for_selector(G + "[data-scan-slot] .sc-qlist [data-match]:has-text('1 / 2 matched')", timeout=10000)
-        me.locator(G + "[data-scan-slot]").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2b-marked.png")
-        rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-slot] .sc-qlist [data-gq]").all()}
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-list] .sc-scan-row")
+        me.wait_for_selector(G + "[data-scan-list] .sc-qlist [data-match]:has-text('1 / 2 matched')", timeout=10000)
+        me.locator(G + ".editor[data-eval='mt'] h3.ed-sec:has-text('Marks')").scroll_into_view_if_needed(); me.screenshot(path=f"{OUT}/scan-2b-marked.png")
+        rows = {r_.get_attribute("data-gq"): r_.inner_text().replace("\n", " ") for r_ in me.locator(G + "[data-scan-list] .sc-qlist [data-gq]").all()}
         print("  questions:", list(rows.values())[:4])
         assert rows["4"].endswith("1 / 2 read") and rows["8"].endswith("0 / 2 marked") and rows["1"].endswith("2 / 2 read"), rows
-        me.click(G + "[data-scan-slot] [data-assign]"); me.wait_for_selector(G + "[data-scan-slot] [data-gpk='8'] .pk-btn")   # Assign Graders
-        me.click(G + "[data-scan-slot] [data-gpk='8'] .pk-btn"); me.wait_for_selector(G + "[data-scan-slot] [data-gpk='8'] .pk-pop")
-        me.locator(G + "[data-scan-slot] [data-gpk='8'] .pk-chk", has_text="Tia Marks").locator("input").check(); me.wait_for_timeout(500)
+        me.click(G + "[data-scan-list] [data-assign]"); me.wait_for_selector(G + "[data-scan-list] [data-gpk='8'] .pk-btn")   # Assign Graders
+        me.click(G + "[data-scan-list] [data-gpk='8'] .pk-btn"); me.wait_for_selector(G + "[data-scan-list] [data-gpk='8'] .pk-pop")
+        me.locator(G + "[data-scan-list] [data-gpk='8'] .pk-chk", has_text="Tia Marks").locator("input").check(); me.wait_for_timeout(500)
         me.screenshot(path=f"{OUT}/scan-2d-graders.png")
-        me.keyboard.press("Escape"); me.click(G + "[data-scan-slot] [data-assign]")               # Done Assigning: the names, in its line
-        me.wait_for_selector(G + "[data-scan-slot] [data-gq='8']:has-text('Tia Marks')", timeout=5000)
-        assert not me.query_selector(G + "[data-scan-slot] [data-gpk]")
-        assert me.locator(G + "[data-scan-slot] [data-gq='1'] .sc-pie.full").count() == 1 and me.locator(G + "[data-scan-slot] [data-gq='8'] .sc-pie:not(.full)").count() == 1
+        me.keyboard.press("Escape"); me.click(G + "[data-scan-list] [data-assign]")               # Done Assigning: the names, in its line
+        me.wait_for_selector(G + "[data-scan-list] [data-gq='8']:has-text('Tia Marks')", timeout=5000)
+        assert not me.query_selector(G + "[data-scan-list] [data-gpk]")
+        assert me.locator(G + "[data-scan-list] [data-gq='1'] .sc-pie.full").count() == 1 and me.locator(G + "[data-scan-list] [data-gq='8'] .sc-pie:not(.full)").count() == 1
         assert not me.query_selector(G + "[data-scan-slot] #sc-fix, " + G + "[data-scan-slot] .lx-sec, " + G + "[data-scan-slot] [data-by]"), "no Fix Scans bar, Gradebook, Marked Booklets or By Booklet in it"
-        h = me.evaluate(f"document.querySelector(`{G}[data-scan-slot] .sc-qlist .dc-threads`).clientHeight")
+        h = me.evaluate(f"document.querySelector(`{G}[data-scan-list] .sc-qlist .dc-threads`).clientHeight")
         assert h <= 340, ("the list scrolls in its own box", h)
 
         # A question the computer marks: check it against the scans, the answers it wasn't sure how to read, one at a time.
-        me.click(G + "[data-scan-slot] [data-gq='4']"); me.wait_for_selector(".sc-book h2")
+        me.click(G + "[data-scan-list] [data-gq='4']"); me.wait_for_selector(".sc-book h2")
         assert not me.query_selector(".sc-book .gr-kind"), "no gray caps line above the title"
         assert me.inner_text(".sc-book h2").startswith("Question 4") and me.locator(".sc-q").count() == 1, "one answer at a time"
         assert not me.locator(".sc-q .sc-qt:visible").count(), "no name: just the reading"
@@ -197,15 +197,15 @@ def main():
         print("  question 4 checked:", me.inner_text(".sc-fixnext"))
         me.click("[data-fixall]"); me.wait_for_timeout(300)                # every answer, if you ask
         assert me.locator(".sc-q").count() == 2, "every booklet's answer to question 4"
-        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] [data-gq='10']")
-        me.click(G + "[data-scan-slot] [data-gq='10']"); me.wait_for_selector(".sc-book [data-fixok]")
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-list] [data-gq='10']")
+        me.click(G + "[data-scan-list] [data-gq='10']"); me.wait_for_selector(".sc-book [data-fixok]")
         me.click("[data-fixok]"); me.wait_for_timeout(300)                # a word nobody has typed yet: Okay says so
         assert me.locator(".sc-q").count() == 1
         print("  question 10 waits for the word")
 
         # A question marked by hand: the grader, every booklet's answer; the first student's gets full marks there.
-        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-slot] [data-gq='8']")
-        me.locator(G + "[data-scan-slot] [data-gq='8']").click(); me.wait_for_selector(".sc-book .sc-q")
+        me.locator("#lt-path button", has_text="Test 1").first.click(); me.wait_for_selector(G + "[data-scan-list] [data-gq='8']")
+        me.locator(G + "[data-scan-list] [data-gq='8']").click(); me.wait_for_selector(".sc-book .sc-q")
         assert "/questions/8" in me.evaluate("location.hash") and not me.query_selector(".sc-book .gr-kind")
         me.screenshot(path=f"{OUT}/scan-3b-question.png", full_page=True)
         print("  question 8:", me.inner_text(".sc-book .lt-req-meta"), "|", me.locator(".sc-q").count(), "answers to look at")

@@ -58,7 +58,7 @@ const dl = d => (d == null ? "" : d > 0 ? `+${fmtN(d)}` : d < 0 ? `−${fmtN(-d)
 
 // into: an element to draw the Scans part in (an evaluation's page in Grades, in its Scripts and Scans); drawn there, its
 // booklets, questions and Fix Scans still open as pages of their own, and come back to the evaluation (openEval).
-export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, renderPath, steps, owner, unsaved, openExam, openEval, into, sending, scriptName }, r) {
+export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, renderPath, steps, owner, unsaved, openExam, openEval, into, sending, scriptName, listInto }, r) {
   const params = x => new URLSearchParams({ ...(owner ? { owner } : {}), offering: `${r.c}/${r.t}`, exam: r.e, ...x }).toString();
   const body = x => ({ ...(owner ? { owner } : {}), offering: `${r.c}/${r.t}`, exam: r.e, ...x });
   const key = location.hash;
@@ -199,6 +199,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       const rp = box.querySelector("#sc-replace"); if (rp) rp.onclick = () => autoSend(true);
       autoSend(false);
     } else if (res) wireResults();
+    // On the evaluation's page, the Grading list goes in its Marks section (listInto), not under the buttons.
+    if (into && listInto) { const q = box.querySelector(".sc-qlist"); listInto.replaceChildren(...(q ? [q] : [])); }
   }
 
   function resultsHTML(res) {

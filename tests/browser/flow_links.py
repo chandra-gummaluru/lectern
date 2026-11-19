@@ -65,8 +65,8 @@ def main():
         expect(page.locator(G + ".editor[data-eval='a1']")).to_contain_text("Out of 25: the total marks of its handout")
         tf = page.locator(G + ".editor[data-eval='a1'] .tf-row[data-act='ev-build']")          # Scripts: its handout script, by itself
         expect(tf).to_contain_text("Handout Script"); expect(tf).to_contain_text("a1")
-        docs = page.locator(G + ".editor[data-eval='a1'] .tf-docs [data-act='ev-pdf']").all_inner_texts()
-        assert [x.strip() for x in docs] == ["Student Copy", "Answer Key", "Marking Scheme"], docs
+        expect(page.locator(G + ".editor[data-eval='a1'] h3.ed-sec", has_text="Scripts")).to_have_text("Scripts")   # a handout: no scans
+        assert not page.query_selector(G + ".editor[data-eval='a1'] [data-doc]"), "its PDFs are in the Exam Builder"
         assert not page.query_selector(G + ".editor[data-eval='a1'] .ed-acts [data-act='ev-build']"), "no Open button in the head any more"
         assert not page.query_selector(G + ".editor[data-eval='a1'] [data-act='ev-scans']"), "a handout isn't scanned"
         shot("83-grades-build")

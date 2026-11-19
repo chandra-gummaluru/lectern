@@ -41,20 +41,28 @@ const noting = new Set();    // answers with the note box opened, though it has 
 // A comment's marks as the marking guide writes them: −1, +2, ±0.
 const dl = d => (d == null ? "" : d > 0 ? `+${fmtN(d)}` : d < 0 ? `−${fmtN(-d)}` : "±0");
 
-export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, renderPath, steps, owner, unsaved, openExam }, r) {
+// into: an element to draw the Scans part in (an evaluation's page in Grades, in its Scripts and Scans); drawn there, its
+// booklets, questions and Fix Scans still open as pages of their own, and come back to the evaluation (openEval).
+export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, renderPath, steps, owner, unsaved, openExam, openEval, into, sending }, r) {
   const params = x => new URLSearchParams({ ...(owner ? { owner } : {}), offering: `${r.c}/${r.t}`, exam: r.e, ...x }).toString();
   const body = x => ({ ...(owner ? { owner } : {}), offering: `${r.c}/${r.t}`, exam: r.e, ...x });
   const key = location.hash;
   const here = () => location.hash === key && document.body.contains(box);
-  pageHTML(`<div class="lt-in lt-scans"><div class="lx ed"><div id="sc-box"><div class="lt-loading" style="min-height:160px">Reading the exam…</div></div></div></div>`);
-  const box = $("#sc-box");
+  if (!into) pageHTML(`<div class="lt-in lt-scans"><div class="lx ed"><div id="sc-box"><div class="lt-loading" style="min-height:160px">Reading the exam…</div></div></div></div>`);
+  else into.innerHTML = `<div class="sc-embed"><p class="lx-help">Reading the scans…</p></div>`;
+  const box = into ? into.firstChild : $("#sc-box");
   let S = null, R = null, timer = 0;
   // Whose a booklet is: "Last, First", or, not matched with confidence, "Unmatched, Student 3" and XXXXXXXXXX.
   const matched = b => b.student.status === "auto" || b.student.status === "done";
   const whoOf = b => { if (matched(b) && b.student.name) return b.student.name.split(" ").reverse().join(", ").replace(/^, /, "");
     const un = ((R && R.booklets) || []).filter(x => !matched(x)); return `Unmatched, Student ${un.indexOf(b) + 1}`; };
   const numOf = b => (matched(b) ? b.student.num : "X".repeat(((R && R.students && R.students[0] && R.students[0].num) || "0000000000").length));
-  const pathTo = extra => renderPath([...steps, { label: S ? S.exam.title : "Exam", go: openExam }, ...(extra ? [{ label: "Print and Scan", go: () => go({ ...r, b: "" }) }, { label: extra }] : [{ label: "Print and Scan" }])]);
+  // Back from a booklet, a question or Fix Scans: to the evaluation the exam is linked to (its Scans are there), or
+  // else to this exam's own Print and Scan page.
+  const home = () => go({ ...r, b: "", q: "" });
+  const pathTo = extra => { if (into) return;
+    renderPath(S && S.eval && openEval ? [...steps, { label: "Evaluations", go: () => openEval("") }, { label: S.eval.name, go: () => openEval(S.eval.id) }, ...(extra ? [{ label: "Grading", go: () => go({ ...r, b: "", q: "" }) }, { label: extra }] : [{ label: "Grading" }])]
+      : [...steps, { label: S ? S.exam.title : "Exam", go: openExam }, ...(extra ? [{ label: "Print and Scan", go: home }, { label: extra }] : [{ label: "Print and Scan" }])]); };
 
   async function load() {
     try {
@@ -62,7 +70,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       if (S.results) R = await api(`/api/scans/results?${params()}`);
     } catch (e) { if (here()) box.innerHTML = `<p class="lt-note err">Couldn't open it. ${esc(e.message)}</p>`; return; }
     if (!here()) return;
-    r.q ? drawQuestion() : r.b ? drawBooklet() : draw();
+    into ? draw() : r.q ? drawQuestion() : r.b ? drawBooklet() : draw();
     clearTimeout(timer);
     if ((S.job && S.job.state === "running") || (S.results && S.results.mail && S.results.mail.state === "running")) timer = setTimeout(load, 1500);
   }
@@ -74,9 +82,9 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     const X = S.exam, can = S.can, N = X.versions;
     const notes = [
       !S.latex ? `<p class="lt-note"><b>This Lectern can't make PDFs:</b> its server doesn't have LaTeX. Ask whoever runs it to install TeX Live (see the README).</p>` : "",
-      !X.scan ? `<p class="lt-note"><b>Marking from scans is off for this exam.</b> Turn it on in the exam's <button type="button" class="lt-link" data-open>Settings</button> (Pages), save, then print it here: the student copy then has the corner squares and codes the grader needs.</p>` : "",
+      !X.scan ? `<p class="lt-note"><b>Marking from scans is off for this exam.</b> Turn it on in the exam's <button type="button" class="lt-link" data-open>Settings</button> (Pages), save, then print it ${into ? "from the Exam Builder (Student Copy)" : "here"}: the student copy then has the corner squares and codes the grader needs.</p>` : "",
       unsaved() ? `<p class="lt-note"><b>The exam has changes that aren't saved.</b> The PDFs are made from the saved exam: save it first.</p>` : "",
-      !S.eval ? `<p class="lt-note">This exam isn't linked to an evaluation in the gradebook, so its marks have nowhere to go. Open it from its evaluation's <b>Build</b> button in Evaluations.</p>` : "",
+      !S.eval && !into ? `<p class="lt-note">This exam isn't linked to an evaluation in the gradebook, so its marks have nowhere to go. Open it from its evaluation's <b>Build</b> button in Evaluations.</p>` : "",
     ].join("");
     const pdfURL = (doc, v, print) => `/api/scans/pdf?${params({ doc, ...(v ? { v } : {}), ...(print ? { print: 1 } : {}) })}`;
     const copy = c => {
@@ -98,6 +106,41 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       : job.state === "failed" ? `<p class="lt-note err">${esc(job.error || "The marking stopped.")}</p>`
       : job.state === "done" ? `<p class="lx-help">Marked ${esc(when(job.finished))}${job.by ? ` by ${esc(job.by)}` : ""}: ${job.booklets} booklet${job.booklets === 1 ? "" : "s"}${job.unread ? `, ${job.unread} page${job.unread === 1 ? "" : "s"} not placed` : ""}.</p>` : "";
     const res = S.results;
+    if (into) {
+      // Its buttons: Upload Scans; then, once marked, Fix Scans and Grading (its booklets and questions, sending
+      // marks and emailing booklets, on a page of its own). Scans uploaded since the marking: Mark New Scans.
+      const unsureN = res ? labels().reduce((t, l) => t + unsureIn(l).length, 0) : 0;
+      const fresh = res && S.uploads.some(u => u.at > (job.finished || 0));
+      const ok = X.scan && !running;
+      const acts = `<div class="lx-adds">
+          ${can.upload ? `<label class="lt-btn add${ok ? "" : " sc-dis"}">${PLUS}Upload Scans<input type="file" id="sc-file" accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff,application/pdf,image/*" multiple hidden${ok ? "" : " disabled"}></label>` : ""}
+          ${can.upload && (!res || fresh) && S.uploads.length ? `<button type="button" class="lt-btn${res ? "" : " primary"}" id="sc-mark"${ok ? "" : " disabled"}>${res ? "Mark New Scans" : "Mark the Scans"}</button>` : ""}
+          ${res && can.mark ? `<button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN && !running ? "" : " disabled"} title="${unsureN ? "Go through the answers the computer wasn't sure how to read, question by question" : "Every answer the computer marks was read with confidence, or has been checked"}">Fix Scans</button>` : ""}
+          ${res ? `<button type="button" class="lt-btn${unsureN ? "" : " primary"}" id="sc-grade"${running ? " disabled" : ""}>Grading</button>` : ""}
+          ${can.upload && (S.uploads.length || res) ? `<button type="button" class="lt-btn" id="sc-wipe" title="Delete the scans and results"${running ? " disabled" : ""}>${TRASH}Delete All</button>` : ""}</div>`;
+      // What was printed, in a line (the student copy is printed from the Exam Builder).
+      const pr = S.copies.filter(c => c.printed), changed = pr.some(c => c.printed.changed), v = c => (N > 1 ? ` ${esc(c.version)}` : "");
+      const printed = !X.scan ? "" : !pr.length ? "Print the student copy at actual size from the Exam Builder (Student Copy): scans are marked against the copy printed from there."
+        : `Student copy${pr.length < S.copies.length ? pr.map(v).join(",") : N > 1 ? "s" : ""} printed ${esc(when(Math.max(...pr.map(c => c.printed.at))))}${pr[0].printed.by ? ` by ${esc(pr[0].printed.by)}` : ""}.${changed ? ` <span class="sc-warn">The test has changed since: print it again before the test.</span>` : ""}`;
+      // Part of the evaluation's Scripts and Scans (no heading of its own): the scans, under the script and its PDFs.
+      box.innerHTML = `${notes}
+        <p class="ed-help sc-lead"><b>Scans</b> · Whole booklets, one after another, as PDFs of 200 dpi or more. Pages can be in any order, either way up.${printed ? ` ${printed}` : ""}</p>
+        ${files ? `<div class="sc-files">${files}</div>` : ""}
+        <div class="sc-up" id="sc-up"></div>
+        ${acts}
+        ${jobLine}${res && unsureN ? `<p class="lx-help">${unsureN} answer${unsureN === 1 ? "" : "s"} the computer wasn't sure how to read: see Fix Scans.</p>` : ""}
+        ${res ? [...res.unread.length ? [`<p class="lt-note"><b>${res.unread.length} page${res.unread.length === 1 ? "" : "s"} couldn't be placed.</b> See Grading.</p>`] : []].join("") : ""}`;
+    } else if (S.eval && openEval) {
+      // Grading (from the evaluation's Scans): its booklets or questions, sending the marks, emailing the booklets.
+      box.innerHTML = `<div class="lx-editor sc-ed">
+        <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
+          <div class="gr-tt"><p class="gr-kind">Grading</p><h2>${esc(S.eval.name)}<span class="lt-req-of"> / ${esc(X.title)}</span></h2></div></div>
+        <p class="lt-req-meta">${fmtN(X.total)} marks${N > 1 ? ` · ${N} versions` : ""}${job.state === "done" ? ` · ${job.booklets} booklet${job.booklets === 1 ? "" : "s"}` : ""}</p>
+        ${jobLine.includes("sc-job") || job.state === "failed" ? jobLine : ""}
+        ${res ? resultsHTML(res) : `<p class="lx-empty">Nothing marked yet. Upload the scans and mark them in <button type="button" class="lt-link" id="sc-back">${esc(S.eval.name)}</button>.</p>`}
+      </div>`;
+      const bk = box.querySelector("#sc-back"); if (bk) bk.onclick = () => openEval(S.eval.id);
+    } else
     box.innerHTML = `<div class="lx-editor sc-ed">
       <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${SCAN_ICON}</span>
         <div class="gr-tt"><p class="gr-kind">Print and Scan</p><h2>${esc(X.title)}${S.eval ? `<span class="lt-req-of"> / ${esc(S.eval.name)}</span>` : ""}</h2></div>
@@ -122,14 +165,17 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     box.querySelectorAll("[data-del]").forEach(b => { b.onclick = async () => {
       if (!await confirmBox("Delete this scan?", "It's removed from this exam. Its results stay until you mark the scans again.", "Delete")) return;
       try { await api("/api/scans/delete", body({ file: b.dataset.del })); load(); } catch (e) { toast(e.message); } }; });
-    const fi = $("#sc-file"); if (fi) fi.onchange = () => uploadAll([...fi.files]);
-    const mk = $("#sc-mark"); if (mk) mk.onclick = async () => {
+    const fi = box.querySelector("#sc-file"); if (fi) fi.onchange = () => uploadAll([...fi.files]);
+    const mk = box.querySelector("#sc-mark"); if (mk) mk.onclick = async () => {
       mk.disabled = true;
       try { await api("/api/scans/mark", body({})); load(); } catch (e) { mk.disabled = false; toast(e.message); } };
-    const wipe = $("#sc-wipe"); if (wipe) wipe.onclick = async () => {
+    const wipe = box.querySelector("#sc-wipe"); if (wipe) wipe.onclick = async () => {
       if (!await confirmBox("Delete the scans and results?", "The scanned pages, what was read from them, every score given here and the printed copy go. Marks already sent to the gradebook stay.", "Delete Everything")) return;
       try { await api("/api/scans/delete", body({ all: true })); R = null; load(); } catch (e) { toast(e.message); } };
-    if (res) wireResults();
+    if (into && res) {
+      const fx = box.querySelector("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) { ui.fixing = true; ui.fixWas = ""; go({ ...r, b: "", q: first }); } };
+      const gr = box.querySelector("#sc-grade"); if (gr) gr.onclick = () => go({ ...r, b: "", q: "" });
+    } else if (res) wireResults();
   }
 
   function resultsHTML(res) {
@@ -163,7 +209,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
       ${mailLine}`;
     // Fix Scans: once marked, go through what the grader wasn't sure of, question by question.
     const unsureN = labels().reduce((t, l) => t + unsureIn(l).length, 0);
-    const fixBar = S.can.mark ? `<div class="sc-fixbar"><button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN ? "" : " disabled"}>Fix Scans</button>
+    const fixBar = S.can.mark && !(S.eval && openEval) ? `<div class="sc-fixbar"><button type="button" class="lt-btn${unsureN ? " primary" : ""}" id="sc-fix"${unsureN ? "" : " disabled"}>Fix Scans</button>
       <span class="lx-help">${unsureN ? `${unsureN} answer${unsureN === 1 ? "" : "s"} the computer wasn't sure how to read, in ${fixLabels().length} question${fixLabels().length === 1 ? "" : "s"}.` : "Every answer the computer marks was read with confidence, or has been checked."}</span></div>` : "";
     const bySeg = `<span class="lx-seg sc-by" role="group" aria-label="Show">${[["booklet", "By Booklet"], ["question", "By Question"]].map(([v, l]) => `<button type="button" data-by="${v}" aria-pressed="${ui.by === v}">${l}</button>`).join("")}</span>`;
     if (ui.by === "question") {
@@ -192,10 +238,10 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     box.querySelectorAll("[data-show]").forEach(b => { b.onclick = () => { ui.show = b.dataset.show; draw(); }; });
     box.querySelectorAll("[data-by]").forEach(b => { b.onclick = () => { ui.by = b.dataset.by; draw(); }; });
     box.querySelectorAll(".sc-dc [data-gq]").forEach(b => { b.onclick = () => go({ ...r, b: "", q: b.dataset.gq }); });
-    const qi = $("#sc-q"); if (qi) qi.oninput = () => { ui.q = qi.value; const at = qi.selectionStart; draw(); const i = $("#sc-q"); if (i) { i.focus(); i.setSelectionRange(at, at); } };
+    const qi = box.querySelector("#sc-q"); if (qi) qi.oninput = () => { ui.q = qi.value; const at = qi.selectionStart; draw(); const i = box.querySelector("#sc-q"); if (i) { i.focus(); i.setSelectionRange(at, at); } };
     box.querySelectorAll("[data-b]").forEach(b => { b.onclick = () => go({ ...r, b: b.dataset.b }); });
-    const fx = $("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) { ui.fixing = true; ui.fixWas = ""; go({ ...r, b: "", q: first }); } };
-    const em = $("#sc-email"); if (em) em.onclick = async () => {
+    const fx = box.querySelector("#sc-fix"); if (fx) fx.onclick = () => { const first = fixLabels()[0]; if (first) { ui.fixing = true; ui.fixWas = ""; go({ ...r, b: "", q: first }); } };
+    const em = box.querySelector("#sc-email"); if (em) em.onclick = async () => {
       const bs = R.booklets.filter(b => b.ready), fresh = bs.filter(b => !b.emailed), again = fresh.length && fresh.length < bs.length;
       let answers = false;
       const watch = e => { if (e.target && e.target.id === "sc-ans") answers = e.target.checked; };
@@ -214,7 +260,8 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         load();
       } catch (e) { em.disabled = false; toast(e.message); }
     };
-    const s = $("#sc-send"); if (s) s.onclick = async () => {
+    const s = box.querySelector("#sc-send"); if (s) s.onclick = async () => {
+      const no = sending && sending.before(); if (no) return toast(no);   // the gradebook open here with changes not saved
       s.disabled = true;
       try {
         let d = await api("/api/scans/send", body({}));
@@ -225,6 +272,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
           if (ok) { const again = await api("/api/scans/send", body({ replace: true })); d = { ...again, sent: d.sent + again.sent }; }
         }
         toast(d.sent ? `Sent ${d.sent} mark${d.sent === 1 ? "" : "s"} to ${S.eval.name}.` : "Nothing new to send: the gradebook has these marks already.");
+        if (sending && d.sent) await sending.after();
         load();
       } catch (e) { s.disabled = false; toast(e.message); }
     };
@@ -232,7 +280,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
 
   // ── Uploading, a file at a time, with how far each has got ──
   async function uploadAll(files) {
-    const up = $("#sc-up");
+    const up = box.querySelector("#sc-up");
     for (const f of files) {
       const row = document.createElement("div");
       row.className = "sc-file sc-going";
@@ -259,7 +307,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   function drawBooklet() {
     ui.fixing = false;
     const bs = (R && R.booklets) || [], i = Math.max(1, Math.min(bs.length, Number(r.b) || 1)), b = bs[i - 1];
-    if (!b) { pathTo("Booklet"); box.innerHTML = `<p class="lx-empty">That booklet isn't there any more. <button type="button" class="lt-link" id="sc-back">See all of them</button></p>`; $("#sc-back").onclick = () => go({ ...r, b: "" }); return; }
+    if (!b) { pathTo("Booklet"); box.innerHTML = `<p class="lx-empty">That booklet isn't there any more. <button type="button" class="lt-link" id="sc-back">See all of them</button></p>`; box.querySelector("#sc-back").onclick = home; return; }
     const st = b.student, can = S.can.mark;
     const name = whoOf(b);
     pathTo(name);
@@ -298,7 +346,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     box.querySelectorAll("[data-go]").forEach(x => { x.onclick = () => go({ ...r, b: x.dataset.go }); });
     const showSure = box.querySelector("[data-sure]"); if (showSure) showSure.onclick = () => { ui.sure = !ui.sure; const y = window.scrollY; drawBooklet(); window.scrollTo(0, y); };
     const save = what => review(b, what).then(ok => { if (ok) { const y = window.scrollY; drawBooklet(); window.scrollTo(0, y); } });
-    const w = $("#sc-who"); if (w) w.onchange = () => save({ student: w.value });
+    const w = box.querySelector("#sc-who"); if (w) w.onchange = () => save({ student: w.value });
     wireCards(drawBooklet);
   }
 
@@ -331,7 +379,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         : "That's every reading checked. Next: the questions marked by hand, booklet by booklet."}</p>`}
     </div>`;
     box.querySelectorAll("[data-fixgo]").forEach(x => { x.onclick = () => { window.scrollTo(0, 0); go({ ...r, b: "", q: x.dataset.fixgo }); }; });
-    box.querySelectorAll("[data-fixdone]").forEach(x => { x.onclick = () => { ui.fixing = false; go({ ...r, b: "", q: "" }); }; });
+    box.querySelectorAll("[data-fixdone]").forEach(x => { x.onclick = () => { ui.fixing = false; S.eval && openEval ? openEval(S.eval.id) : home(); }; });
     const ok = box.querySelector("[data-fixok]");
     if (ok) {
       ok.focus();
@@ -358,7 +406,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   function drawQuestion() {
     if (ui.fixing) return drawFix();
     const L = labels(), k = L.indexOf(r.q), all = answersTo(r.q);
-    if (k < 0) { pathTo("Question"); box.innerHTML = `<p class="lx-empty">That question isn't in the results. <button type="button" class="lt-link" id="sc-back">See all of them</button></p>`; $("#sc-back").onclick = () => go({ ...r, q: "" }); return; }
+    if (k < 0) { pathTo("Question"); box.innerHTML = `<p class="lx-empty">That question isn't in the results. <button type="button" class="lt-link" id="sc-back">See all of them</button></p>`; box.querySelector("#sc-back").onclick = home; return; }
     pathTo(`Question ${r.q}`);
     const open = all.filter(a => isOpen(a.x)), pts = all[0] ? all[0].x.points : 0;
     if (!ui.qShow || (ui.qShow === "open" && !open.length && ui.qWas !== r.q)) ui.qShow = open.length ? "open" : "all";
@@ -641,5 +689,5 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   }
 
   load();
-  return { leave: () => clearTimeout(timer) };
+  return { leave: () => clearTimeout(timer), load };
 }

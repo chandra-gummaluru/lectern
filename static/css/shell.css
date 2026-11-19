@@ -1650,3 +1650,7 @@ button.sc-cm-r:hover { background: var(--home-strip); color: var(--home-ink-2); 
 .sc-hist li b { font-weight: 600; color: var(--home-ink); }
 .sc-hist-w { font-variant-numeric: tabular-nums; color: var(--home-ink-3); }
 @media (max-width: 640px) { .sc-hist li { grid-template-columns: 1fr; gap: 0; } }
+
+/* Scans, in an evaluation's Scripts (Grades): under the script's PDFs, led by a word, not a heading of its own. */
+.sc-embed .sc-lead { margin-top: 18px; }
+.sc-embed .sc-lead b { color: var(--ink, inherit); font-weight: 600; }

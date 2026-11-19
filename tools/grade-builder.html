@@ -906,8 +906,6 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .tf-t b { font-weight: 600; }
 .tf-t small { font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tf-build { width: fit-content; }
-.tf-docs { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
-.tf-docs .btn svg { width: 15px; height: 15px; }
 @media (max-width: 560px) { .ef-row { grid-template-columns: 1fr 36px; } .ef-row input[data-ed="ef-url"] { grid-column: 1; } }
 .acm-tick { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; align-items: center; margin: 0 0 10px; cursor: pointer; font: 14px var(--font-ui); color: var(--ink); }
 .acm-tick input { grid-row: span 2; align-self: start; margin-top: 4px; }
@@ -2766,7 +2764,7 @@ function lockDown() {
   const mode = ACCESS(); if (mode === "all") return;
   document.body.classList.add("gb-limited");
   document.querySelectorAll("#view, .modal, #tb-right").forEach(root => {
-    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind, [data-att-slot] *, [data-dc-slot] *") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
+    root.querySelectorAll("input, select, textarea").forEach(x => { if (x.matches("[type=search], .gfind, [data-att-slot] *, [data-dc-slot] *, [data-scan-slot] *") || (mode === "marks" && x.matches(".mk"))) return; x.disabled = true; });
     root.querySelectorAll("[contenteditable=true]").forEach(x => { if (!x.closest("[data-dc-slot]")) x.setAttribute("contenteditable", "false"); });
     root.querySelectorAll("[data-ed]").forEach(b => { if (!ED_OK.has(b.dataset.ed)) b.disabled = true; });
     root.querySelectorAll("[data-act]").forEach(b => { if (!ACT_OK[mode].has(b.dataset.act)) b.disabled = true; });
@@ -3038,6 +3036,7 @@ function parseCell(v) {   // a number, or a status in words: missing / unsubmitt
 const STATUS_ICON = { missed: "ban", aiv: "shield", excused: "dashcircle", deferred: "clock" };
 const statusIco = st => `<span class="ns-ico st-${st}" title="${STATUSES[st]}">${svg(STATUS_ICON[st])}</span>`;
 stage.addEventListener("input", e => {
+  if (e.target.closest && e.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   const t = e.target;
   if (t.matches(".mk")) {
     const p = parseCell(t.value); t.classList.toggle("bad-input", !p); if (!p) return;
@@ -3058,6 +3057,7 @@ stage.addEventListener("input", e => {
 
 });
 stage.addEventListener("change", e => {
+  if (e.target.closest && e.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   if (e.target.dataset && e.target.dataset.fl === "emailDomain") { e.target.value = emailDomain(); return; }   // shown tidied: mail.utoronto.ca
   const t = e.target;
   if (t.dataset.pol && t.tagName === "SELECT") { const row = t.closest("[data-fail]"), x = model.policies.autofail.find(y => y.id === row.dataset.fail); if (x) change(() => { x[t.dataset.pol] = t.value; }); return; }
@@ -3226,6 +3226,7 @@ function drawEvalEditor() {
     ${HOSTED && window.Lectern.discussionEl && e.discussion !== false ? `<div data-dc-slot="eval:${esc(e.id)}"></div>` : ""}
 `;
   if (HOSTED && window.Lectern.fillDiscussions) window.Lectern.fillDiscussions(m);
+  if (HOSTED && window.Lectern.fillScans) window.Lectern.fillScans(m);
   const att = $("[data-att-slot]", m); if (att) att.appendChild(window.Lectern.attendanceEl(e.id));
   mountSecDates(m, e);
   drawNotices(e);
@@ -3305,21 +3306,17 @@ function filesHTML(e) {
     ${fs.map((f, i) => `<div class="ef-row"><input type="text" data-ed="ef-label" data-i="${i}" value="${esc(f.label || "")}" placeholder="Button text, e.g. Handout" aria-label="Button text" autocomplete="off"><input type="url" data-ed="ef-url" data-i="${i}" value="${esc(f.url || "")}" placeholder="https://…" aria-label="Link" autocomplete="off"><button type="button" class="ic trash" data-ed="ef-del" data-i="${i}" title="Remove it" aria-label="Remove it">${svg("trash")}</button></div>`).join("")}
     <div class="ef-acts">${HOSTED && window.Lectern.uploadPublic ? `<button type="button" class="btn add" data-ed="ef-up">${svg("plus")}Upload a File</button><input type="file" id="ef-file" hidden>` : ""}<button type="button" class="btn add" data-ed="ef-add">${svg("plus")}Add a Link</button></div>`;
 }
-// Scripts, for the teaching team (never students): its test or handout script (made in the Exam Builder; there by
-// itself once it's linked to this evaluation), its PDFs, and a test's Print and Scan.
+// Scripts, for the teaching team (never students), with a test's Scans in it: its test or handout script (made in the Exam Builder; there by
+// itself once it's linked to this evaluation; its PDFs are in the Exam Builder); then a test's Scans (in data-scan-slot).
 function scriptsHTML(e) {
   const d = docLinks.get(e.id), what = d ? (d.layout === "handout" ? "handout" : "exam") : e.type === "test" ? "exam" : "handout";
   const name = what === "exam" ? "Test Script" : "Handout Script";
-  // Its PDFs, each opened in a new tab (one of each per version).
-  const vs = d && num(d.versions) > 1 ? "ABCDEF".slice(0, Math.min(6, num(d.versions))).split("") : [""];
-  const pdfs = d ? vs.flatMap(v => [["student", "Student Copy"], ["key", "Answer Key"], ["guide", "Marking Scheme"]].map(([k, l]) =>
-    `<button type="button" class="btn" data-act="ev-pdf" data-id="${esc(e.id)}" data-doc="${k}" data-v="${v}" title="${esc(l)}${v ? `, version ${v}` : ""}, as a PDF">${svg("doc")}${l}${v ? ` ${v}` : ""}</button>`)).join("") : "";
-  const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}" title="Open it in the Exam Builder">${svg("doc")}<span class="tf-t"><b>${name}</b><small>${esc(d.folder)}</small></span>${svg("chev")}</button>
-      <div class="tf-docs">${pdfs}${what === "exam" ? `<button type="button" class="btn" data-act="ev-scans" data-id="${esc(e.id)}" title="Print the student copy, scan the written booklets and mark them">${svg("print")}Print and Scan</button>` : ""}</div>`
+  const doc = !HOSTED ? "" : d ? `<button type="button" class="tf-row" data-act="ev-build" data-id="${esc(e.id)}" title="Open it in the Exam Builder">${svg("doc")}<span class="tf-t"><b>${name}</b><small>${esc(d.folder)}</small></span>${svg("chev")}</button>`
     : `<button type="button" class="btn add tf-build" data-act="ev-build" data-id="${esc(e.id)}">${svg("plus")}Create ${name}</button>`;
-  return !HOSTED ? "" : `<h3 class="ed-sec">Scripts</h3>
+  return !HOSTED ? "" : `<h3 class="ed-sec">${d && what === "exam" ? "Scripts and Scans" : "Scripts"}</h3>
     <p class="ed-help">Only the teaching team sees these, never students.</p>
-    <div class="tf-list">${doc}</div>`;
+    <div class="tf-list">${doc}</div>
+    ${d && what === "exam" && window.Lectern.fillScans ? `<div class="tf-scans" data-scan-slot="${esc(d.folder)}"></div>` : ""}`;
 }
 // Accommodations. The standard one is the evaluation's own policy for missed work (above): its makeups, and
 // where its weight moves. It can apply only to students who ask (and you approve); students can also ask for
@@ -3442,6 +3439,7 @@ function drawGroupEditor() {
 // Editing in the windows: typing updates as you go; choices redraw the window.
 const redrawEditor = () => { drawEvalEditor(); drawGroupEditor(); drawStudentEditor(); };
 document.addEventListener("input", ev => {
+  if (ev.target.closest && ev.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.type === "checkbox") return;   // ticks are handled on "change"
   if (t.dataset.ed === "nt-text") return;   // a note being written: added with Add note
@@ -3595,6 +3593,7 @@ document.addEventListener("click", ev => {
   redrawEditor();
 });
 document.addEventListener("change", ev => {
+  if (ev.target.closest && ev.target.closest("[data-scan-slot], [data-dc-slot]")) return;   // Lectern's own parts (Scans, a discussion): not the gradebook
   const t = ev.target, m = t.closest && t.closest(".editor"); if (!m) return;
   if (t.dataset.ed === "fg-grade") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box
   if (t.dataset.ed === "acc-mark") return m.classList.contains("on-page") ? render() : drawStudentEditor();   // done typing: tidy the box (a status shows by its name)
@@ -4307,14 +4306,6 @@ function act(b) {
       return evalEditor(c.id);
     }
     case "ev-upload": return uploadMarks(b.dataset.id);
-    case "ev-pdf": {   // one of the linked script's PDFs (student copy, answer key, marking scheme), in a new tab
-      const d = docLinks.get(b.dataset.id); if (!d || !window.Lectern || !window.Lectern.openDoc) return;
-      return window.Lectern.openDoc(d.folder, b.dataset.doc, b.dataset.v);
-    }
-    case "ev-scans": {   // the linked exam's Print and Scan, in Lectern
-      const d = docLinks.get(b.dataset.id); if (!d || !window.Lectern || !window.Lectern.openScansFor) return;
-      return window.Lectern.openScansFor(d.folder);
-    }
     case "ev-build": {   // Lectern opens (or starts) the linked exam or handout
       const e = evalById(b.dataset.id); if (!e || !window.Lectern || !window.Lectern.build) return;
       return window.Lectern.build({ id: e.id, name: e.name, label: e.label, type: e.type, date: e.date, time: e.time });

@@ -615,6 +615,30 @@ function discussionEl(target) {
 }
 function fillDiscussions(root) { if (!root || !S.route.c) return; root.querySelectorAll("[data-dc-slot]").forEach(s => { if (!s.firstChild) s.appendChild(discussionEl(s.dataset.dcSlot)); }); }
 Lectern.discussionEl = discussionEl;
+// A test's Scans (upload, mark, Fix Scans, send marks), on its evaluation's page in Grades, under Scripts: each slot
+// (data-scan-slot="<exam folder>") gets it, kept while you stay on the page (so typing elsewhere doesn't redraw it).
+const SC = new Map();
+// Sending marks from scans writes the gradebook, which may be open in Grades: not over changes in it that aren't
+// saved yet, and opened again after, so it shows them.
+const gradesSending = r => ({ before: () => (unsavedTools().some(u => u.name === "grades") ? "Save the gradebook first: it has changes that aren't saved." : ""),
+  after: async () => { const t = Lectern.tools.grades; if (!t || !t.api || !t.api.open || !t.api.state().path) return;
+    const where = t.api.where ? t.api.where() : null;
+    try { await t.api.open(`${r.c}/${r.t}`, true); if (t.taBase) t.taBase = noMarks(t.api.book()); if (where && t.api.goto) t.api.goto(where); } catch (e) { console.warn("[Lectern] reopen:", e); } } });
+function scansEl(folder) {
+  const r = S.route, key = `${curOwner()}/${r.c}/${r.t}/${folder}`, at = location.hash;
+  let el = SC.get(key);
+  if (el && el._hash === at) { if (Date.now() - el._at > 10000) { el._at = Date.now(); el._view.load(); } return el; }
+  if (el) el._view.leave();
+  el = document.createElement("div"); el._at = Date.now(); el._hash = at;
+  hubCSS();   // its list of booklets is the requests' list (the course page's list styles)
+  el._view = scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [], owner: curOwner(), into: el,
+    openExam: () => go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: folder }),
+    sending: gradesSending(r),
+    unsaved: () => unsavedTools().some(u => u.name === "exams" && u.path === `${r.c}/${r.t}/${folder}/exam.json`) }, { page: "scans", c: r.c, t: r.t, e: folder });
+  SC.set(key, el);
+  return el;
+}
+Lectern.fillScans = root => { if (!root || !S.route.c) return; root.querySelectorAll("[data-scan-slot]").forEach(s => { if (!s.firstChild) s.appendChild(scansEl(s.dataset.scanSlot)); }); };
 Lectern.fillDiscussions = fillDiscussions;
 function renderPage() {
   renderBar();
@@ -645,6 +669,8 @@ function renderPage() {
     const openExam = () => go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: r.e });
     hubCSS();   // its list of booklets is the requests' list (the course page's list styles)
     return scansPage({ $, esc, pageHTML, toast, confirmBox, go, api: Auth.api, renderPath, steps: [HOME_STEP, offeringStep(r.c, r.t)], owner: curOwner(), openExam,
+      openEval: id => go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: id, groupEd: "", student: "", stAcc: "", stFrom: "" } }),
+      sending: gradesSending(r),
       unsaved: () => unsavedTools().some(u => u.name === "exams" && u.path === `${r.c}/${r.t}/${r.e}/exam.json`) }, r);
   }
   if (r.page === "announcements") return announcementsPage({ $, esc, pageHTML, toast, confirmBox, go, Store, area, canEdit, ICON, renderPath, route: () => S.route,
@@ -1650,10 +1676,18 @@ Lectern.openAttendance = id => { const r = S.route; if (!r.c || !r.t) return;
   let n = 0; const find = () => { const s = document.querySelector(`[data-att-slot="${CSS.escape(String(id))}"]`); if (s) { const h = s.previousElementSibling || s; h.scrollIntoView({ block: "start", behavior: "smooth" }); } else if (++n < 40) setTimeout(find, 100); }; setTimeout(find, 150); };
 // The Exam Builder's Print and Scan: the open exam on paper.
 // A script's PDF (doc: student, key or guide; v: its version letter, if it has versions), made on the server, in a new tab.
-Lectern.openDoc = (folder, doc, v) => { const r = S.route, o = curOwner(); if (!r.c || !r.t || !folder) return;
-  window.open(`/api/scans/pdf?${new URLSearchParams({ ...(o ? { owner: o } : {}), offering: `${r.c}/${r.t}`, exam: folder, doc, ...(v ? { v } : {}) })}`, "_blank", "noopener"); };
+// print: a test's student copy, kept as the copy its scans are marked against (only the owner and coordinators keep one).
+Lectern.openDoc = (folder, doc, v, print) => { const r = S.route, o = curOwner(); if (!r.c || !r.t || !folder) return;
+  const keep = print && doc === "student" && canEdit(r.c, r.t);
+  window.open(`/api/scans/pdf?${new URLSearchParams({ ...(o ? { owner: o } : {}), offering: `${r.c}/${r.t}`, exam: folder, doc, ...(v ? { v } : {}), ...(keep ? { print: 1 } : {}) })}`, "_blank", "noopener");
+  if (keep) setTimeout(() => { const el = SC.get(`${o}/${r.c}/${r.t}/${folder}`); if (el && el._view) el._view.load(); }, 4000); };
 Lectern.openScansFor = folder => { const r = S.route; if (r.c && r.t && folder) go({ page: "scans", c: r.c, t: r.t, e: folder }); };   // from an evaluation in Grades
-Lectern.openScans = () => { const r = S.route; if (r.page === "tool" && r.tool === "exams" && r.e) go({ page: "scans", c: r.c, t: r.t, e: r.e }); };
+// The Exam Builder's Print and Scan: a test linked to an evaluation has its Scans on the evaluation's page, in Grades;
+// one that isn't, its own Print and Scan page.
+Lectern.openScans = () => { const r = S.route; if (!(r.page === "tool" && r.tool === "exams" && r.e)) return;
+  const t = Lectern.tools.exams, st = t && t.api ? t.api.state() : {};
+  if (st.link && st.layout !== "handout") return go({ page: "tool", tool: "grades", part: "evals", c: r.c, t: r.t }, { where: { view: "evals", evalEd: st.link, groupEd: "", student: "", stAcc: "", stFrom: "" } });
+  go({ page: "scans", c: r.c, t: r.t, e: r.e }); };
 Lectern.openAccom = () => { const r = S.route; if (r.c && r.t) go({ page: "accom", c: r.c, t: r.t }); };
 // One request's own page (what they asked for, every decision, and deciding it).
 Lectern.openRequest = id => { const r = S.route; if (r.c && r.t) go({ page: "accom", ...(String(id).startsWith("m-") ? { k: "remark" } : {}), c: r.c, t: r.t, q: String(id) }); };

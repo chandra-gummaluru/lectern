@@ -1830,10 +1830,20 @@ function render() {
   const seg = (act, opts, cur) => `<div class="seg" role="group">${opts.map(([v, l]) => `<button type="button" data-act="${act}" data-v="${v}" aria-pressed="${String(v) === String(cur)}">${l}</button>`).join("")}</div>`;
   // The top bar has no view switch or zoom: the gear and Fit float over the page, the marking guide is a tick in the edit bar.
   $("#tb-view").innerHTML = ""; $("#tb-right").innerHTML = "";
-  // In Lectern, a saved exam can be printed (PDFs made on the server) and marked from its scans: Print and Scan.
-  if (window.Lectern && window.Lectern.openScans && gh.path && S.layout !== "handout") {
-    $("#tb-right").innerHTML = `<button type="button" id="tb-scans" title="Its PDFs, and marking it from scans">Print and Scan</button>`;
-    $("#tb-scans").onclick = () => window.Lectern.openScans();
+  // In Lectern, a saved script's PDFs (made on the server, from what's saved): Student Copy, Answer Key, Marking
+  // Scheme, each in a new tab (with versions, it asks which); and a test's Print and Scan (its scans, in Grades).
+  if (window.Lectern && window.Lectern.openDoc && gh.path) {
+    const folder = gh.path.split("/").slice(-2, -1)[0], test = S.layout !== "handout";
+    const docs = [["student", "Student Copy"], ["key", "Answer Key"], ["guide", "Marking Scheme"]];
+    $("#tb-right").innerHTML = docs.map(([k, l]) => `<button type="button" class="tb-doc" data-doc="${k}" title="${l}, as a PDF${N > 1 ? ": which version?" : ""}">${l}</button>`).join("")
+      + (test && window.Lectern.openScans ? `<button type="button" id="tb-scans" title="Its scans: uploading, marking and grading them, with its evaluation">Print and Scan</button>` : "");
+    const open = (doc, v) => { if (unsaved) return toast("Save first: the PDF is made from the saved exam."); window.Lectern.openDoc(folder, doc, v, test); };
+    $$("#tb-right .tb-doc").forEach(b => b.onclick = () => {
+      if (N <= 1) return open(b.dataset.doc, "");
+      popover(b, `<div class="menu-list">${"ABCDEF".slice(0, N).split("").map(v => `<button type="button" data-v="${v}">Version ${v}</button>`).join("")}</div>`,
+        el => el.querySelectorAll("[data-v]").forEach(x => x.onclick = () => { closePops(); open(b.dataset.doc, x.dataset.v); }), "menu");
+    });
+    const sc = $("#tb-scans"); if (sc) sc.onclick = () => window.Lectern.openScans();
   }
   drawFloat();
   const tbh = $(".tb").offsetHeight; if (tbh) document.documentElement.style.setProperty("--tbh", `${tbh}px`);   // the question toolbar sticks just below it

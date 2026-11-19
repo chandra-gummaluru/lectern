@@ -191,9 +191,12 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
     if (into) {          // Assign Graders, on and off (before the scans too); its dropdowns
       if (into && canAssign()) {
         mountGraders();
-        // A dropdown opened in the scrolling list: its list scrolled into view (the list has room under it while open).
-        box.querySelector(".sc-qlist")?.addEventListener("click", e => { const h = e.target.closest("[data-gpk]");
-          if (h) requestAnimationFrame(() => h.querySelector(".pk-pop")?.scrollIntoView({ block: "nearest" })); });
+        // A dropdown in the scrolling list opens upwards when there isn't room for its list under it in the list.
+        box.querySelector(".sc-qlist")?.addEventListener("click", e => { const h = e.target.closest("[data-gpk]"); if (!h) return;
+          const list = h.closest(".dc-threads");
+          requestAnimationFrame(() => { const pop = h.querySelector(".pk-pop"); if (!pop || !list) return;
+            const below = list.getBoundingClientRect().bottom - h.getBoundingClientRect().bottom;
+            h.classList.toggle("up", below < pop.offsetHeight + 8); }); });
       }
     }
     if (into && res) {
@@ -533,12 +536,11 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
   // Who marks each question: a dropdown on each question's row, for the owner and coordinators, once there's someone else to mark.
   const canAssign = () => S.can.print && (S.markers || []).length > 1;
   const gradersNames = l => gradersOf(l).map(id => ((S.markers || []).find(m => m.id === id) || {}).name).filter(Boolean);
-  const ROLE = { owner: "Instructor", coordinator: "Coordinator", ta: "TA" };
   // Assign Graders (the owner and coordinators): each question row gets Lectern's tick-box dropdown of the team.
   function mountGraders() {
     box.querySelectorAll("[data-gpk]").forEach(host => {
       const l = host.dataset.gpk;
-      pickMany(host, { options: (S.markers || []).map(m => ({ value: m.id, label: m.name, kick: ROLE[m.role] || m.role, icon: PERSON })),
+      pickMany(host, { options: (S.markers || []).map(m => ({ value: m.id, label: m.name, icon: PERSON })),
         value: gradersOf(l), empty: "Anyone on the team", noun: "graders", icon: PERSON, label: `Who marks question ${l}`,
         onChange: async v => {
           try { const d = await api("/api/scans/graders", body({ label: l, users: v.map(Number) })); S.graders = d.graders; }

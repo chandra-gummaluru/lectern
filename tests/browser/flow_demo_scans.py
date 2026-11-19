@@ -44,6 +44,9 @@ def main():
         last = me.locator(L + "[data-gpk]").last
         last.scroll_into_view_if_needed(); last.locator("button").first.click(); me.wait_for_timeout(400)
         me.screenshot(path=f"{OUT}/demo-scans-2-pick.png")
+        pop = me.locator(L + "[data-gpk].up .pk-pop").bounding_box(); lst = me.locator(L + ".dc-threads").bounding_box()
+        assert pop and pop["y"] >= lst["y"] - 1 and pop["y"] + pop["height"] <= lst["y"] + lst["height"] + 1, ("the last one opens upwards, inside the list", pop, lst)
+        assert not me.query_selector(L + "[data-gpk] small, " + L + "[data-gpk] .pk1-t small"), "no role (TA, Instructor) above the names"
         b.close()
     assert not errors, errors
     print("flow_demo_scans: OK")

@@ -84,6 +84,21 @@ button.rq-row:hover { border-color: #80848b; box-shadow: 0 4px 14px rgb(0 0 0 / 
 .sd-row.wh .sd-del { grid-row: 1; grid-column: -2 / -1; }
 .sd-row.wh { padding-bottom: 6px; }
 .sd-row.wh + .sd-row.wh { padding-top: 10px; border-top: 1px dashed var(--line); }
+/* Alternate sittings: when, its cap and remove on a row; where under it; then who's in it. */
+.st-box + .st-box { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.sd-row.st-row.nosec { grid-template-columns: minmax(0, 1fr) 110px 36px; }
+.sd-row.st-row.wh .sd-where { grid-column: 1 / -1; grid-row: 2; }
+.st-cap input { width: 100%; }
+.st-roster { margin: 6px 0 2px; }
+.st-roster .ed-help { margin: 0 0 6px; }
+.st-names { margin: 0 0 8px; padding-left: 18px; columns: 2; column-gap: 24px; font-size: 13.5px; }
+.st-names small { color: var(--ink-3, #80848b); }
+.st-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.stp-list { max-height: 320px; overflow: auto; margin: 10px 0 4px; display: grid; gap: 4px; }
+.stp-row { display: flex; justify-content: space-between; gap: 12px; text-align: left; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: none; cursor: pointer; }
+.stp-row:hover { background: var(--hover, rgba(0,0,0,.04)); }
+.stp-row small { color: var(--ink-3, #80848b); font-family: var(--font-mono); }
+#stp-q { width: 100%; }
 .sd-where .plc { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: 8px; }
 .sd-where .plc-q { position: relative; display: block; }
 .sd-where .plc-ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--ink-3); display: grid; }
@@ -2075,6 +2090,12 @@ function normalizeBook(x) {
     // Dates for some sections (e.g. a lab on each section's own day): [{ id, groups: [section ids], date, time }].
     e.dates = (Array.isArray(e.dates) ? e.dates : []).filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), groups: (Array.isArray(o.groups) ? o.groups : []).map(String), date: String(o.date || ""), time: String(o.time || ""), release: String(o.release || ""), releaseTime: String(o.releaseTime || ""), ...(o.where ? { where: String(o.where) } : {}), ...(o.room ? { room: String(o.room) } : {}), ...(o.place && typeof o.place === "object" ? { place: o.place } : {}) }));
     if (!e.dates.length) delete e.dates; });
+  // A test's alternate sittings: another time and place to write it ([{ id, date, time, where, room, place, cap }]).
+  b.evals.forEach(e => { if (!Array.isArray(e.sittings)) { delete e.sittings; return; }
+    e.sittings = e.sittings.filter(o => o && typeof o === "object").map(o => ({ id: String(o.id || uid()), date: String(o.date || ""), time: String(o.time || ""),
+      ...(o.where ? { where: String(o.where) } : {}), ...(o.room ? { room: String(o.room) } : {}), ...(o.place && typeof o.place === "object" ? { place: o.place } : {}),
+      ...(Number.isInteger(o.cap) && o.cap > 0 ? { cap: o.cap } : {}) }));
+    if (!e.sittings.length) delete e.sittings; });
   // Splits are always custom shares now: older "by weight" / "equal" splits become the same shares.
   const keepModel = typeof model === "undefined" ? undefined : model;
   const toShares = p => {
@@ -3208,6 +3229,7 @@ function drawEvalEditor() {
     <p class="ed-help" id="name-help">${nameHelp(e)}</p>
     <h3 class="ed-sec">${(e.dates || []).length ? "Dates" : e.type === "test" ? "Date" : "Due Date"}</h3>
     ${secDatesHTML(e)}
+    ${e.type === "test" ? sittingsHTML(e) : ""}
     ${HOSTED && window.Lectern.attendanceEl && e.type === "test" ? `<h3 class="ed-sec">Attendance</h3><div data-att-slot="${esc(e.id)}"></div>` : ""}
     <h3 class="ed-sec">Grading</h3>
     <div class="ed-grid pw">
@@ -3294,12 +3316,68 @@ function mountSecDates(m, e) {
     const k = h.dataset.sdWhere, o = k === "e" ? e : (e.dates || [])[+k]; if (!o) return;
     L.placeField(h, { ...L.placeOf(o), label: "Where", onChange: v => { pushUndo(); if (v.place) o.place = v.place; else delete o.place; if (v.room) o.room = v.room; else delete o.room; if (v.where) o.where = v.where; else delete o.where; unsaved = true; refreshSoon(); } });
   });
+  if (L && L.placeField) m.querySelectorAll("[data-st-where]").forEach(h => {   // each alternate sitting's Where
+    const o = (e.sittings || [])[+h.dataset.stWhere]; if (!o) return;
+    L.placeField(h, { ...L.placeOf(o), label: "Where", onChange: v => { pushUndo(); if (v.place) o.place = v.place; else delete o.place; if (v.room) o.room = v.room; else delete o.room; if (v.where) o.where = v.where; else delete o.where; unsaved = true; refreshSoon(); } });
+  });
   (e.dates || []).forEach((o, i) => {
     const host = $(`[data-sd-for="${i}"]`, m); if (!host || !L || !L.pickMany) return;
     const taken = new Set((e.dates || []).filter(x => x !== o).flatMap(x => x.groups));
     L.pickMany(host, { options: SECS.filter(x => !taken.has(x.id)).map(x => ({ value: x.id, label: x.name, kick: SEC_KIND[x.kind] || "Section", icon: L.sectionIcon ? L.sectionIcon(x.kind) : "" })),
       value: o.groups, empty: "Pick the sections", allowEmpty: false, label: "For", onChange: v => { pushUndo(); o.groups = v; unsaved = true; refreshSoon(); } });
   });
+}
+// ── Alternate sittings ───────────────────────────────────────────────
+// A test can have another time and place to write it. Students ask for one with Request Accommodation on the
+// course page; once approved (Accommodations) they're in it, and are emailed when and where. You can also put a
+// student in one here. A cap stops requests when it's full. Who's in each comes from the requests (REQS).
+const stWhen = o => ({ type: "test", get date() { return o.date; }, set date(v) { o.date = v; }, get time() { return o.time; }, set time(v) { o.time = v; } });
+const sitReqs = (e, o, status) => (REQS || []).filter(r => r.kind === "sitting" && r.eval === e.id && r.sitting === o.id && r.status === status);
+function sittingsHTML(e) {
+  const S_ = e.sittings || [], wh = !!(window.Lectern && window.Lectern.placeField), lists = HOSTED && !!(window.Lectern && window.Lectern.requests);
+  if (lists && REQS === undefined) loadReqs();
+  const roster = (o, i) => {
+    if (!lists) return "";
+    if (REQS == null) return `<p class="ed-help st-roster">Reading who's in it…</p>`;
+    const P = sitReqs(e, o, "approved").sort((a, b) => `${a.last} ${a.first}`.localeCompare(`${b.last} ${b.first}`)), W = sitReqs(e, o, "pending");
+    return `<div class="st-roster"><p class="ed-help"><b>${P.length}${o.cap ? ` of ${o.cap}` : ""} student${(o.cap || P.length) === 1 ? "" : "s"}</b> in it${W.length ? `; ${W.length} waiting for a decision in <button type="button" class="link" data-ed="open-accom">Accommodations</button>` : ""}.</p>
+      ${P.length ? `<ul class="st-names">${P.map(r => `<li><button type="button" class="link" data-ed="rq-open" data-v="${esc(r.id)}">${esc([r.last, r.first].filter(Boolean).join(", ") || r.student)}</button> <small>${esc(r.student)}</small></li>`).join("")}</ul>` : ""}
+      <div class="st-acts"><button type="button" class="btn add" data-ed="st-assign" data-i="${i}">${svg("plus")}Add a Student</button>${P.length ? `<button type="button" class="btn" data-ed="st-csv" data-i="${i}">${svg("download")}Download the List</button>` : ""}</div></div>`;
+  };
+  return `<h3 class="ed-sec">Alternate Sittings</h3>
+    <p class="ed-help">Another time and place to write it. Students ask for one with Request Accommodation on the course page; once you approve it in Accommodations, they're in it, and they're emailed when and where. A cap stops requests when it's full.</p>
+    ${S_.map((o, i) => `<div class="st-box"><div class="sd-row st-row nosec${wh ? " wh" : ""}">
+        <div class="pf sd-due"><span>Date</span><button type="button" class="when-btn${o.date ? "" : " empty"}" data-ed="st-when" data-i="${i}" aria-haspopup="dialog">${PIC.cal}<span>${esc(whenLabel(stWhen(o)))}</span></button></div>
+        ${wh ? `<div class="pf sd-where"><span>Where</span><div data-st-where="${i}"></div></div>` : ""}
+        <label class="pf st-cap"><span>Cap</span><input type="number" min="1" step="1" data-ed="st-cap" data-i="${i}" value="${esc(o.cap || "")}" placeholder="No limit"></label>
+        <button type="button" class="ic trash sd-del" data-ed="st-del" data-i="${i}" title="Remove this sitting" aria-label="Remove this sitting">${svg("trash")}</button></div>
+      ${roster(o, i)}</div>`).join("")}
+    <div class="sd-adds"><button type="button" class="add-mk" data-ed="st-add">${svg("plus")}Add an Alternate Sitting</button></div>`;
+}
+// Add a Student: pick one from the class list (search by name or number); Lectern keeps it as an approved
+// request and emails them. The sitting must be saved first (the server reads it from the gradebook).
+function pickForSitting(e, o) {
+  if (unsaved) return toast("Save the gradebook first, so Lectern has this sitting.");
+  const inIt = new Set(sitReqs(e, o, "approved").map(r => String(r.student)));
+  const m = modal(`<h2>Add a Student to the Sitting</h2><p class="muted">${esc(whenLabel(stWhen(o)))}${o.where ? ` · ${esc(o.where)}` : ""}</p>
+    <input type="search" id="stp-q" placeholder="Search by name or ${esc(String(model.fields.idLabel || "number").toLowerCase())}" autocomplete="off">
+    <div class="stp-list" id="stp-list"></div><p class="err" id="stp-err"></p>
+    <div class="row"><button type="button" id="stp-close">Cancel</button></div>`);
+  const list = () => { const q = $("#stp-q", m).value.trim().toLowerCase();
+    const S2 = model.students.filter(x => !x.dropped && !inIt.has(String(x.num)) && (!q || `${x.name} ${x.num}`.toLowerCase().includes(q))).slice(0, 50);
+    $("#stp-list", m).innerHTML = S2.map(x => `<button type="button" class="stp-row" data-n="${esc(x.num)}"><b>${esc(x.name || x.num)}</b><small>${esc(x.num)}</small></button>`).join("") || `<p class="muted">No one matches.</p>`; };
+  list(); $("#stp-q", m).oninput = list; $("#stp-close", m).onclick = closeModal;
+  $("#stp-list", m).onclick = async ev => {
+    const b = ev.target.closest("[data-n]"); if (!b) return;
+    const add = async over => {
+      b.disabled = true;
+      try { const r = await window.Lectern.assignSitting(e.id, o.id, b.dataset.n, over); closeModal(); REQS = undefined; drawEvalEditor(); toast(`${b.querySelector("b").textContent} is in the sitting${r.emailed ? ", and has been emailed" : ""}.`); }
+      catch (x) { b.disabled = false;
+        if (x.code === "full" && !over) { const err = $("#stp-err", m); err.innerHTML = `${esc(x.message)} <button type="button" class="link" id="stp-over">Add Anyway</button>`; $("#stp-over", m).onclick = () => add(true); }
+        else $("#stp-err", m).textContent = x.message; }
+    };
+    add(false);
+  };
 }
 // "; LEC0102: Mon, Oct 5 · 23:59": an evaluation's other dates, for its card.
 const secDatesNote = e => (e.dates || []).filter(o => o.groups.length).map(o => `${o.groups.map(secName).filter(Boolean).join(", ") || "Some sections"}: ${o.date ? whenLabel(sdWhen(e, o)) : "no date yet"}`).join("; ");
@@ -3454,6 +3532,10 @@ document.addEventListener("input", ev => {
     const e = evalById(m.dataset.eval), f = e && (e.files || [])[+t.dataset.i]; if (!f) return;
     noteTyping(); f[t.dataset.ed === "ef-label" ? "label" : "url"] = t.value.trim(); unsaved = true; refreshSoon(); return;
   }
+  if (t.dataset.ed === "st-cap") {   // an alternate sitting's cap (blank: no limit)
+    const e = evalById(m.dataset.eval), o = e && (e.sittings || [])[+t.dataset.i]; if (!o) return;
+    noteTyping(); const n = Math.floor(num(t.value)); if (n > 0) o.cap = n; else delete o.cap; unsaved = true; refreshSoon(); return;
+  }
   if (t.dataset.ed === "gacc-weight") { const g = model.groups.find(x => x.id === m.dataset.acc.slice(2)); noteTyping(); setGroupOverride(m.dataset.student, g, { weight: t.value === "" ? null : num(t.value) }); unsaved = true; refreshSoon(); return; }
   if (t.dataset.ed === "share" || t.dataset.ed === "acc-share") {   // a makeup's or a shift's part, typed in % of the course
     const acc = t.dataset.ed === "acc-share", e = evalById(acc ? m.dataset.acc : m.dataset.eval); noteTyping();
@@ -3557,6 +3639,17 @@ document.addEventListener("click", ev => {
   if (a === "sd-rel") { const o = (e.dates || [])[+b.dataset.i]; return o ? openWhen(b, relWhen(o)) : undefined; }
   if (a === "sd-add") { pushUndo(); (e.dates = e.dates || []).push({ id: uid(), groups: [], date: e.date, time: e.time, release: e.release || "", releaseTime: e.releaseTime || "" }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
   if (a === "sd-del") { pushUndo(); e.dates.splice(+b.dataset.i, 1); if (!e.dates.length) delete e.dates; unsaved = true; refreshSoon(); return drawEvalEditor(); }
+  if (a === "st-when") { const o = (e.sittings || [])[+b.dataset.i]; return o ? openWhen(b, stWhen(o)) : undefined; }
+  if (a === "st-add") { pushUndo(); (e.sittings = e.sittings || []).push({ id: uid(), date: e.date || "", time: "" }); unsaved = true; refreshSoon(); return drawEvalEditor(); }
+  if (a === "st-del") { const o = (e.sittings || [])[+b.dataset.i]; if (!o) return;
+    if (sitReqs(e, o, "approved").length) return toast("Students are in this sitting: reject their requests in Accommodations first (they're emailed), then remove it.");
+    pushUndo(); e.sittings.splice(+b.dataset.i, 1); if (!e.sittings.length) delete e.sittings; unsaved = true; refreshSoon(); return drawEvalEditor(); }
+  if (a === "st-assign") { const o = (e.sittings || [])[+b.dataset.i]; return o && window.Lectern && window.Lectern.assignSitting ? pickForSitting(e, o) : undefined; }
+  if (a === "st-csv") { const o = (e.sittings || [])[+b.dataset.i]; if (!o) return;
+    const emailOf = n => { const st = model.students.find(x => String(x.num) === String(n)); const f = st && st.f || {}; return f.email || ""; };
+    const rows = sitReqs(e, o, "approved").sort((x, y) => `${x.last} ${x.first}`.localeCompare(`${y.last} ${y.first}`)).map(r => [r.last, r.first, r.student, r.email || emailOf(r.student)]);
+    const slug = `${(model.course.code || "course").toLowerCase()}-${shortName(e).toLowerCase().replace(/[^a-z0-9]+/g, "-")}-alternate-sitting${(e.sittings || []).length > 1 ? `-${+b.dataset.i + 1}` : ""}`;
+    return download(`${slug}.csv`, toCSV([["Last name", "First name", model.fields.idLabel || "Student number", "Email"], ...rows, [], [`${whenLabel(stWhen(o))}${o.where ? ` · ${o.where}` : ""}`]]), "text/csv"); }
   if (a === "acm-when") return openWhen(b, acmWhen(e));
   if (a === "rmk-from") return openWhen(b, rmkWhen(e, "from"));
   if (a === "rmk-by") return openWhen(b, rmkWhen(e, "by"));
@@ -4054,7 +4147,7 @@ let REQS;   // undefined: not read yet; null: not for this viewer (or not in Lec
 function loadReqs() {
   if (!(window.Lectern && window.Lectern.requests)) { REQS = null; return; }
   REQS = null;
-  window.Lectern.requests().then(L => { REQS = L; if (L && L.length) drawStudentEditor(); }).catch(() => { REQS = null; });
+  window.Lectern.requests().then(L => { REQS = L; if (L) { drawStudentEditor(); drawEvalEditor(); } }).catch(() => { REQS = null; });
 }
 const REQ_ICON = {
   approved: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="m7.8 12.3 2.8 2.8 5.6-6"/></svg>',
@@ -4071,8 +4164,8 @@ function reqsHTML(s, e) {
   const clip = t => String(t || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`]+/g, "").replace(/\s+/g, " ").trim();
   return `<h3 class="ed-sec rq-sec">Their Requests</h3>
     <div class="rq-list">${L.map(r => `<${can ? `button type="button" data-ed="rq-open" data-v="${esc(r.id)}"` : "div"} class="rq rq-row st-${esc(r.status)}"><span class="rq-ic" title="${esc(REQ_STATUS[r.status] || r.status)}">${REQ_ICON[r.status] || REQ_ICON.pending}</span>
-      <span class="rq-b hd-main"><span class="hd"><span class="rq-k">${r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</span>
-        <span class="rq-t">${esc(clip(r.kind === "standard" ? r.standard : r.details))}</span></span></span>
+      <span class="rq-b hd-main"><span class="hd"><span class="rq-k">${r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard accommodation" : r.kind === "sitting" ? "Alternate sitting" : "Alternate accommodation"} · ${esc(stampOf(r.submitted))}</span>
+        <span class="rq-t">${esc(clip(r.kind === "standard" ? r.standard : r.kind === "sitting" ? r.sittingText : r.details))}</span></span></span>
       <span class="rq-st v-${esc(r.status)}">${esc(REQ_STATUS[r.status] || r.status)}</span>${can ? svg("chev") : ""}</${can ? "button" : "div"}>`).join("")}</div>`;
 }
 let reqsOf = "";   // whose page the requests were read for (read again on another student's: they may have changed)

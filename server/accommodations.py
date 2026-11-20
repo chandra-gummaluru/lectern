@@ -12,6 +12,11 @@ Students ask from the course page, signed in (students.py), through the routes u
 /api/accommodations/verify and /submit, is gone: it trusted anyone who knew a student's
 email, number and name.)
 
+A test can also have alternate sittings (grades.json: evals[].sittings, [{id, date, time, where, room, cap}]):
+another time and place to write it. A student asks for one (a request of kind "sitting", with the sitting's id);
+approved, they're in it. An instructor can also put a student in one (POST /api/accommodations/assign). A sitting
+with a cap takes no more requests once it's full, and approving past it needs saying so ("over").
+
 Requests are kept in the instructor's private files beside the gradebook, <course>/<term>/accommodations.json
 (store.py): the server reads the gradebook and records the request itself.
 Lectern's Accommodations page reads that file, and the instructor's decision goes through
@@ -141,12 +146,41 @@ def deadline_of(a):
 clock = time.time   # tests replace this
 
 
+def sitting_text(x):
+    """"Wednesday, February 24, 2027, 20:00 · BA 1170": a sitting's when and where."""
+    where = ", ".join(v for v in (x.get("where") or "", x.get("room") or "" if (x.get("room") or "") not in (x.get("where") or "") else "") if v)
+    return " · ".join(v for v in (when_text(x.get("date") or "", x.get("time") or ""), where) if v)
+
+
+def sittings_of(ev):
+    """A test's alternate sittings, cleaned up: [{id, date, time, where, room, cap, text}] (cap: None for no limit)."""
+    out = []
+    if (ev or {}).get("type") != "test":
+        return out
+    for x in (ev or {}).get("sittings") or []:
+        if not isinstance(x, dict) or not _SLUG.match(str(x.get("id") or "")) or not re.match(r"^\d{4}-\d{2}-\d{2}$", str(x.get("date") or "")):
+            continue
+        cap = x.get("cap")
+        y = {"id": str(x["id"]), "date": str(x["date"]), "time": str(x.get("time") or "")[:5] if re.match(r"^\d{1,2}:\d{2}$", str(x.get("time") or "")) else "",
+             "where": str(x.get("where") or "")[:300], "room": str(x.get("room") or "")[:100],
+             "cap": cap if isinstance(cap, int) and not isinstance(cap, bool) and cap > 0 else None}
+        y["text"] = sitting_text(y)
+        out.append(y)
+    return out
+
+
+def in_sitting(requests, e, sitting, but=""):
+    """How many students are in a sitting: its approved requests (one per student)."""
+    return len({str(r.get("student")) for r in requests if isinstance(r, dict) and r.get("kind") == "sitting" and r.get("eval") == e
+                and r.get("sitting") == sitting and r.get("status") == "approved" and r.get("id") != but})
+
+
 def accom_of(ev):
     """An evaluation's accommodation options, cleaned up."""
     a = (ev or {}).get("accom") or {}
     standard = str(a.get("standard") or "").strip()
     out = {"standard": standard, "approval": bool(a.get("approval")) and bool(standard), "alternate": bool(a.get("alternate")),
-           "by": "", "byTime": "", "closed": False, "marksOut": (ev or {}).get("released") is True}
+           "by": "", "byTime": "", "closed": False, "marksOut": (ev or {}).get("released") is True, "sittings": sittings_of(ev)}
     end = deadline_of(a)
     if end is not None:
         out.update(by=a["by"], byTime=str(a.get("byTime") or "") or "23:59", closed=clock() > end)
@@ -166,7 +200,7 @@ def when_text(date, at):
 def _evaluation(book, e, open_only=False):
     ev = next((x for x in book.get("evals") or [] if x.get("id") == e), None)
     a = accom_of(ev)
-    if not ev or not (a["approval"] or a["alternate"]):
+    if not ev or not (a["approval"] or a["alternate"] or a["sittings"]):
         raise Refusal(404, "This evaluation isn't taking accommodation requests.")
     if open_only and a["marksOut"]:
         raise Refusal(410, f"Requests for {ev.get('name') or 'this evaluation'} closed when its marks came out.", "closed")
@@ -241,6 +275,7 @@ def _public_info(book, ev, a):
         "idLabel": _id_label(book),
         "standard": {"text": a["standard"], "approval": a["approval"]} if a["standard"] else None,
         "alternate": a["alternate"],
+        "sittings": [{k: x[k] for k in ("id", "date", "time", "where", "room", "text", "cap")} for x in a["sittings"]],
         "deadline": {"date": a["by"], "time": a["byTime"], "text": when_text(a["by"], a["byTime"]), "passed": a["closed"], **({"marks": True} if a["marksOut"] else {})} if a["by"] or a["marksOut"] else None,
     }
 
@@ -294,6 +329,9 @@ def _what(r):
         return f"a remark:\n\n{_quote(r.get('details') or '')}"
     if r["kind"] == "standard":
         return f"the standard accommodation: {r.get('standard') or ''}"
+    if r["kind"] == "sitting":
+        why = f"\n\n{_quote(r.get('details'))}" if r.get("details") else ""
+        return f"the alternate sitting: {r.get('sittingText') or ''}{why}"
     return f"an alternate accommodation:\n\n{_quote(r.get('details') or '')}"
 
 
@@ -347,6 +385,20 @@ You asked for {_what(r)}
         if r.get("note"):
             body += f"\nA note from your instructor:\n\n{_quote(r['note'])}\n"
         return f"{code}: remark request for {r['evalName']} {'approved' if ok else 'rejected'}", body + see + f"\n—\nReference: {r['id']}\n"
+    if r.get("kind") == "sitting":   # an alternate sitting: when and where they write it (or that they don't)
+        lead = (f"You're writing {r['evalName']} in {r.get('course') or 'your course'} at its alternate sitting:\n\n    {r.get('sittingText') or ''}\n"
+                if ok and r.get("addedBy") and r.get("status") == "approved" and not r.get("history") else
+                f"Your request for the alternate sitting of {r['evalName']} in {r.get('course') or 'your course'} has been {'approved' if ok else 'rejected'}.\n\n"
+                + (f"You're writing it at:\n\n    {r.get('sittingText') or ''}\n" if ok else f"You asked for {_what(r)}\n"))
+        body = f"""{mailer.hi(r.get('first'))}
+
+{lead}"""
+        if r.get("note"):
+            body += f"\nA note from your instructor:\n\n{_quote(r['note'])}\n"
+        if not ok:
+            body += "\nYou write it at its own time, unless you make a new request and it's approved.\n"
+        body += see + f"\n—\nReference: {r['id']}\n"
+        return f"{code}: alternate sitting for {r['evalName']} {'confirmed' if ok else 'not approved'}", body
     body = f"""{mailer.hi(r.get('first'))}
 
 Your request for an accommodation for {r['evalName']} in {r.get('course') or 'your course'} has been {"approved" if ok else "rejected"}.
@@ -373,9 +425,17 @@ def clean_details(text):
     return re.sub(r"\n{3,}", "\n\n", t).strip()
 
 
-def _check(a, kind, details):
+def _check(a, kind, details, sitting=""):
     """What's asked for, checked: the cleaned details (or a Refusal)."""
     details = clean_details(details)
+    if kind == "sitting":
+        if not a["sittings"]:
+            raise Refusal(400, "This test has no alternate sitting.")
+        if not any(x["id"] == sitting for x in a["sittings"]):
+            raise Refusal(400, "Choose which sitting you're asking for.")
+        if len(details) > MAX_DETAILS:
+            raise Refusal(400, f"That's too long: keep it under {MAX_DETAILS} characters.")
+        return details
     if kind == "standard" and not a["approval"]:
         raise Refusal(400, "The standard accommodation can't be requested for this evaluation.")
     if kind == "alternate" and not a["alternate"]:
@@ -389,9 +449,10 @@ def _check(a, kind, details):
     return details
 
 
-def _record(uid, o, book, e, ev, a, s, email, kind, details):
+def _record(uid, o, book, e, ev, a, s, email, kind, details, sitting=""):
     """Check and keep one request, and email the student a receipt: (the request, whether it was emailed)."""
-    details = _check(a, kind, details)
+    details = _check(a, kind, details, sitting)
+    sit = next((x for x in a["sittings"] if x["id"] == sitting), None) if kind == "sitting" else None
     code, term = _course(book)
     rec = {
         "id": "r-" + secrets.token_hex(4), "eval": e, "evalName": ev.get("name") or e, "kind": kind,
@@ -399,6 +460,7 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
         "student": s.get("num"), "first": s.get("first") or "", "last": s.get("last") or "", "email": email,
         "course": code, "term": term,
         "status": "pending", "submitted": _now(), "decided": "", "decidedBy": "", "note": "",
+        **({"sitting": sit["id"], "sittingText": sit["text"]} if sit else {}),
     }
 
     def add(f):
@@ -407,6 +469,13 @@ def _record(uid, o, book, e, ev, a, s, email, kind, details):
             raise Refusal(429, "You've made a lot of requests for this evaluation. Please contact your instructor.", "too-many")
         if kind == "alternate" and any(x.get("kind") == "alternate" and x.get("status") == "pending" for x in mine):
             raise Refusal(409, "You've already asked for an alternate accommodation for this evaluation, and it's waiting for your instructor.", "duplicate")
+        if kind == "sitting":
+            dup = next((x for x in mine if x.get("kind") == "sitting" and x.get("status") in ("pending", "approved")), None)
+            if dup:
+                raise Refusal(409, "You've already asked for an alternate sitting for this test"
+                              + (": you're in it." if dup["status"] == "approved" else ", and it's waiting for your instructor."), "duplicate")
+            if sit["cap"] and in_sitting(f["requests"], e, sit["id"]) >= sit["cap"]:
+                raise Refusal(409, "That sitting is full. Contact your instructor if you can't write the test at its own time.", "full")
         if kind == "standard":
             dup = next((x for x in f["requests"] if x.get("student") == rec["student"] and x.get("eval") == e and x.get("type") != "remark"
                         and x.get("kind") == "standard" and x.get("status") in ("pending", "approved")), None)
@@ -456,6 +525,10 @@ def hub_evaluation(handle, course, term):
         mine = [x for x in _parse(text_)["requests"] if str(x.get("email") or "").strip().lower() == me and x.get("eval") == e and x.get("type") != "remark"]
         info["waiting"] = sorted({x.get("kind") for x in mine if x.get("status") == "pending"})
         info["approvedStandard"] = any(x.get("kind") == "standard" and x.get("status") == "approved" for x in mine)
+        every = _parse(text_)["requests"]
+        for x in info["sittings"]:
+            x["full"] = bool(x["cap"]) and in_sitting(every, e, x["id"]) >= x["cap"]
+        info["mySitting"] = next((x.get("sitting") for x in mine if x.get("kind") == "sitting" and x.get("status") == "approved"), "")
         return jsonify(info)
     except Refusal as x:
         return _err(x)
@@ -479,8 +552,9 @@ def hub_submit(handle, course, term):
             if x.code == "not-found":
                 raise Refusal(400, f"Those don't match what your instructor has for you. Check your {_id_label(book).lower()} and your name, spelled exactly as on record.", "mismatch")
             raise
-        _check(a, d.get("kind"), d.get("details"))
-        rec, emailed = _record(uid, o, book, e, ev, a, s, on_file, d.get("kind"), d.get("details"))
+        sitting = str(d.get("sitting") or "")[:64]
+        _check(a, d.get("kind"), d.get("details"), sitting)
+        rec, emailed = _record(uid, o, book, e, ev, a, s, on_file, d.get("kind"), d.get("details"), sitting)
         return jsonify(ok=True, id=rec["id"], email=on_file, emailed=emailed), 201
     except Refusal as x:
         return _err(x)
@@ -511,7 +585,7 @@ MAX_REPLIES = 100
 
 def _for_student(r):
     """A request as its student sees it: what they asked, every decision (the earlier ones too) and their replies."""
-    keep = ("id", "type", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note")
+    keep = ("id", "type", "eval", "evalName", "kind", "standard", "details", "status", "submitted", "decided", "decidedBy", "note", "sitting", "sittingText")
     out = {k: r.get(k, "") for k in keep}
     out["history"] = [{k: h.get(k, "") for k in ("status", "decided", "decidedBy", "note")} for h in (r.get("history") or []) if isinstance(h, dict)]
     out["replies"] = [{k: x.get(k, "") for k in ("at", "name", "text")} for x in (r.get("replies") or []) if isinstance(x, dict)]
@@ -729,6 +803,12 @@ def decide():
         if decision not in ("approved", "rejected"):
             raise Refusal(400, "Approve or reject.")
         who = g.user["name"] or g.user["email"]
+        over = d.get("over") is True
+        caps = {}
+        try:   # each sitting's cap (the gradebook's), for approving a sitting request
+            caps = {(x.get("id"), s2["id"]): s2["cap"] for x in _book(owner, o).get("evals") or [] if isinstance(x, dict) for s2 in sittings_of(x)}
+        except Refusal:
+            pass
 
         def apply(f):
             r = next((x for x in f["requests"] if x.get("id") == rid), None)
@@ -736,6 +816,11 @@ def decide():
                 raise Refusal(404, "That request isn't there any more.")
             if ta_only and r.get("type") != "remark":   # a TA: only remark requests (accommodations can hold medical details)
                 raise Refusal(403, "As a TA you decide remark requests, not accommodation requests.")
+            cap = caps.get((r.get("eval"), r.get("sitting"))) if r.get("kind") == "sitting" else None
+            if decision == "approved" and r.get("status") != "approved" and cap and not over:
+                n = in_sitting(f["requests"], r.get("eval"), r.get("sitting"), r.get("id"))
+                if n >= cap:
+                    raise Refusal(409, f"That sitting is full: {n} of {cap} students are in it. Approve anyway?", "full")
             if r.get("status") in ("approved", "rejected"):   # a changed decision: the earlier one stays, as history
                 r["history"] = (r.get("history") if isinstance(r.get("history"), list) else [])[-49:] + [
                     {"status": r["status"], "decided": r.get("decided", ""), "decidedBy": r.get("decidedBy", ""), "note": r.get("note", "")}]
@@ -757,5 +842,77 @@ def decide():
         from .classmail import student_mail
         emailed = bool(r.get("email")) and student_mail(owner, o, r["email"], subject, body, "remarkDecisions" if r.get("type") == "remark" else "accomDecisions", reply_to=g.user["email"])
         return jsonify(ok=True, request=r, emailed=emailed)
+    except Refusal as x:
+        return _err(x)
+
+
+def _request_link(owner, o, rid):
+    """A request on the course page (#myrequest/<id>), for an email's button ("" if there's no address)."""
+    try:
+        from .students import hub_url
+        from .core import link_base
+        h = db.one("SELECT handle FROM users WHERE id = ?", (owner,))
+        base = link_base()
+        return f"{hub_url(h, o, base)}#myrequest/{rid}" if base and h and h["handle"] else ""
+    except Exception:
+        return ""
+
+
+@accom_bp.post("/api/accommodations/assign")
+@signed_in
+def assign():
+    """Put a student in a test's alternate sitting yourself: kept as an approved sitting request (so it's
+    with the others, and can be rejected later to take them out), and emailed to them.
+       { owner?, offering, e, sitting, student, note?, over? }"""
+    try:
+        d = _body()
+        o = _offering(d.get("offering"))
+        owner = g.user["id"]
+        if d.get("owner"):
+            from .teams import role_of
+            owner = _owner(d.get("owner"))
+            role = role_of(g.user["id"], owner, o)
+            if role not in ("owner", "coordinator", "staff"):
+                raise Refusal(404 if not role else 403, "Only the offering's instructors can put students in a sitting.")
+        e, num = _eval_id(d.get("e")), str(d.get("student") or "").strip()
+        with _books_lock:
+            _books.pop((owner, o), None)   # the gradebook as just saved
+        book = _book(owner, o)
+        ev = next((x for x in book.get("evals") or [] if isinstance(x, dict) and x.get("id") == e), None)
+        sit = next((x for x in sittings_of(ev) if x["id"] == str(d.get("sitting") or "")), None)
+        if not ev or not sit:
+            raise Refusal(404, "That sitting isn't in the gradebook. Save the gradebook, then try again.")
+        s = next((x for x in book.get("students") or [] if isinstance(x, dict) and str(x.get("num")) == num and not x.get("dropped")), None)
+        if not s:
+            raise Refusal(404, "That student isn't in the class list.")
+        email = next((v for v in (str(((s.get("f") or {}).get(fid)) or "").strip() for fid in _email_fields(book)) if v), "")
+        code, term = _course(book)
+        who = g.user["name"] or g.user["email"]
+        rec = {
+            "id": "r-" + secrets.token_hex(4), "eval": e, "evalName": ev.get("name") or e, "kind": "sitting", "standard": "", "details": "",
+            "student": s.get("num"), "first": s.get("first") or "", "last": s.get("last") or "", "email": email,
+            "course": code, "term": term, "status": "approved", "submitted": _now(), "decided": _now(), "decidedBy": who,
+            "note": clean_details(d.get("note"))[:MAX_DETAILS], "sitting": sit["id"], "sittingText": sit["text"], "addedBy": who,
+        }
+        name = " ".join(x for x in (s.get("first"), s.get("last")) if x) or num
+
+        def add(f):
+            mine = [x for x in f["requests"] if isinstance(x, dict) and x.get("kind") == "sitting" and x.get("eval") == e and str(x.get("student")) == num]
+            if any(x.get("status") == "approved" for x in mine):
+                raise Refusal(409, f"{name} is already in an alternate sitting for this test.", "duplicate")
+            if any(x.get("status") == "pending" for x in mine):
+                raise Refusal(409, f"{name} has asked for one already: decide their request on the Accommodations page.", "pending")
+            n = in_sitting(f["requests"], e, sit["id"])
+            if sit["cap"] and n >= sit["cap"] and d.get("over") is not True:
+                raise Refusal(409, f"That sitting is full: {n} of {sit['cap']} students are in it. Add {name} anyway?", "full")
+            f["requests"].append(rec)
+            f["format"] = FORMAT
+            return rec
+
+        _update(owner, o, add, f"Put {num} in an alternate sitting of {rec['evalName']}", g.user["email"])
+        subject, body = decision_email(rec, _request_link(owner, o, rec["id"]))
+        from .classmail import student_mail
+        emailed = bool(email) and student_mail(owner, o, email, subject, body, "accomDecisions", reply_to=g.user["email"])
+        return jsonify(ok=True, request=rec, emailed=emailed)
     except Refusal as x:
         return _err(x)

@@ -205,8 +205,9 @@ function activityCard(c) {
   return `<article class="hs-card hs-act hd-row${c.id ? " wk-go" : ""}"${c.id ? ` data-go="#activity/${encodeURIComponent(c.id)}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || soonOf(c)}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
+const asksAny = e => { const a = e.accom || {}; return !!(a.approval || a.alternate || (e.sittings || []).length); };
 function requestHTML(e) {
-  const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  const a = e.accom || {}; if (!asksAny(e)) return "";
   const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
   if (by && !isNaN(by) && by < new Date()) return `<p class="hs-note">The deadline for accommodation requests has passed.</p>`;
     const when = by && !isNaN(by) ? `<span class="hs-by">Request by ${esc(day(a.by))}, ${esc(a.byTime || "23:59")}</span>` : "";
@@ -252,12 +253,13 @@ const ReqForm = (() => {
     // One request of a kind at a time: one waiting for a decision (or the standard one, approved) can't be asked for again.
     const stdNo = W.includes("standard") ? "You've asked for it: it's waiting for a decision." : info.approvedStandard ? "You've asked for it, and it's been approved." : "";
     const altNo = W.includes("alternate") ? "You've asked for one: it's waiting for a decision." : "";
-    const canStd = !!(s && s.approval) && !stdNo, alt = !!info.alternate && !altNo;
+    const SIT = info.sittings || [], sitNo = info.mySitting ? "You're in it already." : W.includes("sitting") ? "You've asked for it: it's waiting for a decision." : SIT.length && SIT.every(x => x.full) ? "It's full. Contact your instructor if you can't write it at its own time." : "";
+    const canStd = !!(s && s.approval) && !stdNo, alt = !!info.alternate && !altNo, sit = SIT.length > 0 && !sitNo;
     const byEl = document.getElementById("rq-by");   // the deadline, under the title
     if (byEl) { byEl.hidden = !dl || !dl.date; byEl.innerHTML = dl && dl.date ? `Requests close ${esc(dl.text)}, or when the marks are out if that's sooner` : ""; }
     if (dl && dl.passed) { box().innerHTML = `<div class="hs-card rq-card"><p>${dl.marks ? `Requests for ${esc(ev.name)} closed when its marks came out.` : `The deadline to request an accommodation for ${esc(ev.name)} has passed (${esc(dl.text)}).`} If you still need one, contact your instructor.</p></div>`; return; }
-    if (!canStd && !alt && (stdNo || altNo)) { box().innerHTML = sentHTML("You've Asked Already", `Your request for ${esc(ev.name)} is waiting for a decision. You'll get an email when it's decided.`, ""); return; }
-    const kind = k.kind || (canStd && !alt ? "standard" : !canStd && alt ? "alternate" : "");
+    if (!canStd && !alt && !sit && (stdNo || altNo || sitNo)) { box().innerHTML = sentHTML("You've Asked Already", `Your request for ${esc(ev.name)} is waiting for a decision. You'll get an email when it's decided.`, ""); return; }
+    const kind = k.kind || ([canStd, alt, sit].filter(Boolean).length === 1 ? (canStd ? "standard" : alt ? "alternate" : "sitting") : "");
     // Each choice as Lectern's ticks are: the radio, its name, and a line under it.
     const opt = (v, t, sub, on, off) => `<label class="rq-choice${off ? " off" : ""}"><input type="radio" name="kind" class="rq-opt" data-kind="${v}" value="${v}"${on && !off ? " checked" : ""}${off ? " disabled" : ""}><b>${esc(t)}</b><span>${esc(sub)}</span></label>`;
     const staff = D.viewer.role !== "student";
@@ -275,6 +277,11 @@ const ReqForm = (() => {
       <div class="rq-opts" role="radiogroup" aria-label="What you need">
         ${opt("standard", "The Standard Accommodation", canStd ? s.text : stdNo || (s ? `It applies without a request: ${s.text}` : "Not available for this evaluation."), kind === "standard", !canStd)}
         ${opt("alternate", "An Alternate Accommodation", alt ? "Something other than the standard accommodation: say what you need." : altNo || "Not available for this evaluation.", kind === "alternate", !alt)}
+        ${SIT.length ? opt("sitting", SIT.length > 1 ? "An Alternate Sitting" : "The Alternate Sitting", sit ? (SIT.length > 1 ? "Write it at another time and place: choose which below." : `Write it ${SIT[0].text}.`) : sitNo, kind === "sitting", !sit) : ""}
+      </div>
+      <div class="rq-more" id="rq-sit"${kind === "sitting" ? "" : " hidden"}>
+        ${SIT.length > 1 ? `<div class="rq-opts" role="radiogroup" aria-label="Which sitting">${SIT.map(x => `<label class="rq-choice${x.full ? " off" : ""}"><input type="radio" name="sitting" value="${esc(x.id)}"${k.sitting === x.id && !x.full ? " checked" : ""}${x.full ? " disabled" : ""}><b>${esc(x.text)}</b><span>${x.full ? "Full" : x.cap ? `Room for ${x.cap}` : ""}</span></label>`).join("")}</div>` : ""}
+        <label class="rq-f">Why (optional)<textarea class="rq-ta" name="why" maxlength="4000" rows="3" placeholder="e.g. Another test at the same time">${esc(k.why || "")}</textarea></label>
       </div>
       <div class="rq-more" id="rq-more"${kind === "alternate" ? "" : " hidden"}><div id="rq-rt"></div>
         <small class="rq-help">To share a document (a doctor's note, say), add a link to it. Files and pictures can't be attached.</small></div>
@@ -287,6 +294,7 @@ const ReqForm = (() => {
     f.querySelectorAll(".rq-opt").forEach(b => { b.onchange = () => {
       chosen = b.dataset.kind;
       $("rq-more").hidden = chosen !== "alternate";
+      $("rq-sit").hidden = chosen !== "sitting";
       if (chosen === "alternate" && rt) rt.el.focus();
     }; });
     import("/static/js/richtext.js").then(m => {
@@ -295,12 +303,15 @@ const ReqForm = (() => {
     if (!err) f.id.focus();
     f.onsubmit = ev2 => {
       ev2.preventDefault();
-      const d = { e: ev.id, id: f.id.value.trim(), first: capital(f.first.value.trim()), last: capital(f.last.value.trim()), kind: chosen, details: chosen === "alternate" && rt ? rt.get().trim() : "" };
-      keep = { ...d };
+      const one = SIT.length === 1 ? SIT[0].id : "", picked = f.querySelector('input[name="sitting"]:checked');
+      const d = { e: ev.id, id: f.id.value.trim(), first: capital(f.first.value.trim()), last: capital(f.last.value.trim()), kind: chosen,
+        details: chosen === "alternate" && rt ? rt.get().trim() : chosen === "sitting" ? f.why.value.trim() : "", ...(chosen === "sitting" ? { sitting: one || (picked ? picked.value : "") } : {}) };
+      keep = { ...d, why: chosen === "sitting" ? d.details : k.why };
       const say = t => { $("rq-err").textContent = t; };
       if (!d.id || !d.first || !d.last) return say(`Fill in your ${info.idLabel.toLowerCase()}, first name and last name.`);
       if (!d.kind) return say("Choose what you're asking for.");
       if (d.kind === "alternate" && !d.details) { say("Say what you need."); if (rt) rt.el.focus(); return; }
+      if (d.kind === "sitting" && !d.sitting) return say("Choose which sitting.");
       const b = f.querySelector("button[type=submit]"); b.disabled = true; b.textContent = "Sending…";
       api("POST", d).then(done, e => form(e.message));
     };
@@ -396,6 +407,7 @@ function evalCard(u, group, E) {
   const rows = [{ who: (u.dates || []).length ? "All other sections" : me ? "" : "Everyone", date: u.date, time: u.time, release: u.release, releaseTime: u.releaseTime, where: u.where, map: u.map, address: u.address },
     ...(u.dates || []).map(d => ({ who: (d.names || []).join(", ") || "Some sections", ...d }))];
   if ((u.dates || []).length) rows.push(rows.shift());   // the sections' own first, then everyone else's
+  (u.sittings || []).forEach(x => rows.push({ who: "Alternate sitting", ...x }));   // a test's other times and places, by request
   // Its facts, together in one area (no boxes): when (each section's, if they differ), what it's worth, its points.
   const tile = (k, v, sub = "", cls = "") => `<div class="ec-fact${cls}"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`;
   // Its dates, a row each: whose (a section's icon and name, or everyone), then when (released, and due or its date).
@@ -436,8 +448,11 @@ function evalCard(u, group, E) {
   // Accommodations: one row, as the dates are: what can be asked for and until when, and the button to ask.
   const HAND = HEART;
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
+  const sits = u.sittings || [];
+  const asks2 = [asks, sits.length ? `If you can't write it at its own time, you can ask for ${sits.length > 1 ? "an alternate sitting" : "the alternate sitting"} (above).` : ""].filter(Boolean).join(" ");
+  if (me && sits.length) setTimeout(() => mySitting(u), 0);
   const accShut = accomShut(u);   // closed: why (the button says only that they are)
-  const acc = (a.standard && a.approval) || a.alternate ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks)}</span>${accShut ? `<small>${esc(accShut)}</small>` : by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
+  const acc = (a.standard && a.approval) || a.alternate || sits.length ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks2)}</span>${sits.length ? `<small class="ec-mysit" hidden></small>` : ""}${accShut ? `<small>${esc(accShut)}</small>` : by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";
   const req = requestBtn(u);
   // Remarks: once their mark is out, a student can ask for it to be looked at again (while requests are open).
   const rk = u.remark, rkBy = rk && rk.by ? new Date(`${rk.by}T${rk.byTime || "23:59"}`) : null, rkFrom = rk && rk.from ? new Date(`${rk.from}T${rk.fromTime || "00:00"}`) : null;
@@ -461,17 +476,25 @@ function evalCard(u, group, E) {
       ${dcHere(`eval:${u.id}`)}
     </article>`;
 }
+// A signed-in student's alternate sitting, once they're in one: under Accommodations on the test's page.
+function mySitting(u) {
+  fetch(`${root.dataset.api}/accommodation?e=${encodeURIComponent(u.id)}`, { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => {
+    const el = document.querySelector(".ec-mysit"); if (!el || !d || !d.mySitting) return;
+    const x = (d.sittings || []).find(y => y.id === d.mySitting); if (!x) return;
+    el.hidden = false; el.innerHTML = `<b>You're writing it at the alternate sitting:</b> ${esc(x.text)}`;
+  }).catch(() => {});
+}
 // Request Accommodation, at the top of an evaluation's card: when students can ask (until its deadline).
 // Why accommodation requests for an evaluation are closed ("" while they're open): its marks are out, or its deadline has passed.
 function accomShut(e) {
-  const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  const a = e.accom || {}; if (!asksAny(e)) return "";
   if (e.released || (D.viewer.marks || {})[e.id]) return "Requests are closed because the marks have been released.";
   const by = a.by ? new Date(`${a.by}T${a.byTime || "23:59"}`) : null;
   if (by && !isNaN(by) && by < new Date()) return `Requests are closed because the deadline (${day(a.by, true)}, ${a.byTime || "23:59"}) has passed.`;
   return "";
 }
 function requestBtn(e) {
-  const a = e.accom; if (!a || !(a.approval || a.alternate)) return "";
+  if (!asksAny(e)) return "";
   if (accomShut(e)) return `<button type="button" class="hb-btn" disabled>Requests Closed</button>`;
   return D.viewer.signedIn ? `<a class="hb-btn" href="#request/${encodeURIComponent(e.id)}">Request Accommodation</a>` : `<a class="hb-btn" href="${esc(D.signIn || D.lectern)}">Sign in to Request an Accommodation</a>`;
 }
@@ -750,11 +773,11 @@ function myRequests() {
       // Each request in the Item Head style (docs/ui-patterns.md): a small icon by the kicker, the evaluation as the
       // title, one line of facts; the status on the right; then what they asked (the decision and the discussion are on its own page).
       box.innerHTML = R.length ? `<div class="hs-cards">${R.map(r => { const st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
-        const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
+        const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : r.kind === "sitting" ? "Alternate sitting" : "Alternate accommodation", `Asked ${when(r.submitted)}`].filter(Boolean).join(" · ");
         return `<div class="wk-item wk-go ma-req st-${st}" data-go="#myrequest/${encodeURIComponent(r.id)}" role="link" tabindex="0" title="Open this request">
           <div class="wk-b"><div class="ma-head"><span class="ma-kic">${rm ? REDO : HEART}</span><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p>
               <h3>${evalTitle({ name: r.evalName, title: (unitOf(r.eval) || {}).u?.title })}</h3><p class="ma-facts">${esc(facts)}</p><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></div>
-            ${!rm && r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
+            ${!rm && r.kind === "sitting" ? `<div class="hs-body"><p>${esc(r.sittingText || "")}</p>${r.details ? markdown(r.details) : ""}</div>` : !rm && r.kind === "standard" ? (r.standard ? `<div class="hs-body"><p>${esc(r.standard)}</p></div>` : "") : r.details ? `<div class="hs-body">${markdown(r.details)}</div>` : ""}
            </div>${CHEV}</div>`; }).join("")}</div>`
         : `<p class="hs-empty">No requests yet. Ask from an evaluation's page, with Request Accommodation or Request Remark.</p>`;
     }, e => { box.innerHTML = `<p class="hs-empty">${esc(e.message)}</p>`; });
@@ -773,10 +796,10 @@ const MyRequest = (() => {
     const card = document.getElementById("mr-card"); if (!card) return;
     const r = R, st = REQ_IC[r.status] ? r.status : "pending", rm = r.type === "remark";
     const u = (unitOf(r.eval) || {}).u || {};
-    const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation", `Asked ${stamp(r.submitted)}`].filter(Boolean).join(" · ");
+    const facts = [rm ? "" : r.kind === "standard" ? "Standard accommodation" : r.kind === "sitting" ? "Alternate sitting" : "Alternate accommodation", `Asked ${stamp(r.submitted)}`].filter(Boolean).join(" · ");
     const T = thread(r);
     card.innerHTML = `<header class="ec-head"><span class="hs-ic ec-ic">${rm ? REDO : HEART}</span><div class="ec-tt"><p class="hs-kick">${rm ? "Remark Request" : "Accommodation Request"}</p><h1>${evalTitle({ name: r.evalName, title: u.title })}</h1><p class="ec-subline">${esc(facts)}</p></div><span class="ma-pill v-${st}">${esc(st === "pending" ? "Waiting" : REQ_WORD[st])}</span></header>
-      <h2 class="ec-sec">What You Asked For</h2><div>${!rm && r.kind === "standard" ? `<div class="mr-ask"><p>${esc(r.standard || "The standard accommodation")}</p></div>` : `<div class="mr-ask">${markdown(r.details || "")}</div>`}</div>
+      <h2 class="ec-sec">What You Asked For</h2><div>${!rm && r.kind === "sitting" ? `<div class="mr-ask"><p>The alternate sitting: ${esc(r.sittingText || "")}</p>${r.details ? markdown(r.details) : ""}</div>` : !rm && r.kind === "standard" ? `<div class="mr-ask"><p>${esc(r.standard || "The standard accommodation")}</p></div>` : `<div class="mr-ask">${markdown(r.details || "")}</div>`}</div>
       <h2 class="ec-sec">Decision and Discussion</h2><div>
         ${T ? `<div class="mr-thread">${T}</div>` : `<p class="hs-empty mr-none">No decision yet: your instructor will look at it. You'll get an email when it's decided.</p>`}
         <div class="mr-reply" id="mr-reply"><button type="button" class="mr-reply-btn" id="mr-rbtn">${REPLY}Reply</button></div></div>`;

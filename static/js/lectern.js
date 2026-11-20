@@ -1323,6 +1323,15 @@ const fmtStamp = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLo
 const STATUS = { pending: "Waiting", approved: "Approved", rejected: "Rejected" };
 
 // The same page lists remark requests (k = "remark": the course page's Request Remark), kept in the same file.
+// Decide a request; approving into a full alternate sitting asks first, then approves past its cap.
+async function decideOver(body) {
+  try { return await Auth.api("/api/accommodations/decide", body); }
+  catch (e) {
+    if (e.code !== "full" || body.over) throw e;
+    if (!await confirmBox("The sitting is full", esc(e.message), "Approve Anyway")) throw new Error("Not approved: the sitting is full.");
+    return Auth.api("/api/accommodations/decide", { ...body, over: true });
+  }
+}
 async function accomPage(c, t, q = "", k = "") {
   hubCSS();
   if (accomUI.k !== `${c}/${t}/${k}`) { accomUI.k = `${c}/${t}/${k}`; accomUI.q = ""; accomUI.ev = ""; }   // each list its own search
@@ -1379,7 +1388,7 @@ async function accomPage(c, t, q = "", k = "") {
   };
   // One request, as an activity's or an evaluation's page: what they asked for, every decision (the
   // earlier ones too), and deciding (or changing the decision, or its note).
-  const KIND = r => (r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard accommodation" : "Alternate accommodation");
+  const KIND = r => (r.type === "remark" ? "Remark" : r.kind === "standard" ? "Standard accommodation" : r.kind === "sitting" ? "Alternate sitting" : "Alternate accommodation");
   function drawOne() {
     const r = data.requests.find(x => x.id === q);
     if (!r) { $("#lt-acc").innerHTML = `<p class="lx-empty">That request isn't there any more. <button type="button" class="lt-link" id="acc-back">See all requests</button></p>`; $("#acc-back").onclick = () => here({}); return; }
@@ -1390,8 +1399,8 @@ async function accomPage(c, t, q = "", k = "") {
           <div class="gr-tt"><p class="gr-kind">${r.type === "remark" ? "Remark Request" : "Accommodation Request"}</p><h2><button type="button" class="lt-link lt-req-who" id="acc-name-open" title="Their page in the gradebook">${esc([r.last, r.first].filter(Boolean).join(", "))}</button><span class="lt-req-of"> / ${r.eval ? `<button type="button" class="lt-link" id="acc-ev-open" title="Open it in the Evaluations">${esc(r.evalName)}</button>` : esc(r.evalName)}</span></h2></div>
           <span class="lt-req-pill v-${esc(r.status)}">${esc(STATUS[r.status] || r.status)}</span></div>
         <p class="lt-req-meta">${r.type === "remark" ? "" : `${esc(KIND(r))} · `}<button type="button" class="lt-link" id="acc-st-open" title="Their page in the gradebook">${esc(r.student)}</button>${r.email ? ` · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ""} · Asked ${esc(fmtStamp(r.submitted))}</p>
-        <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : "What They Asked For"}</h3>
-        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
+        <h3 class="lx-sec">${r.kind === "standard" ? "They Asked for the Standard Accommodation" : r.kind === "sitting" ? (r.addedBy ? "Put in the Alternate Sitting" : "They Asked for the Alternate Sitting") : "What They Asked For"}</h3>
+        ${r.kind === "standard" ? `<p class="lt-req-body">${esc(r.standard)}</p>` : r.kind === "sitting" ? `<p class="lt-req-body">${esc(r.sittingText || "")}${r.addedBy ? ` <span class="lx-help">(added by ${esc(r.addedBy)})</span>` : ""}</p>${r.details ? `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details) : esc(r.details)}</blockquote>` : ""}` : `<blockquote class="lt-req-body lt-req-md">${window.HubView ? window.HubView.markdown(r.details || "") : esc(r.details)}</blockquote>`}
         <h3 class="lx-sec">Decision and Discussion</h3>
         ${D.length || replies(r).length ? `<div class="lt-req-hist">${threadHTML(r)}</div>` : `<p class="lx-help">No decision yet. Approving or rejecting it emails ${esc(r.first || "the student")}, with your note.</p>`}
         <div class="lt-req-reply" id="acc-reply-box"><button type="button" class="lt-reply-btn" id="acc-reply">${REPLY_IC}${pend ? "Decide" : "Reply"}</button></div>
@@ -1416,7 +1425,7 @@ async function accomPage(c, t, q = "", k = "") {
         if (!pick) return;
         send.disabled = true; send.textContent = "Sending…";
         try {
-          const d = await Auth.api("/api/accommodations/decide", { owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision: pick, note: note.get() });
+          const d = await decideOver({ owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision: pick, note: note.get() });
           Object.assign(r, d.request);
           toast(`${pick === "approved" ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);
           if (mine()) drawOne();
@@ -1461,7 +1470,7 @@ async function accomPage(c, t, q = "", k = "") {
         <span class="dc-t-flags"><span class="lt-dc-where">${r.type === "remark" ? ICON.evals : ICON.accom}${r.type === "remark" ? "Remark Request" : "Accommodation Request"}</span>${r.status === "pending" ? `<span class="lt-dc-open">Waiting</span>` : ""}${r.unread ? `<span class="lt-dc-open">New reply</span>` : ""}</span>
         <b class="dc-t-title">${esc([r.last, r.first].filter(Boolean).join(", "))}<span class="lt-dc-of"> / ${esc(r.evalName)}</span></b>
         <span class="dc-t-meta">${esc([r.type === "remark" ? "" : KIND(r), r.student, r.email, `asked ${fmtStamp(r.submitted)}`].filter(Boolean).join(" · "))}</span>
-        <span class="dc-t-clip">${esc(r.kind === "standard" ? r.standard : plainOf(r.details))}</span>
+        <span class="dc-t-clip">${esc(r.kind === "standard" ? r.standard : r.kind === "sitting" ? [r.sittingText, plainOf(r.details)].filter(Boolean).join(" · ") : plainOf(r.details))}</span>
         ${r.status === "pending" ? "" : `<span class="dc-t-meta lt-rq-last v-${esc(r.status)}">${esc(lastWord(r))}</span>`}
       </button></div>`;
   const reqCard = r => `<article class="lx-row lt-req lt-req-item hd-row st-${esc(r.status)}" data-req="${esc(r.id)}" role="button" tabindex="0" title="Open this request">
@@ -1490,7 +1499,7 @@ async function accomPage(c, t, q = "", k = "") {
       ok.onclick = async () => {
         ok.disabled = true; ok.textContent = yes ? "Approving…" : "Rejecting…";
         try {
-          const d = await Auth.api("/api/accommodations/decide", { owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision, note: note.get() });
+          const d = await decideOver({ owner: curOwner() || undefined, offering: `${c}/${t}`, id: r.id, decision, note: note.get() });
           Object.assign(r, d.request);
           close();
           toast(`${yes ? "Approved" : "Rejected"}. ${d.emailed ? `Emailed ${r.email}.` : "No email was sent (the server's email isn't set up)."}`);
@@ -1620,11 +1629,14 @@ function schemeOf(b, from, requests = null) {
     if (!standard && !alternate) return {};
     return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
+  // A test's alternate sittings (another time and place to write it): when, where and its cap, for the course page.
+  const sittings = e => { const L = e.type === "test" ? (e.sittings || []).filter(o => o && o.date) : [];
+    return L.length ? { sittings: L.map(o => ({ id: o.id, date: o.date, time: o.time || "", ...whereOf_(o), ...(o.room && !String(o.where || "").includes(o.room) ? { room: o.room } : {}), ...(o.cap ? { cap: o.cap } : {}) })) } : {}; };
   // Remark requests: when they open and close (the course page shows Request Remark once the student's mark is out).
   const remark = e => { const r = e.remark || {}; return r.on ? { remark: { from: r.from || "", fromTime: r.fromTime || "", by: r.by || "", byTime: r.byTime || "" } } : {}; };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...remark(e), ...files(e), ...(e.released ? { released: true } : {}) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...sittings(e), ...remark(e), ...files(e), ...(e.released ? { released: true } : {}) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -1659,6 +1671,10 @@ function schemeOf(b, from, requests = null) {
 // under a name not taken yet. → its public address, for the course page's button.
 // For the gradebook: the students' accommodation requests (for whoever may read them: coordinators and staff;
 // others get null), and the Accommodations page, to decide them.
+// Put a student in a test's alternate sitting (the test's page in Grades): an approved request, emailed to them.
+// over: past the sitting's cap. A refusal's code says why ("full", "duplicate", "pending").
+Lectern.assignSitting = async (e, sitting, student, over) => { const r = S.route;
+  return Auth.api("/api/accommodations/assign", { owner: curOwner() || undefined, offering: `${r.c}/${r.t}`, e, sitting, student, ...(over ? { over: true } : {}) }); };
 Lectern.requests = async () => {
   const r = S.route; if (!r.c || !r.t || !["owner", "coordinator", "staff"].includes(roleIn(r.c, r.t))) return null;
   try { return (await readAccom(r.c, r.t)).requests; } catch (_) { return null; }

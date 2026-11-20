@@ -1196,3 +1196,7 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
   .hb .wk-top .wk-pn { width: 100%; justify-content: space-between; }
   .hb input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .hb select, .hb textarea { font-size: 16px !important; }
 }
+/* A test's alternate sitting: the student's own, under Accommodations; the request form's "which" and "why". */
+.ec-mysit { display: block; margin-top: 6px; color: var(--ink); }
+#rq-sit .rq-opts { margin-bottom: 10px; }
+#rq-sit .rq-ta { height: 84px; }

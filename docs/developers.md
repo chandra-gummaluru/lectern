@@ -94,6 +94,8 @@ Students ask on the course page itself, signed in with the code it emails them (
 
 Requests go in your private files, `csc258/f26/accommodations.json`. The offering's **Accommodations** page lists them; **Approve** or **Reject** (with an optional note) saves the decision and emails the student. A student who needs something else makes another request (up to 10 per evaluation).
 
+**Alternate sittings.** A test's `sittings` in `grades.json` (`[{id, date, time, where, room, place, cap}]`, edited under its Date in Grades) are other times and places to write it; the course page lists them with its date (`schemeOf` publishes them). A student asks for one with Request Accommodation (a request of kind `sitting`, with `sitting` and `sittingText`); approved, they're in it (`accommodations.in_sitting`), the email says when and where, and the test's page shows them theirs. A full sitting (`cap`) takes no more requests, and approving past it needs `over` (Lectern asks first). An instructor can put a student in one (`POST /api/accommodations/assign`: an approved request with `addedBy`); rejecting it takes them out. The test's page in Grades lists each sitting's students (from the requests) and downloads them as a CSV.
+
 Optional: `LECTERN_TIMEZONE` (request deadlines; default `America/Toronto`).
 
 ## The course hub

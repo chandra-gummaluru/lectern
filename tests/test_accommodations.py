@@ -387,3 +387,76 @@ def test_request_limits_are_per_student_not_per_address(gh, monkeypatch):
     assert [submit(kind="standard").status_code for _ in range(3)][-1] == 429
     zoe = {"email": "zoe.ng@mail.utoronto.ca", "id": "1002", "first": "Zoë", "last": "Ng"}
     assert submit(who=zoe, kind="standard").status_code == 201
+
+
+# ── Alternate sittings ───────────────────────────────────────────────
+def with_sitting(gh, cap=None, **more):
+    """The midterm with an alternate sitting (and, in the gradebook, nothing else to request)."""
+    b = json.loads(json.dumps(BOOK))
+    b["evals"][0]["accom"] = {}
+    b["evals"][0]["sittings"] = [{"id": "late", "date": "2026-10-21", "time": "20:00", "where": "Bahen Centre", "room": "BA 1170", **({"cap": cap} if cap else {}), **more}]
+    gh.put("csc258/f26/grades.json", json.dumps(b))
+
+
+def assign(gh, student="1002", sitting="late", **d):
+    return gh.client.post("/api/accommodations/assign", headers=H, json={"offering": "csc258/f26", "e": "mt", "sitting": sitting, "student": student, **d})
+
+
+def test_a_student_asks_for_the_alternate_sitting(gh):
+    with_sitting(gh)
+    st = hub_student("maya.castillo@mail.utoronto.ca")
+    info = st.get(f"{HUB}/accommodation?e=mt").get_json()
+    assert [x["id"] for x in info["sittings"]] == ["late"] and info["sittings"][0]["text"] == "Wednesday, October 21, 2026, 20:00 · Bahen Centre, BA 1170"
+    assert info["mySitting"] == "" and info["sittings"][0]["full"] is False
+    # Which sitting must be said; a reason is optional.
+    assert submit(kind="sitting").status_code == 400
+    r = submit(kind="sitting", sitting="late")
+    assert r.status_code == 201, r.get_json()
+    rec = requests_of(gh)[0]
+    assert rec["kind"] == "sitting" and rec["sitting"] == "late" and "BA 1170" in rec["sittingText"] and rec["status"] == "pending"
+    # One at a time.
+    assert submit(kind="sitting", sitting="late").get_json()["code"] == "duplicate"
+    # Approved: they're in it (the course page says so), and the email says when and where.
+    assert decide(gh.client, rec["id"], "approved").status_code == 200
+    assert "BA 1170" in mailer.sent[-1]["body"] and "alternate sitting" in mailer.sent[-1]["subject"]
+    assert st.get(f"{HUB}/accommodation?e=mt").get_json()["mySitting"] == "late"
+
+
+def test_a_full_sitting(gh):
+    with_sitting(gh, cap=1)
+    assert assign(gh).status_code == 200                      # Zoë: the one place
+    r = submit(kind="sitting", sitting="late")                 # Maya can't ask: it's full
+    assert r.status_code == 409 and r.get_json()["code"] == "full"
+    assert hub_student("maya.castillo@mail.utoronto.ca").get(f"{HUB}/accommodation?e=mt").get_json()["sittings"][0]["full"] is True
+    # Approving past the cap needs saying so.
+    with_sitting(gh, cap=2)
+    rid = submit(kind="sitting", sitting="late").get_json()["id"]
+    with_sitting(gh, cap=1)
+    r = decide(gh.client, rid, "approved")
+    assert r.status_code == 409 and r.get_json()["code"] == "full"
+    r = gh.client.post("/api/accommodations/decide", headers=H, json={"offering": "csc258/f26", "id": rid, "decision": "approved", "over": True})
+    assert r.status_code == 200 and accommodations.in_sitting(requests_of(gh), "mt", "late") == 2
+
+
+def test_an_instructor_puts_a_student_in_a_sitting(gh):
+    with_sitting(gh)
+    r = assign(gh, note="Room changed: see you in BA 1170.")
+    assert r.status_code == 200, r.get_json()
+    rec = requests_of(gh)[0]
+    assert rec["status"] == "approved" and rec["student"] == "1002" and rec["addedBy"] == "Chandra Gummaluru"
+    m = mailer.sent[-1]
+    assert m["to"] == "zoe.ng@mail.utoronto.ca" and "You're writing Midterm" in m["body"] and "BA 1170" in m["body"]
+    assert assign(gh).get_json()["code"] == "duplicate"                           # already in it
+    assert assign(gh, student="1003").status_code == 404                           # dropped
+    assert assign(gh, sitting="nope").status_code == 404
+    # Taken out: reject it (the decision stays in its history).
+    assert decide(gh.client, rec["id"], "rejected").status_code == 200
+    assert accommodations.in_sitting(requests_of(gh), "mt", "late") == 0
+
+
+def test_only_a_test_has_sittings(gh):
+    b = json.loads(json.dumps(BOOK))
+    b["evals"][1]["sittings"] = [{"id": "x", "date": "2026-10-21"}]
+    gh.put("csc258/f26/grades.json", json.dumps(b))
+    assert accommodations.sittings_of(b["evals"][1]) == []
+    assert submit(e="a1", kind="sitting", sitting="x").status_code == 400

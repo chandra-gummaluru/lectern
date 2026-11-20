@@ -11,6 +11,7 @@ Lectern is one place to run a course. For each course offering (a course in one 
 - **Show students their marks.** Signed-in students see each mark once you release it, on the evaluation's page and all together on **My Marks**. You can also show them their grade so far there (the gradebook's **Settings → Grade So Far**; off unless you turn it on).
 - **Reuse a course.** **Export** an offering (on its page) and **Import** it on Home as a new term: its course page, evaluations, activities, sections and exams come across, with the dates moved to the new term. Its students, marks, requests and announcements stay behind, so the file is safe to share with a colleague.
 - **Handle accommodation requests.** Students request an accommodation for a missed evaluation from the course page. You approve or reject it in Lectern, and the student is emailed the decision.
+- **Give a test alternate sittings.** On a test's page in Evaluations, add another time and place to write it (with a cap, if the room is small). Students ask for it with Request Accommodation; once you approve, they're in it and are emailed when and where. The test's page lists who's in each sitting, lets you add a student yourself, and downloads the list.
 - **Work as a team.** Add instructors and TAs to an offering. Instructors can do everything you can; TAs can see the gradebook and enter marks, but can't change the course setup.
 
 ## Who sees what

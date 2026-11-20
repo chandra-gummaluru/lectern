@@ -12,7 +12,10 @@
 
    An offering without one starts from its course page's announcements (course.json), and becomes an
    announcements.json with the first change. A new announcement, and changes to one, are kept only when
-   they're saved (Save); saving can email it to the students it's for (server/classmail.py). */
+   they're saved (Save); saving can email it to the students it's for (server/classmail.py).
+
+   One dated later than now is scheduled: the course page shows it only from its date and time (server/hub.py),
+   and, if Email is ticked, it's emailed then (classmail.py's send_due), not when it's saved. */
 
 import { readStamp, writeStamp, whenText, COPY } from "./lectures.js";
 import { whenField } from "./when.js";
@@ -30,6 +33,9 @@ const MON3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oc
 const pad = n => String(n).padStart(2, "0");
 const stampOf = d => `${MON3[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const timeOf = a => { const t = Date.parse(String(a.date || "")); return isNaN(t) ? a.at || 0 : t; };
+// When it's posted (its date and time; no date: when it was written), and whether that's still to come (scheduled).
+const postsAt = a => { const { date, time } = readStamp(a.date); if (!date) return null; const t = new Date(`${date}T${time || "00:00"}`).getTime(); return isNaN(t) ? null : t; };
+const later = a => { const t = postsAt(a); return t !== null && t > Date.now(); };
 // A line of the message, for the list: without its Markdown.
 const plain = s => String(s || "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[*_`#>]+/g, "").replace(/^\s*[-+]\s+/gm, "").replace(/\s+/g, " ").trim();
 
@@ -53,7 +59,8 @@ export function announcementsPage(ctx, r) {
   const mayAdd = () => edit || (lim().size > 0 && st.sha !== null);
   const key = `${r.o || ""}/${c}/${t}`;
   const here = () => { const x = ctx.route(); return x.page === "announcements" && x.c === c && x.t === t; };
-  const st = (announcementsPage.state = announcementsPage.state && announcementsPage.state.key === key ? announcementsPage.state : { key, data: null, sha: undefined });
+  const st = (announcementsPage.state = announcementsPage.state && announcementsPage.state.key === key ? announcementsPage.state : { key, data: null, sha: undefined, mail: {} });
+  const mailAPI = `/api/mail/${encodeURIComponent(owner())}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/announcement`;
 
   async function load() {
     pageHTML(`<div class="lt-in"><div class="lt-loading" style="min-height:200px">Reading the announcements…</div></div>`);
@@ -61,6 +68,8 @@ export function announcementsPage(ctx, r) {
       // What one can be about, and who it's for, first: the page may be drawn again as soon as there's data.
       const [G, A, E] = await Promise.all([ctx.groups ? ctx.groups().catch(() => []) : [], ctx.activities ? ctx.activities().catch(() => []) : [], ctx.evaluations ? ctx.evaluations().catch(() => []) : []]);
       st.groups = G; st.acts = A; st.evals = E;
+      // The scheduled ones waiting to be emailed when they're posted.
+      st.mail = await fetch(`${mailAPI}/scheduled`, { credentials: "same-origin" }).then(r => (r.ok ? r.json() : null)).then(d => (d && d.scheduled) || {}).catch(() => ({}));
       const f = await Store.readFile(repo, path);
       if (f) { st.data = JSON.parse(f.text); st.sha = f.sha; }
       else {
@@ -87,7 +96,7 @@ export function announcementsPage(ctx, r) {
   function status(text, bad) { const el = $("#an-status"); if (el) { el.textContent = text; el.classList.toggle("bad", !!bad); } }
   const status$ = () => (mayAdd() ? `<span class="lx-status" id="an-status"></span>` : "");
   const taNote = (x = null) => (!edit && !x && lim().size && st.sha === null ? `<p class="lt-note lx-note">You can write announcements for your sections once a coordinator has written the course's first one here.</p>` : (edit || (x ? mayAnn(x) : mayAdd()) ? (edit || x ? "" : `<p class="lt-note lx-note">You can write announcements for your activity groups; the coordinators write everyone's.</p>`) : `<p class="lt-note lx-note">You can read ${x ? "this announcement" : "the announcements"}; ${x ? "it's someone else's" : "the coordinators and instructors write them"}.</p>`));
-  const whenOf = x => whenText(x.date, true) || "No date yet";
+  const whenOf = x => (later(x) ? `Scheduled for ${whenText(x.date, true)}${st.mail[x.id] ? " · emailed then" : ""}` : whenText(x.date, true) || "No date yet");
 
   function draw() {
     const a = r.a && (st.data.items.find(x => x.id === r.a) || (st.draft && st.draft.id === r.a ? st.draft : null));
@@ -124,6 +133,10 @@ export function announcementsPage(ctx, r) {
     };
   }
 
+  // Scheduled (dated later than now): what the page says about it, and what Email does.
+  const schedNote = x => (later(x) ? `Scheduled: students see it on the course page from ${whenText(x.date, true)}. Until then, only the teaching team does.` : "");
+  const mailLabel = x => (later(x) ? "Email it to the students it's for when it's posted" : "Email it to the students it's for");
+
   // One announcement, worked on as a copy: kept (and emailed, if ticked) only when it's saved.
   function drawOne(orig) {
     const isNew = orig === st.draft;
@@ -137,6 +150,7 @@ export function announcementsPage(ctx, r) {
     const when = readStamp(x.date), dis = edit ? "" : " disabled";
     pageHTML(`<div class="lt-in"><div class="lx ed">
       ${taNote(x)}
+      <p class="lt-note lx-note" id="an-sched"${later(x) ? "" : " hidden"}>${schedNote(x)}</p>
       <div class="lx-editor" style="--c:${COLOR}">
         <div class="lx-ed-head"><span class="lx-kicon big" aria-hidden="true">${MEGAPHONE}</span><div class="gr-tt"><p class="gr-kind">Announcement</p><h2 id="an-h">${esc(x.title || "New announcement")}</h2></div>
           <span class="lx-acts">${status$()}${edit && !isNew ? `<button type="button" class="lx-ic" id="an-del" title="Delete this announcement" aria-label="Delete this announcement">${ICON.trash}</button>` : ""}</span></div>
@@ -155,12 +169,17 @@ export function announcementsPage(ctx, r) {
         <h3 class="lx-sec">Discussion</h3>
         <label class="lx-tick"><input type="checkbox" id="an-disc"${x.discussion === false ? "" : " checked"}${dis}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
         ${isNew || x.discussion === false ? "" : `<div data-dc-slot="ann:${esc(x.id)}"></div>`}
-        ${edit ? `<div class="an-foot"><label class="lt-check"><input type="checkbox" id="an-mail"${isNew ? " checked" : ""}> Email it to the students it's for</label><span class="spacer"></span>
+        ${edit ? `<div class="an-foot"><label class="lt-check"><input type="checkbox" id="an-mail"${isNew || st.mail[x.id] ? " checked" : ""}> <span id="an-mail-l">${mailLabel(x)}</span></label><span class="spacer"></span>
           <button type="button" class="lx-btn" id="an-cancel">${isNew ? "Discard" : "Undo Changes"}</button><button type="button" class="lx-btn main" id="an-save">${isNew ? "Save" : "Save Changes"}</button></div>` : ""}
       </div>
     </div></div>`);
     whenField($("#an-when-f"), { date: when.date, time: when.time, id: "an-when", label: "When", empty: "Choose a date", timeLabel: "At", disabled: !edit,
-      onChange: ({ date, time }) => { x.date = date ? writeStamp(date, time) : ""; changed(); } });
+      onChange: ({ date, time }) => {
+        x.date = date ? writeStamp(date, time) : ""; changed();
+        const n = $("#an-sched"), l = $("#an-mail-l");
+        if (n) { n.hidden = !later(x); n.textContent = schedNote(x); }
+        if (l) l.textContent = mailLabel(x);
+      } });
     richText($("#an-body"), { value: x.body, placeholder: "Write it here.", label: "Message", disabled: !edit, onChange: v => { x.body = v; changed(); } });
     // Who it's for: everyone, or sections (several, if need be); about an activity, the activity's own students.
     const forSel = () => {
@@ -202,12 +221,18 @@ export function announcementsPage(ctx, r) {
       status("Saving…");
       clearTimeout(st.timer); await save(); if (st.saving) await st.saving;
       if ($("#an-status") && $("#an-status").classList.contains("bad")) return;
+      const n = r => `${r.total} student${r.total === 1 ? "" : "s"}`, on = whenText(x.date, true);
       if ($("#an-mail") && $("#an-mail").checked) {
         try {
-          const res = await api(`/api/mail/${encodeURIComponent(owner())}/${encodeURIComponent(c)}/${encodeURIComponent(t)}/announcement`, { title: x.title, body: x.body, groups: forOf(x) });
-          toast(res.emailed ? `Saved, and emailed to ${res.total} student${res.total === 1 ? "" : "s"}.` : `Saved. ${res.why}`);
+          const res = await api(mailAPI, { id: x.id, title: x.title, body: x.body, groups: forOf(x) });
+          if (res.scheduled) st.mail[x.id] = res.at; else delete st.mail[x.id];
+          toast(res.scheduled ? `Saved. It'll be posted on ${on}, and emailed to ${n(res)} then.` : res.emailed ? `Saved, and emailed to ${n(res)}.` : `Saved. ${res.why}`);
         } catch (e) { toast(`Saved, but not emailed: ${e.message}`); }
-      } else toast("Saved.");
+      } else {
+        // Unticked: not emailed when its time comes, either.
+        if (st.mail[x.id]) { await api(`${mailAPI}/cancel`, { id: x.id }).then(() => delete st.mail[x.id]).catch(e => toast(`Couldn't stop its email: ${e.message}`)); }
+        toast(later(x) ? `Saved. It'll be posted on ${on}.` : "Saved.");
+      }
       if (isNew) go({ page: "announcements", c, t, a: x.id }, { replace: true }); else drawOne(orig);
     };
     const onChange = val => { if (val) x.on = val; else delete x.on; if (String(x.on || "").startsWith("act:")) { delete x.group; delete x.groups; } else if (!canEdit(c, t) && !groupsOf(x).length) x.groups = [...L].slice(0, 1); forSel(); changed(); };
@@ -216,7 +241,9 @@ export function announcementsPage(ctx, r) {
     $("#an-title").oninput = $("#an-title").onchange = e => { x.title = e.target.value.trim(); head(); changed(); };
     if ($("#an-del")) $("#an-del").onclick = async () => {
       if (!await confirmBox("Delete this announcement?", "It goes from the course page.", "Delete")) return;
-      st.data.items = st.data.items.filter(y => y !== orig); st.work = null; status("Saving…"); save(); go({ page: "announcements", c, t });
+      st.data.items = st.data.items.filter(y => y !== orig); st.work = null; status("Saving…"); save();
+      if (st.mail[orig.id]) { const id = orig.id; api(`${mailAPI}/cancel`, { id }).then(() => delete st.mail[id]).catch(() => {}); }
+      go({ page: "announcements", c, t });
     };
   }
 

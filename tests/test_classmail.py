@@ -215,3 +215,58 @@ def test_a_rich_text_signature_is_plain_text_and_html(client, course, smtp):
     assert "<b>The CSC258 team</b>" in b.html and '<a href="https://example.com/c">Course page</a>' in b.html and "Hello &lt;all&gt;." in b.html
     msg = mailer._message({"from": "x@y.ca"}, "s@u.ca", "Hi", b)
     assert msg.is_multipart() and msg.get_body(("html",)) is not None
+
+
+def _anns(user, *items):
+    r = store.Repo(user["id"], "priv")
+    r.commit({"csc258/f26/announcements.json": json.dumps({"format": "lectern-announcements/1", "items": list(items)}).encode()}, "a", r.head())
+
+
+def test_a_scheduled_announcement_is_emailed_when_its_posted(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26/announcement"
+    client.post("/api/mail/chandra/csc258/f26/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    _anns(course, {"id": "s1", "title": "Midterm rooms", "date": "Nov 27, 2099, 09:00", "body": "BA 1130"})
+    r = client.post(U, json={"id": "s1", "title": "Midterm rooms", "body": "BA 1130"}, headers=H).get_json()
+    assert r["scheduled"] and not r["emailed"] and r["total"] == 2 and not smtp["many"]   # not now
+    assert list(client.get(f"{U}/scheduled").get_json()["scheduled"]) == ["s1"]
+    assert classmail.send_due() == 0 and not smtp["many"]                                  # not yet
+    # Changed before its time: it goes out as it is then.
+    _anns(course, {"id": "s1", "title": "Midterm rooms (updated)", "date": "Nov 27, 2099, 09:00", "body": "EX 100"})
+    from server import hub
+    assert classmail.send_due(now=hub.stamp_moment("Nov 27, 2099, 09:00")) == 1
+    m = smtp["many"][-1]
+    assert m["subject"] == "CSC258: Midterm rooms (updated)" and "EX 100" in m["body"] and "/c/chandra/csc258/f26/#announcements" in m["body"]
+    assert sorted(m["to"]) == ["ada@mail.utoronto.ca", "alan@mail.utoronto.ca"]
+    assert classmail.send_due(now=4102444800 * 2) == 0 and len(smtp["many"]) == 1          # once
+    assert client.get(f"{U}/scheduled").get_json()["scheduled"] == {}
+
+
+def test_a_scheduled_announcement_unticked_deleted_or_moved(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26/announcement"
+    client.post("/api/mail/chandra/csc258/f26/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    _anns(course, {"id": "a", "title": "A", "date": "Nov 27, 2099, 09:00", "body": "x"}, {"id": "b", "title": "B", "date": "Nov 27, 2099, 09:00", "body": "x"},
+          {"id": "c", "title": "C", "date": "Nov 27, 2099, 09:00", "body": "x"})
+    for i in "abc":
+        assert client.post(U, json={"id": i, "title": i, "body": "x"}, headers=H).get_json()["scheduled"]
+    client.post(f"{U}/cancel", json={"id": "a"}, headers=H)                                  # unticked
+    _anns(course, {"id": "c", "title": "C", "date": "Dec 4, 2099, 09:00", "body": "x"})     # b deleted; c moved a week later
+    from server import hub
+    assert classmail.send_due(now=hub.stamp_moment("Nov 28, 2099, 09:00")) == 0 and not smtp["many"]
+    assert list(client.get(f"{U}/scheduled").get_json()["scheduled"]) == ["c"]
+    assert classmail.send_due(now=hub.stamp_moment("Dec 4, 2099, 09:00")) == 1 and smtp["many"][-1]["subject"] == "CSC258: C"
+    # Dated now (or before): emailed right away, as before.
+    _anns(course, {"id": "d", "title": "D", "date": "Sep 8, 2026, 09:00", "body": "x"})
+    r = client.post(U, json={"id": "d", "title": "D", "body": "x"}, headers=H).get_json()
+    assert r["emailed"] and not r.get("scheduled") and smtp["many"][-1]["subject"] == "CSC258: D"
+
+
+def test_a_scheduled_announcement_from_someone_who_left_the_team(client, course, smtp):
+    U = "/api/mail/chandra/csc258/f26/announcement"
+    client.post("/api/mail/chandra/csc258/f26/settings", json={**CFG, "smtpPassword": "right"}, headers=H)
+    ta = app.test_client()
+    t = make_user(ta, email="ta@x.ca", name="T A", handle="ta")
+    db.run("INSERT INTO members (owner_id, offering, user_id, role, added) VALUES (?, 'csc258/f26', ?, 'coordinator', 0)", (course["id"], t["id"]))
+    _anns(course, {"id": "a", "title": "A", "date": "Nov 27, 2099, 09:00", "body": "x"})
+    assert ta.post(U, json={"id": "a", "title": "A", "body": "x"}, headers=H).get_json()["scheduled"]
+    db.run("DELETE FROM members WHERE user_id = ?", (t["id"],))
+    assert classmail.send_due(now=4102444800 * 2) == 0 and not smtp["many"]

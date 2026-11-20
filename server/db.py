@@ -154,6 +154,16 @@ CREATE TABLE IF NOT EXISTS mail_sends (        -- emails to a class: who sent wh
   errors    TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS mail_sends_offering ON mail_sends(owner_id, offering, at);
+CREATE TABLE IF NOT EXISTS announcement_mail (  -- scheduled announcements to email when they're posted (their date)
+  owner_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  offering  TEXT NOT NULL,
+  ann_id    TEXT NOT NULL,
+  by_user   INTEGER NOT NULL,             -- who saved it (replies go to them; they must still be on the team)
+  groups    TEXT NOT NULL DEFAULT '[]',   -- the sections it's for (none: everyone)
+  link      TEXT NOT NULL DEFAULT '',     -- the course page's address, for the email
+  queued    REAL NOT NULL,
+  PRIMARY KEY (owner_id, offering, ann_id)
+);
 CREATE TABLE IF NOT EXISTS retired_handles (  -- page addresses of deleted accounts: never given to anyone else
   handle TEXT PRIMARY KEY,
   at     REAL NOT NULL

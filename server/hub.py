@@ -21,7 +21,8 @@ Staff can add ?as=public to see the hub as a signed-out visitor does.
 import json
 import os
 import re
-from datetime import date, timedelta
+import time
+from datetime import date, datetime, timedelta
 
 from flask import Blueprint, abort, jsonify, redirect, render_template, request
 
@@ -459,6 +460,41 @@ def _stamp_day(t):
         return ""
 
 
+def _zone():
+    """The course's time zone: announcements' and evaluations' dates and times are local times there."""
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo(os.environ.get("LECTERN_TIMEZONE") or "America/Toronto")
+    except Exception:
+        return None   # no time zone data: the server's own clock
+
+
+def moment(day, hhmm=""):
+    """"2026-11-27", "09:00" (the course's time zone; no time: the start of the day) → seconds since 1970, or None."""
+    try:
+        d = date.fromisoformat(_s(day, 10))
+        h, m = (int(x) for x in _s(hhmm, 5).split(":")) if re.match(r"^\d{1,2}:\d{2}$", _s(hhmm, 5)) else (0, 0)
+        return datetime(d.year, d.month, d.day, min(h, 23), min(m, 59), tzinfo=_zone()).timestamp()
+    except (ValueError, TypeError):
+        return None
+
+
+def stamp_moment(t):
+    """An announcement's date, "Oct 24, 2026, 13:48" → seconds since 1970, or None (no date)."""
+    m = _STAMP.search(t or "")
+    day = _stamp_day(t)
+    if not m or not day:
+        return None
+    hm = re.search(r"(\d{1,2}):(\d{2})", t[m.end():])
+    return moment(day, f"{hm.group(1)}:{hm.group(2)}" if hm else "")
+
+
+def posts_later(a, now=None):
+    """Whether an announcement is scheduled: dated later than now (until then, only the teaching team sees it)."""
+    at = stamp_moment(_s((a or {}).get("date"), 60)) if isinstance(a, dict) else None
+    return at is not None and at > (time.time() if now is None else now)
+
+
 def _week_of(day, weeks):
     """The week a day is in: Monday of a week's first day to the day before the next week starts."""
     dated = [w for w in weeks if not w["isBreak"] and w.get("start")]
@@ -697,7 +733,9 @@ def hub_api(handle, course, term):
             all_b["about"]["team"] = team
         for w in all_b["lectures"]["weeks"]:
             w["cards"] = [c for c in w["cards"] if ok(c)]
-        all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a)]
+        # A scheduled announcement (dated later than now) isn't on the course page until then.
+        now = time.time()
+        all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a) and not posts_later(a, now)]
         # An evaluation with its own dates for some sections: a student's is their section's (else its own).
         def own_date(e):
             if not isinstance(e, dict) or not student:   # a visitor sees every section's date
@@ -721,6 +759,20 @@ def hub_api(handle, course, term):
                 own_date(m)
         for e in _list(ev.get("evals")):
             own_date(e)
+        # An assignment's files and links only once it's released (its release date and time: a student's
+        # section's, if it has its own; a visitor's, once every section's is past).
+        def held(e):
+            if not isinstance(e, dict):
+                return False
+            whens = [(e.get("release"), e.get("releaseTime"))] + [(d.get("release"), d.get("releaseTime")) for d in _list(e.get("dates")) if isinstance(d, dict)]
+            return any(r and (moment(r, rt) or 0) > now for r, rt in whens)
+        every = [x for u in _list(ev.get("units")) for x in [u, *_list(u.get("members") if isinstance(u, dict) else None)]] + _list(ev.get("evals"))
+        withheld = {e.get("id") for e in every if held(e)}
+        for e in every:
+            if isinstance(e, dict) and e.get("id") in withheld:
+                e.pop("files", None)
+        if isinstance(ev.get("files"), dict):
+            ev["files"] = {k: v for k, v in ev["files"].items() if k not in withheld}
     # A signed-in student's own marks (the gradebook's), for each evaluation's page: points, or what happened.
     marks, sofar = {}, None
     if student and "evaluations" in all_b:

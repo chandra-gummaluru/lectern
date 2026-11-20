@@ -391,49 +391,61 @@ def send(owner, course, term):
     return jsonify(ok=True, id=sid, total=len(people), to=label)
 
 
-# ── An announcement, emailed when it's saved ─────────────────────────
-#   POST /api/mail/<owner>/<course>/<term>/announcement   { title, body, groups: [section ids] }
+# ── An announcement, emailed when it's saved, or when it's posted ────
+#   POST /api/mail/<owner>/<course>/<term>/announcement          { id?, title, body, groups: [section ids] }
+#   POST /api/mail/<owner>/<course>/<term>/announcement/cancel   { id }
+#   GET  /api/mail/<owner>/<course>/<term>/announcement/scheduled   { scheduled: { id: when } }
 # To the students it's for: everyone (no sections), or the students in those sections. The coordinators
 # email anyone; instructors and TAs, the students of sections they run. Without email set up, nothing
 # is sent (and it says so): the announcement is saved either way.
-@mail_bp.post("/api/mail/<owner>/<course>/<term>/announcement")
-@signed_in
-def announce(owner, course, term):
-    from .students import roster as class_list, hub_url
+#
+# A scheduled announcement (its date later than now: the course page shows it only from then) isn't emailed
+# yet: it's kept in announcement_mail, and send_due() (every half minute, in the background) emails it once
+# its date comes, as it is then (its title, message and date are read again from announcements.json: changed,
+# it goes out changed; its date moved, it waits for the new one; deleted, it doesn't go out).
+SCHEDULE_SLACK = 60   # dated less than a minute from now: emailed now
+
+
+def _may_announce(o, off, role, user_id, groups):
     from .teams import LEAD, my_groups
-    o, off, role = _where(owner, course, term)
-    d = body()
-    title = text(d, "title", MAX_SUBJECT + 50).strip() or "Announcement"
-    msg = text(d, "body", MAX_BODY + 1000).replace("\r\n", "\n").strip()
-    groups = [str(x)[:64] for x in (d.get("groups") if isinstance(d.get("groups"), list) else []) if str(x).strip()][:50]
-    if role not in LEAD:
-        mine = my_groups(g.user["id"], o["id"], off) if role in ("instructor", "ta") else set()
-        if not groups or not set(groups) <= mine:
-            raise Refusal(403, "You can email the students of the sections you run.")
-    if len(title) > MAX_SUBJECT or len(msg) > MAX_BODY:
-        raise Refusal(400, f"That's too long to email: a title up to {MAX_SUBJECT} characters, a message up to {MAX_BODY}.")
-    cfg = settings_for(o["id"], off)
-    if not cfg.get("host"):
-        return jsonify(ok=True, emailed=False, total=0, why="Email isn't set up for this offering, so it wasn't emailed.")
+    if role in LEAD:
+        return
+    mine = my_groups(user_id, o["id"], off) if role in ("instructor", "ta") else set()
+    if not groups or not set(groups) <= mine:
+        raise Refusal(403, "You can email the students of the sections you run.")
+
+
+def _ann_people(o, off, groups):
+    """The addresses of the students an announcement is for (each enrolled one with a usable email)."""
+    from .students import roster as class_list
     by_email = class_list(o["id"], off)   # each student's sections
-    people = [x["email"] for x in roster(_book(o["id"], off))["students"]
-              if not groups or set((by_email.get(x["email"]) or {}).get("groups") or []) & set(groups)]
-    if not people:
-        return jsonify(ok=True, emailed=False, total=0, why="Nobody to email: no student it's for has an email yet.")
-    if len(people) > MAX_RECIPIENTS:
-        raise Refusal(413, f"That's more than {MAX_RECIPIENTS} people.")
-    if not limiter.ok(f"class-mail:{o['id']}:{off}", SENDS_PER_HOUR, 3600):
-        raise Refusal(429, f"That's {SENDS_PER_HOUR} emails to the class this hour. It's saved; email it later.", "rate")
+    return [x["email"] for x in roster(_book(o["id"], off))["students"]
+            if not groups or set((by_email.get(x["email"]) or {}).get("groups") or []) & set(groups)]
+
+
+def _log(user_id, kind, detail=""):
+    """auth.log, also from the background (no request: no address)."""
+    from flask import has_request_context
+    if has_request_context():
+        log(user_id, kind, detail)
+    else:
+        db.run("INSERT INTO events (user_id, kind, ip, at, detail) VALUES (?, ?, ?, ?, ?)", (user_id, kind, "scheduled", time.time(), detail))
+
+
+def _ann_deliver(o, off, title, msg, groups, people, by, cfg, link):
+    """Email an announcement to people (in the background, but right away in tests); its send is in mail_sends.
+    link: the course page's address (the email links to its announcements)."""
+    course = off.split("/", 1)[0]
     subject = f"{course.upper()}: {title}"[:MAX_SUBJECT + 20]
-    text_ = f"{msg}\n\n—\nSee it on the course page: {hub_url(o, off)}#announcements\n"
+    text_ = f"{msg}\n\n—\nSee it on the course page: {link}#announcements\n"
     label = "Everyone" if not groups else f"{len(groups)} section{'s' if len(groups) > 1 else ''}"
     with db.transaction() as c:
         sid = c.execute("""INSERT INTO mail_sends (owner_id, offering, by_user, by_name, at, subject, to_label, total)
                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (o["id"], off, g.user["id"], g.user["name"] or g.user["email"], time.time(), subject, label, len(people))).lastrowid
-    log(g.user["id"], "announcement-mail", f"{off} {label} {len(people)}")
+                        (o["id"], off, by["id"], by["name"] or by["email"], time.time(), subject, label, len(people))).lastrowid
+    _log(by["id"], "announcement-mail", f"{off} {label} {len(people)}")
     pf = prefs_for(o["id"], off)
-    reply, text_ = pf["replyTo"] or g.user["email"], signed(pf, text_, head_for(o["id"], off))
+    reply, text_ = pf["replyTo"] or by["email"], signed(pf, text_, head_for(o["id"], off))
 
     def run():
         counts = {"sent": 0, "failed": 0}
@@ -448,7 +460,148 @@ def announce(owner, course, term):
         run()
     else:
         threading.Thread(target=run, daemon=True).start()
+    return label
+
+
+def _announcement(owner_id, off, ann_id):
+    from .hub import announcements_of
+    course, term = off.split("/", 1)
+    return next((a for a in (announcements_of(owner_id, course, term) or []) if isinstance(a, dict) and a.get("id") == ann_id), None)
+
+
+@mail_bp.post("/api/mail/<owner>/<course>/<term>/announcement")
+@signed_in
+def announce(owner, course, term):
+    from .hub import posts_later, stamp_moment
+    from .students import hub_url
+    o, off, role = _where(owner, course, term)
+    d = body()
+    ann_id = text(d, "id", 80).strip()
+    title = text(d, "title", MAX_SUBJECT + 50).strip() or "Announcement"
+    msg = text(d, "body", MAX_BODY + 1000).replace("\r\n", "\n").strip()
+    groups = [str(x)[:64] for x in (d.get("groups") if isinstance(d.get("groups"), list) else []) if str(x).strip()][:50]
+    _may_announce(o, off, role, g.user["id"], groups)
+    if len(title) > MAX_SUBJECT or len(msg) > MAX_BODY:
+        raise Refusal(400, f"That's too long to email: a title up to {MAX_SUBJECT} characters, a message up to {MAX_BODY}.")
+    cfg = settings_for(o["id"], off)
+    if not cfg.get("host"):
+        return jsonify(ok=True, emailed=False, total=0, why="Email isn't set up for this offering, so it wasn't emailed.")
+    people = _ann_people(o, off, groups)
+    if not people:
+        return jsonify(ok=True, emailed=False, total=0, why="Nobody to email: no student it's for has an email yet.")
+    if len(people) > MAX_RECIPIENTS:
+        raise Refusal(413, f"That's more than {MAX_RECIPIENTS} people.")
+    # Scheduled (as saved in announcements.json): emailed when it's posted, not now.
+    a = _announcement(o["id"], off, ann_id) if ann_id else None
+    if a and posts_later(a, time.time() + SCHEDULE_SLACK):
+        db.run("""INSERT INTO announcement_mail (owner_id, offering, ann_id, by_user, groups, link, queued) VALUES (?, ?, ?, ?, ?, ?, ?)
+                  ON CONFLICT (owner_id, offering, ann_id) DO UPDATE SET by_user = excluded.by_user, groups = excluded.groups,
+                  link = excluded.link, queued = excluded.queued""",
+               (o["id"], off, ann_id, g.user["id"], json.dumps(groups), hub_url(o, off), time.time()))
+        _log(g.user["id"], "announcement-mail-scheduled", f"{off} {ann_id}")
+        return jsonify(ok=True, emailed=False, scheduled=True, at=stamp_moment(a.get("date")), total=len(people))
+    if not limiter.ok(f"class-mail:{o['id']}:{off}", SENDS_PER_HOUR, 3600):
+        raise Refusal(429, f"That's {SENDS_PER_HOUR} emails to the class this hour. It's saved; email it later.", "rate")
+    if ann_id:   # sent now: not again when its time comes
+        db.run("DELETE FROM announcement_mail WHERE owner_id = ? AND offering = ? AND ann_id = ?", (o["id"], off, ann_id))
+    label = _ann_deliver(o, off, title, msg, groups, people, g.user, cfg, hub_url(o, off))
     return jsonify(ok=True, emailed=True, total=len(people), to=label)
+
+
+@mail_bp.post("/api/mail/<owner>/<course>/<term>/announcement/cancel")
+@signed_in
+def announce_cancel(owner, course, term):
+    """Don't email a scheduled announcement after all (unticked, or deleted)."""
+    from .teams import LEAD
+    o, off, role = _where(owner, course, term)
+    ann_id = text(body(), "id", 80).strip()
+    r = db.one("SELECT by_user, groups FROM announcement_mail WHERE owner_id = ? AND offering = ? AND ann_id = ?", (o["id"], off, ann_id))
+    if r and role not in LEAD and r["by_user"] != g.user["id"]:
+        _may_announce(o, off, role, g.user["id"], json.loads(r["groups"] or "[]"))
+    db.run("DELETE FROM announcement_mail WHERE owner_id = ? AND offering = ? AND ann_id = ?", (o["id"], off, ann_id))
+    return jsonify(ok=True)
+
+
+@mail_bp.get("/api/mail/<owner>/<course>/<term>/announcement/scheduled")
+@signed_in
+def announce_scheduled(owner, course, term):
+    """The announcements waiting to be emailed when they're posted (for the editor's Email tick)."""
+    from .hub import stamp_moment
+    o, off, _ = _where(owner, course, term)
+    out = {}
+    for r in db.all_("SELECT ann_id FROM announcement_mail WHERE owner_id = ? AND offering = ?", (o["id"], off)):
+        a = _announcement(o["id"], off, r["ann_id"])
+        if a:
+            out[r["ann_id"]] = stamp_moment(a.get("date"))
+    return jsonify(scheduled=out)
+
+
+def send_due(now=None):
+    """Email each scheduled announcement whose time has come (once: each is claimed before it's sent, so two
+    servers on one database can't both send it). Returns how many went out."""
+    from .hub import stamp_moment
+    from .teams import role_of
+    now = time.time() if now is None else now
+    n = 0
+    for r in db.all_("SELECT * FROM announcement_mail"):
+        key = (r["owner_id"], r["offering"], r["ann_id"])
+        a = _announcement(*key)
+        at = stamp_moment(a.get("date")) if a else None
+        if a and at is not None and at > now:
+            continue   # not yet
+        # Claim it: gone from the queue whatever happens next (it's sent once, or not at all).
+        with db.transaction() as c:
+            if c.execute("DELETE FROM announcement_mail WHERE owner_id = ? AND offering = ? AND ann_id = ? AND queued = ?", (*key, r["queued"])).rowcount != 1:
+                continue
+        if not a:
+            continue   # deleted
+        o = db.one("SELECT * FROM users WHERE id = ?", (r["owner_id"],))
+        by = db.one("SELECT * FROM users WHERE id = ?", (r["by_user"],))
+        off = r["offering"]
+        if not o or not by:
+            continue
+        role = role_of(by["id"], o["id"], off)
+        groups = json.loads(r["groups"] or "[]")
+        try:
+            if not role:
+                raise Refusal(403, "No longer on the teaching team.")
+            _may_announce(o, off, role, by["id"], groups)
+        except Refusal as e:
+            _log(by["id"], "announcement-mail-dropped", f"{off} {r['ann_id']}: {e}")
+            continue
+        cfg = settings_for(o["id"], off)
+        people = _ann_people(o, off, groups)
+        if not cfg.get("host") or not people:
+            _log(by["id"], "announcement-mail-dropped", f"{off} {r['ann_id']}: no email set up, or nobody to email")
+            continue
+        title = str(a.get("title") or "").strip()[:MAX_SUBJECT] or "Announcement"
+        msg = str(a.get("body") or "").replace("\r\n", "\n").strip()[:MAX_BODY]
+        _ann_deliver(o, off, title, msg, groups, people[:MAX_RECIPIENTS], dict(by), cfg, r["link"])
+        n += 1
+    return n
+
+
+_ticker = {"on": False}
+TICK = 30   # seconds between looks at the scheduled announcements
+
+
+def _tick():
+    while True:
+        time.sleep(TICK)
+        try:
+            send_due()
+        except Exception as e:   # keep going: the next look tries again
+            print(f"[Lectern] scheduled announcements: {e!r}", flush=True)
+
+
+@mail_bp.before_app_request
+def _start_ticker():
+    """Start looking for scheduled announcements to email, once the server takes its first request (not in tests)."""
+    from flask import current_app
+    if _ticker["on"] or current_app.testing:
+        return
+    _ticker["on"] = True
+    threading.Thread(target=_tick, name="lectern-scheduled-mail", daemon=True).start()
 
 
 # ── Marks: released to students, and emailed when they're out or changed ────────────────

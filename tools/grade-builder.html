@@ -782,9 +782,11 @@ body.dock-open .gshell { padding-bottom: calc(34vh + 80px); }
 .ec-mk svg { width: 15px; height: 15px; color: #7a7f87; }
 .ec-btn { align-self: flex-start; margin-top: auto; padding: 6px 16px; border-radius: 8px; background: #5f6166; border: 1px solid #3f4146; color: #fff; font: 600 13.5px var(--font-ui); }
 .grp-viz { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin: 0 0 12px; }
-.grp-viz span { width: 16px; height: 16px; border-radius: 4px; background: var(--c); }
-.grp-viz span.gv-drop { background: transparent; border: 2px dashed color-mix(in srgb, var(--c) 50%, #b4b6ba); box-sizing: border-box; }
-.grp-viz.big span { width: 26px; height: 26px; border-radius: 6px; }
+/* Each evaluation a square, outlined: counted, a light fill and a solid outline in the group's colour; dropped, a
+   dashed outline (as the booklets on a scanned question's page, .sc-chip). */
+.grp-viz span { width: 16px; height: 16px; border-radius: 4px; box-sizing: border-box; border: 1.5px solid var(--c); background: color-mix(in srgb, var(--c) 55%, #fff); }
+.grp-viz span.gv-drop { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--c) 50%, #b4b6ba); }
+.grp-viz.big span { width: 26px; height: 26px; border-radius: 6px; border-width: 2px; }
 .grp-viz small { margin-left: 8px; color: var(--ink-3); font-size: 13px; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .v-evals { background: transparent; }  :root:not([data-theme="light"]) .ec-label { background: var(--bg); border-color: var(--line); } :root:not([data-theme="light"]) .ec-body h3 { color: var(--ink); } :root:not([data-theme="light"]) .ec-body p { color: var(--ink-2); } }
 

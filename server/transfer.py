@@ -433,7 +433,7 @@ DEMO_TA = {"email": "demo-ta@example.invalid", "handle": "demo-ta", "name": "Bel
 # What Lectern keeps about an offering apart from its files (deleting an offering deletes only its files): a demo
 # loaded again starts with none of the last one's.
 OFFERING_TABLES = ("members", "team_invites", "offering_mail", "offering_mail_prefs", "grade_notices", "mail_sends",
-                   "announcements_seen", "hub_seen", "discussion_aliases", "course_students", "student_codes",
+                   "announcements_seen", "announcement_mail", "hub_seen", "discussion_aliases", "course_students", "student_codes",
                    "student_code_log", "student_sessions", "attendance_sessions", "attendance")
 
 

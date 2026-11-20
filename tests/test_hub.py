@@ -274,3 +274,49 @@ def test_a_course_can_hide_its_sign_in_button(client, user):
     page = with_tabs(); page["signInButton"] = False
     publish(user, page)
     assert app.test_client().get("/api/hub/chandra/csc258/f26").get_json()["signInButton"] is False
+
+
+def test_a_scheduled_announcement_waits_for_its_date(client, user, anon):
+    """Dated later than now: not on the course page (for visitors, students, or the team's preview) until then."""
+    publish(user)
+    ann = {"format": "lectern-announcements/1", "items": [{"id": "now", "title": "Posted", "date": "Sep 8, 2026, 09:00", "body": "x"},
+                                                            {"id": "later", "title": "Scheduled", "date": "Sep 8, 2099, 09:00", "body": "x"},
+                                                            {"id": "nodate", "title": "No date", "body": "x"}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/announcements.json": json.dumps(ann).encode()}, "seed", r.head())
+    for who in (anon, client):
+        got = [a["title"] for a in who.get("/api/hub/chandra/csc258/f26").get_json()["data"]["announcements"]["items"]]
+        assert "Posted" in got and "No date" in got and "Scheduled" not in got
+    assert "Scheduled" not in json.dumps(anon.get("/api/hub/chandra/csc258/f26").get_json())
+
+
+def test_announcement_times_are_the_courses(monkeypatch):
+    from server import hub
+    monkeypatch.setenv("LECTERN_TIMEZONE", "America/Toronto")
+    at = hub.stamp_moment("Nov 27, 2026, 09:30")
+    assert at == 1795789800                                  # 14:30 UTC (EST is UTC-5)
+    assert hub.stamp_moment("Nov 27, 2026") == at - 9.5 * 3600
+    assert hub.stamp_moment("") is None and hub.stamp_moment("soon") is None
+    assert hub.posts_later({"date": "Nov 27, 2026, 09:30"}, now=at - 1) and not hub.posts_later({"date": "Nov 27, 2026, 09:30"}, now=at)
+
+
+def test_an_assignments_files_wait_for_its_release(client, user, anon):
+    page = json.loads(json.dumps(SAMPLE["page"]))
+    a, b = page["scheme"]["evals"][0], page["scheme"]["evals"][1]
+    a.update(type="assignment", release="2099-01-05", releaseTime="09:00", files=[{"label": "Handout", "url": "https://example.edu/a.pdf"}])
+    b.update(type="assignment", release="2020-01-05", releaseTime="09:00", files=[{"label": "Old", "url": "https://example.edu/b.pdf"}])
+    for u in page["scheme"]["units"]:
+        for x in [u, *(u.get("members") or [])]:
+            if x.get("id") == a["id"]:
+                x.update(release=a["release"], releaseTime=a["releaseTime"], files=a["files"])
+    publish(user, page)
+    book = {"evals": [{"id": a["id"], "name": "A", "files": [{"label": "Handout", "url": "https://example.edu/a.pdf"}]},
+                      {"id": b["id"], "name": "B", "files": [{"label": "Old", "url": "https://example.edu/b.pdf"}]}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/grades.json": json.dumps(book).encode()}, "seed", r.head())
+    for who in (anon, client):
+        j = who.get("/api/hub/chandra/csc258/f26").get_json()
+        if "evaluations" not in j["data"]:
+            continue
+        assert "example.edu/a.pdf" not in json.dumps(j)            # not released yet: no files anywhere
+        assert j["data"]["evaluations"]["files"].get(b["id"])       # released: its files
+        got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == a["id"])
+        assert got["release"] == "2099-01-05"                       # the page still says when

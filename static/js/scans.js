@@ -588,6 +588,7 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
         <div class="gr-tt"><h2>Question ${esc(r.q)}<span class="lt-req-of"> / ${esc(S.exam.title)}</span></h2></div>
       </div>
       <p class="lt-req-meta sc-gr-meta">${pie(read, all.length)}${read} / ${all.length} read</p>
+      <div class="sc-chips${all.length > 40 ? " many" : ""}" aria-label="Every booklet">${all.map(chip).join("")}</div>
       <div class="sc-gr">
         <div class="sc-gr-main sc-stage st-${st}">
           <div class="sc-gr-bk"><div class="sc-gr-no"><h3>Booklet ${bookNo(cur.b)}${cur.b.version ? ` <span>Version ${esc(cur.b.version)}</span>` : ""}</h3>${how ? `<p class="sc-gr-how">${st === "done" ? TICK : WARN}${how}</p>` : ""}</div>
@@ -595,7 +596,6 @@ export function scansPage({ $, esc, pageHTML, toast, confirmBox, go, api, render
               : nextUnsure ? `<button type="button" class="lt-btn sc-sm" data-bk="${esc(nextUnsure.b.key)}">Next Unsure</button>` : ""}<button type="button" class="lx-ic" data-bkgo="${k - 1}" title="The booklet before (←)" aria-label="The booklet before"${k > 0 ? "" : " disabled"}>${LEFT}</button><button type="button" class="lx-ic" data-bkgo="${k + 1}" title="The next booklet (→)" aria-label="The next booklet"${k < all.length - 1 ? "" : " disabled"}>${RIGHT}</button></span></div>
           <div class="sc-qs">${qCard(x, cur.b, "")}</div>
 </div>
-        <div class="sc-chips" aria-label="Every booklet">${all.map(chip).join("")}</div>
       </div>
     </div>`;
     const show = key => { ui.fixCur = key; drawFix(); };

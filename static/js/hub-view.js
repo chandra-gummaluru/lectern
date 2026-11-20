@@ -119,9 +119,9 @@ function lectureCard(c, drag) {
     ${files ? `<div class="hb-files">${files}</div>` : `<div class="hb-soon">Coming soon</div>`}</article>`;
 }
 // An evaluation dated in a week, among its activities: it opens on the Evaluations tab.
-const EV_TYPE = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
+const EV_TYPE = { assignment: "Assignment", test: "Test", exam: "Exam", project: "Project", lab: "Lab", other: "Other" };
 function evalLink(e) {
-  return `<a class="hb-card hb-evl${e.type === "test" ? " test" : ""}" href="#evaluations/${encodeURIComponent(e.id)}"><div class="hb-card-top"><span>${esc(EV_TYPE[e.type] || "Assignment")}</span><span>${esc((e.type === "test" ? "" : "Due ") + (fromIso(e.date) ? fromIso(e.date).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : ""))}</span></div><h3>${esc(e.name)}</h3></a>`;
+  return `<a class="hb-card hb-evl${(e.type === "test" || e.type === "exam") ? " test" : ""}" href="#evaluations/${encodeURIComponent(e.id)}"><div class="hb-card-top"><span>${esc(EV_TYPE[e.type] || "Assignment")}</span><span>${esc(((e.type === "test" || e.type === "exam") ? "" : "Due ") + (fromIso(e.date) ? fromIso(e.date).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : ""))}</span></div><h3>${esc(e.name)}</h3></a>`;
 }
 function evalWhen(e) {
   const d = fromIso(e.date); if (!d) return "";
@@ -129,7 +129,7 @@ function evalWhen(e) {
 }
 function evalCard(e) {
   const ev = data("evaluations"), files = fileLinks(ev && ev.files[e.id]), p = "";
-  return `<article class="hb-card${e.type === "test" ? " test" : ""}${edCls(p)}"${opens(p, "Add files and links for this evaluation")}><div class="hb-card-top"><span>${e.type === "test" ? "Test" : "Due"}</span><span>${esc(evalWhen(e).replace(/^Due /, ""))}</span></div>
+  return `<article class="hb-card${(e.type === "test" || e.type === "exam") ? " test" : ""}${edCls(p)}"${opens(p, "Add files and links for this evaluation")}><div class="hb-card-top"><span>${(e.type === "test" || e.type === "exam") ? "Test" : "Due"}</span><span>${esc(evalWhen(e).replace(/^Due /, ""))}</span></div>
     <h3>${esc(e.name)}</h3>${files ? `<div class="hb-files">${files}</div>` : ""}</article>`;
 }
 function annHTML(a, meta) {
@@ -260,7 +260,7 @@ const DRAW = {
       // Each thing: its time (start, and end below), what it is, and one quiet detail (where, or its label).
       const tm = (a, b) => `<span class="tm">${a ? `<b>${esc(a)}</b>${b ? `<small>${esc(b)}</small>` : ""}` : "<b>·</b>"}</span>`;
       ms.filter(m => m.day === dow).forEach(m => items.push({ t: m.start, h: `<div class="hb-ev">${tm(m.start, m.end)}<span class="what"><b>${esc(meetingName(m))}${meetingSub(m) ? ` <span class="sec">${esc(meetingSub(m))}</span>` : ""}</b>${m.where ? `<small>${esc(m.where)}</small>` : ""}</span></div>` }));
-      evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due">${tm(e.time, "")}<span class="what"><b>${esc(e.name)}</b><span class="hb-tag${e.type === "test" ? " dk" : ""}">${e.type === "test" ? "Test" : "Due"}</span></span></div>` }));
+      evs.filter(e => e.date === d).forEach(e => items.push({ t: e.time || "23:59", h: `<div class="hb-ev due">${tm(e.time, "")}<span class="what"><b>${esc(e.name)}</b><span class="hb-tag${(e.type === "test" || e.type === "exam") ? " dk" : ""}">${(e.type === "test" || e.type === "exam") ? "Test" : "Due"}</span></span></div>` }));
       (lw ? lw.cards : []).forEach(c => datesOfCard(c).filter(s => stampDay(s) === d).forEach(s => { const at = (/(\d\d:\d\d)/.exec(s) || [])[1] || ""; items.push({ t: at, h: `<div class="hb-ev">${tm(at, "")}<span class="what"><b>${esc(c.title || c.label)}</b>${c.title && c.label ? `<small>${esc(c.label)}</small>` : ""}</span></div>` }); }));
       items.sort((a, b) => String(a.t).localeCompare(String(b.t)));
       if (!items.length) continue;   // only the days that have something on them
@@ -327,7 +327,7 @@ const DRAW = {
     // A marking scheme, as a syllabus has it: one list, each evaluation a row (its name and when, its weight on the
     // right); a group's row opens to show its parts.
     const when = e => esc(evalWhen(e).replace(/^Due /, ""));
-    const one = u => `<li class="hb-eval${u.type === "test" ? " test" : ""}" data-ev="${esc(u.id)}"><div class="hb-eval-m"><h3>${esc(u.name)}</h3>${evalWhen(u) ? `<p class="hb-eval-d">${u.type === "test" ? "" : "Due "}${when(u)}</p>` : ""}${extras(u)}</div><div class="hb-eval-w">${fmtW(u.weight)}%</div></li>`;
+    const one = u => `<li class="hb-eval${(u.type === "test" || u.type === "exam") ? " test" : ""}" data-ev="${esc(u.id)}"><div class="hb-eval-m"><h3>${esc(u.name)}</h3>${evalWhen(u) ? `<p class="hb-eval-d">${(u.type === "test" || u.type === "exam") ? "" : "Due "}${when(u)}</p>` : ""}${extras(u)}</div><div class="hb-eval-w">${fmtW(u.weight)}%</div></li>`;
     const group = u => `<li class="hb-eval grp"><details><summary><div class="hb-eval-m"><h3>${esc(u.name)}</h3><p class="hb-eval-d">${esc(`Best ${u.keep} of ${u.count}, ${fmtW(u.weight / Math.max(1, u.keep))}% each`)}</p></div><div class="hb-eval-w">${fmtW(u.weight)}%</div>${CHEV}</summary>
         <ul class="hb-eval-subs">${u.members.map(m => `<li data-ev="${esc(m.id)}"><div><b>${esc(m.name)}</b>${evalWhen(m) ? `<span>${when(m)}</span>` : ""}</div>${extras(m)}</li>`).join("")}</ul></details></li>`;
     return `<h2 class="hb-h2">Evaluations</h2><p class="hb-lede">Every evaluation, its weight and when it is. Together they make up your course grade.</p>

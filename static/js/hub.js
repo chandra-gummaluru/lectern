@@ -42,12 +42,13 @@ const KIND_ICON = {
 const EV_ICON = {
   assignment: svg('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
   test: svg('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/>'),
+  exam: svg('<rect x="4.5" y="3" width="15" height="18" rx="2"/><path d="M8 7.5h8M8 11h8M8 14.5h5"/><path d="m14 18 1.5 1.5L19 16"/>'),
   project: svg('<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>'),
   lab: KIND_ICON.lab, other: KIND_ICON.other,
   group: svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
 };
 const KIND_NAME = { lecture: "Lecture", tutorial: "Tutorial", lab: "Lab", other: "Other" };
-const EV_NAME = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
+const EV_NAME = { assignment: "Assignment", test: "Test", exam: "Exam", project: "Project", lab: "Lab", other: "Other" };
 const kindOf = c => (KIND_NAME[c.kind] ? c.kind : (Object.keys(KIND_NAME).find(k => String(c.label || "").toLowerCase().startsWith(k)) || "lecture"));
 const evType = e => (EV_NAME[e.type] ? e.type : "assignment");
 const fmtW = n => String(Math.round(Number(n || 0) * 100) / 100);
@@ -407,7 +408,7 @@ function evalCard(u, group, E) {
   const rows = [{ who: (u.dates || []).length ? "All other sections" : me ? "" : "Everyone", date: u.date, time: u.time, release: u.release, releaseTime: u.releaseTime, where: u.where, map: u.map, address: u.address },
     ...(u.dates || []).map(d => ({ who: (d.names || []).join(", ") || "Some sections", ...d }))];
   if ((u.dates || []).length) rows.push(rows.shift());   // the sections' own first, then everyone else's
-  (u.sittings || []).forEach(x => rows.push({ who: "Alternate sitting", ...x }));   // a test's other times and places, by request
+  (u.sittings || []).forEach(x => rows.push({ ...x, who: "", alt: true }));   // a test's other times and places, by request: "… (alternate sitting)"
   // Its facts, together in one area (no boxes): when (each section's, if they differ), what it's worth, its points.
   const tile = (k, v, sub = "", cls = "") => `<div class="ec-fact${cls}"><small>${esc(k)}</small><b>${esc(v)}</b>${sub ? `<span>${esc(sub)}</span>` : ""}</div>`;
   // Its dates, a row each: whose (a section's icon and name, or everyone), then when (released, and due or its date).
@@ -417,7 +418,7 @@ function evalCard(u, group, E) {
   const whoIc = r => (r.kinds && r.kinds.length ? KIND_ICON[r.kinds[0]] || KIND_ICON.other : ALL);
   const dates = `<div class="ec-when">${rows.map(r => `<div class="ec-wrow">
       ${r.who ? `<span class="ec-wwho"><span class="hs-ic sm">${whoIc(r)}</span>${esc(r.who)}</span>` : ""}
-      <span class="ec-wat">${due && r.release ? `<span class="ec-wd"><span class="hs-ic sm">${OPEN}</span><small>Released</small>${esc(at(r.release, r.releaseTime))}</span>` : ""}<span class="ec-wd"><span class="hs-ic sm">${CAL}</span>${due ? "<small>Due</small>" : ""}${esc(at(r.date, r.time))}</span>${r.where ? `<span class="ec-wd"><span class="hs-ic sm">${PIN}</span>${r.map ? `<a href="${esc(r.map)}" target="_blank" rel="noopener" title="${esc(r.address || "On the map")}">${esc(r.where)}</a>` : esc(r.where)}</span>` : ""}</span></div>`).join("")}</div>`;
+      <span class="ec-wat">${due && r.release ? `<span class="ec-wd"><span class="hs-ic sm">${OPEN}</span><small>Released</small>${esc(at(r.release, r.releaseTime))}</span>` : ""}<span class="ec-wd"><span class="hs-ic sm">${CAL}</span>${due ? "<small>Due</small>" : ""}${esc(at(r.date, r.time))}${r.alt ? ` <span class="ec-walt">(alternate sitting)</span>` : ""}</span>${r.where ? `<span class="ec-wd"><span class="hs-ic sm">${PIN}</span>${r.map ? `<a href="${esc(r.map)}" target="_blank" rel="noopener" title="${esc(r.address || "On the map")}">${esc(r.where)}</a>` : esc(r.where)}</span>` : ""}</span></div>`).join("")}</div>`;
   // Grading: what it's worth, and its points (theirs, once it's marked).
   const m = (D.viewer.marks || {})[u.id], total = u.total;
   const ST = { missed: "Not submitted", aiv: "Academic integrity issue", excused: "Excused", deferred: "Deferred" };

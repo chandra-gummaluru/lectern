@@ -460,3 +460,8 @@ def test_only_a_test_has_sittings(gh):
     gh.put("csc258/f26/grades.json", json.dumps(b))
     assert accommodations.sittings_of(b["evals"][1]) == []
     assert submit(e="a1", kind="sitting", sitting="x").status_code == 400
+
+
+def test_an_exam_has_sittings_as_a_test_does():
+    ev = {"id": "fx", "type": "exam", "sittings": [{"id": "late", "date": "2027-04-20", "time": "19:00"}]}
+    assert [x["id"] for x in accommodations.sittings_of(ev)] == ["late"]

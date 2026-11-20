@@ -1630,13 +1630,13 @@ function schemeOf(b, from, requests = null) {
     return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
   // A test's alternate sittings (another time and place to write it): when, where and its cap, for the course page.
-  const sittings = e => { const L = e.type === "test" ? (e.sittings || []).filter(o => o && o.date) : [];
+  const sittings = e => { const L = e.type === "test" || e.type === "exam" ? (e.sittings || []).filter(o => o && o.date) : [];
     return L.length ? { sittings: L.map(o => ({ id: o.id, date: o.date, time: o.time || "", ...whereOf_(o), ...(o.room && !String(o.where || "").includes(o.room) ? { room: o.room } : {}), ...(o.cap ? { cap: o.cap } : {}) })) } : {}; };
   // Remark requests: when they open and close (the course page shows Request Remark once the student's mark is out).
   const remark = e => { const r = e.remark || {}; return r.on ? { remark: { from: r.from || "", fromTime: r.fromTime || "", by: r.by || "", byTime: r.byTime || "" } } : {}; };
   // An evaluation's files and links (Evaluations → its page): what students get for it, on the course page.
   const files = e => { const fs = (e.files || []).filter(f => f && String(f.url || "").trim()).map(f => ({ label: String(f.label || ""), url: String(f.url).trim() })); return fs.length ? { files: fs } : {}; };
-  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "lab", "other"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...sittings(e), ...remark(e), ...files(e), ...(e.released ? { released: true } : {}) });
+  const brief = e => ({ id: e.id, name: e.name, title: String(e.title || "").trim(), ...(secDates(e).length ? { dates: secDates(e) } : {}), type: ["test", "exam", "lab", "other", "project"].includes(e.type) ? e.type : "assignment", ...(num(e.total) > 0 ? { total: num(e.total) } : {}), date: e.date || "", time: e.time || "", ...whereOf_(e), ...(e.release && !["test", "exam", "lab", "other"].includes(e.type) ? { release: e.release, releaseTime: e.releaseTime || "" } : {}), ...accom(e), ...sittings(e), ...remark(e), ...files(e), ...(e.released ? { released: true } : {}) });
   const units = [], seen = new Set();
   evals.forEach(e => {
     const g = groups.find(x => (x.members || []).includes(e.id));
@@ -1801,7 +1801,7 @@ Lectern.build = async info => {
     const d = new Date(`${info.date}T${info.time || "12:00"}`);
     if (!isNaN(d)) date = d.toLocaleDateString("en-CA", { weekday: "long", month: "long", day: "numeric", year: "numeric" }) + (info.time ? `, ${info.time}` : "");
   }
-  go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: folder }, { title: info.name, date, layout: info.type === "test" ? "exam" : "handout", link: info.id, created: true });
+  go({ page: "tool", tool: "exams", c: r.c, t: r.t, e: folder }, { title: info.name, date, layout: info.type === "test" || info.type === "exam" ? "exam" : "handout", link: info.id, created: true });
 };
 
 // Before a builder shows: the course page gets the gradebook's scheme; the gradebook gets its linked documents.

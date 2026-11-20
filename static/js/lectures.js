@@ -40,10 +40,11 @@ export const KIND_ICON = {
 };
 const WEEK_COLOR = "#c99a06";
 // An evaluation's icon and name, as the Gradebook's Evaluations has them.
-export const EV_TYPES = { assignment: "Assignment", test: "Test", project: "Project", lab: "Lab", other: "Other" };
+export const EV_TYPES = { assignment: "Assignment", test: "Test", exam: "Exam", project: "Project", lab: "Lab", other: "Other" };
 export const EV_ICON = {
   assignment: ic('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h4"/>'),
   test: ic('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/>'),
+  exam: ic('<rect x="4.5" y="3" width="15" height="18" rx="2"/><path d="M8 7.5h8M8 11h8M8 14.5h5"/><path d="m14 18 1.5 1.5L19 16"/>'),
   project: ic('<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12 8.5 4.5 8.5-4.5M3.5 16.5 12 21l8.5-4.5"/>'),
   lab: ic('<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>'),
   other: ic('<circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5"/>'),

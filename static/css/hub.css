@@ -1200,3 +1200,4 @@ a.hs-sec-h:hover svg { transform: translateX(3px); color: var(--ink); }
 .ec-mysit { display: block; margin-top: 6px; color: var(--ink); }
 #rq-sit .rq-opts { margin-bottom: 10px; }
 #rq-sit .rq-ta { height: 84px; }
+.ec-walt { color: var(--ink-3); margin-left: 4px; }

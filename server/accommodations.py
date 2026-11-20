@@ -155,7 +155,7 @@ def sitting_text(x):
 def sittings_of(ev):
     """A test's alternate sittings, cleaned up: [{id, date, time, where, room, cap, text}] (cap: None for no limit)."""
     out = []
-    if (ev or {}).get("type") != "test":
+    if (ev or {}).get("type") not in ("test", "exam"):
         return out
     for x in (ev or {}).get("sittings") or []:
         if not isinstance(x, dict) or not _SLUG.match(str(x.get("id") or "")) or not re.match(r"^\d{4}-\d{2}-\d{2}$", str(x.get("date") or "")):
@@ -270,7 +270,7 @@ def _public_info(book, ev, a):
     code, term = _course(book)
     return {
         "course": {"code": code, "term": term},
-        "evaluation": {"id": ev.get("id"), "name": ev.get("name") or "", "type": "test" if ev.get("type") == "test" else "assignment",
+        "evaluation": {"id": ev.get("id"), "name": ev.get("name") or "", "type": "test" if ev.get("type") in ("test", "exam") else "assignment",
                        "date": ev.get("date") or "", "time": ev.get("time") or ""},
         "idLabel": _id_label(book),
         "standard": {"text": a["standard"], "approval": a["approval"]} if a["standard"] else None,

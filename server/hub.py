@@ -422,7 +422,9 @@ def _groups(x):
 def _week(w):
     cards = [{"kind": _s(c.get("kind"), 20), "label": _s(c.get("label"), 200), "title": _s(c.get("title"), 500), "description": _s(c.get("description"), 4000),
               "date": _s(c.get("date"), 60), "dates": [_s(d, 60) for d in _list(c.get("dates"))[:20] if isinstance(d, str) and d.strip()], "hours": c.get("hours") if isinstance(c.get("hours"), int) else 1,
-              "files": _files(c.get("files")), "id": _s(c.get("id"), 40), "groups": _groups(c)}
+              "files": _files(c.get("files")), "id": _s(c.get("id"), 40), "groups": _groups(c),
+              # Its files show from this date and time (the course's time zone); none: as soon as they're added.
+              "release": _s(c.get("release"), 10), "releaseTime": _s(c.get("releaseTime"), 5)}
              for c in _list(w.get("cards")) if isinstance(c, dict)]
     if w.get("isBreak"):
         return {"isBreak": True, "label": _s(w.get("text"), 200) or _s(w.get("label"), 200), "cards": [], "deadlines": []}
@@ -736,6 +738,12 @@ def hub_api(handle, course, term):
         # A scheduled announcement (dated later than now) isn't on the course page until then.
         now = time.time()
         all_b["announcements"]["items"] = [a for a in all_b["announcements"]["items"] if ok(a) and not posts_later(a, now)]
+        # An activity's files and links only from its release (Files and Links → Show Files From): until then
+        # the course page says when they'll be there.
+        for w in all_b["lectures"]["weeks"]:
+            for c in w["cards"]:
+                if c.get("release") and (moment(c["release"], c.get("releaseTime")) or 0) > now:
+                    c["files"] = []
         # An evaluation with its own dates for some sections: a student's is their section's (else its own).
         def own_date(e):
             if not isinstance(e, dict) or not student:   # a visitor sees every section's date

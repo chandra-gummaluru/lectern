@@ -320,3 +320,19 @@ def test_an_assignments_files_wait_for_its_release(client, user, anon):
         assert j["data"]["evaluations"]["files"].get(b["id"])       # released: its files
         got = next(x for x in j["data"]["evaluations"]["evals"] if x["id"] == a["id"])
         assert got["release"] == "2099-01-05"                       # the page still says when
+
+
+def test_an_activitys_files_wait_for_their_release(client, user, anon):
+    """Show Files From: an activity's files and links aren't on the course page until then (it says when)."""
+    publish(user)
+    lec = {"format": "lectern-lectures/1", "weeks": [
+        {"id": "a", "label": "Week 1", "start": "2026-09-07", "end": "2026-09-11", "cards": [
+            {"id": "later", "kind": "lecture", "title": "Later", "release": "2099-01-11", "releaseTime": "08:00", "files": [{"label": "Slides", "url": "https://example.edu/later.pdf"}]},
+            {"id": "past", "kind": "lecture", "title": "Past", "release": "2020-01-11", "files": [{"label": "Slides", "url": "https://example.edu/past.pdf"}]},
+            {"id": "none", "kind": "lecture", "title": "Always", "files": [{"label": "Slides", "url": "https://example.edu/always.pdf"}]}]}]}
+    r = store.Repo(user["id"], "priv"); r.commit({"csc258/f26/lectures.json": json.dumps(lec).encode()}, "seed", r.head())
+    j = anon.get("/api/hub/chandra/csc258/f26").get_json()
+    cards = {c["id"]: c for c in j["data"]["lectures"]["weeks"][0]["cards"]}
+    assert "example.edu/later.pdf" not in json.dumps(j)                  # not yet: no files anywhere
+    assert cards["later"]["files"] == [] and cards["later"]["release"] == "2099-01-11" and cards["later"]["releaseTime"] == "08:00"
+    assert cards["past"]["files"] and cards["none"]["files"]               # released, or never held back

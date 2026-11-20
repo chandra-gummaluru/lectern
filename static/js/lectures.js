@@ -460,6 +460,8 @@ export function lecturesPage(ctx, r) {
         <p class="lx-help">Each one is a button students click on the course page, with this activity. With none, it says Coming soon.</p>
         <div id="lw-files">${files.map((f, i) => `<div class="lx-frow"><input type="text" data-fl="${i}" value="${esc(f.label)}" placeholder="Button text, e.g. Slides" aria-label="Button text"${dis}><input type="url" data-fu="${i}" value="${esc(f.url)}" placeholder="https://…" aria-label="Link"${dis}>${edit ? `<button type="button" class="lx-ic quiet" data-fdel="${i}" aria-label="Remove it">${ICON.trash}</button>` : ""}</div>`).join("") || (edit ? "" : `<p class="lx-help">None.</p>`)}</div>
         ${edit ? `<div class="lx-fbtns"><button type="button" class="lx-btn add" id="lw-up">${ICON.plus}Upload a File</button><input type="file" id="lw-file" hidden><button type="button" class="lx-btn add" id="lw-link">${ICON.plus}Add a Link</button></div>` : ""}
+        <div class="lx-grid one"><div class="lx-f">Show Files From<div id="lw-rel-f"></div></div></div>
+        <p class="lx-help">Students see its files and links on the course page from then; until then, it says when. Not set: as soon as they're added. (An uploaded file's own address still works for anyone who has it.)</p>
         <h3 class="lx-sec">Discussion</h3>
         <label class="lx-tick"><input type="checkbox" id="lw-disc"${x.discussion === false ? "" : " checked"}${dis}><b>Allow discussion</b><span>Students can post about it on the course page, and comment on each other's posts.</span></label>
         ${x.discussion === false ? "" : `<div data-dc-slot="act:${esc(x.id)}"></div>`}
@@ -481,6 +483,9 @@ export function lecturesPage(ctx, r) {
       const add = $("#lw-when-add"); if (add) add.onclick = () => { W.push(""); whens(); const f = host.querySelector(`[data-wi="${W.length - 1}"] button`); if (f) f.click(); };
     };
     whens();
+    // Show Files From: its files and links wait for this date and time (the course page hides them till then).
+    whenField($("#lw-rel-f"), { date: x.release || "", time: x.releaseTime || "", id: "lw-rel", label: "Show Files From", empty: "Right away", timeLabel: "At", near: (readStamp(W[0]).date || w.start), disabled: !edit,
+      onChange: ({ date, time }) => { if (date) { x.release = date; if (time) x.releaseTime = time; else delete x.releaseTime; } else { delete x.release; delete x.releaseTime; } changed(); } });
     // For: its sections (none: everyone). An instructor picks among theirs (at least one).
     const G = (st.groups || []).filter(g => canEdit(c, t) || !edit || lim.has(g.id)).slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
     pickMany($("#lw-groups"), { options: sortSections(G).map(g => ({ value: g.id, label: g.name || "Untitled section", kick: SECTION_NAME[sectionKind(g)], icon: SECTION_ICON[sectionKind(g)] })), value: groupsOf(x), empty: canEdit(c, t) || !edit ? "Everyone in the course" : "Pick your sections", allowEmpty: canEdit(c, t), emptyHint: "Every student sees it", label: "For", id: "lw-group", disabled: !edit,

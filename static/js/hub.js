@@ -140,6 +140,9 @@ const annCard = a => `<article class="hs-card hs-ann hs-act hd-row${isNew(a) ? "
 const CHAT = svg('<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>');
 const dcLink = (t, href) => (D.viewer.signedIn && !dcOff(t) ? `<a class="hs-file dc-link" href="${href}">${CHAT}Discussion<span class="dc-link-n" data-dcn="${esc(t)}"></span></a>` : "");
 // An item's buttons in one row: its files and links, then its Discussion (as the files' buttons are).
+// An activity with no files (yet): when they'll be there (Show Files From, while it's still to come), else Coming soon.
+const soonOf = c => { const d = c && c.release ? day(c.release) : "", t = c && c.release && /^\d{1,2}:\d{2}$/.test(c.releaseTime || "") ? c.releaseTime : "";
+  return `<p class="hs-soon">${d ? `Files from ${esc(d)}${t ? ` at ${esc(t)}` : ""}` : "Files coming soon"}</p>`; };
 const withDc = (files, link, soon) => { const f = filesHTML(files); return f ? (link ? f.replace(/<\/div>$/, `${link}</div>`) : f) : `${soon ? `<p class="hs-soon">Files coming soon</p>` : ""}${link ? `<div class="hs-files">${link}</div>` : ""}`; };
 // Discussion is on unless Lectern turned it off for the item (Allow Discussion unticked), or for the whole
 // course (its Sign in button hidden: D.discussion false).
@@ -199,7 +202,7 @@ const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${
 function activityCard(c) {
   const k = kindOf(c), D_ = datesOf(c).map(stampText).join(" · ");
   const anns = c.id ? annsOn(`act:${c.id}`) : [];
-  return `<article class="hs-card hs-act hd-row${c.id ? " wk-go" : ""}"${c.id ? ` data-go="#activity/${encodeURIComponent(c.id)}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
+  return `<article class="hs-card hs-act hd-row${c.id ? " wk-go" : ""}"${c.id ? ` data-go="#activity/${encodeURIComponent(c.id)}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || soonOf(c)}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 function requestHTML(e) {
@@ -528,7 +531,7 @@ const PAGES = {
     const item = (ic, kick, title, when, rest = "", go = "") => `<div class="wk-item${go ? " wk-go" : ""}"${go ? ` data-go="${go}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${ic}</span><div class="wk-b"><p class="hs-kick">${kick}</p><h3>${esc(title)}</h3>${when ? `<p class="wk-when">${esc(when)}</p>` : ""}${rest}</div>${go ? CHEV : ""}</div>`;
     const acts = w.cards.map(c => { const k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [];
       return item(KIND_ICON[k], `${esc(KIND_NAME[k])}${groupTag(c.groups)}`, c.title || c.label || "Untitled", datesOf(c).map(stampText).join(" · "),
-        `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || `<p class="hs-soon">Files coming soon</p>`}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`, c.id ? `#activity/${encodeURIComponent(c.id)}` : ""); }).join("");
+        `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || soonOf(c)}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`, c.id ? `#activity/${encodeURIComponent(c.id)}` : ""); }).join("");
     const due = evs.map(evItem).join("");
     const an = anns.map(annItem).join("");
     return `<div class="wk-top">${path([["Activities", "#activities"], [w.label || "Week"]])}<nav class="wk-pn" aria-label="Other weeks">${prev ? `<a class="hb-btn" href="#week/${prev.i}" title="${esc(prev.label || "Previous week")}">${svg('<path d="m15 6-6 6 6 6"/>')}Previous</a>` : `<span class="hb-btn wk-off" aria-disabled="true">${svg('<path d="m15 6-6 6 6 6"/>')}Previous</span>`}${next ? `<a class="hb-btn" href="#week/${next.i}" title="${esc(next.label || "Next week")}">Next${svg('<path d="m9 6 6 6-6 6"/>')}</a>` : `<span class="hb-btn wk-off" aria-disabled="true">Next${svg('<path d="m9 6 6 6-6 6"/>')}</span>`}</nav></div>
@@ -572,7 +575,7 @@ const PAGES = {
     return `${path([["Activities", "#activities"], [w.label || "Week", `#week/${w.i}`], [c.title || c.label || "Activity"]])}
       <article class="ec-card wk-card">
         <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON[k]}</span><div class="ec-tt"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h1>${esc(c.title || c.label || "Untitled")}</h1>${when ? `<p class="ec-subline">${esc(when)}</p>` : ""}</div></header>
-        ${c.description ? `<div class="hs-body ec-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files)}
+        ${c.description ? `<div class="hs-body ec-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || (c.release ? soonOf(c) : "")}
         ${anns.length ? `<div class="wk-group"><div class="wk-list">${anns.map(annItem).join("")}</div></div>` : ""}
         ${dcHere(`act:${c.id}`)}
       </article>`;

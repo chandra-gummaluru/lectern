@@ -450,7 +450,7 @@ function evalCard(u, group, E) {
   const HAND = HEART;
   const asks = [a.standard && a.approval ? (policy && mi ? "The policy above applies only if you request it and it's approved." : `The standard accommodation (${String(a.standard).replace(/\.\s*$/, "")}) applies only if you request it and it's approved.`) : "", a.alternate ? (a.standard && a.approval ? "You can also ask for something else." : "You can ask for an alternate accommodation.") : ""].filter(Boolean).join(" ");
   const sits = u.sittings || [];
-  const asks2 = [asks, sits.length ? `If you can't write it at its own time, you can ask for ${sits.length > 1 ? "an alternate sitting" : "the alternate sitting"} (above).` : ""].filter(Boolean).join(" ");
+  const asks2 = [asks, sits.length ? `If you can't write it at its own time, you can ask for ${sits.length > 1 ? "an alternate sitting" : "the alternate sitting"}.` : ""].filter(Boolean).join(" ");
   if (me && sits.length) setTimeout(() => mySitting(u), 0);
   const accShut = accomShut(u);   // closed: why (the button says only that they are)
   const acc = (a.standard && a.approval) || a.alternate || sits.length ? `<div class="ec-accrow"><span class="hs-ic sm">${HAND}</span><div class="ec-acct"><b>Accommodations</b><span>${esc(asks2)}</span>${sits.length ? `<small class="ec-mysit" hidden></small>` : ""}${accShut ? `<small>${esc(accShut)}</small>` : by ? `<small>Requests close ${esc(by)}.</small>` : ""}</div>@@REQ@@</div>` : "";

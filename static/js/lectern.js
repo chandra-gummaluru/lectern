@@ -1626,8 +1626,9 @@ function schemeOf(b, from, requests = null) {
   // Accommodations (Grades → an evaluation): the standard one, and whether students can ask, until when.
   const accom = e => {
     const a = e.accom || {}, standard = String(a.standard || "").trim(), approval = !!a.approval && !!standard, alternate = !!a.alternate;
-    if (!standard && !alternate) return {};
-    return { accom: { standard, approval, alternate, ...(approval || alternate) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
+    const sits = (e.type === "test" || e.type === "exam") && (e.sittings || []).some(o => o && o.date);   // a sitting is asked for too
+    if (!standard && !alternate && !sits) return {};
+    return { accom: { standard, approval, alternate, ...(approval || alternate || sits) && a.by ? { by: a.by, byTime: a.byTime || "" } : {} } };
   };
   // A test's alternate sittings (another time and place to write it): when, where and its cap, for the course page.
   const sittings = e => { const L = e.type === "test" || e.type === "exam" ? (e.sittings || []).filter(o => o && o.date) : [];

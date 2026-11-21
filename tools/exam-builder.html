@@ -1622,7 +1622,7 @@ function genTex(vi) {
   else if (handout()) {   // a handout's own heading: title, course and term, due date, then its instructions
     L.push("\\begin{center}", `{\\LARGE\\bfseries ${texEsc(S.title || "Assignment")}\\par}\\vspace{2mm}`,
       `{${texEsc([S.courseCode, S.term].filter(x => String(x || "").trim()).join(" \u00b7 "))}\\par}`, ...(S.date ? [`{Due ${texEsc(S.date)}\\par}`] : []), "\\end{center}", "\\vspace{4mm}");
-    if (String(S.instructions || "").trim()) L.push("\\noindent\\textbf{Instructions}", itemize(S.instructions), "\\vspace{4mm}");
+    if (String(S.instructions || "").trim()) L.push("\\noindent\\textbf{Instructions}", "\\begin{itemize}[leftmargin=2em, itemsep=0.5pt, topsep=1pt]", itemize(S.instructions), "\\end{itemize}", "\\vspace{4mm}");
   }
   const anyQ = model.items.some(isQ);   // an empty list of questions doesn't compile
   if (anyQ) L.push("\\begin{questions}", "");

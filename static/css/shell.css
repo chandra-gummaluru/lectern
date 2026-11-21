@@ -809,6 +809,7 @@ blockquote.lt-req-body { padding: 10px 14px; border-radius: 8px; background: var
 /* A week's evaluations (from the gradebook), under its activities: they open in the Evaluations. */
 .lx-evs { display: grid; gap: 8px; padding: 0 14px; margin-top: 8px; }
 .lx-editor .lx-evs { padding: 0; }
+.lx-evs.lx-conts.before { margin-top: 0; margin-bottom: 8px; }
 .lx-row.lx-ev { border-style: dashed; }
 
 /* An activity's dates: one field each, a remove button beside it when there are several, then Add a Date. */

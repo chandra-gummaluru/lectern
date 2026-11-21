@@ -103,7 +103,9 @@ const isoOfStamp = t => { const m = /([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{
 const contIn = w => { const s = weekSpan(w); if (!s) return [];
   return realWeeks().filter(v => v !== w).flatMap(v => (v.cards || []).map(c => ({ c, v, D: datesOf(c).filter(t => { const d = isoOfStamp(t); return d && d >= s[0] && d <= s[1]; }) }))).filter(o => o.D.length)
     .map(o => ({ ...o.c, dates: o.D, date: o.D[0], contFrom: o.v.label || "another week" })); };
-const cardsIn = w => [...(w.cards || []), ...contIn(w)];
+// Each continued one goes in by its date: before the first of this week's own that starts later.
+const cardsIn = w => { const L = [...(w.cards || [])], first = c => isoOfStamp(datesOf(c)[0] || "") || "9999";
+  for (const c of contIn(w)) { const k = L.findIndex(x => !x.contFrom && first(x) > first(c)); L.splice(k < 0 ? L.length : k, 0, c); } return L; };
 const allEvals = () => { const E = data("evaluations"); return E ? E.evals || [] : []; };
 const evalsIn = w => { const s = weekSpan(w); return s ? allEvals().filter(e => e.date && e.date >= s[0] && e.date <= s[1]).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)) : []; };
 const annsIn = w => ((data("announcements") || {}).items || []).filter(a => a.wi === w.i).sort((a, b) => annTime(b) - annTime(a));

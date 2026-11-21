@@ -248,7 +248,10 @@ export function lecturesPage(ctx, r) {
   const contRow = o => `<div class="lx-row sub lx-lec lx-ev hd-row" style="--c:${KIND_COLOR[kindOf(o.x)]}" data-cont="${esc(o.x.id)}" data-w="${esc(o.v.id)}" role="button" tabindex="0" title="Open it (it's kept in ${esc(o.v.label || "another week")})">
       <span class="lx-kicon" title="${esc(kindName(kindOf(o.x)))}">${KIND_ICON[kindOf(o.x)]}</span>
       <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(o.x)))} · Continued from ${esc(o.v.label || "another week")}</p><h3>${esc(titleOf(o.x))}</h3><p class="lx-when">${esc(o.D.map(t => whenText(t)).join(" · "))}</p></div></div>`;
-  const contHTML = w => { const C = contIn(w); return C.length ? `<div class="lx-evs">${C.map(contRow).join("")}</div>` : ""; };
+  // Before this week's own activities when they're earlier than all of them (a Monday), after them otherwise.
+  const contHTML = (w, before) => { const own = (w.cards || []).map(x => datesOf(x).map(t => readStamp(t).date).filter(Boolean).sort()[0]).filter(Boolean).sort()[0] || "9999";
+    const C = contIn(w).filter(o => (readStamp(o.D[0]).date < own) === before);
+    return C.length ? `<div class="lx-evs lx-conts${before ? " before" : ""}">${C.map(contRow).join("")}</div>` : ""; };
   const weekEvals = w => {
     if (!w.start) return [];
     const [from, to] = spanOf(w);
@@ -286,7 +289,7 @@ export function lecturesPage(ctx, r) {
       <div class="lx-row grp" data-week="${esc(w.id)}" role="button" tabindex="0">
         <span class="lx-wnum" aria-hidden="true">${esc(weekNum(w))}</span>
         <div class="lx-main"><div class="lx-top"><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
-      ${subsHTML(w)}${contHTML(w)}${evsHTML(w)}
+      ${contHTML(w, true)}${subsHTML(w)}${contHTML(w, false)}${evsHTML(w)}
       <div class="lx-foot"></div>
     </div>`;
   const breakHTML = w => `<div class="lx-break" data-unit="${esc(w.id)}"${edit ? ' draggable="true"' : ""}>${edit
@@ -427,7 +430,7 @@ export function lecturesPage(ctx, r) {
         <p class="lx-help">Its class days, e.g. Monday to Friday. On the course page, This week runs to the Sunday after.</p>
         <h3 class="lx-sec">Activities</h3>
         <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
-        ${subsHTML(w)}${contHTML(w)}${evsHTML(w)}
+        ${contHTML(w, true)}${subsHTML(w)}${contHTML(w, false)}${evsHTML(w)}
         ${mayAdd() ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add-activity>${ICON.plus}Add an Activity</button></div>` : ""}
       </div>
     </div></div>`);

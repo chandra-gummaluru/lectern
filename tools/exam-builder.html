@@ -1624,10 +1624,12 @@ function genTex(vi) {
       `{${texEsc([S.courseCode, S.term].filter(x => String(x || "").trim()).join(" \u00b7 "))}\\par}`, ...(S.date ? [`{Due ${texEsc(S.date)}\\par}`] : []), "\\end{center}", "\\vspace{4mm}");
     if (String(S.instructions || "").trim()) L.push("\\noindent\\textbf{Instructions}", "\\begin{itemize}[leftmargin=2em, itemsep=0.5pt, topsep=1pt]", itemize(S.instructions), "\\end{itemize}", "\\vspace{4mm}");
   }
-  const anyQ = model.items.some(isQ);   // an empty list of questions doesn't compile
-  if (anyQ) L.push("\\begin{questions}", "");
+  // The list of questions opens at the first question: a page before it (a handout's overview, say) can't sit in
+  // the list, since LaTeX wants an \item before any text there. With no questions there's no list (an empty one doesn't compile).
+  let opened = false;
   const nums = numbering();
   model.items.forEach((it, i) => {
+    if (isQ(it) && !opened) { L.push("\\begin{questions}", ""); opened = true; }
     if (isQ(it)) {
       const v = variantFor(it, vi);
       if (!v) { L.push(`% Question ${nums[i]} has no variant ${LET(vi)}.`, "\\question \\textbf{Missing: this question has no variant for this version.}", ""); return; }
@@ -1636,7 +1638,7 @@ function genTex(vi) {
     else if (it.kind === "rough") L.push("\\RoughWorkPage", "");
     else L.push("% Content page", "\\clearpage", ...(it.title.trim() ? [`\\section*{${texEsc(it.title.trim())}}`] : []), it.body.trim(), "\\clearpage", "");
   });
-  if (anyQ) L.push("\\end{questions}");
+  if (opened) L.push("\\end{questions}");
   L.push(...(handout() ? [] : ["\\EndOfExam"]), "\\end{document}", "");
   return L.join("\n");
 }

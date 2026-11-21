@@ -97,6 +97,13 @@ function weekSpan(w) {
   const R = realWeeks(), nx = R.slice(R.indexOf(w) + 1).find(y => y.start);
   return [mondayOf(w.start), nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.end || w.start), 6)];
 }
+// Activities kept in another week with days in this one (a lecture from a Friday into the next Monday):
+// shown in this week too, with only this week's days, as "Continued".
+const isoOfStamp = t => { const m = /([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})/.exec(t || ""); if (!m) return /^\d{4}-\d\d-\d\d/.test(t || "") ? t.slice(0, 10) : ""; const d = new Date(`${m[1]} ${m[2]}, ${m[3]}`); return isNaN(d) ? "" : iso(d); };
+const contIn = w => { const s = weekSpan(w); if (!s) return [];
+  return realWeeks().filter(v => v !== w).flatMap(v => (v.cards || []).map(c => ({ c, v, D: datesOf(c).filter(t => { const d = isoOfStamp(t); return d && d >= s[0] && d <= s[1]; }) }))).filter(o => o.D.length)
+    .map(o => ({ ...o.c, dates: o.D, date: o.D[0], contFrom: o.v.label || "another week" })); };
+const cardsIn = w => [...(w.cards || []), ...contIn(w)];
 const allEvals = () => { const E = data("evaluations"); return E ? E.evals || [] : []; };
 const evalsIn = w => { const s = weekSpan(w); return s ? allEvals().filter(e => e.date && e.date >= s[0] && e.date <= s[1]).sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)) : []; };
 const annsIn = w => ((data("announcements") || {}).items || []).filter(a => a.wi === w.i).sort((a, b) => annTime(b) - annTime(a));
@@ -190,7 +197,7 @@ function weekRow(w, now) {
 // A week, opened: its row, then its activities and what's due, inside it (as a week is in Lectern).
 function weekOpen(w, now) {
   const evs = open("evaluations") ? evalsIn(w) : [];
-  const body = (w.cards.length ? w.cards.map(activityCard).join("") : `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`) + evs.map(e => evRow(e)).join("");
+  const body = (cardsIn(w).length ? cardsIn(w).map(activityCard).join("") : `<p class="hs-empty">${w.noClass ? "No class this week." : "No activities this week."}</p>`) + evs.map(e => evRow(e)).join("");
   return `<div class="hs-group hs-wkopen">${weekRow(w, now).replace('class="hs-row hs-wk', 'class="hs-row hs-wk hs-grp')}<div class="hs-stack">${body}</div></div>`;
 }
 const weekList = () => { const now = thisWeek(); return `<div class="hs-list">${weeks().map(w => weekRow(w, now)).join("")}</div>`; };
@@ -202,8 +209,8 @@ function evRow(e, weight) {
 const annMini = a => `<div class="hs-mini"><p class="hs-kick">Announcement · ${esc(stampText(a.date))}</p>${a.title ? `<b>${esc(a.title)}</b>` : ""}<div class="hs-body">${markdown(a.body)}</div></div>`;
 function activityCard(c) {
   const k = kindOf(c), D_ = datesOf(c).map(stampText).join(" · ");
-  const anns = c.id ? annsOn(`act:${c.id}`) : [];
-  return `<article class="hs-card hs-act hd-row${c.id ? " wk-go" : ""}"${c.id ? ` data-go="#activity/${encodeURIComponent(c.id)}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || soonOf(c)}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
+  const anns = c.id && !c.contFrom ? annsOn(`act:${c.id}`) : [];
+  return `<article class="hs-card hs-act hd-row${c.id ? " wk-go" : ""}"${c.id ? ` data-go="#activity/${encodeURIComponent(c.id)}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${KIND_ICON[k]}</span><div class="hs-act-b hd-main"><div class="hd"><p class="hs-kick">${esc(KIND_NAME[k])}${c.contFrom ? ` · Continued from ${esc(c.contFrom)}` : ""}${groupTag(c.groups)}</p><h3>${esc(c.title || c.label || "Untitled")}</h3>${D_ ? `<p class="hs-when">${esc(D_)}</p>` : ""}</div>${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || soonOf(c)}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}</div></article>`;
 }
 // Request Accommodation: when the gradebook says students can ask (until its deadline, if there is one).
 const asksAny = e => { const a = e.accom || {}; return !!(a.approval || a.alternate || (e.sittings || []).length); };
@@ -553,8 +560,8 @@ const PAGES = {
     // One card, as an evaluation's page is: the week at the top, then its activities, what's due, and its
     // announcements, each a row (no cards inside the card).
     const item = (ic, kick, title, when, rest = "", go = "") => `<div class="wk-item${go ? " wk-go" : ""}"${go ? ` data-go="${go}" role="link" tabindex="0" title="Open it: its discussion too"` : ""}><span class="hs-ic">${ic}</span><div class="wk-b"><p class="hs-kick">${kick}</p><h3>${esc(title)}</h3>${when ? `<p class="wk-when">${esc(when)}</p>` : ""}${rest}</div>${go ? CHEV : ""}</div>`;
-    const acts = w.cards.map(c => { const k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [];
-      return item(KIND_ICON[k], `${esc(KIND_NAME[k])}${groupTag(c.groups)}`, c.title || c.label || "Untitled", datesOf(c).map(stampText).join(" · "),
+    const acts = cardsIn(w).map(c => { const k = kindOf(c), anns = c.id && !c.contFrom ? annsOn(`act:${c.id}`) : [];
+      return item(KIND_ICON[k], `${esc(KIND_NAME[k])}${c.contFrom ? ` · Continued from ${esc(c.contFrom)}` : ""}${groupTag(c.groups)}`, c.title || c.label || "Untitled", datesOf(c).map(stampText).join(" · "),
         `${c.description ? `<div class="hs-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || soonOf(c)}${anns.length ? `<div class="hs-on">${anns.map(annMini).join("")}</div>` : ""}`, c.id ? `#activity/${encodeURIComponent(c.id)}` : ""); }).join("");
     const due = evs.map(evItem).join("");
     const an = anns.map(annItem).join("");
@@ -598,7 +605,7 @@ const PAGES = {
     const { w, c } = f, k = kindOf(c), anns = c.id ? annsOn(`act:${c.id}`) : [], when = datesOf(c).map(stampText).join(" · ");
     return `${path([["Activities", "#activities"], [w.label || "Week", `#week/${w.i}`], [c.title || c.label || "Activity"]])}
       <article class="ec-card wk-card">
-        <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON[k]}</span><div class="ec-tt"><p class="hs-kick">${esc(KIND_NAME[k])}${groupTag(c.groups)}</p><h1>${esc(c.title || c.label || "Untitled")}</h1>${when ? `<p class="ec-subline">${esc(when)}</p>` : ""}</div></header>
+        <header class="ec-head"><span class="hs-ic ec-ic">${KIND_ICON[k]}</span><div class="ec-tt"><p class="hs-kick">${esc(KIND_NAME[k])}${c.contFrom ? ` · Continued from ${esc(c.contFrom)}` : ""}${groupTag(c.groups)}</p><h1>${esc(c.title || c.label || "Untitled")}</h1>${when ? `<p class="ec-subline">${esc(when)}</p>` : ""}</div></header>
         ${c.description ? `<div class="hs-body ec-body">${markdown(c.description)}</div>` : ""}${filesHTML(c.files) || (c.release ? soonOf(c) : "")}
         ${anns.length ? `<div class="wk-group"><div class="wk-list">${anns.map(annItem).join("")}</div></div>` : ""}
         ${dcHere(`act:${c.id}`)}

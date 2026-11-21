@@ -232,10 +232,26 @@ export function lecturesPage(ctx, r) {
   // An activity for one section (e.g. LEC0101) is only for its students; without one, it's everyone's.
   const groupName = id => (id && ((st.groups || []).find(g => g.id === id) || {}).name) || "";
   const mondayOf = s => { const d = fromIso(s); if (!d) return ""; d.setDate(d.getDate() - (d.getDay() + 6) % 7); return isoDate(d); };
+  // A week's days: its Monday to the day before the next week's (the last one, a week from its Monday).
+  const spanOf = w => {
+    if (!w.start) return null;
+    const R = realWeeks(), nx = R.slice(R.indexOf(w) + 1).find(y => y.start);
+    return [mondayOf(w.start), nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.end || w.start), 6)];
+  };
+  // Activities kept in another week that have days in this one (a lecture that runs from a Friday into the
+  // next Monday): shown in this week too, with only this week's days, as "Continued".
+  const contIn = w => {
+    const sp = spanOf(w); if (!sp) return [];
+    return weeks().filter(v => v !== w && !v.isBreak).flatMap(v => (v.cards || []).map(x => ({ v, x, D: datesOf(x).filter(t => { const d = readStamp(t).date; return d && d >= sp[0] && d <= sp[1]; }) })))
+      .filter(o => o.D.length);
+  };
+  const contRow = o => `<div class="lx-row sub lx-lec lx-ev hd-row" style="--c:${KIND_COLOR[kindOf(o.x)]}" data-cont="${esc(o.x.id)}" data-w="${esc(o.v.id)}" role="button" tabindex="0" title="Open it (it's kept in ${esc(o.v.label || "another week")})">
+      <span class="lx-kicon" title="${esc(kindName(kindOf(o.x)))}">${KIND_ICON[kindOf(o.x)]}</span>
+      <div class="lx-main"><p class="lx-kind">${esc(kindName(kindOf(o.x)))} · Continued from ${esc(o.v.label || "another week")}</p><h3>${esc(titleOf(o.x))}</h3><p class="lx-when">${esc(o.D.map(t => whenText(t)).join(" · "))}</p></div></div>`;
+  const contHTML = w => { const C = contIn(w); return C.length ? `<div class="lx-evs">${C.map(contRow).join("")}</div>` : ""; };
   const weekEvals = w => {
     if (!w.start) return [];
-    const R = realWeeks(), nx = R.slice(R.indexOf(w) + 1).find(y => y.start);
-    const from = mondayOf(w.start), to = nx ? addDays(mondayOf(nx.start), -1) : addDays(mondayOf(w.end || w.start), 6);
+    const [from, to] = spanOf(w);
     // Each of its dates: its own (everyone else's, when some sections have theirs) and its sections' own.
     const gn = ids => ids.map(id => ((st.groups || []).find(g => g.id === id) || {}).name).filter(Boolean).join(", ");
     const all = (st.evals || []).flatMap(e => [...(e.date ? [{ ...e, tag: (e.dates || []).length ? "Everyone else" : "" }] : []), ...(e.dates || []).map(o => ({ ...e, date: o.date, time: o.time, tag: gn(o.groups) }))]);
@@ -270,7 +286,7 @@ export function lecturesPage(ctx, r) {
       <div class="lx-row grp" data-week="${esc(w.id)}" role="button" tabindex="0">
         <span class="lx-wnum" aria-hidden="true">${esc(weekNum(w))}</span>
         <div class="lx-main"><div class="lx-top"><h3>${esc(w.label || "Week")}</h3></div><p>${esc(weekLine(w))}</p></div></div>
-      ${subsHTML(w)}${evsHTML(w)}
+      ${subsHTML(w)}${contHTML(w)}${evsHTML(w)}
       <div class="lx-foot"></div>
     </div>`;
   const breakHTML = w => `<div class="lx-break" data-unit="${esc(w.id)}"${edit ? ' draggable="true"' : ""}>${edit
@@ -280,6 +296,11 @@ export function lecturesPage(ctx, r) {
   // Clicks, keys and dragging on a list of weeks (or one week's lectures).
   function wire(root) {
     const open = el => { if (el.dataset.lec) toLec(weekById(el.dataset.w), allCards().get(el.dataset.lec)); else if (el.dataset.week) toWeek(weekById(el.dataset.week)); };
+    root.querySelectorAll("[data-cont]").forEach(el => {
+      const go = () => toLec(weekById(el.dataset.w), allCards().get(el.dataset.cont));
+      el.onclick = e => { e.stopPropagation(); go(); };
+      el.onkeydown = e => { if ((e.key === "Enter" || e.key === " ") && e.target === el) { e.preventDefault(); go(); } };
+    });
     root.querySelectorAll("[data-ev]").forEach(el => {
       const open = () => ctx.openEval && ctx.openEval(el.dataset.ev);
       el.onclick = e => { e.stopPropagation(); open(); };
@@ -406,7 +427,7 @@ export function lecturesPage(ctx, r) {
         <p class="lx-help">Its class days, e.g. Monday to Friday. On the course page, This week runs to the Sunday after.</p>
         <h3 class="lx-sec">Activities</h3>
         <p class="lx-help">Its activities, in order.${edit ? " Drag one to move it; on the list of weeks, drag it to another week." : ""}</p>
-        ${subsHTML(w)}${evsHTML(w)}
+        ${subsHTML(w)}${contHTML(w)}${evsHTML(w)}
         ${mayAdd() ? `<div class="lx-adds"><button type="button" class="lx-btn add" data-add-activity>${ICON.plus}Add an Activity</button></div>` : ""}
       </div>
     </div></div>`);
